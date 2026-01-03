@@ -1,0 +1,12 @@
+# Ignore all test and documentation with "export-ignore".
+
+/.gitlab export-ignore
+/.gitignore         export-ignore
+/tests              export-ignore
+/.idea export-ignore
+/src/**/Tests       export-ignore
+/src/**/*Test.php   export-ignore
+/src/**/Test.php    export-ignore
+/phpunit.xml   export-ignore
+/.gitlab-ci.yml export-ignore
+/docs export-ignore
