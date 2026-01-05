@@ -12,6 +12,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Admin Interface Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure the admin interface for managing forms. You can customize the
+    | route prefix, middleware, and pagination settings here.
+    |
+    */
+
+    'admin' => [
+        'prefix' => env('FORMS_ADMIN_PREFIX', 'admin/forms'),
+        'middleware' => ['web', 'auth'],
+        'per_page' => 15,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Form Uploads Storage Configuration
     |--------------------------------------------------------------------------
     |

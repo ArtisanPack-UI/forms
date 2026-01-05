@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests;
 
 use ArtisanPackUI\Forms\FormsServiceProvider;
+use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as BaseTestCase;
 
 /**
@@ -27,6 +28,7 @@ abstract class TestCase extends BaseTestCase
     protected function getPackageProviders($app): array
     {
         return [
+            LivewireServiceProvider::class,
             FormsServiceProvider::class,
         ];
     }
@@ -58,6 +60,19 @@ abstract class TestCase extends BaseTestCase
             'driver' => 'local',
             'root' => storage_path('app'),
         ]);
+    }
+
+    /**
+     * Defines routes for testing.
+     *
+     * @since 1.0.0
+     *
+     * @param  \Illuminate\Routing\Router  $router  The router instance.
+     */
+    protected function defineRoutes($router): void
+    {
+        // Define a stub login route for authentication testing
+        $router->get('/login', fn () => 'Login Page')->name('login');
     }
 
     /**
