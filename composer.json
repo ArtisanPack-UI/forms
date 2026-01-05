@@ -25,11 +25,19 @@
   ],
   "require": {
     "php": "^8.2",
-    "illuminate/support": ">=5.3"
+    "illuminate/support": ">=5.3",
+    "artisanpack-ui/livewire-ui-components": "^1.0",
+    "artisanpack-ui/security": "^1.0",
+    "artisanpack-ui/accessibility": "^2.1",
+    "artisanpack-ui/hooks": "^1.2"
   },
   "require-dev": {
     "pestphp/pest": "^3.8",
-    "pestphp/pest-plugin-laravel": "^3.1"
+    "pestphp/pest-plugin-laravel": "^3.2",
+    "artisanpack-ui/code-style": "^1.1",
+    "artisanpack-ui/code-style-pint": "^1.1",
+    "laravel/pint": "^1.26",
+    "orchestra/testbench": "^10.2"
   },
   "config": {
     "allow-plugins": {
