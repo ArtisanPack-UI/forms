@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace ArtisanPackUI\Forms;
 
 use ArtisanPackUI\Forms\Console\Commands\PruneFormSubmissions;
+use ArtisanPackUI\Forms\Livewire\FormsList;
+use ArtisanPackUI\Forms\Services\FormService;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 /**
  * Service provider for the Forms package.
@@ -37,6 +40,10 @@ class FormsServiceProvider extends ServiceProvider
         $this->app->singleton('forms', function ($app) {
             return new Forms;
         });
+
+        $this->app->singleton(FormService::class, function ($app) {
+            return new FormService;
+        });
     }
 
     /**
@@ -54,6 +61,10 @@ class FormsServiceProvider extends ServiceProvider
         $this->registerCommands();
         $this->publishConfiguration();
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'forms');
+        $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        $this->registerLivewireComponents();
+        $this->publishViews();
     }
 
     /**
@@ -120,6 +131,32 @@ class FormsServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__.'/../config/forms.php' => config_path('artisanpack/forms.php'),
             ], 'artisanpack-package-config');
+        }
+    }
+
+    /**
+     * Register the package's Livewire components.
+     *
+     * @since 1.0.0
+     */
+    protected function registerLivewireComponents(): void
+    {
+        if (class_exists(Livewire::class)) {
+            Livewire::component('forms-list', FormsList::class);
+        }
+    }
+
+    /**
+     * Publish the package's views.
+     *
+     * @since 1.0.0
+     */
+    protected function publishViews(): void
+    {
+        if ($this->app->runningInConsole()) {
+            $this->publishes([
+                __DIR__.'/../resources/views' => resource_path('views/vendor/forms'),
+            ], 'artisanpack-forms-views');
         }
     }
 }
