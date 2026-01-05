@@ -1,0 +1,57 @@
+# .coderabbit.yaml configuration for ArtisanPack UI Forms
+language: "en-US"
+
+reviews:
+  # General Review Settings
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+
+  # Review ALL merge requests, not just to main
+  auto_review:
+    enabled: true
+    drafts: true
+    base_branches:
+      - ".*" # Regex to match all branches
+
+  # Increase file review limits
+  limits:
+    files: 100
+
+  # ------------------------------------------------------------------
+  # IGNORE PATTERNS
+  # ------------------------------------------------------------------
+  path_filters:
+    # 1. Standard Dependencies & Git
+    - "!.git/**"
+    - "!node_modules/**"
+    - "!vendor/**"
+
+    # 2. Build Artifacts (Vite/Laravel)
+    - "!public/build/**"
+    - "!public/hot"
+    - "!public/storage"
+    - "!storage/**"
+    - "!bootstrap/cache/**"
+
+    # 3. Lock Files
+    - "!composer.lock"
+    - "!package-lock.json"
+    - "!yarn.lock"
+
+    # 4. IDE & Auto-Generated Helpers
+    - "!.idea/**"
+    - "!.vscode/**"
+    - "!_ide_helper.php"
+    - "!_ide_helper_models.php"
+    - "!.phpstorm.meta.php"
+
+    # 5. Static Assets
+    - "!**/*.svg"
+    - "!**/*.min.js"
+    - "!**/*.min.css"
+    - "!**/*.map"
+    - "!public/vendor/**"
+
+chat:
+  auto_reply: true
