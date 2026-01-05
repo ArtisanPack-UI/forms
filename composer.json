@@ -14,7 +14,8 @@
   },
   "autoload-dev": {
     "psr-4": {
-      "Tests\\": "tests/"
+      "Tests\\": "tests/",
+      "ArtisanPackUI\\Forms\\Database\\Factories\\": "database/factories/"
     }
   },
   "authors": [
