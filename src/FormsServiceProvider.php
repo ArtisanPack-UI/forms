@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace ArtisanPackUI\Forms;
 
 use ArtisanPackUI\Forms\Console\Commands\PruneFormSubmissions;
+use ArtisanPackUI\Forms\Livewire\FormBuilder;
 use ArtisanPackUI\Forms\Livewire\FormsList;
+use ArtisanPackUI\Forms\Services\FieldService;
 use ArtisanPackUI\Forms\Services\FormService;
+use ArtisanPackUI\Forms\Services\StepService;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 
@@ -43,6 +46,14 @@ class FormsServiceProvider extends ServiceProvider
 
         $this->app->singleton(FormService::class, function ($app) {
             return new FormService;
+        });
+
+        $this->app->singleton(FieldService::class, function ($app) {
+            return new FieldService;
+        });
+
+        $this->app->singleton(StepService::class, function ($app) {
+            return new StepService;
         });
     }
 
@@ -143,6 +154,7 @@ class FormsServiceProvider extends ServiceProvider
     {
         if (class_exists(Livewire::class)) {
             Livewire::component('forms-list', FormsList::class);
+            Livewire::component('form-builder', FormBuilder::class);
         }
     }
 

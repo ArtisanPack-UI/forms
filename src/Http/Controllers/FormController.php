@@ -62,7 +62,8 @@ class FormController extends Controller
      */
     public function edit(Form $form): View
     {
-        // Eager load counts to prevent N+1 queries in the view
+        // Eager load relationships and counts to prevent N+1 queries
+        $form->load(['fields', 'steps.fields']);
         $form->loadCount([
             'fields',
             'submissions as total_submissions_count',

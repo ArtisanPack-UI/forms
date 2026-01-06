@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests;
 
 use ArtisanPackUI\Forms\FormsServiceProvider;
+use Illuminate\Support\Facades\Blade;
 use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as BaseTestCase;
 
@@ -17,6 +18,17 @@ use Orchestra\Testbench\TestCase as BaseTestCase;
  */
 abstract class TestCase extends BaseTestCase
 {
+    /**
+     * Setup the test environment.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Register stub icon component for testing
+        Blade::component('artisanpack-icon', \Tests\Stubs\IconStub::class);
+    }
+
     /**
      * Gets package providers.
      *
