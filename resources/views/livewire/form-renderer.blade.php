@@ -1,4 +1,13 @@
-<div class="artisanpack-form-renderer">
+<div
+    class="artisanpack-form-renderer"
+    x-data="formConditionalLogic({
+        formData: @entangle('formData'),
+        fieldMap: @js($this->fieldMap),
+        conditionalLogic: @js($this->conditionalLogicConfig),
+        hiddenFields: @entangle('hiddenFields')
+    })"
+    x-init="evaluateAllConditions()"
+>
     @if($isSubmitted)
         {{-- Success Message --}}
         <div class="alert alert-success">
@@ -84,15 +93,26 @@
 
                         <div class="space-y-4">
                             @foreach($this->currentFields as $field)
-                                @if($this->isFieldVisible($field->name))
-                                    <div wire:key="field-{{ $field->uuid }}">
-                                        @include('forms::components.fields.' . $field->type, [
-                                            'field' => $field,
-                                            'value' => $formData[$field->name] ?? null,
-                                            'error' => $errors->first('formData.' . $field->name),
-                                        ])
-                                    </div>
-                                @endif
+                                <div
+                                    wire:key="field-{{ $field->uuid }}"
+                                    x-show="isFieldVisible('{{ $field->name }}')"
+                                    x-transition:enter="transition ease-out duration-200"
+                                    x-transition:enter-start="opacity-0 transform -translate-y-2"
+                                    x-transition:enter-end="opacity-100 transform translate-y-0"
+                                    x-transition:leave="transition ease-in duration-150"
+                                    x-transition:leave-start="opacity-100 transform translate-y-0"
+                                    x-transition:leave-end="opacity-0 transform -translate-y-2"
+                                    x-cloak
+                                    :class="{ 'hidden': !isFieldVisible('{{ $field->name }}') }"
+                                    :aria-hidden="!isFieldVisible('{{ $field->name }}')"
+                                    :inert="!isFieldVisible('{{ $field->name }}')"
+                                >
+                                    @include('forms::components.fields.' . $field->type, [
+                                        'field' => $field,
+                                        'value' => $formData[$field->name] ?? null,
+                                        'error' => $errors->first('formData.' . $field->name),
+                                    ])
+                                </div>
                             @endforeach
                         </div>
                     </div>
@@ -140,15 +160,26 @@
                 {{-- Single-step: Show all fields --}}
                 <div class="space-y-4">
                     @foreach($this->currentFields as $field)
-                        @if($this->isFieldVisible($field->name))
-                            <div wire:key="field-{{ $field->uuid }}">
-                                @include('forms::components.fields.' . $field->type, [
-                                    'field' => $field,
-                                    'value' => $formData[$field->name] ?? null,
-                                    'error' => $errors->first('formData.' . $field->name),
-                                ])
-                            </div>
-                        @endif
+                        <div
+                            wire:key="field-{{ $field->uuid }}"
+                            x-show="isFieldVisible('{{ $field->name }}')"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 transform -translate-y-2"
+                            x-transition:enter-end="opacity-100 transform translate-y-0"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 transform translate-y-0"
+                            x-transition:leave-end="opacity-0 transform -translate-y-2"
+                            x-cloak
+                            :class="{ 'hidden': !isFieldVisible('{{ $field->name }}') }"
+                            :aria-hidden="!isFieldVisible('{{ $field->name }}')"
+                            :inert="!isFieldVisible('{{ $field->name }}')"
+                        >
+                            @include('forms::components.fields.' . $field->type, [
+                                'field' => $field,
+                                'value' => $formData[$field->name] ?? null,
+                                'error' => $errors->first('formData.' . $field->name),
+                            ])
+                        </div>
                     @endforeach
                 </div>
 
@@ -172,3 +203,203 @@
         </form>
     @endif
 </div>
+
+@push('scripts')
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('formConditionalLogic', (config) => ({
+            formData: config.formData,
+            fieldMap: config.fieldMap,
+            conditionalLogic: config.conditionalLogic,
+            hiddenFields: config.hiddenFields,
+
+            init() {
+                // Watch for form data changes
+                this.$watch('formData', () => {
+                    this.evaluateAllConditions();
+                }, { deep: true });
+            },
+
+            /**
+             * Evaluate all conditional logic rules
+             */
+            evaluateAllConditions() {
+                for (const fieldName in this.conditionalLogic) {
+                    const visible = this.evaluateCondition(fieldName);
+                    this.hiddenFields[fieldName] = !visible;
+                }
+            },
+
+            /**
+             * Check if a field is visible
+             */
+            isFieldVisible(fieldName) {
+                // If no conditional logic for this field, it's always visible
+                if (!this.conditionalLogic[fieldName]) {
+                    return true;
+                }
+                return !this.hiddenFields[fieldName];
+            },
+
+            /**
+             * Evaluate conditional logic for a specific field
+             */
+            evaluateCondition(fieldName) {
+                const logic = this.conditionalLogic[fieldName];
+                if (!logic || !logic.rules || logic.rules.length === 0) {
+                    return true;
+                }
+
+                const action = logic.action || 'show';
+                const logicType = logic.logic || 'all';
+                const rules = logic.rules;
+
+                // Evaluate all rules
+                const results = rules.map(rule => this.evaluateRule(rule));
+
+                // Combine results based on logic type
+                let conditionsMet;
+                if (logicType === 'all') {
+                    conditionsMet = results.every(r => r === true);
+                } else {
+                    conditionsMet = results.some(r => r === true);
+                }
+
+                // Return visibility based on action
+                return action === 'show' ? conditionsMet : !conditionsMet;
+            },
+
+            /**
+             * Evaluate a single condition rule
+             */
+            evaluateRule(rule) {
+                const fieldRef = rule.field;
+                const operator = rule.operator || 'equals';
+                const ruleValue = rule.value || '';
+
+                if (!fieldRef) return true;
+
+                // Get field value (fieldRef could be field name or UUID)
+                const fieldValue = this.getFieldValue(fieldRef);
+
+                return this.compareValues(fieldValue, operator, ruleValue);
+            },
+
+            /**
+             * Get field value by name or UUID
+             */
+            getFieldValue(fieldRef) {
+                // Check if it's a direct field name
+                if (this.formData[fieldRef] !== undefined) {
+                    return this.formData[fieldRef];
+                }
+
+                // Check if it's a UUID - find the field name
+                for (const [name, uuid] of Object.entries(this.fieldMap)) {
+                    if (uuid === fieldRef) {
+                        return this.formData[name];
+                    }
+                }
+
+                return null;
+            },
+
+            /**
+             * Compare values using the specified operator
+             */
+            compareValues(fieldValue, operator, ruleValue) {
+                switch (operator) {
+                    case 'equals':
+                        return this.compareEquals(fieldValue, ruleValue);
+                    case 'not_equals':
+                        return !this.compareEquals(fieldValue, ruleValue);
+                    case 'contains':
+                        return typeof fieldValue === 'string' && fieldValue.includes(ruleValue);
+                    case 'not_contains':
+                        return typeof fieldValue === 'string' && !fieldValue.includes(ruleValue);
+                    case 'starts_with':
+                        return typeof fieldValue === 'string' && fieldValue.startsWith(ruleValue);
+                    case 'ends_with':
+                        return typeof fieldValue === 'string' && fieldValue.endsWith(ruleValue);
+                    case 'is_empty':
+                        return this.isEmpty(fieldValue);
+                    case 'is_not_empty':
+                        return !this.isEmpty(fieldValue);
+                    case 'greater_than':
+                        return this.isNumeric(fieldValue) && parseFloat(fieldValue) > parseFloat(ruleValue);
+                    case 'less_than':
+                        return this.isNumeric(fieldValue) && parseFloat(fieldValue) < parseFloat(ruleValue);
+                    case 'greater_or_equal':
+                        return this.isNumeric(fieldValue) && parseFloat(fieldValue) >= parseFloat(ruleValue);
+                    case 'less_or_equal':
+                        return this.isNumeric(fieldValue) && parseFloat(fieldValue) <= parseFloat(ruleValue);
+                    case 'in':
+                        return this.compareIn(fieldValue, ruleValue);
+                    case 'not_in':
+                        return !this.compareIn(fieldValue, ruleValue);
+                    case 'checked':
+                        return this.isChecked(fieldValue);
+                    case 'unchecked':
+                        return !this.isChecked(fieldValue);
+                    case 'includes':
+                        return Array.isArray(fieldValue) && fieldValue.includes(ruleValue);
+                    case 'not_includes':
+                        return Array.isArray(fieldValue) && !fieldValue.includes(ruleValue);
+                    default:
+                        return true;
+                }
+            },
+
+            /**
+             * Compare equality handling different types
+             */
+            compareEquals(fieldValue, ruleValue) {
+                if (typeof fieldValue === 'boolean') {
+                    return fieldValue === (ruleValue === 'true' || ruleValue === '1' || ruleValue === true);
+                }
+                if (this.isNumeric(fieldValue) && this.isNumeric(ruleValue)) {
+                    return parseFloat(fieldValue) === parseFloat(ruleValue);
+                }
+                return String(fieldValue) === String(ruleValue);
+            },
+
+            /**
+             * Check if value is empty
+             */
+            isEmpty(value) {
+                if (value === null || value === undefined) return true;
+                if (typeof value === 'string') return value.trim() === '';
+                if (Array.isArray(value)) return value.length === 0;
+                return !value;
+            },
+
+            /**
+             * Check if value is numeric
+             */
+            isNumeric(value) {
+                return !isNaN(parseFloat(value)) && isFinite(value);
+            },
+
+            /**
+             * Check if value is in comma-separated list
+             */
+            compareIn(fieldValue, ruleValue) {
+                if (typeof ruleValue !== 'string') return false;
+                const list = ruleValue.split(',').map(v => v.trim());
+                return list.includes(String(fieldValue));
+            },
+
+            /**
+             * Check if checkbox is checked
+             */
+            isChecked(value) {
+                if (typeof value === 'boolean') return value;
+                if (typeof value === 'string') {
+                    return ['true', '1', 'yes', 'on'].includes(value.toLowerCase());
+                }
+                return Boolean(value);
+            }
+        }));
+    });
+</script>
+@endpush
