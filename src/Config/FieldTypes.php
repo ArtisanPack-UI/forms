@@ -22,7 +22,7 @@ class FieldTypes
     public const CATEGORIES = [
         'basic' => [
             'label' => 'Basic Fields',
-            'fields' => ['text', 'email', 'number', 'url', 'textarea', 'hidden'],
+            'fields' => ['text', 'email', 'phone', 'number', 'url', 'textarea', 'hidden'],
         ],
         'choice' => [
             'label' => 'Choice Fields',
@@ -30,7 +30,11 @@ class FieldTypes
         ],
         'advanced' => [
             'label' => 'Advanced Fields',
-            'fields' => ['file', 'date'],
+            'fields' => ['file', 'date', 'time'],
+        ],
+        'layout' => [
+            'label' => 'Layout Elements',
+            'fields' => ['heading', 'paragraph', 'divider', 'html'],
         ],
     ];
 
@@ -228,6 +232,97 @@ class FieldTypes
                 'label' => 'Select Date',
             ],
         ],
+        'phone' => [
+            'label' => 'Phone Number',
+            'icon' => 'o-phone',
+            'category' => 'basic',
+            'has_options' => false,
+            'supports_placeholder' => true,
+            'supports_default_value' => true,
+            'validation_options' => ['pattern'],
+            'defaults' => [
+                'label' => 'Phone Number',
+                'placeholder' => '(123) 456-7890',
+            ],
+        ],
+        'time' => [
+            'label' => 'Time Picker',
+            'icon' => 'o-clock',
+            'category' => 'advanced',
+            'has_options' => false,
+            'supports_placeholder' => false,
+            'supports_default_value' => true,
+            'validation_options' => ['min_time', 'max_time'],
+            'defaults' => [
+                'label' => 'Select Time',
+                'field_config' => [
+                    'step' => 60,
+                ],
+            ],
+        ],
+        'heading' => [
+            'label' => 'Heading',
+            'icon' => 'o-h1',
+            'category' => 'layout',
+            'has_options' => false,
+            'supports_placeholder' => false,
+            'supports_default_value' => false,
+            'is_layout' => true,
+            'validation_options' => [],
+            'defaults' => [
+                'label' => 'Section Heading',
+                'field_config' => [
+                    'level' => 'h3',
+                ],
+            ],
+        ],
+        'paragraph' => [
+            'label' => 'Paragraph Text',
+            'icon' => 'o-document-text',
+            'category' => 'layout',
+            'has_options' => false,
+            'supports_placeholder' => false,
+            'supports_default_value' => false,
+            'is_layout' => true,
+            'validation_options' => [],
+            'defaults' => [
+                'label' => 'Information',
+                'help_text' => 'Add descriptive text here.',
+            ],
+        ],
+        'divider' => [
+            'label' => 'Divider',
+            'icon' => 'o-minus',
+            'category' => 'layout',
+            'has_options' => false,
+            'supports_placeholder' => false,
+            'supports_default_value' => false,
+            'is_layout' => true,
+            'validation_options' => [],
+            'defaults' => [
+                'label' => 'Divider',
+                'field_config' => [
+                    'style' => 'solid',
+                    'spacing' => 'normal',
+                ],
+            ],
+        ],
+        'html' => [
+            'label' => 'Custom HTML',
+            'icon' => 'o-code-bracket',
+            'category' => 'layout',
+            'has_options' => false,
+            'supports_placeholder' => false,
+            'supports_default_value' => false,
+            'is_layout' => true,
+            'validation_options' => [],
+            'defaults' => [
+                'label' => 'Custom Content',
+                'field_config' => [
+                    'content' => '',
+                ],
+            ],
+        ],
     ];
 
     /**
@@ -267,11 +362,41 @@ class FieldTypes
     /**
      * Get all field type definitions.
      *
+     * Applies the 'artisanpack.forms.field_types' filter hook to allow
+     * third-party packages to register custom field types.
+     *
      * @return array<string, array<string, mixed>>
      */
     public static function getTypes(): array
     {
-        return self::TYPES;
+        $types = self::TYPES;
+
+        // Apply filter hook for extensibility
+        if (function_exists('applyFilters')) {
+            $types = applyFilters('artisanpack.forms.field_types', $types);
+        }
+
+        return $types;
+    }
+
+    /**
+     * Get all field categories with their field types.
+     *
+     * Applies the 'artisanpack.forms.field_categories' filter hook to allow
+     * third-party packages to register custom categories.
+     *
+     * @return array<string, array{label: string, fields: array<string>}>
+     */
+    public static function getCategoriesFiltered(): array
+    {
+        $categories = self::CATEGORIES;
+
+        // Apply filter hook for extensibility
+        if (function_exists('applyFilters')) {
+            $categories = applyFilters('artisanpack.forms.field_categories', $categories);
+        }
+
+        return $categories;
     }
 
     /**
@@ -282,7 +407,9 @@ class FieldTypes
      */
     public static function getTypeConfig(string $type): ?array
     {
-        return self::TYPES[$type] ?? null;
+        $types = self::getTypes();
+
+        return $types[$type] ?? null;
     }
 
     /**
@@ -293,7 +420,9 @@ class FieldTypes
      */
     public static function getDefaults(string $type): array
     {
-        return self::TYPES[$type]['defaults'] ?? [];
+        $types = self::getTypes();
+
+        return $types[$type]['defaults'] ?? [];
     }
 
     /**
@@ -304,7 +433,9 @@ class FieldTypes
      */
     public static function hasOptions(string $type): bool
     {
-        return self::TYPES[$type]['has_options'] ?? false;
+        $types = self::getTypes();
+
+        return $types[$type]['has_options'] ?? false;
     }
 
     /**
@@ -315,7 +446,9 @@ class FieldTypes
      */
     public static function getValidationOptions(string $type): array
     {
-        return self::TYPES[$type]['validation_options'] ?? [];
+        $types = self::getTypes();
+
+        return $types[$type]['validation_options'] ?? [];
     }
 
     /**
@@ -336,7 +469,9 @@ class FieldTypes
      */
     public static function typeExists(string $type): bool
     {
-        return isset(self::TYPES[$type]);
+        $types = self::getTypes();
+
+        return isset($types[$type]);
     }
 
     /**
@@ -347,7 +482,9 @@ class FieldTypes
      */
     public static function supportsPlaceholder(string $type): bool
     {
-        return self::TYPES[$type]['supports_placeholder'] ?? false;
+        $types = self::getTypes();
+
+        return $types[$type]['supports_placeholder'] ?? false;
     }
 
     /**
@@ -358,7 +495,25 @@ class FieldTypes
      */
     public static function supportsDefaultValue(string $type): bool
     {
-        return self::TYPES[$type]['supports_default_value'] ?? true;
+        $types = self::getTypes();
+
+        return $types[$type]['supports_default_value'] ?? true;
+    }
+
+    /**
+     * Check if a field type is a layout element (not a data input).
+     *
+     * Layout elements (heading, paragraph, divider, html) are display-only
+     * and do not collect or store user input.
+     *
+     * @param  string  $type  The field type name.
+     * @return bool True if the field type is a layout element.
+     */
+    public static function isLayoutField(string $type): bool
+    {
+        $types = self::getTypes();
+
+        return $types[$type]['is_layout'] ?? false;
     }
 
     /**

@@ -268,6 +268,11 @@ class FormField extends Model
      */
     public function buildValidationRules(): array
     {
+        // Layout fields don't need validation
+        if ($this->isLayoutField()) {
+            return [];
+        }
+
         $rules = [];
 
         if ($this->is_required) {
@@ -292,25 +297,77 @@ class FormField extends Model
             $rules[] = "regex:{$pattern}";
         }
 
+        // Date range validation
+        if ($minDate = $this->getValidationRule('min_date')) {
+            $rules[] = "after_or_equal:{$minDate}";
+        }
+
+        if ($maxDate = $this->getValidationRule('max_date')) {
+            $rules[] = "before_or_equal:{$maxDate}";
+        }
+
+        // Time range validation
+        if ($minTime = $this->getValidationRule('min_time')) {
+            $rules[] = "after_or_equal:{$minTime}";
+        }
+
+        if ($maxTime = $this->getValidationRule('max_time')) {
+            $rules[] = "before_or_equal:{$maxTime}";
+        }
+
         return $rules;
+    }
+
+    /**
+     * Check if this field is a layout-only field (no data input).
+     *
+     * Delegates to FieldTypes::isLayoutField() to use the central config-driven logic.
+     */
+    public function isLayoutField(): bool
+    {
+        return \ArtisanPackUI\Forms\Config\FieldTypes::isLayoutField($this->type);
     }
 
     /**
      * Get validation rules specific to the field type.
      *
+     * Supports custom field types registered via the 'artisanpack.forms.field_types'
+     * filter hook by checking for a 'type_validation' key in the field type config.
+     *
      * @return array<int, string>
      */
     protected function getTypeValidationRules(): array
     {
-        return match ($this->type) {
+        // Check for built-in types first
+        $builtInRules = match ($this->type) {
             'email' => ['email'],
             'url' => ['url'],
             'number' => ['numeric'],
+            'phone' => ['string'],
             'date' => ['date'],
+            'time' => ['date_format:H:i'],
             'file' => $this->getFileValidationRules(),
             'checkbox_group', 'select_multiple' => ['array'],
-            default => [],
+            'checkbox' => ['boolean'],
+            default => null,
         };
+
+        if ($builtInRules !== null) {
+            return $builtInRules;
+        }
+
+        // Check for custom type validation rules from the filter hook
+        $typeConfig = \ArtisanPackUI\Forms\Config\FieldTypes::getTypeConfig($this->type);
+
+        if ($typeConfig !== null && isset($typeConfig['type_validation'])) {
+            $customRules = $typeConfig['type_validation'];
+
+            // Support both array of rules and single rule string
+            return is_array($customRules) ? $customRules : [$customRules];
+        }
+
+        // Default to string validation for unknown types
+        return ['string'];
     }
 
     /**
