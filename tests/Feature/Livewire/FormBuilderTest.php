@@ -257,4 +257,83 @@ describe('FormBuilder Multi-Step', function (): void {
 
         expect($field->step_id)->toBe($this->step->id);
     });
+
+    it('reorders steps based on ID array', function (): void {
+        $step2 = FormStep::factory()->for($this->form)->create(['sort_order' => 2]);
+        $step3 = FormStep::factory()->for($this->form)->create(['sort_order' => 3]);
+
+        Livewire::test(FormBuilder::class, ['form' => $this->form])
+            ->dispatch('steps-reordered', orderedIds: [$step3->id, $step2->id, $this->step->id]);
+
+        expect($this->step->fresh()->sort_order)->toBe(3)
+            ->and($step2->fresh()->sort_order)->toBe(2)
+            ->and($step3->fresh()->sort_order)->toBe(1);
+    });
+});
+
+describe('FormBuilder Enable/Disable Multi-Step', function (): void {
+    it('enables multi-step mode on a single-step form', function (): void {
+        $form = Form::factory()->create(['is_multi_step' => false]);
+        $field = FormField::factory()->for($form)->create(['step_id' => null]);
+
+        Livewire::test(FormBuilder::class, ['form' => $form])
+            ->call('enableMultiStep')
+            ->assertDispatched('multi-step-enabled');
+
+        $form->refresh();
+        $field->refresh();
+
+        expect($form->is_multi_step)->toBeTrue()
+            ->and($form->steps()->count())->toBe(1)
+            ->and($field->step_id)->not->toBeNull();
+    });
+
+    it('does nothing when enabling multi-step on already multi-step form', function (): void {
+        $form = Form::factory()->multiStep()->create();
+        FormStep::factory()->for($form)->create();
+
+        Livewire::test(FormBuilder::class, ['form' => $form])
+            ->call('enableMultiStep')
+            ->assertNotDispatched('multi-step-enabled');
+
+        expect($form->steps()->count())->toBe(1);
+    });
+
+    it('disables multi-step mode', function (): void {
+        $form = Form::factory()->multiStep()->create();
+        $step = FormStep::factory()->for($form)->create();
+        $field = FormField::factory()->for($form)->create(['step_id' => $step->id]);
+
+        Livewire::test(FormBuilder::class, ['form' => $form])
+            ->call('disableMultiStep')
+            ->assertDispatched('multi-step-disabled')
+            ->assertSet('activeStepId', null);
+
+        $form->refresh();
+        $field->refresh();
+
+        expect($form->is_multi_step)->toBeFalse()
+            ->and($form->steps()->count())->toBe(0)
+            ->and($field->step_id)->toBeNull();
+    });
+
+    it('does nothing when disabling multi-step on single-step form', function (): void {
+        $form = Form::factory()->create(['is_multi_step' => false]);
+
+        Livewire::test(FormBuilder::class, ['form' => $form])
+            ->call('disableMultiStep')
+            ->assertNotDispatched('multi-step-disabled');
+    });
+
+    it('sets active step when enabling multi-step', function (): void {
+        $form = Form::factory()->create(['is_multi_step' => false]);
+
+        $component = Livewire::test(FormBuilder::class, ['form' => $form])
+            ->call('enableMultiStep');
+
+        $form->refresh();
+        $step = $form->steps()->first();
+
+        $component->assertSet('activeStepId', $step->id);
+    });
 });
