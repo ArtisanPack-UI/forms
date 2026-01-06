@@ -120,6 +120,21 @@ class FormFieldFactory extends Factory
     }
 
     /**
+     * Indicate that the field is a time field.
+     */
+    public function time(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => 'time',
+            'name' => 'appointment_time',
+            'label' => 'Appointment Time',
+            'field_config' => [
+                'step' => 60,
+            ],
+        ]);
+    }
+
+    /**
      * Indicate that the field is required.
      */
     public function required(): static

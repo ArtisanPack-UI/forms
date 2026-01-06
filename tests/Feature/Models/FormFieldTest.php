@@ -177,5 +177,21 @@ describe('FormField Model', function (): void {
                 ->and($rules)->toContain('mimes:pdf,doc,docx')
                 ->and($rules)->toContain('max:5120');
         });
+
+        it('builds validation rules for time field with min and max time', function (): void {
+            $field = FormField::factory()->required()->time()->create([
+                'validation_rules' => [
+                    'min_time' => '09:00',
+                    'max_time' => '17:00',
+                ],
+            ]);
+
+            $rules = $field->buildValidationRules();
+
+            expect($rules)->toContain('required')
+                ->and($rules)->toContain('date_format:H:i')
+                ->and($rules)->toContain('after_or_equal:09:00')
+                ->and($rules)->toContain('before_or_equal:17:00');
+        });
     });
 });
