@@ -59,10 +59,16 @@ class FieldService
      *
      * @param  array<string, mixed>  $data
      *
+     * @throws \InvalidArgumentException If an invalid field type is provided.
      * @throws \RuntimeException If the field cannot be refreshed after update.
      */
     public function update(FormField $field, array $data): FormField
     {
+        // Validate type if being changed
+        if (isset($data['type']) && ! FieldTypes::typeExists($data['type'])) {
+            throw new \InvalidArgumentException("Invalid field type: {$data['type']}");
+        }
+
         // If name is being changed, regenerate to ensure uniqueness
         if (isset($data['label']) && ! isset($data['name'])) {
             $data['name'] = $this->generateFieldName(
