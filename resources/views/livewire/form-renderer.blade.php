@@ -1,16 +1,29 @@
 <div
     class="artisanpack-form-renderer"
-    x-data="formConditionalLogic({
+    x-data="formRenderer({
         formData: @entangle('formData'),
         fieldMap: @js($this->fieldMap),
         conditionalLogic: @js($this->conditionalLogicConfig),
-        hiddenFields: @entangle('hiddenFields')
+        hiddenFields: @entangle('hiddenFields'),
+        isMultiStep: @js($form->is_multi_step),
+        currentStepIndex: @entangle('currentStepIndex'),
+        totalSteps: @js($this->totalSteps)
     })"
-    x-init="evaluateAllConditions()"
+    x-init="init()"
+    @keydown.window="handleKeydown($event)"
 >
+    {{-- ARIA live region for step announcements --}}
+    <div
+        class="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        x-ref="announcer"
+    ></div>
+
     @if($isSubmitted)
         {{-- Success Message --}}
-        <div class="alert alert-success">
+        <div class="alert alert-success" role="alert">
             <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -29,7 +42,7 @@
             </div>
         @endif
     @else
-        <form wire:submit="submit" class="space-y-6">
+        <form wire:submit="submit" class="space-y-6" x-ref="form">
             {{-- Form Title & Description --}}
             @if($form->show_title && $form->title)
                 <h2 class="text-2xl font-bold">{{ $form->title }}</h2>
@@ -41,7 +54,7 @@
 
             {{-- Error Message --}}
             @if($errorMessage)
-                <div class="alert alert-error">
+                <div class="alert alert-error" role="alert">
                     <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -49,19 +62,54 @@
                 </div>
             @endif
 
-            {{-- Multi-step Progress --}}
+            {{-- Multi-step Progress Indicator --}}
             @if($form->is_multi_step)
-                <div class="steps w-full mb-6">
-                    @foreach($this->steps as $index => $step)
-                        <button
-                            type="button"
-                            wire:click="goToStep({{ $index }})"
-                            class="step {{ $index <= $currentStepIndex ? 'step-primary' : '' }}"
-                            @if($index > $currentStepIndex + 1) disabled @endif
-                        >
-                            {{ $step->title }}
-                        </button>
-                    @endforeach
+                <div class="mb-8" role="navigation" aria-label="Form progress">
+                    {{-- Progress Bar --}}
+                    <div class="mb-4">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-base-content/70">
+                                Step {{ $currentStepIndex + 1 }} of {{ $this->totalSteps }}
+                            </span>
+                            <span class="text-base-content/70">
+                                {{ $this->progressPercentage }}% complete
+                            </span>
+                        </div>
+                        <progress
+                            class="progress progress-primary w-full"
+                            value="{{ $this->progressPercentage }}"
+                            max="100"
+                            aria-label="Form progress: {{ $this->progressPercentage }}% complete"
+                        ></progress>
+                    </div>
+
+                    {{-- Step Indicators --}}
+                    <ul class="steps steps-horizontal w-full">
+                        @foreach($this->steps as $index => $step)
+                            <li
+                                class="step {{ $index < $currentStepIndex ? 'step-primary' : ($index === $currentStepIndex ? 'step-primary' : '') }}"
+                                data-content="{{ $index < $currentStepIndex ? '✓' : $index + 1 }}"
+                            >
+                                @if($form->allow_step_navigation && $index <= $currentStepIndex)
+                                    <button
+                                        type="button"
+                                        wire:click="goToStep({{ $index }})"
+                                        class="text-sm hover:underline focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded"
+                                        @if($index === $currentStepIndex) aria-current="step" @endif
+                                    >
+                                        {{ $step->title }}
+                                    </button>
+                                @else
+                                    <span
+                                        class="text-sm {{ $index > $currentStepIndex ? 'text-base-content/50' : '' }}"
+                                        @if($index === $currentStepIndex) aria-current="step" @endif
+                                    >
+                                        {{ $step->title }}
+                                    </span>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
                 </div>
             @endif
 
@@ -82,9 +130,14 @@
             @if($form->is_multi_step)
                 {{-- Multi-step: Show current step fields --}}
                 @if($this->currentStep)
-                    <div class="step-content">
-                        @if($this->currentStep->title)
-                            <h3 class="text-xl font-semibold mb-4">{{ $this->currentStep->title }}</h3>
+                    <div
+                        class="step-content"
+                        x-ref="stepContent"
+                        role="region"
+                        aria-label="Step {{ $currentStepIndex + 1 }}: {{ $this->currentStep->title }}"
+                    >
+                        @if($this->currentStep->title && !$form->show_title)
+                            <h3 class="text-xl font-semibold mb-2">{{ $this->currentStep->title }}</h3>
                         @endif
 
                         @if($this->currentStep->description)
@@ -118,41 +171,65 @@
                     </div>
 
                     {{-- Step Navigation --}}
-                    <div class="flex justify-between mt-6">
-                        @if($currentStepIndex > 0)
-                            <x-artisanpack-button
-                                type="button"
-                                wire:click="previousStep"
-                                color="ghost"
-                            >
-                                Previous
-                            </x-artisanpack-button>
-                        @else
-                            <div></div>
-                        @endif
+                    <div class="flex justify-between items-center mt-8 pt-4 border-t border-base-300">
+                        {{-- Previous Button --}}
+                        <div>
+                            @if(!$this->isFirstStep)
+                                <x-artisanpack-button
+                                    type="button"
+                                    wire:click="previousStep"
+                                    color="ghost"
+                                    wire:loading.attr="disabled"
+                                >
+                                    <x-artisanpack-icon name="o-arrow-left" class="h-4 w-4 mr-1" />
+                                    {{ $this->currentStep->prev_button_text ?? 'Previous' }}
+                                </x-artisanpack-button>
+                            @endif
+                        </div>
 
-                        @if($this->isLastStep)
-                            <x-artisanpack-button
-                                type="submit"
-                                color="primary"
-                                wire:loading.attr="disabled"
-                            >
-                                <span wire:loading.remove wire:target="submit">
-                                    {{ $form->submit_button_text ?? 'Submit' }}
-                                </span>
-                                <span wire:loading wire:target="submit" class="flex items-center gap-2">
-                                    <span class="loading loading-spinner loading-sm"></span>
-                                    Submitting...
-                                </span>
-                            </x-artisanpack-button>
-                        @else
-                            <x-artisanpack-button
-                                type="button"
-                                wire:click="nextStep"
-                                color="primary"
-                            >
-                                Next
-                            </x-artisanpack-button>
+                        {{-- Next/Submit Button --}}
+                        <div>
+                            @if($this->isLastStep)
+                                <x-artisanpack-button
+                                    type="submit"
+                                    color="primary"
+                                    wire:loading.attr="disabled"
+                                    wire:target="submit"
+                                >
+                                    <span wire:loading.remove wire:target="submit">
+                                        {{ $form->submit_button_text ?? 'Submit' }}
+                                    </span>
+                                    <span wire:loading wire:target="submit" class="flex items-center gap-2">
+                                        <span class="loading loading-spinner loading-sm"></span>
+                                        Submitting...
+                                    </span>
+                                </x-artisanpack-button>
+                            @else
+                                <x-artisanpack-button
+                                    type="button"
+                                    wire:click="nextStep"
+                                    color="primary"
+                                    wire:loading.attr="disabled"
+                                    wire:target="nextStep"
+                                >
+                                    <span wire:loading.remove wire:target="nextStep">
+                                        {{ $this->currentStep->next_button_text ?? 'Next' }}
+                                        <x-artisanpack-icon name="o-arrow-right" class="h-4 w-4 ml-1 inline" />
+                                    </span>
+                                    <span wire:loading wire:target="nextStep" class="flex items-center gap-2">
+                                        <span class="loading loading-spinner loading-sm"></span>
+                                        Validating...
+                                    </span>
+                                </x-artisanpack-button>
+                            @endif
+                        </div>
+                    </div>
+
+                    {{-- Keyboard navigation hint --}}
+                    <div class="mt-4 text-center text-xs text-base-content/40">
+                        Press <kbd class="kbd kbd-xs">Enter</kbd> to continue
+                        @if(!$this->isFirstStep)
+                            or <kbd class="kbd kbd-xs">Escape</kbd> to go back
                         @endif
                     </div>
                 @endif
@@ -207,17 +284,99 @@
 @push('scripts')
 <script>
     document.addEventListener('alpine:init', () => {
-        Alpine.data('formConditionalLogic', (config) => ({
+        Alpine.data('formRenderer', (config) => ({
             formData: config.formData,
             fieldMap: config.fieldMap,
             conditionalLogic: config.conditionalLogic,
             hiddenFields: config.hiddenFields,
+            isMultiStep: config.isMultiStep,
+            currentStepIndex: config.currentStepIndex,
+            totalSteps: config.totalSteps,
 
             init() {
                 // Watch for form data changes
                 this.$watch('formData', () => {
                     this.evaluateAllConditions();
                 }, { deep: true });
+
+                // Watch for step changes and announce
+                this.$watch('currentStepIndex', (newVal, oldVal) => {
+                    if (newVal !== oldVal) {
+                        this.announceStepChange();
+                        this.focusFirstField();
+                    }
+                });
+
+                // Initial evaluation
+                this.evaluateAllConditions();
+            },
+
+            /**
+             * Handle keyboard navigation
+             */
+            handleKeydown(event) {
+                if (!this.isMultiStep) return;
+
+                // Don't interfere if event was already handled
+                if (event.defaultPrevented) return;
+
+                // Don't interfere with modals, dialogs, or components that capture their own keys
+                if (event.target.closest('[aria-modal="true"], [role="dialog"], .modal, [data-ignore-global-keys]')) {
+                    return;
+                }
+
+                // Don't interfere with form elements that need these keys
+                const tagName = event.target.tagName.toLowerCase();
+                const isTextarea = tagName === 'textarea';
+                const isSelect = tagName === 'select';
+
+                // Enter to advance (except in textarea or multi-line inputs)
+                if (event.key === 'Enter' && !isTextarea && !isSelect) {
+                    // Allow enter on submit buttons
+                    if (event.target.type === 'submit') return;
+
+                    // Don't advance if we're on the last step (let form submit naturally)
+                    if (this.currentStepIndex >= this.totalSteps - 1) return;
+
+                    event.preventDefault();
+                    this.$wire.nextStep();
+                }
+
+                // Escape to go back
+                if (event.key === 'Escape' && this.currentStepIndex > 0) {
+                    event.preventDefault();
+                    this.$wire.previousStep();
+                }
+            },
+
+            /**
+             * Announce step change for screen readers
+             */
+            announceStepChange() {
+                const announcer = this.$refs.announcer;
+                if (announcer) {
+                    const stepNum = this.currentStepIndex + 1;
+                    announcer.textContent = `Now on step ${stepNum} of ${this.totalSteps}`;
+                }
+            },
+
+            /**
+             * Focus the first visible field in the current step
+             */
+            focusFirstField() {
+                this.$nextTick(() => {
+                    const stepContent = this.$refs.stepContent;
+                    if (stepContent) {
+                        const firstInput = stepContent.querySelector(
+                            'input:not([type="hidden"]):not([disabled]), ' +
+                            'select:not([disabled]), ' +
+                            'textarea:not([disabled])'
+                        );
+                        if (firstInput) {
+                            firstInput.focus();
+                        }
+                    }
+                });
             },
 
             /**

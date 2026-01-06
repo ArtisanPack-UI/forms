@@ -517,6 +517,62 @@ class FormBuilder extends Component
         unset($this->steps);
     }
 
+    /**
+     * Enable multi-step mode for the form.
+     *
+     * Creates a default first step and moves all existing fields to it.
+     */
+    public function enableMultiStep(): void
+    {
+        if ($this->form->is_multi_step) {
+            return;
+        }
+
+        // Convert the form to multi-step
+        $step = $this->stepService->convertToMultiStep($this->form);
+
+        // Update the form's multi-step flag
+        $this->form->update(['is_multi_step' => true]);
+        $this->form->refresh();
+
+        // Set the active step
+        $this->activeStepId = $step->id;
+        $this->selectedFieldId = null;
+        $this->markDirty();
+
+        unset($this->steps, $this->fields, $this->selectedField);
+
+        $this->dispatch('multi-step-enabled');
+    }
+
+    /**
+     * Disable multi-step mode for the form.
+     *
+     * Removes all steps and unassigns fields from steps.
+     */
+    public function disableMultiStep(): void
+    {
+        if (! $this->form->is_multi_step) {
+            return;
+        }
+
+        // Convert the form to single-step
+        $this->stepService->convertToSingleStep($this->form);
+
+        // Update the form's multi-step flag
+        $this->form->update(['is_multi_step' => false]);
+        $this->form->refresh();
+
+        // Clear step-related state
+        $this->activeStepId = null;
+        $this->selectedFieldId = null;
+        $this->markDirty();
+
+        unset($this->steps, $this->fields, $this->selectedField);
+
+        $this->dispatch('multi-step-disabled');
+    }
+
     // =========================================
     // Save Operations
     // =========================================

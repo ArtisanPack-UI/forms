@@ -49,10 +49,32 @@
         </button>
     </div>
 
-    {{-- Multi-step tabs (if applicable) --}}
-    @if ($form->is_multi_step)
-        @include('forms::livewire.form-builder.step-manager')
-    @endif
+    {{-- Multi-step toggle and tabs --}}
+    <div class="mb-4 rounded-lg bg-base-200 p-3">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <label class="label cursor-pointer gap-2">
+                    <span class="label-text font-medium">Multi-Step Form</span>
+                    <input
+                        type="checkbox"
+                        class="toggle toggle-primary toggle-sm"
+                        {{ $form->is_multi_step ? 'checked' : '' }}
+                        wire:change="{{ $form->is_multi_step ? 'disableMultiStep' : 'enableMultiStep' }}"
+                        wire:confirm="{{ $form->is_multi_step ? 'Disable multi-step mode? Steps will be removed but fields will be preserved.' : '' }}"
+                    />
+                </label>
+                @if (!$form->is_multi_step)
+                    <span class="text-xs text-base-content/50">Enable to create wizard-style forms with multiple steps</span>
+                @endif
+            </div>
+        </div>
+
+        @if ($form->is_multi_step)
+            <div class="mt-3 border-t border-base-300 pt-3">
+                @include('forms::livewire.form-builder.step-manager')
+            </div>
+        @endif
+    </div>
 
     {{-- Three-column layout --}}
     <div class="grid grid-cols-12 gap-4">
