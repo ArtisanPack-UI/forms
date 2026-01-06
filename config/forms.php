@@ -110,6 +110,8 @@ return [
     'notifications' => [
         'from_name' => env('FORMS_FROM_NAME'),
         'from_email' => env('FORMS_FROM_EMAIL'),
+        'queue' => env('FORMS_NOTIFICATION_QUEUE', 'default'),
+        'show_ip_in_emails' => env('FORMS_SHOW_IP_IN_EMAILS', true),
     ],
 
     /*

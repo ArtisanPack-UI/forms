@@ -8,8 +8,11 @@ use ArtisanPackUI\Forms\Console\Commands\PruneFormSubmissions;
 use ArtisanPackUI\Forms\Livewire\FormBuilder;
 use ArtisanPackUI\Forms\Livewire\FormRenderer;
 use ArtisanPackUI\Forms\Livewire\FormsList;
+use ArtisanPackUI\Forms\Livewire\NotificationEditor;
+use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\FieldService;
 use ArtisanPackUI\Forms\Services\FormService;
+use ArtisanPackUI\Forms\Services\NotificationService;
 use ArtisanPackUI\Forms\Services\StepService;
 use ArtisanPackUI\Forms\Services\SubmissionService;
 use Illuminate\Support\ServiceProvider;
@@ -58,8 +61,16 @@ class FormsServiceProvider extends ServiceProvider
             return new StepService;
         });
 
+        $this->app->singleton(ConditionalLogicService::class, function ($app) {
+            return new ConditionalLogicService;
+        });
+
+        $this->app->singleton(NotificationService::class, function ($app) {
+            return new NotificationService($app->make(ConditionalLogicService::class));
+        });
+
         $this->app->singleton(SubmissionService::class, function ($app) {
-            return new SubmissionService;
+            return new SubmissionService($app->make(NotificationService::class));
         });
     }
 
@@ -162,6 +173,7 @@ class FormsServiceProvider extends ServiceProvider
             Livewire::component('forms-list', FormsList::class);
             Livewire::component('form-builder', FormBuilder::class);
             Livewire::component('form-renderer', FormRenderer::class);
+            Livewire::component('notification-editor', NotificationEditor::class);
         }
     }
 
