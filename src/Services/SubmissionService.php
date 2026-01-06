@@ -27,6 +27,19 @@ use Illuminate\Support\Str;
 class SubmissionService
 {
     /**
+     * The notification service instance.
+     */
+    protected NotificationService $notificationService;
+
+    /**
+     * Create a new submission service instance.
+     */
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
+    /**
      * The minimum time in seconds between form load and submission.
      */
     protected const MIN_SUBMISSION_TIME = 3;
@@ -48,7 +61,7 @@ class SubmissionService
      */
     public function create(Form $form, array $formData, array $files = [], array $metadata = []): FormSubmission
     {
-        return DB::transaction(function () use ($form, $formData, $files, $metadata): FormSubmission {
+        $submission = DB::transaction(function () use ($form, $formData, $files, $metadata): FormSubmission {
             // Create the submission record
             $submission = FormSubmission::create([
                 'form_id' => $form->id,
@@ -97,6 +110,23 @@ class SubmissionService
 
             return $submission;
         });
+
+        // Send notifications after transaction completes (outside transaction to ensure submission is persisted)
+        $this->sendNotifications($submission);
+
+        return $submission;
+    }
+
+    /**
+     * Send notifications for a form submission.
+     *
+     * Queues all active notifications that pass their conditional logic checks.
+     *
+     * @return int Number of notifications queued
+     */
+    protected function sendNotifications(FormSubmission $submission): int
+    {
+        return $this->notificationService->sendNotifications($submission);
     }
 
     /**
