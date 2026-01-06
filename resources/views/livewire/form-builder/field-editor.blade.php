@@ -355,13 +355,18 @@
                     />
                 </div>
 
-                {{-- Conditional Logic link --}}
-                <div class="rounded-lg bg-base-300 p-3 text-xs">
-                    <div class="flex items-center gap-2 text-base-content/60">
-                        <x-artisanpack-icon name="o-adjustments-horizontal" class="h-4 w-4" />
-                        <span>Conditional logic configuration coming soon</span>
+                {{-- Conditional Logic --}}
+                @if(!\ArtisanPackUI\Forms\Config\FieldTypes::isLayoutField($field->type))
+                    <div class="divider text-xs text-base-content/50">Conditional Logic</div>
+                    @include('forms::livewire.form-builder.condition-builder')
+                @else
+                    <div class="rounded-lg bg-base-300 p-3 text-xs">
+                        <div class="flex items-center gap-2 text-base-content/60">
+                            <x-artisanpack-icon name="o-information-circle" class="h-4 w-4" />
+                            <span>Layout fields do not support conditional logic</span>
+                        </div>
                     </div>
-                </div>
+                @endif
             </div>
         </div>
     @else

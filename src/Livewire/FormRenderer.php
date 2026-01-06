@@ -7,6 +7,7 @@ namespace ArtisanPackUI\Forms\Livewire;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormStep;
+use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\SubmissionService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -85,11 +86,17 @@ class FormRenderer extends Component
     protected SubmissionService $submissionService;
 
     /**
+     * The conditional logic service instance.
+     */
+    protected ConditionalLogicService $conditionalLogicService;
+
+    /**
      * Boot the component.
      */
-    public function boot(SubmissionService $submissionService): void
+    public function boot(SubmissionService $submissionService, ConditionalLogicService $conditionalLogicService): void
     {
         $this->submissionService = $submissionService;
+        $this->conditionalLogicService = $conditionalLogicService;
     }
 
     /**
@@ -209,6 +216,40 @@ class FormRenderer extends Component
     public function steps(): Collection
     {
         return $this->form->steps()->orderBy('sort_order')->get();
+    }
+
+    /**
+     * Get field mapping for Alpine.js (name => uuid).
+     *
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function fieldMap(): array
+    {
+        $map = [];
+        foreach ($this->form->fields as $field) {
+            $map[$field->name] = $field->uuid;
+        }
+
+        return $map;
+    }
+
+    /**
+     * Get conditional logic configuration for all fields.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    #[Computed]
+    public function conditionalLogicConfig(): array
+    {
+        $config = [];
+        foreach ($this->form->fields as $field) {
+            if ($field->has_conditional_logic) {
+                $config[$field->name] = $field->conditional_logic;
+            }
+        }
+
+        return $config;
     }
 
     // =========================================
@@ -448,78 +489,10 @@ class FormRenderer extends Component
      */
     protected function evaluateConditionalLogic(): void
     {
-        $allFields = $this->form->fields;
-
-        foreach ($allFields as $field) {
-            if (! $field->has_conditional_logic) {
-                $this->hiddenFields[$field->name] = false;
-
-                continue;
-            }
-
-            $shouldHide = ! $this->evaluateFieldConditions($field);
-            $this->hiddenFields[$field->name] = $shouldHide;
-        }
-    }
-
-    /**
-     * Evaluate conditions for a single field.
-     */
-    protected function evaluateFieldConditions(FormField $field): bool
-    {
-        $logic = $field->conditional_logic;
-
-        if (empty($logic['rules'])) {
-            return true;
-        }
-
-        $action = $logic['action'] ?? 'show';
-        $match = $logic['match'] ?? 'all';
-        $rules = $logic['rules'];
-
-        $results = [];
-
-        foreach ($rules as $rule) {
-            $results[] = $this->evaluateSingleCondition($rule);
-        }
-
-        $conditionsMet = $match === 'all'
-            ? ! in_array(false, $results, true)
-            : in_array(true, $results, true);
-
-        // If action is 'show', return true when conditions are met
-        // If action is 'hide', return true when conditions are NOT met
-        return $action === 'show' ? $conditionsMet : ! $conditionsMet;
-    }
-
-    /**
-     * Evaluate a single condition rule.
-     *
-     * @param  array<string, mixed>  $rule
-     */
-    protected function evaluateSingleCondition(array $rule): bool
-    {
-        $fieldName = $rule['field'] ?? null;
-        $operator = $rule['operator'] ?? 'equals';
-        $value = $rule['value'] ?? '';
-
-        if (! $fieldName) {
-            return true;
-        }
-
-        $fieldValue = $this->formData[$fieldName] ?? '';
-
-        return match ($operator) {
-            'equals' => $fieldValue === $value,
-            'not_equals' => $fieldValue !== $value,
-            'contains' => is_string($fieldValue) && str_contains($fieldValue, $value),
-            'not_contains' => is_string($fieldValue) && ! str_contains($fieldValue, $value),
-            'is_empty' => empty($fieldValue),
-            'is_not_empty' => ! empty($fieldValue),
-            'greater_than' => is_numeric($fieldValue) && $fieldValue > $value,
-            'less_than' => is_numeric($fieldValue) && $fieldValue < $value,
-            default => true,
-        };
+        $this->hiddenFields = $this->conditionalLogicService->getHiddenFields(
+            $this->form->fields,
+            $this->formData
+        );
     }
 
     // =========================================
@@ -538,7 +511,9 @@ class FormRenderer extends Component
             $this->isFirstStep,
             $this->isLastStep,
             $this->progressPercentage,
-            $this->steps
+            $this->steps,
+            $this->fieldMap,
+            $this->conditionalLogicConfig
         );
     }
 

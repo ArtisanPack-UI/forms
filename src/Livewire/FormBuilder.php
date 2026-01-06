@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace ArtisanPackUI\Forms\Livewire;
 
+use ArtisanPackUI\Forms\Config\ConditionalLogic;
 use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
+use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\FieldService;
 use ArtisanPackUI\Forms\Services\StepService;
 use Illuminate\Contracts\View\View;
@@ -70,12 +72,21 @@ class FormBuilder extends Component
     protected StepService $stepService;
 
     /**
+     * The conditional logic service instance.
+     */
+    protected ConditionalLogicService $conditionalLogicService;
+
+    /**
      * Boot the component.
      */
-    public function boot(FieldService $fieldService, StepService $stepService): void
-    {
+    public function boot(
+        FieldService $fieldService,
+        StepService $stepService,
+        ConditionalLogicService $conditionalLogicService
+    ): void {
         $this->fieldService = $fieldService;
         $this->stepService = $stepService;
+        $this->conditionalLogicService = $conditionalLogicService;
     }
 
     /**
@@ -176,6 +187,62 @@ class FormBuilder extends Component
         return FieldTypes::getWidths();
     }
 
+    /**
+     * Get fields that can be used as condition targets for the selected field.
+     *
+     * Excludes the selected field itself, layout fields, and (for multi-step forms)
+     * fields from later steps.
+     *
+     * @return Collection<int, FormField>
+     */
+    #[Computed]
+    public function availableConditionFields(): Collection
+    {
+        $selectedField = $this->selectedField;
+
+        if (! $selectedField) {
+            return collect();
+        }
+
+        return $this->conditionalLogicService->getAvailableConditionTargets(
+            $selectedField,
+            $this->form->fields
+        );
+    }
+
+    /**
+     * Get conditional logic action options.
+     *
+     * @return array<string, array{label: string, description: string}>
+     */
+    #[Computed]
+    public function conditionActions(): array
+    {
+        return ConditionalLogic::getActions();
+    }
+
+    /**
+     * Get conditional logic types (all/any).
+     *
+     * @return array<string, array{label: string, description: string}>
+     */
+    #[Computed]
+    public function conditionLogicTypes(): array
+    {
+        return ConditionalLogic::getLogicTypes();
+    }
+
+    /**
+     * Get conditional logic operators.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    #[Computed]
+    public function conditionOperators(): array
+    {
+        return ConditionalLogic::getOperators();
+    }
+
     // =========================================
     // Field Operations
     // =========================================
@@ -234,6 +301,65 @@ class FormBuilder extends Component
             $this->markDirty();
 
             unset($this->fields, $this->selectedField);
+        }
+    }
+
+    /**
+     * Update conditional logic for the selected field.
+     *
+     * @param  array<string, mixed>  $logic
+     */
+    public function updateConditionalLogic(array $logic): void
+    {
+        if ($this->selectedFieldId === null) {
+            return;
+        }
+
+        $field = $this->fieldService->getByUuid($this->form, $this->selectedFieldId);
+
+        if ($field) {
+            // Validate the logic structure
+            $validation = ConditionalLogic::validate($logic);
+
+            if (! $validation['valid']) {
+                $this->dispatch('conditional-logic-error', errors: $validation['errors']);
+
+                return;
+            }
+
+            // Clean up any references to deleted fields
+            $logic = $this->conditionalLogicService->cleanupDeletedFieldReferences(
+                $logic,
+                $this->form->fields
+            );
+
+            $this->fieldService->update($field, ['conditional_logic' => $logic]);
+            $this->markDirty();
+
+            unset($this->fields, $this->selectedField);
+
+            $this->dispatch('conditional-logic-updated');
+        }
+    }
+
+    /**
+     * Clear conditional logic from the selected field.
+     */
+    public function clearConditionalLogic(): void
+    {
+        if ($this->selectedFieldId === null) {
+            return;
+        }
+
+        $field = $this->fieldService->getByUuid($this->form, $this->selectedFieldId);
+
+        if ($field) {
+            $this->fieldService->update($field, ['conditional_logic' => null]);
+            $this->markDirty();
+
+            unset($this->fields, $this->selectedField);
+
+            $this->dispatch('conditional-logic-cleared');
         }
     }
 
