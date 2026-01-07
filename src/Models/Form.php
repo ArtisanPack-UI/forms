@@ -11,6 +11,7 @@ use ArtisanPackUI\Forms\Events\FormUpdated;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -22,6 +23,7 @@ use Illuminate\Support\Str;
  * display settings, multi-step configuration, and status.
  *
  * @property int $id
+ * @property int|null $user_id
  * @property string $name
  * @property string $slug
  * @property string|null $description
@@ -60,6 +62,7 @@ class Form extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'user_id',
         'name',
         'slug',
         'description',
@@ -157,6 +160,21 @@ class Form extends Model
     // =========================================
     // Relationships
     // =========================================
+
+    /**
+     * Get the user who owns this form.
+     *
+     * Returns the user model based on the configured user model class.
+     * If no user_id is set, this relationship returns null.
+     *
+     * @return BelongsTo<\Illuminate\Database\Eloquent\Model, $this>
+     */
+    public function owner(): BelongsTo
+    {
+        $userModel = config('artisanpack.forms.authorization.user_model', 'App\\Models\\User');
+
+        return $this->belongsTo($userModel, 'user_id');
+    }
 
     /**
      * Get the fields associated with this form.

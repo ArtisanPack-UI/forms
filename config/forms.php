@@ -172,17 +172,73 @@ return [
     |--------------------------------------------------------------------------
     |
     | Configure privacy settings for handling personally identifiable information
-    | (PII) in exports and webhooks. By default, PII fields like IP address and
-    | user agent are excluded to comply with privacy regulations.
+    | (PII) in submissions, exports and webhooks. These settings help comply with
+    | privacy regulations like GDPR.
     |
     */
 
     'privacy' => [
-        // Include IP address in exports and webhooks
-        'include_ip_address' => env('FORMS_INCLUDE_IP_ADDRESS', false),
+        // Submission metadata settings (what gets stored in the database)
+        'submission' => [
+            // Include IP address in submission metadata
+            'include_ip' => env('FORMS_INCLUDE_IP', true),
 
-        // Include user agent in webhooks
-        'include_user_agent' => env('FORMS_INCLUDE_USER_AGENT', false),
+            // Anonymize IP addresses by masking the last octet (e.g., 192.168.1.x becomes 192.168.1.0)
+            'anonymize_ip' => env('FORMS_ANONYMIZE_IP', false),
+
+            // Include user agent in submission metadata
+            'include_user_agent' => env('FORMS_INCLUDE_USER_AGENT', true),
+        ],
+
+        // Webhook/Export settings (what gets sent externally) - defaults to false for privacy
+        'include_ip_address' => env('FORMS_INCLUDE_IP_ADDRESS', false),
+        'include_user_agent' => env('FORMS_WEBHOOK_INCLUDE_USER_AGENT', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Security Settings
+    |--------------------------------------------------------------------------
+    |
+    | Configure security-related settings including logging of security events.
+    | Security events include honeypot triggers, rate limiting, and invalid
+    | file upload attempts.
+    |
+    */
+
+    'security' => [
+        // Enable logging of security events (honeypot, rate limiting, invalid files)
+        'logging_enabled' => env('FORMS_SECURITY_LOGGING', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Authorization Settings
+    |--------------------------------------------------------------------------
+    |
+    | Configure authorization behavior for forms and submissions. By default,
+    | ownership checks are disabled (permissive mode) for backwards compatibility.
+    |
+    | SECURITY WARNING: The default permissive mode allows any authenticated user
+    | to access, modify, or delete any form. For production applications with
+    | multiple users, enable ownership enforcement or override the policies.
+    |
+    | Options:
+    | - restrict_by_owner: When true, forms can only be modified by their owner
+    | - allow_admin_bypass: When true, users with is_admin=true bypass ownership
+    | - user_model: The fully qualified class name of your User model
+    |
+    */
+
+    'authorization' => [
+        // Enable ownership-based access control (recommended for multi-user apps)
+        'restrict_by_owner' => env('FORMS_RESTRICT_BY_OWNER', false),
+
+        // Allow users with is_admin attribute to bypass ownership checks
+        'allow_admin_bypass' => env('FORMS_ALLOW_ADMIN_BYPASS', true),
+
+        // The user model class for ownership relationships
+        'user_model' => env('FORMS_USER_MODEL', 'App\\Models\\User'),
     ],
 
     /*

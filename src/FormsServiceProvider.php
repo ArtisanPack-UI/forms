@@ -21,9 +21,12 @@ use ArtisanPackUI\Forms\Services\IntegrationService;
 use ArtisanPackUI\Forms\Services\NotificationService;
 use ArtisanPackUI\Forms\Services\StepService;
 use ArtisanPackUI\Forms\Services\SubmissionService;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
+use RuntimeException;
 
 /**
  * Service provider for the Forms package.
@@ -100,9 +103,11 @@ class FormsServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->mergeConfiguration();
+        $this->validateUserModelConfiguration();
         $this->registerFilesystemDisk();
         $this->registerCommands();
         $this->registerEventListeners();
+        $this->registerPolicies();
         $this->publishConfiguration();
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'forms');
@@ -125,6 +130,42 @@ class FormsServiceProvider extends ServiceProvider
         $userConfig = config('artisanpack.forms', []);
         $mergedConfig = array_replace_recursive($packageDefaults, $userConfig);
         config(['artisanpack.forms' => $mergedConfig]);
+    }
+
+    /**
+     * Validate the user model configuration.
+     *
+     * Ensures the configured user model class exists and extends Eloquent Model.
+     * This validation only runs when ownership restriction is enabled to avoid
+     * breaking applications that don't use the ownership feature.
+     *
+     * @throws RuntimeException If the user model class is invalid.
+     *
+     * @since 1.0.0
+     */
+    protected function validateUserModelConfiguration(): void
+    {
+        // Only validate if ownership restriction is enabled
+        if (! config('artisanpack.forms.authorization.restrict_by_owner', false)) {
+            return;
+        }
+
+        $userModel = config('artisanpack.forms.authorization.user_model', 'App\\Models\\User');
+
+        if (! class_exists($userModel)) {
+            throw new RuntimeException(
+                "The configured user model class '{$userModel}' does not exist. ".
+                'Please set a valid class in FORMS_USER_MODEL environment variable or '.
+                'artisanpack.forms.authorization.user_model configuration.'
+            );
+        }
+
+        if (! is_subclass_of($userModel, Model::class)) {
+            throw new RuntimeException(
+                "The configured user model class '{$userModel}' must extend ".
+                'Illuminate\\Database\\Eloquent\\Model.'
+            );
+        }
     }
 
     /**
@@ -169,6 +210,17 @@ class FormsServiceProvider extends ServiceProvider
     protected function registerEventListeners(): void
     {
         Event::listen(FormSubmitted::class, SendWebhookOnSubmission::class);
+    }
+
+    /**
+     * Register the package's authorization policies.
+     *
+     * @since 1.0.0
+     */
+    protected function registerPolicies(): void
+    {
+        Gate::policy(Models\Form::class, Policies\FormPolicy::class);
+        Gate::policy(Models\FormSubmission::class, Policies\SubmissionPolicy::class);
     }
 
     /**
