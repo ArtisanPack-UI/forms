@@ -25,8 +25,12 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
-        // Register stub icon component for testing
+        // Register stub components for testing (replaces artisanpack-ui/livewire-ui-components)
         Blade::component('artisanpack-icon', \Tests\Stubs\IconStub::class);
+        Blade::component('artisanpack-button', \Tests\Stubs\ButtonStub::class);
+        Blade::component('artisanpack-input', \Tests\Stubs\InputStub::class);
+        Blade::component('artisanpack-textarea', \Tests\Stubs\TextareaStub::class);
+        Blade::component('artisanpack-select', \Tests\Stubs\SelectStub::class);
     }
 
     /**
@@ -72,6 +76,12 @@ abstract class TestCase extends BaseTestCase
             'driver' => 'local',
             'root' => storage_path('app'),
         ]);
+
+        // Add test stub views path
+        $app['config']->set('view.paths', array_merge(
+            $app['config']->get('view.paths', []),
+            [__DIR__.'/views']
+        ));
     }
 
     /**
