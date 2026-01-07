@@ -9,6 +9,7 @@ use ArtisanPackUI\Forms\Http\Requests\UpdateFormRequest;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Services\FormService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
 
@@ -22,6 +23,8 @@ use Illuminate\Routing\Controller;
  */
 class FormController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Create a new controller instance.
      */
@@ -34,6 +37,8 @@ class FormController extends Controller
      */
     public function index(): View
     {
+        $this->authorize('viewAny', Form::class);
+
         return view('forms::forms.index');
     }
 
@@ -42,6 +47,8 @@ class FormController extends Controller
      */
     public function create(): View
     {
+        $this->authorize('create', Form::class);
+
         return view('forms::forms.create');
     }
 
@@ -50,6 +57,8 @@ class FormController extends Controller
      */
     public function store(StoreFormRequest $request): RedirectResponse
     {
+        $this->authorize('create', Form::class);
+
         $form = $this->formService->create($request->validated());
 
         return redirect()
@@ -62,6 +71,8 @@ class FormController extends Controller
      */
     public function edit(Form $form): View
     {
+        $this->authorize('update', $form);
+
         // Eager load relationships and counts to prevent N+1 queries
         $form->load(['fields', 'steps.fields']);
         $form->loadCount([
@@ -80,6 +91,8 @@ class FormController extends Controller
      */
     public function update(UpdateFormRequest $request, Form $form): RedirectResponse
     {
+        $this->authorize('update', $form);
+
         $this->formService->update($form, $request->validated());
 
         return redirect()
@@ -92,6 +105,8 @@ class FormController extends Controller
      */
     public function destroy(Form $form): RedirectResponse
     {
+        $this->authorize('delete', $form);
+
         $formName = $form->name;
         $this->formService->delete($form);
 

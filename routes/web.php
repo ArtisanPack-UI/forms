@@ -36,6 +36,6 @@ Route::prefix(config('artisanpack.forms.admin.prefix', 'admin/forms'))
         Route::get('/{form}/submissions/export', [SubmissionController::class, 'export'])->name('submissions.export');
         Route::get('/{form}/submissions/{submission}', [SubmissionController::class, 'show'])->name('submissions.show');
 
-        // File upload download route
-        Route::get('/uploads/{upload}/download', [SubmissionController::class, 'downloadUpload'])->name('uploads.download');
+        // File upload download route (includes form and submission for authorization)
+        Route::get('/{form}/submissions/{submission}/uploads/{upload}/download', [SubmissionController::class, 'downloadUpload'])->name('uploads.download');
     });

@@ -6,10 +6,12 @@ namespace ArtisanPackUI\Forms\Livewire;
 
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Forms\Policies\SubmissionPolicy;
 use ArtisanPackUI\Forms\Services\ExportService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -166,11 +168,38 @@ class SubmissionsList extends Component
     // =========================================
 
     /**
+     * Find a submission by ID that the user has access to.
+     *
+     * Returns null if the submission doesn't exist or user doesn't have access.
+     * When ownership restriction is disabled, no access check is performed.
+     */
+    protected function findOwnedSubmission(int $id): ?FormSubmission
+    {
+        $submission = FormSubmission::find($id);
+
+        if (! $submission) {
+            return null;
+        }
+
+        // Only check policy when ownership restriction is enabled
+        if (config('artisanpack.forms.authorization.restrict_by_owner', false)) {
+            $policy = app(SubmissionPolicy::class);
+            if (! $policy->update(Auth::user(), $submission)) {
+                return null;
+            }
+        }
+
+        return $submission;
+    }
+
+    /**
      * Mark a submission as read.
+     *
+     * Only affects submissions the user has access to.
      */
     public function markAsRead(int $id): void
     {
-        $submission = FormSubmission::find($id);
+        $submission = $this->findOwnedSubmission($id);
 
         if ($submission) {
             $submission->markAsRead();
@@ -179,10 +208,12 @@ class SubmissionsList extends Component
 
     /**
      * Mark a submission as unread.
+     *
+     * Only affects submissions the user has access to.
      */
     public function markAsUnread(int $id): void
     {
-        $submission = FormSubmission::find($id);
+        $submission = $this->findOwnedSubmission($id);
 
         if ($submission) {
             $submission->markAsUnread();
@@ -191,10 +222,12 @@ class SubmissionsList extends Component
 
     /**
      * Toggle the starred status of a submission.
+     *
+     * Only affects submissions the user has access to.
      */
     public function toggleStar(int $id): void
     {
-        $submission = FormSubmission::find($id);
+        $submission = $this->findOwnedSubmission($id);
 
         if ($submission) {
             $submission->toggleStar();
@@ -203,10 +236,12 @@ class SubmissionsList extends Component
 
     /**
      * Toggle the spam status of a submission.
+     *
+     * Only affects submissions the user has access to.
      */
     public function toggleSpam(int $id): void
     {
-        $submission = FormSubmission::find($id);
+        $submission = $this->findOwnedSubmission($id);
 
         if ($submission) {
             $submission->toggleSpam();
@@ -215,15 +250,27 @@ class SubmissionsList extends Component
 
     /**
      * Delete a submission.
+     *
+     * Only affects submissions the user has access to.
      */
     public function delete(int $id): void
     {
         $submission = FormSubmission::find($id);
 
-        if ($submission) {
-            $submission->delete();
-            session()->flash('success', 'Submission deleted successfully.');
+        if (! $submission) {
+            return;
         }
+
+        // Only check policy when ownership restriction is enabled
+        if (config('artisanpack.forms.authorization.restrict_by_owner', false)) {
+            $policy = app(SubmissionPolicy::class);
+            if (! $policy->delete(Auth::user(), $submission)) {
+                return;
+            }
+        }
+
+        $submission->delete();
+        session()->flash('success', 'Submission deleted successfully.');
     }
 
     // =========================================
@@ -231,52 +278,70 @@ class SubmissionsList extends Component
     // =========================================
 
     /**
+     * Get a query builder scoped to selected submissions the user has access to.
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<FormSubmission>
+     */
+    protected function getOwnedSelectedQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = FormSubmission::whereIn('id', $this->selected);
+
+        // Apply ownership scope to ensure user can only affect their submissions
+        $policy = app(SubmissionPolicy::class);
+        $ownershipScope = $policy->getOwnedSubmissionsScope(Auth::user());
+        $query->tap($ownershipScope);
+
+        return $query;
+    }
+
+    /**
      * Mark selected submissions as read.
+     *
+     * Only affects submissions the user has access to.
      */
     public function bulkMarkAsRead(): void
     {
-        FormSubmission::whereIn('id', $this->selected)
-            ->update(['is_read' => true]);
+        $count = $this->getOwnedSelectedQuery()->update(['is_read' => true]);
 
-        $count = count($this->selected);
         $this->resetSelection();
         session()->flash('success', "{$count} submission(s) marked as read.");
     }
 
     /**
      * Mark selected submissions as unread.
+     *
+     * Only affects submissions the user has access to.
      */
     public function bulkMarkAsUnread(): void
     {
-        FormSubmission::whereIn('id', $this->selected)
-            ->update(['is_read' => false]);
+        $count = $this->getOwnedSelectedQuery()->update(['is_read' => false]);
 
-        $count = count($this->selected);
         $this->resetSelection();
         session()->flash('success', "{$count} submission(s) marked as unread.");
     }
 
     /**
      * Mark selected submissions as spam.
+     *
+     * Only affects submissions the user has access to.
      */
     public function bulkMarkAsSpam(): void
     {
-        FormSubmission::whereIn('id', $this->selected)
-            ->update(['is_spam' => true]);
+        $count = $this->getOwnedSelectedQuery()->update(['is_spam' => true]);
 
-        $count = count($this->selected);
         $this->resetSelection();
         session()->flash('success', "{$count} submission(s) marked as spam.");
     }
 
     /**
      * Delete selected submissions.
+     *
+     * Only affects submissions the user has access to.
      */
     public function bulkDelete(): void
     {
-        FormSubmission::whereIn('id', $this->selected)->delete();
+        $count = $this->getOwnedSelectedQuery()->delete();
 
-        $count = count($this->selected);
         $this->resetSelection();
         session()->flash('success', "{$count} submission(s) deleted.");
     }
@@ -287,6 +352,8 @@ class SubmissionsList extends Component
 
     /**
      * Export submissions to CSV.
+     *
+     * Only exports submissions the user has access to.
      */
     public function exportCsv(): StreamedResponse|\Livewire\Features\SupportRedirects\Redirector
     {
@@ -304,11 +371,20 @@ class SubmissionsList extends Component
             return $this->redirect(request()->header('Referer', route('forms.submissions.all')));
         }
 
+        // Check if user can access this form's submissions
+        $policy = app(SubmissionPolicy::class);
+        if (! $policy->canAccessFormSubmissions(Auth::user(), $form)) {
+            session()->flash('error', 'You do not have permission to export submissions for this form.');
+
+            return $this->redirect(request()->header('Referer', route('forms.submissions.all')));
+        }
+
         $exportService = app(ExportService::class);
 
         // Get submissions to export (selected or all visible)
+        // Both paths apply ownership scope via getFilteredQuery or getOwnedSelectedQuery
         if (! empty($this->selected)) {
-            $submissions = FormSubmission::whereIn('id', $this->selected)
+            $submissions = $this->getOwnedSelectedQuery()
                 ->with('values')
                 ->get();
         } else {
@@ -340,12 +416,19 @@ class SubmissionsList extends Component
     /**
      * Get the count of submissions for each status.
      *
+     * Respects ownership scope when restrict_by_owner is enabled.
+     *
      * @return array<string, int>
      */
     #[Computed]
     public function statusCounts(): array
     {
         $baseQuery = FormSubmission::query();
+
+        // Apply ownership scope
+        $policy = app(SubmissionPolicy::class);
+        $ownershipScope = $policy->getOwnedSubmissionsScope(Auth::user());
+        $baseQuery->tap($ownershipScope);
 
         if ($this->formId) {
             $baseQuery->where('form_id', $this->formId);
@@ -363,14 +446,39 @@ class SubmissionsList extends Component
     /**
      * Get all forms for the filter dropdown.
      *
+     * When ownership restriction is enabled, only shows forms the user
+     * owns or forms without an owner.
+     *
      * @return Collection<int, Form>
      */
     #[Computed]
     public function forms(): Collection
     {
-        return Form::query()
-            ->orderBy('name')
-            ->get(['id', 'name', 'slug']);
+        $query = Form::query();
+
+        // Apply ownership filter if restriction is enabled
+        if (config('artisanpack.forms.authorization.restrict_by_owner', false)) {
+            $user = Auth::user();
+
+            // Check if user is admin with bypass
+            $isAdmin = false;
+            if ($user && method_exists($user, 'getAttribute')) {
+                $isAdmin = (bool) $user->getAttribute('is_admin');
+            }
+
+            if (! $isAdmin || ! config('artisanpack.forms.authorization.allow_admin_bypass', true)) {
+                $query->where(function ($q) use ($user): void {
+                    if ($user) {
+                        $q->where('user_id', $user->getAuthIdentifier())
+                            ->orWhereNull('user_id');
+                    } else {
+                        $q->whereNull('user_id');
+                    }
+                });
+            }
+        }
+
+        return $query->orderBy('name')->get(['id', 'name', 'slug']);
     }
 
     /**
@@ -385,11 +493,19 @@ class SubmissionsList extends Component
     /**
      * Build the filtered query for submissions.
      *
+     * Applies ownership scope when restrict_by_owner is enabled to ensure
+     * users only see submissions from forms they own or unowned forms.
+     *
      * @return \Illuminate\Database\Eloquent\Builder<FormSubmission>
      */
     protected function getFilteredQuery(): \Illuminate\Database\Eloquent\Builder
     {
         $query = FormSubmission::query();
+
+        // Apply ownership scope - users only see submissions from their forms
+        $policy = app(SubmissionPolicy::class);
+        $ownershipScope = $policy->getOwnedSubmissionsScope(Auth::user());
+        $query->tap($ownershipScope);
 
         // Filter by form
         if ($this->formId) {

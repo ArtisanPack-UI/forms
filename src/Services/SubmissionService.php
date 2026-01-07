@@ -12,6 +12,7 @@ use ArtisanPackUI\Forms\Models\FormUpload;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -262,6 +263,13 @@ class SubmissionService
         // Validate against allowlist
         $allowedExtensions = array_map('strtolower', $allowedExtensions);
         if (! in_array($extension, $allowedExtensions, true)) {
+            $this->logSecurityEvent('invalid_file_extension', [
+                'attempted_extension' => $extension,
+                'original_filename' => $file->getClientOriginalName(),
+                'mime_type' => $file->getMimeType(),
+                'ip_address' => request()->ip(),
+            ]);
+
             throw new \InvalidArgumentException(
                 "File extension '{$extension}' is not allowed. Allowed extensions: ".implode(', ', $allowedExtensions)
             );
@@ -273,13 +281,23 @@ class SubmissionService
     /**
      * Check if the submission appears to be spam.
      *
+     * Logs security events when spam is detected for monitoring and analysis.
+     *
      * @param  string|null  $honeypot  The honeypot field value (should be empty).
      * @param  int|null  $formLoadedAt  Timestamp when form was loaded.
+     * @param  int|null  $formId  The form ID for logging context.
+     * @param  string|null  $ipAddress  The IP address for logging context.
      */
-    public function isSpam(?string $honeypot, ?int $formLoadedAt): bool
+    public function isSpam(?string $honeypot, ?int $formLoadedAt, ?int $formId = null, ?string $ipAddress = null): bool
     {
         // Check honeypot - if filled, it's a bot
         if (! empty($honeypot)) {
+            $this->logSecurityEvent('honeypot_triggered', [
+                'form_id' => $formId,
+                'ip_address' => $ipAddress,
+                'honeypot_value' => Str::limit($honeypot, 50),
+            ]);
+
             return true;
         }
 
@@ -287,6 +305,13 @@ class SubmissionService
         if ($formLoadedAt !== null) {
             $elapsed = time() - $formLoadedAt;
             if ($elapsed < self::MIN_SUBMISSION_TIME) {
+                $this->logSecurityEvent('submission_too_fast', [
+                    'form_id' => $formId,
+                    'ip_address' => $ipAddress,
+                    'elapsed_seconds' => $elapsed,
+                    'min_required' => self::MIN_SUBMISSION_TIME,
+                ]);
+
                 return true;
             }
         }
@@ -296,12 +321,25 @@ class SubmissionService
 
     /**
      * Check if the IP address is rate limited.
+     *
+     * Logs security events when rate limiting is triggered.
+     *
+     * @param  bool  $logEvent  Whether to log the rate limit event.
      */
-    public function isRateLimited(string $ipAddress, int $formId): bool
+    public function isRateLimited(string $ipAddress, int $formId, bool $logEvent = true): bool
     {
         $key = "form-submission:{$formId}:{$ipAddress}";
+        $isLimited = RateLimiter::tooManyAttempts($key, self::RATE_LIMIT_MAX_ATTEMPTS);
 
-        return RateLimiter::tooManyAttempts($key, self::RATE_LIMIT_MAX_ATTEMPTS);
+        if ($isLimited && $logEvent) {
+            $this->logSecurityEvent('rate_limit_exceeded', [
+                'form_id' => $formId,
+                'ip_address' => $ipAddress,
+                'max_attempts' => self::RATE_LIMIT_MAX_ATTEMPTS,
+            ]);
+        }
+
+        return $isLimited;
     }
 
     /**
@@ -312,6 +350,26 @@ class SubmissionService
         $key = "form-submission:{$formId}:{$ipAddress}";
 
         RateLimiter::hit($key, 60);
+    }
+
+    /**
+     * Log a security-related event.
+     *
+     * Security events are logged at the warning level with a consistent format
+     * for easy filtering and analysis.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    protected function logSecurityEvent(string $eventType, array $context = []): void
+    {
+        if (! config('artisanpack.forms.security.logging_enabled', true)) {
+            return;
+        }
+
+        Log::warning("[Forms Security] {$eventType}", array_merge([
+            'event_type' => $eventType,
+            'timestamp' => now()->toIso8601String(),
+        ], $context));
     }
 
     /**
@@ -391,15 +449,75 @@ class SubmissionService
     /**
      * Get metadata from the current request.
      *
+     * Respects privacy configuration settings for IP address collection
+     * and anonymization.
+     *
      * @return array<string, string|null>
      */
     public function getRequestMetadata(Request $request): array
     {
+        $ipAddress = null;
+
+        // Check if IP logging is enabled (nested under submission settings)
+        if (config('artisanpack.forms.privacy.submission.include_ip', true)) {
+            $ipAddress = $request->ip();
+
+            // Anonymize IP if configured
+            if ($ipAddress !== null && config('artisanpack.forms.privacy.submission.anonymize_ip', false)) {
+                $ipAddress = $this->anonymizeIpAddress($ipAddress);
+            }
+        }
+
+        $userAgent = null;
+        if (config('artisanpack.forms.privacy.submission.include_user_agent', true)) {
+            $userAgent = $request->userAgent();
+        }
+
         return [
             'page_url' => $request->fullUrl(),
             'referrer_url' => $request->header('referer'),
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
+            'ip_address' => $ipAddress,
+            'user_agent' => $userAgent,
         ];
+    }
+
+    /**
+     * Anonymize an IP address by masking the last octet (IPv4) or last 80 bits (IPv6).
+     *
+     * This provides privacy while still allowing for general geographic analysis.
+     * Uses inet_pton/inet_ntop for proper handling of compressed IPv6 addresses.
+     */
+    protected function anonymizeIpAddress(string $ipAddress): string
+    {
+        // Handle IPv4
+        if (filter_var($ipAddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return preg_replace('/\.\d+$/', '.0', $ipAddress) ?? $ipAddress;
+        }
+
+        // Handle IPv6 - mask the last 80 bits (10 bytes)
+        if (filter_var($ipAddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            // Convert to binary representation (16 bytes)
+            $binary = @inet_pton($ipAddress);
+
+            if ($binary === false) {
+                // Fallback if conversion fails
+                return $ipAddress;
+            }
+
+            // Zero out the last 10 bytes (80 bits) - keep first 6 bytes (48 bits / 3 groups)
+            $anonymized = substr($binary, 0, 6).str_repeat("\x00", 10);
+
+            // Convert back to string representation
+            $result = @inet_ntop($anonymized);
+
+            if ($result === false) {
+                // Fallback if conversion fails
+                return $ipAddress;
+            }
+
+            return $result;
+        }
+
+        return $ipAddress;
     }
 }

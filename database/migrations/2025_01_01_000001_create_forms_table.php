@@ -26,6 +26,10 @@ return new class extends Migration
         Schema::create('forms', function (Blueprint $table) {
             $table->id();
 
+            // Ownership - nullable to support both owned and unowned forms
+            // Foreign key references users table with nullOnDelete to avoid orphaned records
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+
             // Basic Info
             $table->string('name');
             $table->string('slug')->unique();
