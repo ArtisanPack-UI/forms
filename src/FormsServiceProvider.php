@@ -11,6 +11,8 @@ use ArtisanPackUI\Forms\Livewire\FormBuilder;
 use ArtisanPackUI\Forms\Livewire\FormRenderer;
 use ArtisanPackUI\Forms\Livewire\FormsList;
 use ArtisanPackUI\Forms\Livewire\NotificationEditor;
+use ArtisanPackUI\Forms\Livewire\SubmissionDetail;
+use ArtisanPackUI\Forms\Livewire\SubmissionsList;
 use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\ExportService;
 use ArtisanPackUI\Forms\Services\FieldService;
@@ -198,6 +200,8 @@ class FormsServiceProvider extends ServiceProvider
             Livewire::component('form-builder', FormBuilder::class);
             Livewire::component('form-renderer', FormRenderer::class);
             Livewire::component('notification-editor', NotificationEditor::class);
+            Livewire::component('submissions-list', SubmissionsList::class);
+            Livewire::component('submission-detail', SubmissionDetail::class);
         }
     }
 
