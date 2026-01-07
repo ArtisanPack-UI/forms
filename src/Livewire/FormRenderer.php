@@ -107,6 +107,7 @@ class FormRenderer extends Component
         $this->form = $form->load(['fields', 'steps.fields']);
         $this->formLoadedAt = time();
         $this->initializeFormData();
+        $this->evaluateConditionalLogic();
     }
 
     /**
@@ -531,6 +532,28 @@ class FormRenderer extends Component
     public function getFieldWidthClass(FormField $field): string
     {
         return $field->width_class;
+    }
+
+    // =========================================
+    // Serialization
+    // =========================================
+
+    /**
+     * Return data for JSON serialization.
+     *
+     * This method is called by Alpine/Livewire integration when serializing
+     * component data. Required to prevent "toJSON method not found" errors.
+     *
+     * @return array<string, mixed>
+     */
+    public function toJSON(): array
+    {
+        return [
+            'formData' => $this->formData,
+            'hiddenFields' => $this->hiddenFields,
+            'currentStepIndex' => $this->currentStepIndex,
+            'isSubmitted' => $this->isSubmitted,
+        ];
     }
 
     // =========================================

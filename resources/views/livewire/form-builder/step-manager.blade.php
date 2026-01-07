@@ -176,18 +176,18 @@
 
                 focusStep(index) {
                     this.focusedIndex = index;
-                    const stepOptions = this.$el.querySelectorAll('[role=\"option\"]');
+                    const stepOptions = this.$el.querySelectorAll('[role=option]');
                     if (stepOptions[index]) {
                         stepOptions[index].focus();
                     }
                 },
 
                 canMoveUp(index) {
-                    return index > 0;
+                    return index &gt; 0;
                 },
 
                 canMoveDown(index) {
-                    return index < this.steps.length - 1;
+                    return index &lt; this.steps.length - 1;
                 }
             }"
         >

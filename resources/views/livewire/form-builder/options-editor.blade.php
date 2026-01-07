@@ -3,6 +3,7 @@
 @endphp
 
 <div
+    wire:key="options-editor-{{ $field->uuid }}"
     class="options-editor space-y-3"
     x-data="{
         options: @js($options).map((opt, i) => ({ ...opt, _id: i })),

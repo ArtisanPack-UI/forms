@@ -1,15 +1,7 @@
 <div
     class="artisanpack-form-renderer"
-    x-data="formRenderer({
-        formData: @entangle('formData'),
-        fieldMap: @js($this->fieldMap),
-        conditionalLogic: @js($this->conditionalLogicConfig),
-        hiddenFields: @entangle('hiddenFields'),
-        isMultiStep: @js($form->is_multi_step),
-        currentStepIndex: @entangle('currentStepIndex'),
-        totalSteps: @js($this->totalSteps)
-    })"
-    x-init="init()"
+    wire:ignore.self
+    x-data="formRenderer()"
     @keydown.window="handleKeydown($event)"
 >
     {{-- ARIA live region for step announcements --}}
@@ -146,9 +138,13 @@
 
                         <div class="space-y-4">
                             @foreach($this->currentFields as $field)
+                                @php
+                                    $isHidden = $hiddenFields[$field->name] ?? false;
+                                @endphp
                                 <div
-                                    wire:key="field-{{ $field->uuid }}"
-                                    x-show="isFieldVisible('{{ $field->name }}')"
+                                    wire:key="field-{{ $field->uuid }}-{{ $isHidden ? 'hidden' : 'visible' }}"
+                                    x-data="{ get visible() { return !($wire.hiddenFields?.['{{ $field->name }}'] ?? false); } }"
+                                    x-show="visible"
                                     x-transition:enter="transition ease-out duration-200"
                                     x-transition:enter-start="opacity-0 transform -translate-y-2"
                                     x-transition:enter-end="opacity-100 transform translate-y-0"
@@ -156,9 +152,9 @@
                                     x-transition:leave-start="opacity-100 transform translate-y-0"
                                     x-transition:leave-end="opacity-0 transform -translate-y-2"
                                     x-cloak
-                                    :class="{ 'hidden': !isFieldVisible('{{ $field->name }}') }"
-                                    :aria-hidden="!isFieldVisible('{{ $field->name }}')"
-                                    :inert="!isFieldVisible('{{ $field->name }}')"
+                                    :class="{ 'hidden': !visible }"
+                                    :aria-hidden="!visible"
+                                    :inert="!visible"
                                 >
                                     @include('forms::components.fields.' . $field->type, [
                                         'field' => $field,
@@ -237,9 +233,13 @@
                 {{-- Single-step: Show all fields --}}
                 <div class="space-y-4">
                     @foreach($this->currentFields as $field)
+                        @php
+                            $isHidden = $hiddenFields[$field->name] ?? false;
+                        @endphp
                         <div
-                            wire:key="field-{{ $field->uuid }}"
-                            x-show="isFieldVisible('{{ $field->name }}')"
+                            wire:key="field-{{ $field->uuid }}-{{ $isHidden ? 'hidden' : 'visible' }}"
+                            x-data="{ get visible() { return !($wire.hiddenFields?.['{{ $field->name }}'] ?? false); } }"
+                            x-show="visible"
                             x-transition:enter="transition ease-out duration-200"
                             x-transition:enter-start="opacity-0 transform -translate-y-2"
                             x-transition:enter-end="opacity-100 transform translate-y-0"
@@ -247,9 +247,9 @@
                             x-transition:leave-start="opacity-100 transform translate-y-0"
                             x-transition:leave-end="opacity-0 transform -translate-y-2"
                             x-cloak
-                            :class="{ 'hidden': !isFieldVisible('{{ $field->name }}') }"
-                            :aria-hidden="!isFieldVisible('{{ $field->name }}')"
-                            :inert="!isFieldVisible('{{ $field->name }}')"
+                            :class="{ 'hidden': !visible }"
+                            :aria-hidden="!visible"
+                            :inert="!visible"
                         >
                             @include('forms::components.fields.' . $field->type, [
                                 'field' => $field,
@@ -281,34 +281,58 @@
     @endif
 </div>
 
+{{-- Pass component data to JavaScript --}}
+<script>
+    window.__formRendererConfig = window.__formRendererConfig || {};
+    window.__formRendererConfig[@js($form->id)] = {
+        fieldMap: @js($this->fieldMap),
+        conditionalLogic: @js($this->conditionalLogicConfig),
+        isMultiStep: @js($form->is_multi_step),
+        currentStepIndex: @js($currentStepIndex),
+        totalSteps: @js($this->totalSteps),
+        formId: @js($form->id)
+    };
+</script>
+
 @push('scripts')
 <script>
     document.addEventListener('alpine:init', () => {
-        Alpine.data('formRenderer', (config) => ({
-            formData: config.formData,
-            fieldMap: config.fieldMap,
-            conditionalLogic: config.conditionalLogic,
-            hiddenFields: config.hiddenFields,
-            isMultiStep: config.isMultiStep,
-            currentStepIndex: config.currentStepIndex,
-            totalSteps: config.totalSteps,
+        Alpine.data('formRenderer', () => ({
+            fieldMap: {},
+            conditionalLogic: {},
+            hiddenFields: {},
+            isMultiStep: false,
+            currentStepIndex: 0,
+            totalSteps: 1,
 
             init() {
-                // Watch for form data changes
-                this.$watch('formData', () => {
-                    this.evaluateAllConditions();
-                }, { deep: true });
+                // Load config from window object using form ID from $wire
+                const formId = this.$wire.get('form.id');
+                const config = window.__formRendererConfig?.[formId] || {};
+
+                this.fieldMap = config.fieldMap || {};
+                this.conditionalLogic = config.conditionalLogic || {};
+                this.isMultiStep = config.isMultiStep || false;
+                this.currentStepIndex = config.currentStepIndex || 0;
+                this.totalSteps = config.totalSteps || 1;
+
+                // Initialize hidden fields from server state
+                this.hiddenFields = this.$wire.get('hiddenFields') || {};
+
+                // Watch for Livewire formData changes and evaluate conditions
+                this.$wire.watch('formData', (value) => {
+                    this.evaluateAllConditions(value);
+                });
 
                 // Watch for step changes and announce
-                this.$watch('currentStepIndex', (newVal, oldVal) => {
-                    if (newVal !== oldVal) {
-                        this.announceStepChange();
-                        this.focusFirstField();
-                    }
+                this.$wire.watch('currentStepIndex', (newVal) => {
+                    this.currentStepIndex = newVal;
+                    this.announceStepChange();
+                    this.focusFirstField();
                 });
 
                 // Initial evaluation
-                this.evaluateAllConditions();
+                this.evaluateAllConditions(this.$wire.get('formData') || {});
             },
 
             /**
@@ -382,11 +406,15 @@
             /**
              * Evaluate all conditional logic rules
              */
-            evaluateAllConditions() {
+            evaluateAllConditions(formData) {
+                const newHiddenFields = {};
                 for (const fieldName in this.conditionalLogic) {
-                    const visible = this.evaluateCondition(fieldName);
-                    this.hiddenFields[fieldName] = !visible;
+                    const visible = this.evaluateCondition(fieldName, formData);
+                    newHiddenFields[fieldName] = !visible;
                 }
+                this.hiddenFields = newHiddenFields;
+                // Sync hidden fields back to Livewire
+                this.$wire.set('hiddenFields', newHiddenFields);
             },
 
             /**
@@ -403,7 +431,7 @@
             /**
              * Evaluate conditional logic for a specific field
              */
-            evaluateCondition(fieldName) {
+            evaluateCondition(fieldName, formData) {
                 const logic = this.conditionalLogic[fieldName];
                 if (!logic || !logic.rules || logic.rules.length === 0) {
                     return true;
@@ -414,7 +442,7 @@
                 const rules = logic.rules;
 
                 // Evaluate all rules
-                const results = rules.map(rule => this.evaluateRule(rule));
+                const results = rules.map(rule => this.evaluateRule(rule, formData));
 
                 // Combine results based on logic type
                 let conditionsMet;
@@ -431,7 +459,7 @@
             /**
              * Evaluate a single condition rule
              */
-            evaluateRule(rule) {
+            evaluateRule(rule, formData) {
                 const fieldRef = rule.field;
                 const operator = rule.operator || 'equals';
                 const ruleValue = rule.value || '';
@@ -439,7 +467,7 @@
                 if (!fieldRef) return true;
 
                 // Get field value (fieldRef could be field name or UUID)
-                const fieldValue = this.getFieldValue(fieldRef);
+                const fieldValue = this.getFieldValue(fieldRef, formData);
 
                 return this.compareValues(fieldValue, operator, ruleValue);
             },
@@ -447,16 +475,16 @@
             /**
              * Get field value by name or UUID
              */
-            getFieldValue(fieldRef) {
+            getFieldValue(fieldRef, formData) {
                 // Check if it's a direct field name
-                if (this.formData[fieldRef] !== undefined) {
-                    return this.formData[fieldRef];
+                if (formData[fieldRef] !== undefined) {
+                    return formData[fieldRef];
                 }
 
                 // Check if it's a UUID - find the field name
                 for (const [name, uuid] of Object.entries(this.fieldMap)) {
                     if (uuid === fieldRef) {
-                        return this.formData[name];
+                        return formData[name];
                     }
                 }
 
