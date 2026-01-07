@@ -132,6 +132,61 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Webhook Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure global webhook settings for form submissions. Webhooks can also
+    | be configured per-form in the form's settings. The global webhook is sent
+    | for all form submissions if enabled.
+    |
+    */
+
+    'webhooks' => [
+        'enabled' => env('FORMS_WEBHOOKS_ENABLED', false),
+        'url' => env('FORMS_WEBHOOK_URL'),
+        'secret' => env('FORMS_WEBHOOK_SECRET'),
+        'queue' => env('FORMS_WEBHOOK_QUEUE', 'default'),
+        'timeout' => env('FORMS_WEBHOOK_TIMEOUT', 30),
+        'retry_times' => 3,
+        'retry_backoff' => [10, 60, 300], // seconds
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Integration Settings
+    |--------------------------------------------------------------------------
+    |
+    | Configure settings for third-party integrations. Integration packages
+    | can register their own settings via the 'forms.settings_tabs' filter hook.
+    |
+    */
+
+    'integrations' => [
+        // Enable or disable the integration settings panel
+        'enabled' => true,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Privacy Settings
+    |--------------------------------------------------------------------------
+    |
+    | Configure privacy settings for handling personally identifiable information
+    | (PII) in exports and webhooks. By default, PII fields like IP address and
+    | user agent are excluded to comply with privacy regulations.
+    |
+    */
+
+    'privacy' => [
+        // Include IP address in exports and webhooks
+        'include_ip_address' => env('FORMS_INCLUDE_IP_ADDRESS', false),
+
+        // Include user agent in webhooks
+        'include_user_agent' => env('FORMS_INCLUDE_USER_AGENT', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disk Configuration
     |--------------------------------------------------------------------------
     |

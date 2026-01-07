@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace ArtisanPackUI\Forms\Models;
 
 use ArtisanPackUI\Forms\Database\Factories\FormSubmissionFactory;
+use ArtisanPackUI\Forms\Events\FormSubmitted;
+use ArtisanPackUI\Forms\Events\SubmissionDeleted;
+use ArtisanPackUI\Forms\Events\SubmissionUpdated;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -96,6 +99,36 @@ class FormSubmission extends Model
             if (empty($submission->submission_number)) {
                 $submission->submission_number = static::generateSubmissionNumber($submission->form_id);
             }
+        });
+
+        static::created(function (FormSubmission $submission): void {
+            // Fire action hook for extensibility
+            if (function_exists('doAction')) {
+                doAction('forms.submission.created', $submission);
+            }
+
+            // Dispatch Laravel event
+            FormSubmitted::dispatch($submission);
+        });
+
+        static::updated(function (FormSubmission $submission): void {
+            // Fire action hook for extensibility
+            if (function_exists('doAction')) {
+                doAction('forms.submission.updated', $submission);
+            }
+
+            // Dispatch Laravel event
+            SubmissionUpdated::dispatch($submission);
+        });
+
+        static::deleted(function (FormSubmission $submission): void {
+            // Fire action hook for extensibility
+            if (function_exists('doAction')) {
+                doAction('forms.submission.deleted', $submission);
+            }
+
+            // Dispatch Laravel event
+            SubmissionDeleted::dispatch($submission);
         });
     }
 

@@ -264,6 +264,9 @@ class FormField extends Model
     /**
      * Build the Laravel validation rules array for this field.
      *
+     * Applies the 'forms.validation_rules' filter hook to allow
+     * third-party packages to modify validation rules for a field.
+     *
      * @return array<int, string>
      */
     public function buildValidationRules(): array
@@ -313,6 +316,11 @@ class FormField extends Model
 
         if ($maxTime = $this->getValidationRule('max_time')) {
             $rules[] = "before_or_equal:{$maxTime}";
+        }
+
+        // Apply filter hook for extensibility
+        if (function_exists('applyFilters')) {
+            $rules = applyFilters('forms.validation_rules', $rules, $this);
         }
 
         return $rules;

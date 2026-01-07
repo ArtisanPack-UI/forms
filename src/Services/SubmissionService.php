@@ -52,6 +52,9 @@ class SubmissionService
     /**
      * Create a new submission for a form.
      *
+     * Applies the 'forms.submission_data' filter hook to allow
+     * third-party packages to modify submission data before saving.
+     *
      * @param  array<string, mixed>  $formData  The submitted form data.
      * @param  array<string, UploadedFile|null>  $files  Uploaded files keyed by field name.
      * @param  array<string, mixed>  $metadata  Additional metadata (ip, user_agent, etc.).
@@ -61,6 +64,11 @@ class SubmissionService
      */
     public function create(Form $form, array $formData, array $files = [], array $metadata = []): FormSubmission
     {
+        // Apply filter hook to allow modifying submission data before saving
+        if (function_exists('applyFilters')) {
+            $formData = applyFilters('forms.submission_data', $formData, $form);
+        }
+
         $submission = DB::transaction(function () use ($form, $formData, $files, $metadata): FormSubmission {
             // Create the submission record
             $submission = FormSubmission::create([
@@ -101,11 +109,6 @@ class SubmissionService
                 }
 
                 $this->handleFileUpload($submission, $field, $file);
-            }
-
-            // Fire hooks for extensibility
-            if (function_exists('doAction')) {
-                doAction('artisanpack.forms.submission_created', $submission, $form);
             }
 
             return $submission;
