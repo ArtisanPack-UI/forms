@@ -84,6 +84,17 @@ class FormSubmissionNotification extends Mailable
         $notificationService = app(NotificationService::class);
         $this->parsedSubject = $notificationService->parseTemplate($notification->subject, $submission);
         $this->parsedMessage = $notificationService->parseTemplate($notification->message, $submission);
+
+        // Apply filter hook to allow modifying the message
+        if (function_exists('applyFilters')) {
+            $this->parsedMessage = applyFilters(
+                'forms.notification_message',
+                $this->parsedMessage,
+                $notification,
+                $submission
+            );
+        }
+
         $this->submissionDataTable = $notificationService->formatAllFieldsAsTable($submission);
 
         // Get CC/BCC recipients upfront

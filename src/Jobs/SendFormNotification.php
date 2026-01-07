@@ -71,6 +71,15 @@ class SendFormNotification implements ShouldQueue
         // Get recipient emails
         $recipients = $this->notification->getRecipientEmails($this->submission);
 
+        // Apply filter hook to allow modifying recipients
+        if (function_exists('applyFilters')) {
+            $recipients = applyFilters(
+                'forms.notification_recipients',
+                $recipients,
+                $this->notification
+            );
+        }
+
         if (empty($recipients)) {
             Log::warning('Form notification has no valid recipients', [
                 'notification_id' => $this->notification->id,
@@ -83,10 +92,28 @@ class SendFormNotification implements ShouldQueue
         }
 
         try {
+            // Fire before_send action hook
+            if (function_exists('doAction')) {
+                doAction(
+                    'forms.notification.before_send',
+                    $this->notification,
+                    $this->submission
+                );
+            }
+
             // Create and send the mailable
             $mailable = new FormSubmissionNotification($this->notification, $this->submission);
 
             Mail::to($recipients)->send($mailable);
+
+            // Fire sent action hook
+            if (function_exists('doAction')) {
+                doAction(
+                    'forms.notification.sent',
+                    $this->notification,
+                    $this->submission
+                );
+            }
 
             Log::info('Form notification sent successfully', [
                 'notification_id' => $this->notification->id,

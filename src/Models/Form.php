@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace ArtisanPackUI\Forms\Models;
 
 use ArtisanPackUI\Forms\Database\Factories\FormFactory;
+use ArtisanPackUI\Forms\Events\FormCreated;
+use ArtisanPackUI\Forms\Events\FormDeleted;
+use ArtisanPackUI\Forms\Events\FormUpdated;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -101,6 +104,36 @@ class Form extends Model
             if (empty($form->slug)) {
                 $form->slug = static::generateUniqueSlug($form->name);
             }
+        });
+
+        static::created(function (Form $form): void {
+            // Fire action hook for extensibility
+            if (function_exists('doAction')) {
+                doAction('forms.form.created', $form);
+            }
+
+            // Dispatch Laravel event
+            FormCreated::dispatch($form);
+        });
+
+        static::updated(function (Form $form): void {
+            // Fire action hook for extensibility
+            if (function_exists('doAction')) {
+                doAction('forms.form.updated', $form);
+            }
+
+            // Dispatch Laravel event
+            FormUpdated::dispatch($form);
+        });
+
+        static::deleted(function (Form $form): void {
+            // Fire action hook for extensibility
+            if (function_exists('doAction')) {
+                doAction('forms.form.deleted', $form);
+            }
+
+            // Dispatch Laravel event
+            FormDeleted::dispatch($form);
         });
     }
 

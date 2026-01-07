@@ -5,16 +5,21 @@ declare(strict_types=1);
 namespace ArtisanPackUI\Forms;
 
 use ArtisanPackUI\Forms\Console\Commands\PruneFormSubmissions;
+use ArtisanPackUI\Forms\Events\FormSubmitted;
+use ArtisanPackUI\Forms\Listeners\SendWebhookOnSubmission;
 use ArtisanPackUI\Forms\Livewire\FormBuilder;
 use ArtisanPackUI\Forms\Livewire\FormRenderer;
 use ArtisanPackUI\Forms\Livewire\FormsList;
 use ArtisanPackUI\Forms\Livewire\NotificationEditor;
 use ArtisanPackUI\Forms\Services\ConditionalLogicService;
+use ArtisanPackUI\Forms\Services\ExportService;
 use ArtisanPackUI\Forms\Services\FieldService;
 use ArtisanPackUI\Forms\Services\FormService;
+use ArtisanPackUI\Forms\Services\IntegrationService;
 use ArtisanPackUI\Forms\Services\NotificationService;
 use ArtisanPackUI\Forms\Services\StepService;
 use ArtisanPackUI\Forms\Services\SubmissionService;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 
@@ -72,6 +77,14 @@ class FormsServiceProvider extends ServiceProvider
         $this->app->singleton(SubmissionService::class, function ($app) {
             return new SubmissionService($app->make(NotificationService::class));
         });
+
+        $this->app->singleton(ExportService::class, function ($app) {
+            return new ExportService;
+        });
+
+        $this->app->singleton(IntegrationService::class, function ($app) {
+            return new IntegrationService;
+        });
     }
 
     /**
@@ -87,6 +100,7 @@ class FormsServiceProvider extends ServiceProvider
         $this->mergeConfiguration();
         $this->registerFilesystemDisk();
         $this->registerCommands();
+        $this->registerEventListeners();
         $this->publishConfiguration();
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'forms');
@@ -143,6 +157,16 @@ class FormsServiceProvider extends ServiceProvider
                 PruneFormSubmissions::class,
             ]);
         }
+    }
+
+    /**
+     * Register the package's event listeners.
+     *
+     * @since 1.0.0
+     */
+    protected function registerEventListeners(): void
+    {
+        Event::listen(FormSubmitted::class, SendWebhookOnSubmission::class);
     }
 
     /**

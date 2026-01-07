@@ -362,7 +362,7 @@ class FieldTypes
     /**
      * Get all field type definitions.
      *
-     * Applies the 'artisanpack.forms.field_types' filter hook to allow
+     * Applies the 'forms.field_types' filter hook to allow
      * third-party packages to register custom field types.
      *
      * @return array<string, array<string, mixed>>
@@ -373,7 +373,7 @@ class FieldTypes
 
         // Apply filter hook for extensibility
         if (function_exists('applyFilters')) {
-            $types = applyFilters('artisanpack.forms.field_types', $types);
+            $types = applyFilters('forms.field_types', $types);
         }
 
         return $types;
@@ -382,7 +382,7 @@ class FieldTypes
     /**
      * Get all field categories with their field types.
      *
-     * Applies the 'artisanpack.forms.field_categories' filter hook to allow
+     * Applies the 'forms.field_categories' filter hook to allow
      * third-party packages to register custom categories.
      *
      * @return array<string, array{label: string, fields: array<string>}>
@@ -393,7 +393,7 @@ class FieldTypes
 
         // Apply filter hook for extensibility
         if (function_exists('applyFilters')) {
-            $categories = applyFilters('artisanpack.forms.field_categories', $categories);
+            $categories = applyFilters('forms.field_categories', $categories);
         }
 
         return $categories;
