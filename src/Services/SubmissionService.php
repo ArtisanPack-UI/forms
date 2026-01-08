@@ -86,11 +86,16 @@ class SubmissionService
             // Get all form fields
             $fields = $form->fields()->get()->keyBy('name');
 
-            // Save each field value
+            // Save each field value (except file fields which are handled separately)
             foreach ($formData as $fieldName => $value) {
                 $field = $fields->get($fieldName);
 
                 if (! $field) {
+                    continue;
+                }
+
+                // Skip file fields - they're handled separately in handleFileUpload()
+                if ($field->type === 'file') {
                     continue;
                 }
 
@@ -174,20 +179,21 @@ class SubmissionService
 
         // Generate a unique filename with validated extension
         $storedName = Str::uuid()->toString().'.'.$extension;
-        $path = $directory.'/'.$submission->form_id.'/'.$storedName;
+        $storagePath = $directory.'/'.$submission->form_id;
 
-        // Store the file using streaming (avoids loading entire file into memory)
-        $stream = fopen($file->getRealPath(), 'rb');
-        if ($stream === false) {
-            throw new \RuntimeException('Unable to open file for reading.');
+        // Get file size before storing (more reliable for Livewire temp files)
+        $fileSize = $file->getSize();
+
+        // Store the file using storeAs (works with both regular UploadedFile and Livewire's TemporaryUploadedFile)
+        $path = $file->storeAs($storagePath, $storedName, $disk);
+
+        if ($path === false) {
+            throw new \RuntimeException('Unable to store uploaded file.');
         }
 
-        try {
-            Storage::disk($disk)->put($path, $stream);
-        } finally {
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
+        // Fallback: get size from stored file if original size was 0 or false
+        if (! $fileSize) {
+            $fileSize = Storage::disk($disk)->size($path);
         }
 
         // Create the upload record
@@ -199,7 +205,7 @@ class SubmissionService
             'disk' => $disk,
             'path' => $path,
             'mime_type' => $file->getMimeType() ?? 'application/octet-stream',
-            'size' => $file->getSize() ?: 0,
+            'size' => $fileSize ?: 0,
         ]);
 
         // Create submission value linking to the upload

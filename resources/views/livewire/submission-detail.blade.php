@@ -138,6 +138,31 @@
                         <span wire:loading wire:target="adminNotes">Saving...</span>
                     </p>
                 </x-artisanpack-card>
+
+                <!-- Attachments -->
+                @if ($this->submission->uploads->isNotEmpty())
+                    <x-artisanpack-card title="Attachments" separator>
+                        <div class="space-y-3">
+                            @foreach ($this->submission->uploads as $upload)
+                                <div class="flex items-center justify-between p-3 bg-base-200 rounded-lg">
+                                    <div class="flex items-center gap-3">
+                                        <x-artisanpack-icon name="o-document" class="w-8 h-8 opacity-40" />
+                                        <div>
+                                            <p class="text-sm font-medium">{{ $upload->original_name }}</p>
+                                            <p class="text-xs opacity-60">{{ $upload->mime_type }} &bull; {{ $upload->humanFileSize() }}</p>
+                                        </div>
+                                    </div>
+                                    <a href="{{ route('forms.uploads.download', $upload) }}"
+                                       class="btn btn-ghost btn-sm"
+                                       target="_blank">
+                                        <x-artisanpack-icon name="o-arrow-down-tray" class="w-4 h-4" />
+                                        Download
+                                    </a>
+                                </div>
+                            @endforeach
+                        </div>
+                    </x-artisanpack-card>
+                @endif
             </div>
 
             <!-- Sidebar: Metadata -->
@@ -145,28 +170,27 @@
                 <!-- Metadata Card -->
                 <x-artisanpack-card title="Details" separator>
                     <dl class="space-y-4">
-                        <!-- Submitted Date/Time -->
+                        <!-- Form Link -->
                         <div>
-                            <dt class="text-sm font-medium opacity-60">Submitted</dt>
+                            <dt class="text-sm font-medium opacity-60">Form</dt>
                             <dd class="mt-1 text-sm">
-                                {{ $this->submission->created_at->format('F j, Y') }}
-                                <br>
-                                <span class="opacity-60">
-                                    {{ $this->submission->created_at->format('g:i A') }}
-                                    ({{ $this->submission->created_at->diffForHumans() }})
-                                </span>
+                                <a href="{{ route('forms.edit', $this->form) }}" class="link link-primary">
+                                    {{ $this->form->name }}
+                                </a>
                             </dd>
                         </div>
 
-                        <!-- Status -->
+                        <!-- Submission Number -->
                         <div>
-                            <dt class="text-sm font-medium opacity-60">Status</dt>
-                            <dd class="mt-1">
-                                @if ($this->submission->is_read)
-                                    <x-artisanpack-badge value="Read" color="success" />
-                                @else
-                                    <x-artisanpack-badge value="Unread" color="info" />
-                                @endif
+                            <dt class="text-sm font-medium opacity-60">Submission Number</dt>
+                            <dd class="mt-1 text-sm font-mono">{{ $this->submission->submission_number }}</dd>
+                        </div>
+
+                        <!-- Submitted Date/Time -->
+                        <div>
+                            <dt class="text-sm font-medium opacity-60">Submitted At</dt>
+                            <dd class="mt-1 text-sm">
+                                {{ $this->submission->created_at->format('M j, Y g:i A') }}
                             </dd>
                         </div>
 
@@ -210,6 +234,38 @@
                             </div>
                         @endif
                     </dl>
+                </x-artisanpack-card>
+
+                <!-- Actions Card -->
+                <x-artisanpack-card separator>
+                    <div class="space-y-2">
+                        <!-- Read/Unread Toggle -->
+                        <x-artisanpack-button
+                            wire:click="{{ $this->submission->is_read ? 'markAsUnread' : 'markAsRead' }}"
+                            :icon="$this->submission->is_read ? 'o-envelope-open' : 'o-envelope'"
+                            :label="$this->submission->is_read ? 'Mark Unread' : 'Mark Read'"
+                            color="ghost"
+                            class="w-full justify-start"
+                        />
+
+                        <!-- Star Toggle -->
+                        <x-artisanpack-button
+                            wire:click="toggleStar"
+                            :icon="$this->submission->is_starred ? 's-star' : 'o-star'"
+                            :label="$this->submission->is_starred ? 'Unstar' : 'Star'"
+                            :color="$this->submission->is_starred ? 'warning' : 'ghost'"
+                            class="w-full justify-start"
+                        />
+
+                        <!-- Spam Toggle -->
+                        <x-artisanpack-button
+                            wire:click="toggleSpam"
+                            :icon="$this->submission->is_spam ? 's-exclamation-triangle' : 'o-exclamation-triangle'"
+                            :label="$this->submission->is_spam ? 'Not Spam' : 'Mark as Spam'"
+                            :color="$this->submission->is_spam ? 'error' : 'ghost'"
+                            class="w-full justify-start"
+                        />
+                    </div>
                 </x-artisanpack-card>
             </div>
         </div>

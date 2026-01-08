@@ -116,6 +116,7 @@ class SubmissionDetail extends Component
 
         if ($submission) {
             $submission->toggleStar();
+            unset($this->submission); // Clear cached computed property
         }
     }
 
@@ -128,6 +129,7 @@ class SubmissionDetail extends Component
 
         if ($submission) {
             $submission->toggleSpam();
+            unset($this->submission); // Clear cached computed property
         }
     }
 
@@ -140,6 +142,7 @@ class SubmissionDetail extends Component
 
         if ($submission) {
             $submission->markAsRead();
+            unset($this->submission); // Clear cached computed property
         }
     }
 
@@ -152,6 +155,7 @@ class SubmissionDetail extends Component
 
         if ($submission) {
             $submission->markAsUnread();
+            unset($this->submission); // Clear cached computed property
         }
     }
 

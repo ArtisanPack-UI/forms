@@ -115,6 +115,14 @@ class FormUpload extends Model
      */
     public function getHumanSizeAttribute(): string
     {
+        return $this->humanFileSize();
+    }
+
+    /**
+     * Get the human-readable file size as a method.
+     */
+    public function humanFileSize(): string
+    {
         $bytes = $this->size;
         $units = ['B', 'KB', 'MB', 'GB'];
 
