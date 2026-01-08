@@ -1,2 +1,39 @@
-vendor/
-.idea/
+# Dependencies
+/vendor/
+
+# IDE and editors
+/.idea/
+/.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+/node_modules/
+/build/
+/dist/
+
+# Cache files
+.php-cs-fixer.cache
+.phpunit.result.cache
+.phpunit.cache/
+
+# Composer
+composer.lock
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Coverage reports
+/coverage/
+.coverage
+clover.xml
+
+# Logs
+*.log
