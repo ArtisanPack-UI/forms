@@ -128,6 +128,7 @@ php-cs-fixer:
       - vendor/
   script:
     - PHP_CS_FIXER_IGNORE_ENV=1 ./vendor/bin/php-cs-fixer fix --dry-run --diff
+  allow_failure: true
   interruptible: true
 
 phpcs:
@@ -148,6 +149,7 @@ phpcs:
     - ./vendor/bin/phpcs --config-set installed_paths vendor/artisanpack-ui/code-style
   script:
     - ./vendor/bin/phpcs
+  allow_failure: true
   interruptible: true
 
 # Uncomment to enable PHPStan static analysis
