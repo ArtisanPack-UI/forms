@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Export service.
+ *
+ * Business logic layer for exporting form submissions to various formats.
+ * Supports CSV export with configurable headers and data transformations.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
@@ -12,22 +26,31 @@ use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * ExportService
+ * Export service class.
  *
  * Business logic layer for exporting form submissions to various formats.
  * Supports CSV export with configurable headers and data transformations.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class ExportService
 {
     /**
-     * Export submissions to CSV format.
+     * Exports submissions to CSV format.
      *
      * Applies the 'forms.export_headers' and 'forms.export_data' filter hooks
      * to allow third-party packages to modify export data.
      *
-     * @param  Collection<int, FormSubmission>  $submissions
+     * @since 1.0.0
+     *
+     * @param Form                              $form        The form to export from.
+     * @param Collection<int, FormSubmission>   $submissions The submissions to export.
+     * @param string|null                       $filename    Optional custom filename.
+     *
+     * @return StreamedResponse The CSV download response.
      */
     public function exportToCsv( Form $form, Collection $submissions, ?string $filename = null ): StreamedResponse
     {
@@ -59,12 +82,16 @@ class ExportService
     }
 
     /**
-     * Build CSV headers from form fields.
+     * Builds CSV headers from form fields.
      *
      * Applies the 'forms.export_headers' filter hook to allow
      * third-party packages to modify export headers.
      *
-     * @return array<int, string>
+     * @since 1.0.0
+     *
+     * @param Form $form The form to build headers for.
+     *
+     * @return array<int, string> The CSV headers.
      */
     public function buildHeaders( Form $form ): array
     {
@@ -105,11 +132,14 @@ class ExportService
     }
 
     /**
-     * Build CSV rows from submissions.
+     * Builds CSV rows from submissions.
      *
-     * @param  Collection<int, FormSubmission>  $submissions
+     * @since 1.0.0
      *
-     * @return array<int, array<int, string>>
+     * @param Form                            $form        The form.
+     * @param Collection<int, FormSubmission> $submissions The submissions.
+     *
+     * @return array<int, array<int, string>> The CSV rows.
      */
     public function buildRows( Form $form, Collection $submissions ): array
     {
@@ -125,14 +155,18 @@ class ExportService
     }
 
     /**
-     * Build a single CSV row from a submission.
+     * Builds a single CSV row from a submission.
      *
      * Applies the 'forms.export_data' filter hook to allow
      * third-party packages to modify export row data.
      *
-     * @param  Collection<int, \ArtisanPackUI\Forms\Models\FormField>  $fields
+     * @since 1.0.0
      *
-     * @return array<int, string>
+     * @param Form                                                    $form       The form.
+     * @param FormSubmission                                          $submission The submission.
+     * @param Collection<int, \ArtisanPackUI\Forms\Models\FormField>  $fields     The form fields.
+     *
+     * @return array<int, string> The CSV row data.
      */
     public function buildRow( Form $form, FormSubmission $submission, $fields ): array
     {
@@ -174,11 +208,14 @@ class ExportService
     }
 
     /**
-     * Export submissions to JSON format.
+     * Exports submissions to JSON format.
      *
-     * @param  Collection<int, FormSubmission>  $submissions
+     * @since 1.0.0
      *
-     * @return array<int, array<string, mixed>>
+     * @param Form                            $form        The form to export from.
+     * @param Collection<int, FormSubmission> $submissions The submissions to export.
+     *
+     * @return array<int, array<string, mixed>> The JSON export data.
      */
     public function exportToJson( Form $form, Collection $submissions ): array
     {
@@ -208,7 +245,7 @@ class ExportService
 
             // Apply filter hook for extensibility
             if ( function_exists( 'applyFilters' ) ) {
-                $submissionData = applyFilters( 'forms.export_data', $submissionData, $submission);
+                $submissionData = applyFilters( 'forms.export_data', $submissionData, $submission );
             }
 
             $data[] = $submissionData;

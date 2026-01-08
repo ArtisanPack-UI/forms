@@ -1,4 +1,17 @@
 <?php
+/**
+ * Create users table migration (testing only).
+ *
+ * This migration is for testing purposes only. In production,
+ * applications should use their own users table. This migration
+ * is only loaded during package tests and will not run in
+ * consuming applications.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ * @since      1.0.0
+ */
 
 declare(strict_types=1);
 
@@ -7,12 +20,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Create Users Table Migration (Testing Only)
- *
- * This migration is for testing purposes only. In production,
- * applications should use their own users table. This migration
- * is only loaded during package tests and will not run in
- * consuming applications.
+ * Create users table migration class (testing only).
  *
  * @since 1.0.0
  */

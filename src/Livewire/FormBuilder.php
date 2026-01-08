@@ -1,5 +1,23 @@
 <?php
 
+/**
+ * Form builder Livewire component.
+ *
+ * Provides a drag-and-drop interface for building forms with:
+ * - Field palette for adding new fields
+ * - Canvas for arranging fields
+ * - Field editor sidebar for configuring selected fields
+ * - Multi-step form support
+ * - Auto-save with dirty state tracking
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire;
@@ -18,7 +36,7 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
- * FormBuilder Livewire Component
+ * Form builder Livewire component class.
  *
  * Provides a drag-and-drop interface for building forms with:
  * - Field palette for adding new fields
@@ -27,7 +45,10 @@ use Livewire\Component;
  * - Multi-step form support
  * - Auto-save with dirty state tracking
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class FormBuilder extends Component
 {
@@ -593,11 +614,11 @@ class FormBuilder extends Component
         // when modified. This method just updates the UI state.
 
         $this->isDirty     = false;
-        $this->lastSavedAt = now()->format( 'g:i A');
+        $this->lastSavedAt = now()->format( 'g:i A' );
 
         // Dispatch events - Alpine will handle resetting isSaving asynchronously
-        $this->dispatch( 'form-saved');
-        $this->dispatch( 'save-complete');
+        $this->dispatch( 'form-saved' );
+        $this->dispatch( 'save-complete' );
     }
 
     // =========================================
@@ -609,7 +630,7 @@ class FormBuilder extends Component
      */
     public function render(): View
     {
-        return view( 'forms::livewire.form-builder');
+        return view( 'forms::livewire.form-builder' );
     }
 
     /**

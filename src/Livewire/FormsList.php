@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Forms list Livewire component.
+ *
+ * Displays a paginated, searchable, sortable list of forms
+ * with actions for edit, duplicate, delete, and toggle publish.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire;
@@ -14,12 +28,15 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * FormsList Livewire Component
+ * Forms list Livewire component class.
  *
  * Displays a paginated, searchable, sortable list of forms
  * with actions for edit, duplicate, delete, and toggle publish.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class FormsList extends Component
 {
@@ -169,7 +186,7 @@ class FormsList extends Component
 
         $query->orderBy( $sortColumn, $sortDirection );
 
-        return $query->paginate( config( 'artisanpack.forms.admin.per_page', 15));
+        return $query->paginate( config( 'artisanpack.forms.admin.per_page', 15 ) );
     }
 
     /**

@@ -1,5 +1,20 @@
 <?php
 
+/**
+ * Prune form submissions artisan command.
+ *
+ * Deletes form submissions older than the configured retention period,
+ * including associated uploaded files from storage.
+ * Can be scheduled to run daily using Laravel's task scheduler.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Console\Commands;
@@ -13,18 +28,23 @@ use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 /**
- * Prune Old Form Submissions Command
+ * Prune form submissions artisan command class.
  *
  * Deletes form submissions older than the configured retention period,
  * including associated uploaded files from storage.
  * Can be scheduled to run daily using Laravel's task scheduler.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class PruneFormSubmissions extends Command
 {
     /**
      * The name and signature of the console command.
+     *
+     * @since 1.0.0
      *
      * @var string
      */
@@ -35,22 +55,32 @@ class PruneFormSubmissions extends Command
     /**
      * The console command description.
      *
+     * @since 1.0.0
+     *
      * @var string
      */
     protected $description = 'Delete form submissions and associated files older than the retention period';
 
     /**
      * Tracks the number of files deleted.
+     *
+     * @since 1.0.0
      */
     protected int $filesDeleted = 0;
 
     /**
      * Tracks the number of files that failed to delete.
+     *
+     * @since 1.0.0
      */
     protected int $filesFailed = 0;
 
     /**
-     * Execute the console command.
+     * Executes the console command.
+     *
+     * @since 1.0.0
+     *
+     * @return int The command exit status code.
      */
     public function handle(): int
     {
@@ -91,9 +121,13 @@ class PruneFormSubmissions extends Command
     }
 
     /**
-     * Get submission IDs that are older than the cutoff date.
+     * Gets submission IDs that are older than the cutoff date.
      *
-     * @return Collection<int, int>
+     * @since 1.0.0
+     *
+     * @param DateTimeInterface $cutoffDate The cutoff date for expired submissions.
+     *
+     * @return Collection<int, int> Collection of submission IDs to delete.
      */
     protected function getExpiredSubmissionIds( DateTimeInterface $cutoffDate ): Collection
     {
@@ -103,11 +137,13 @@ class PruneFormSubmissions extends Command
     }
 
     /**
-     * Get all uploads associated with the given submission IDs.
+     * Gets all uploads associated with the given submission IDs.
      *
-     * @param  Collection<int, int>  $submissionIds
+     * @since 1.0.0
      *
-     * @return Collection<int, object>
+     * @param Collection<int, int> $submissionIds Collection of submission IDs.
+     *
+     * @return Collection<int, object> Collection of upload records.
      */
     protected function getUploadsForSubmissions( Collection $submissionIds ): Collection
     {
@@ -118,10 +154,15 @@ class PruneFormSubmissions extends Command
     }
 
     /**
-     * Handle dry run - show what would be deleted without making changes.
+     * Handles dry run - shows what would be deleted without making changes.
      *
-     * @param  Collection<int, int>  $submissionIds
-     * @param  Collection<int, object>  $uploads
+     * @since 1.0.0
+     *
+     * @param Collection<int, int>    $submissionIds Collection of submission IDs to delete.
+     * @param Collection<int, object> $uploads       Collection of upload records.
+     * @param int                     $retentionDays The retention period in days.
+     *
+     * @return int The command exit status code.
      */
     protected function handleDryRun( Collection $submissionIds, Collection $uploads, int $retentionDays ): int
     {
@@ -142,10 +183,15 @@ class PruneFormSubmissions extends Command
     }
 
     /**
-     * Handle the actual pruning of submissions and files.
+     * Handles the actual pruning of submissions and files.
      *
-     * @param  Collection<int, int>  $submissionIds
-     * @param  Collection<int, object>  $uploads
+     * @since 1.0.0
+     *
+     * @param Collection<int, int>    $submissionIds Collection of submission IDs to delete.
+     * @param Collection<int, object> $uploads       Collection of upload records.
+     * @param int                     $retentionDays The retention period in days.
+     *
+     * @return int The command exit status code.
      */
     protected function handlePrune( Collection $submissionIds, Collection $uploads, int $retentionDays ): int
     {
@@ -190,9 +236,11 @@ class PruneFormSubmissions extends Command
     }
 
     /**
-     * Delete uploaded files from storage.
+     * Deletes uploaded files from storage.
      *
-     * @param  Collection<int, object>  $uploads
+     * @since 1.0.0
+     *
+     * @param Collection<int, object> $uploads Collection of upload records.
      */
     protected function deleteUploadedFiles( Collection $uploads ): void
     {
@@ -202,7 +250,11 @@ class PruneFormSubmissions extends Command
     }
 
     /**
-     * Delete a single file from storage.
+     * Deletes a single file from storage.
+     *
+     * @since 1.0.0
+     *
+     * @param object $upload The upload record to delete.
      */
     protected function deleteFile( object $upload ): void
     {
@@ -241,7 +293,11 @@ class PruneFormSubmissions extends Command
     }
 
     /**
-     * Get the retention days from option or config.
+     * Gets the retention days from option or config.
+     *
+     * @since 1.0.0
+     *
+     * @return int|null The retention days or null if not configured.
      */
     protected function getRetentionDays(): ?int
     {
@@ -251,9 +307,9 @@ class PruneFormSubmissions extends Command
             return (int) $days;
         }
 
-        $configDays = config( 'artisanpack.forms.submissions.retention_days');
+        $configDays = config( 'artisanpack.forms.submissions.retention_days' );
 
-        if ( null === $configDays) {
+        if ( null === $configDays ) {
             return null;
         }
 

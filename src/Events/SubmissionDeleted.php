@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Submission deleted event.
+ *
+ * Dispatched after a form submission is successfully deleted.
+ * This event can be used for native Laravel event listeners.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Events;
@@ -10,12 +24,15 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * SubmissionDeleted Event
+ * Submission deleted event class.
  *
  * Dispatched after a form submission is successfully deleted.
  * This event can be used for native Laravel event listeners.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class SubmissionDeleted
 {
@@ -25,11 +42,19 @@ class SubmissionDeleted
 
     /**
      * The form submission instance (before deletion).
+     *
+     * @since 1.0.0
+     *
+     * @var FormSubmission
      */
     public FormSubmission $submission;
 
     /**
-     * Create a new event instance.
+     * Creates a new event instance.
+     *
+     * @since 1.0.0
+     *
+     * @param FormSubmission $submission The deleted submission.
      */
     public function __construct( FormSubmission $submission )
     {

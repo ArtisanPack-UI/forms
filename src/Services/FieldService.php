@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Field service.
+ *
+ * Business logic layer for field CRUD operations. Handles creating,
+ * updating, deleting, duplicating, and reordering form fields.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
@@ -13,19 +27,29 @@ use InvalidArgumentException;
 use RuntimeException;
 
 /**
- * FieldService
+ * Field service class.
  *
  * Business logic layer for field CRUD operations. Handles creating,
  * updating, deleting, duplicating, and reordering form fields.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class FieldService
 {
     /**
-     * Create a new field for a form with defaults based on type.
+     * Creates a new field for a form with defaults based on type.
      *
-     * @param  array<string, mixed>  $data  Additional data to override defaults.
+     * @since 1.0.0
+     *
+     * @param Form                 $form   The form to add the field to.
+     * @param string               $type   The field type.
+     * @param int|null             $stepId The step ID for multi-step forms.
+     * @param array<string, mixed> $data   Additional data to override defaults.
+     *
+     * @return FormField The created field.
      */
     public function create( Form $form, string $type, ?int $stepId = null, array $data = [] ): FormField
     {
@@ -57,12 +81,18 @@ class FieldService
     }
 
     /**
-     * Update an existing field.
+     * Updates an existing field.
      *
-     * @param  array<string, mixed>  $data
+     * @since 1.0.0
+     *
+     * @param FormField            $field The field to update.
+     * @param array<string, mixed> $data  The updated field data.
      *
      * @throws InvalidArgumentException If an invalid field type is provided.
      * @throws RuntimeException If the field cannot be refreshed after update.
+     *
+     * @return FormField The updated field.
+     *
      */
     public function update( FormField $field, array $data ): FormField
     {
@@ -92,7 +122,13 @@ class FieldService
     }
 
     /**
-     * Delete a field.
+     * Deletes a field.
+     *
+     * @since 1.0.0
+     *
+     * @param FormField $field The field to delete.
+     *
+     * @return bool True on success.
      */
     public function delete( FormField $field ): bool
     {
@@ -100,7 +136,13 @@ class FieldService
     }
 
     /**
-     * Duplicate a field within the same form.
+     * Duplicates a field within the same form.
+     *
+     * @since 1.0.0
+     *
+     * @param FormField $field The field to duplicate.
+     *
+     * @return FormField The duplicated field.
      */
     public function duplicate( FormField $field ): FormField
     {
@@ -122,9 +164,15 @@ class FieldService
     }
 
     /**
-     * Reorder fields based on an array of UUIDs.
+     * Reorders fields based on an array of UUIDs.
      *
-     * @param  array<int, array{id: string}|string>  $orderedUuids  Array of field UUIDs in desired order (can be strings or objects with 'id' key).
+     * @since 1.0.0
+     *
+     * @param Form                                  $form         The form containing the fields.
+     * @param array<int, array{id: string}|string> $orderedUuids Array of field UUIDs in desired order.
+     * @param int|null                             $stepId       The step ID for multi-step forms.
+     *
+     * @return void
      */
     public function reorder( Form $form, array $orderedUuids, ?int $stepId = null ): void
     {
@@ -151,7 +199,14 @@ class FieldService
     }
 
     /**
-     * Move a field to a different step.
+     * Moves a field to a different step.
+     *
+     * @since 1.0.0
+     *
+     * @param FormField $field  The field to move.
+     * @param int|null  $stepId The target step ID or null for no step.
+     *
+     * @return FormField The updated field.
      */
     public function moveToStep( FormField $field, ?int $stepId ): FormField
     {
@@ -168,7 +223,14 @@ class FieldService
     }
 
     /**
-     * Get a field by its UUID within a form.
+     * Gets a field by its UUID within a form.
+     *
+     * @since 1.0.0
+     *
+     * @param Form   $form The form to search in.
+     * @param string $uuid The field UUID.
+     *
+     * @return FormField|null The field or null if not found.
      */
     public function getByUuid( Form $form, string $uuid ): ?FormField
     {
@@ -176,9 +238,14 @@ class FieldService
     }
 
     /**
-     * Get all fields for a form, optionally filtered by step.
+     * Gets all fields for a form, optionally filtered by step.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, FormField>
+     * @since 1.0.0
+     *
+     * @param Form     $form   The form to get fields from.
+     * @param int|null $stepId The step ID to filter by.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, FormField> The fields collection.
      */
     public function getFields( Form $form, ?int $stepId = null ): \Illuminate\Database\Eloquent\Collection
     {
@@ -194,7 +261,14 @@ class FieldService
     }
 
     /**
-     * Get the maximum sort order for fields in a form/step.
+     * Gets the maximum sort order for fields in a form/step.
+     *
+     * @since 1.0.0
+     *
+     * @param Form     $form   The form to check.
+     * @param int|null $stepId The step ID to filter by.
+     *
+     * @return int The maximum sort order value.
      */
     protected function getMaxSortOrder( Form $form, ?int $stepId = null ): int
     {
@@ -210,7 +284,15 @@ class FieldService
     }
 
     /**
-     * Generate a unique field name based on the label.
+     * Generates a unique field name based on the label.
+     *
+     * @since 1.0.0
+     *
+     * @param Form     $form      The form to check for uniqueness.
+     * @param string   $label     The field label to generate name from.
+     * @param int|null $excludeId The field ID to exclude from uniqueness check.
+     *
+     * @return string The generated unique field name.
      */
     protected function generateFieldName( Form $form, string $label, ?int $excludeId = null ): string
     {
@@ -232,14 +314,22 @@ class FieldService
     }
 
     /**
-     * Check if a field name already exists in the form.
+     * Checks if a field name already exists in the form.
+     *
+     * @since 1.0.0
+     *
+     * @param Form     $form      The form to check.
+     * @param string   $name      The field name to check.
+     * @param int|null $excludeId The field ID to exclude from the check.
+     *
+     * @return bool True if the name exists.
      */
     protected function fieldNameExists( Form $form, string $name, ?int $excludeId = null ): bool
     {
-        $query = $form->fields()->where( 'name', $name);
+        $query = $form->fields()->where( 'name', $name );
 
-        if ( null !== $excludeId) {
-            $query->where( 'id', '!=', $excludeId);
+        if ( null !== $excludeId ) {
+            $query->where( 'id', '!=', $excludeId );
         }
 
         return $query->exists();

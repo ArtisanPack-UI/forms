@@ -1,4 +1,15 @@
 <?php
+/**
+ * Form step model factory.
+ *
+ * Provides factory methods for creating FormStep model instances
+ * during testing, including states for steps with fields.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ * @since      1.0.0
+ */
 
 declare(strict_types=1);
 
@@ -9,7 +20,7 @@ use ArtisanPackUI\Forms\Models\FormStep;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * Factory for the FormStep model.
+ * Form step model factory class.
  *
  * @extends Factory<FormStep>
  *

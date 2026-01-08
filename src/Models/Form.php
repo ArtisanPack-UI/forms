@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Form model.
+ *
+ * Represents the main form definition including basic info,
+ * display settings, multi-step configuration, and status.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
@@ -17,32 +31,35 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
- * Form Model
+ * Form model class.
  *
  * Represents the main form definition including basic info,
  * display settings, multi-step configuration, and status.
  *
- * @property int $id
- * @property int|null $user_id
- * @property string $name
- * @property string $slug
- * @property string|null $description
- * @property string $submit_button_text
- * @property string|null $success_message
- * @property string|null $redirect_url
- * @property array|null $settings
- * @property bool $is_multi_step
- * @property bool $show_progress_bar
- * @property bool $allow_step_navigation
- * @property bool $is_active
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read int $unread_submissions_count
- * @property-read int $total_submissions_count
- * @property-read Collection $active_notifications
- * @property-read Collection $fields_ordered
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
  *
- * @since 1.0.0
+ * @since      1.0.0
+ *
+ * @property int                              $id
+ * @property int|null                         $user_id
+ * @property string                           $name
+ * @property string                           $slug
+ * @property string|null                      $description
+ * @property string                           $submit_button_text
+ * @property string|null                      $success_message
+ * @property string|null                      $redirect_url
+ * @property array|null                       $settings
+ * @property bool                             $is_multi_step
+ * @property bool                             $show_progress_bar
+ * @property bool                             $allow_step_navigation
+ * @property bool                             $is_active
+ * @property \Illuminate\Support\Carbon|null  $created_at
+ * @property \Illuminate\Support\Carbon|null  $updated_at
+ * @property-read int                         $unread_submissions_count
+ * @property-read int                         $total_submissions_count
+ * @property-read Collection                  $active_notifications
+ * @property-read Collection                  $fields_ordered
  */
 class Form extends Model
 {
@@ -50,6 +67,8 @@ class Form extends Model
 
     /**
      * The attributes that are mass assignable.
+     *
+     * @since 1.0.0
      *
      * @var list<string>
      */
@@ -73,12 +92,14 @@ class Form extends Model
     // =========================================
 
     /**
-     * Get the user who owns this form.
+     * Gets the user who owns this form.
      *
      * Returns the user model based on the configured user model class.
      * If no user_id is set, this relationship returns null.
      *
-     * @return BelongsTo<Model, $this>
+     * @since 1.0.0
+     *
+     * @return BelongsTo<Model, $this> The owner relationship.
      */
     public function owner(): BelongsTo
     {
@@ -88,9 +109,11 @@ class Form extends Model
     }
 
     /**
-     * Get the fields associated with this form.
+     * Gets the fields associated with this form.
      *
-     * @return HasMany<FormField, $this>
+     * @since 1.0.0
+     *
+     * @return HasMany<FormField, $this> The fields relationship.
      */
     public function fields(): HasMany
     {
@@ -98,9 +121,11 @@ class Form extends Model
     }
 
     /**
-     * Get the steps associated with this form.
+     * Gets the steps associated with this form.
      *
-     * @return HasMany<FormStep, $this>
+     * @since 1.0.0
+     *
+     * @return HasMany<FormStep, $this> The steps relationship.
      */
     public function steps(): HasMany
     {
@@ -108,9 +133,11 @@ class Form extends Model
     }
 
     /**
-     * Get the submissions associated with this form.
+     * Gets the submissions associated with this form.
      *
-     * @return HasMany<FormSubmission, $this>
+     * @since 1.0.0
+     *
+     * @return HasMany<FormSubmission, $this> The submissions relationship.
      */
     public function submissions(): HasMany
     {
@@ -118,9 +145,11 @@ class Form extends Model
     }
 
     /**
-     * Get the notifications associated with this form.
+     * Gets the notifications associated with this form.
      *
-     * @return HasMany<FormNotification, $this>
+     * @since 1.0.0
+     *
+     * @return HasMany<FormNotification, $this> The notifications relationship.
      */
     public function notifications(): HasMany
     {
@@ -132,11 +161,13 @@ class Form extends Model
     // =========================================
 
     /**
-     * Scope a query to only include active forms.
+     * Scopes a query to only include active forms.
      *
-     * @param  Builder<Form>  $query
+     * @since 1.0.0
      *
-     * @return Builder<Form>
+     * @param Builder<Form> $query The query builder instance.
+     *
+     * @return Builder<Form> The modified query builder.
      */
     public function scopeActive( Builder $query ): Builder
     {
@@ -144,11 +175,13 @@ class Form extends Model
     }
 
     /**
-     * Scope a query to only include multi-step forms.
+     * Scopes a query to only include multi-step forms.
      *
-     * @param  Builder<Form>  $query
+     * @since 1.0.0
      *
-     * @return Builder<Form>
+     * @param Builder<Form> $query The query builder instance.
+     *
+     * @return Builder<Form> The modified query builder.
      */
     public function scopeMultiStep( Builder $query ): Builder
     {
@@ -156,11 +189,13 @@ class Form extends Model
     }
 
     /**
-     * Scope a query to only include single-step forms.
+     * Scopes a query to only include single-step forms.
      *
-     * @param  Builder<Form>  $query
+     * @since 1.0.0
      *
-     * @return Builder<Form>
+     * @param Builder<Form> $query The query builder instance.
+     *
+     * @return Builder<Form> The modified query builder.
      */
     public function scopeSingleStep( Builder $query ): Builder
     {
@@ -172,7 +207,11 @@ class Form extends Model
     // =========================================
 
     /**
-     * Get the count of unread submissions.
+     * Gets the count of unread submissions.
+     *
+     * @since 1.0.0
+     *
+     * @return int The unread submissions count.
      */
     public function getUnreadSubmissionsCountAttribute(): int
     {
@@ -180,7 +219,11 @@ class Form extends Model
     }
 
     /**
-     * Get the total count of submissions.
+     * Gets the total count of submissions.
+     *
+     * @since 1.0.0
+     *
+     * @return int The total submissions count.
      */
     public function getTotalSubmissionsCountAttribute(): int
     {
@@ -188,9 +231,11 @@ class Form extends Model
     }
 
     /**
-     * Get the active notifications for this form.
+     * Gets the active notifications for this form.
      *
-     * @return Collection<int, FormNotification>
+     * @since 1.0.0
+     *
+     * @return Collection<int, FormNotification> The active notifications.
      */
     public function getActiveNotificationsAttribute(): Collection
     {
@@ -198,9 +243,11 @@ class Form extends Model
     }
 
     /**
-     * Get all fields in order, respecting multi-step structure.
+     * Gets all fields in order, respecting multi-step structure.
      *
-     * @return Collection<int, FormField>
+     * @since 1.0.0
+     *
+     * @return Collection<int, FormField> The ordered fields.
      */
     public function getFieldsOrderedAttribute(): Collection
     {
@@ -219,7 +266,14 @@ class Form extends Model
     // =========================================
 
     /**
-     * Get a setting value from the settings array.
+     * Gets a setting value from the settings array.
+     *
+     * @since 1.0.0
+     *
+     * @param string $key     The setting key using dot notation.
+     * @param mixed  $default The default value if key not found.
+     *
+     * @return mixed The setting value or default.
      */
     public function getSetting( string $key, mixed $default = null ): mixed
     {
@@ -227,7 +281,11 @@ class Form extends Model
     }
 
     /**
-     * Duplicate this form with all its steps, fields, and notifications.
+     * Duplicates this form with all its steps, fields, and notifications.
+     *
+     * @since 1.0.0
+     *
+     * @return self The duplicated form instance.
      */
     public function duplicate(): self
     {
@@ -272,7 +330,11 @@ class Form extends Model
     }
 
     /**
-     * Get the route key for the model.
+     * Gets the route key for the model.
+     *
+     * @since 1.0.0
+     *
+     * @return string The route key name.
      */
     public function getRouteKeyName(): string
     {
@@ -280,7 +342,11 @@ class Form extends Model
     }
 
     /**
-     * Create a new factory instance for the model.
+     * Creates a new factory instance for the model.
+     *
+     * @since 1.0.0
+     *
+     * @return FormFactory The factory instance.
      */
     protected static function newFactory(): FormFactory
     {
@@ -288,9 +354,11 @@ class Form extends Model
     }
 
     /**
-     * Get the attributes that should be cast.
+     * Gets the attributes that should be cast.
      *
-     * @return array<string, string>
+     * @since 1.0.0
+     *
+     * @return array<string, string> The cast definitions.
      */
     protected function casts(): array
     {
@@ -308,7 +376,13 @@ class Form extends Model
     // =========================================
 
     /**
-     * Bootstrap the model and its traits.
+     * Bootstraps the model and its traits.
+     *
+     * Sets up model event listeners for creating, created, updated, and deleted events.
+     *
+     * @since 1.0.0
+     *
+     * @return void
      */
     protected static function boot(): void
     {
@@ -352,7 +426,13 @@ class Form extends Model
     }
 
     /**
-     * Generate a unique slug from the given name.
+     * Generates a unique slug from the given name.
+     *
+     * @since 1.0.0
+     *
+     * @param string $name The name to generate a slug from.
+     *
+     * @return string The unique slug.
      */
     protected static function generateUniqueSlug( string $name ): string
     {
@@ -360,7 +440,7 @@ class Form extends Model
         $originalSlug = $slug;
         $count        = 1;
 
-        while ( static::where( 'slug', $slug)->exists()) {
+        while ( static::where( 'slug', $slug )->exists() ) {
             $slug = $originalSlug . '-' . $count;
             $count++;
         }

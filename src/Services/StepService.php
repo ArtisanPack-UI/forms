@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Step service.
+ *
+ * Business logic layer for step CRUD operations. Handles creating,
+ * updating, deleting, and reordering form steps for multi-step forms.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
@@ -10,19 +24,27 @@ use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * StepService
+ * Step service class.
  *
  * Business logic layer for step CRUD operations. Handles creating,
  * updating, deleting, and reordering form steps for multi-step forms.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class StepService
 {
     /**
-     * Create a new step for a form.
+     * Creates a new step for a form.
      *
-     * @param  array<string, mixed>  $data  Additional data to override defaults.
+     * @since 1.0.0
+     *
+     * @param Form                 $form The form to add the step to.
+     * @param array<string, mixed> $data Additional data to override defaults.
+     *
+     * @return FormStep The created step.
      */
     public function create( Form $form, array $data = [] ): FormStep
     {
@@ -42,11 +64,17 @@ class StepService
     }
 
     /**
-     * Update an existing step.
+     * Updates an existing step.
      *
-     * @param  array<string, mixed>  $data
+     * @since 1.0.0
+     *
+     * @param FormStep             $step The step to update.
+     * @param array<string, mixed> $data The updated step data.
      *
      * @throws RuntimeException If the step cannot be refreshed after update.
+     *
+     * @return FormStep The updated step.
+     *
      */
     public function update( FormStep $step, array $data ): FormStep
     {
@@ -62,10 +90,16 @@ class StepService
     }
 
     /**
-     * Delete a step and reassign its fields.
+     * Deletes a step and reassigns its fields.
      *
      * Fields from the deleted step are moved to the previous step,
      * or to no step (null) if this was the first step.
+     *
+     * @since 1.0.0
+     *
+     * @param FormStep $step The step to delete.
+     *
+     * @return bool True on success.
      */
     public function delete( FormStep $step ): bool
     {
@@ -94,9 +128,14 @@ class StepService
     }
 
     /**
-     * Reorder steps based on an array of step IDs.
+     * Reorders steps based on an array of step IDs.
      *
-     * @param  array<int, int>  $orderedIds  Array of step IDs in desired order.
+     * @since 1.0.0
+     *
+     * @param Form           $form       The form containing the steps.
+     * @param array<int, int> $orderedIds Array of step IDs in desired order.
+     *
+     * @return void
      */
     public function reorder( Form $form, array $orderedIds ): void
     {
@@ -112,7 +151,14 @@ class StepService
     }
 
     /**
-     * Get a step by its ID within a form.
+     * Gets a step by its ID within a form.
+     *
+     * @since 1.0.0
+     *
+     * @param Form $form   The form to search in.
+     * @param int  $stepId The step ID.
+     *
+     * @return FormStep|null The step or null if not found.
      */
     public function getById( Form $form, int $stepId ): ?FormStep
     {
@@ -120,9 +166,13 @@ class StepService
     }
 
     /**
-     * Get all steps for a form with their fields.
+     * Gets all steps for a form with their fields.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, FormStep>
+     * @since 1.0.0
+     *
+     * @param Form $form The form to get steps from.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, FormStep> The steps collection.
      */
     public function getSteps( Form $form ): \Illuminate\Database\Eloquent\Collection
     {
@@ -133,9 +183,15 @@ class StepService
     }
 
     /**
-     * Initialize a multi-step form with a default first step.
+     * Initializes a multi-step form with a default first step.
      *
      * Creates a step only if the form has no existing steps.
+     *
+     * @since 1.0.0
+     *
+     * @param Form $form The form to initialize.
+     *
+     * @return FormStep|null The created step or null if steps exist.
      */
     public function initializeMultiStep( Form $form ): ?FormStep
     {
@@ -147,9 +203,15 @@ class StepService
     }
 
     /**
-     * Convert a single-step form to multi-step.
+     * Converts a single-step form to multi-step.
      *
      * Creates a default step and assigns all existing fields to it.
+     *
+     * @since 1.0.0
+     *
+     * @param Form $form The form to convert.
+     *
+     * @return FormStep The created first step.
      */
     public function convertToMultiStep( Form $form ): FormStep
     {
@@ -167,9 +229,15 @@ class StepService
     }
 
     /**
-     * Convert a multi-step form to single-step.
+     * Converts a multi-step form to single-step.
      *
      * Removes all steps and sets all fields to have no step.
+     *
+     * @since 1.0.0
+     *
+     * @param Form $form The form to convert.
+     *
+     * @return void
      */
     public function convertToSingleStep( Form $form ): void
     {
@@ -183,7 +251,13 @@ class StepService
     }
 
     /**
-     * Get the first step of a form.
+     * Gets the first step of a form.
+     *
+     * @since 1.0.0
+     *
+     * @param Form $form The form to get the first step from.
+     *
+     * @return FormStep|null The first step or null if none exist.
      */
     public function getFirstStep( Form $form ): ?FormStep
     {
@@ -192,7 +266,13 @@ class StepService
     }
 
     /**
-     * Get the last step of a form.
+     * Gets the last step of a form.
+     *
+     * @since 1.0.0
+     *
+     * @param Form $form The form to get the last step from.
+     *
+     * @return FormStep|null The last step or null if none exist.
      */
     public function getLastStep( Form $form ): ?FormStep
     {
@@ -201,9 +281,15 @@ class StepService
     }
 
     /**
-     * Get the maximum sort order for steps in a form.
+     * Gets the maximum sort order for steps in a form.
+     *
+     * @since 1.0.0
+     *
+     * @param Form $form The form to check.
+     *
+     * @return int The maximum sort order value.
      */
-    protected function getMaxSortOrder( Form $form): int
+    protected function getMaxSortOrder( Form $form ): int
     {
         return (int) $form->steps()->max( 'sort_order');
     }

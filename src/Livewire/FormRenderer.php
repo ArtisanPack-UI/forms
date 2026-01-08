@@ -1,5 +1,20 @@
 <?php
 
+/**
+ * Form renderer Livewire component.
+ *
+ * Public-facing form renderer that displays forms, handles validation,
+ * processes submissions, and provides user feedback. Includes spam
+ * protection, file uploads, and multi-step navigation.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire;
@@ -18,13 +33,16 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 /**
- * FormRenderer Livewire Component
+ * Form renderer Livewire component class.
  *
  * Public-facing form renderer that displays forms, handles validation,
  * processes submissions, and provides user feedback. Includes spam
  * protection, file uploads, and multi-step navigation.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class FormRenderer extends Component
 {

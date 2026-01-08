@@ -1,21 +1,40 @@
 <?php
 
+/**
+ * Conditional logic configuration.
+ *
+ * Defines the operators, actions, and logic types available
+ * for conditional field visibility rules in the form builder.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Config;
 
 /**
- * ConditionalLogic Configuration
+ * Conditional logic configuration class.
  *
- * Defines the operators, actions, and logic types available
- * for conditional field visibility rules.
+ * Provides static methods and constants for conditional logic operations
+ * including available operators, actions, and validation utilities.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class ConditionalLogic
 {
     /**
      * Available condition actions.
+     *
+     * @since 1.0.0
      *
      * @var array<string, array{label: string, description: string}>
      */
@@ -33,6 +52,8 @@ class ConditionalLogic
     /**
      * Available logic types for combining multiple rules.
      *
+     * @since 1.0.0
+     *
      * @var array<string, array{label: string, description: string}>
      */
     public const LOGIC_TYPES = [
@@ -48,6 +69,8 @@ class ConditionalLogic
 
     /**
      * Available comparison operators with metadata.
+     *
+     * @since 1.0.0
      *
      * @var array<string, array{
      *     label: string,
@@ -187,9 +210,11 @@ class ConditionalLogic
     ];
 
     /**
-     * Get all available actions.
+     * Gets all available actions.
      *
-     * @return array<string, array{label: string, description: string}>
+     * @since 1.0.0
+     *
+     * @return array<string, array{label: string, description: string}> The available actions.
      */
     public static function getActions(): array
     {
@@ -197,9 +222,11 @@ class ConditionalLogic
     }
 
     /**
-     * Get all available logic types.
+     * Gets all available logic types.
      *
-     * @return array<string, array{label: string, description: string}>
+     * @since 1.0.0
+     *
+     * @return array<string, array{label: string, description: string}> The available logic types.
      */
     public static function getLogicTypes(): array
     {
@@ -207,9 +234,11 @@ class ConditionalLogic
     }
 
     /**
-     * Get all available operators.
+     * Gets all available operators.
      *
-     * @return array<string, array<string, mixed>>
+     * @since 1.0.0
+     *
+     * @return array<string, array<string, mixed>> The available operators.
      */
     public static function getOperators(): array
     {
@@ -217,9 +246,13 @@ class ConditionalLogic
     }
 
     /**
-     * Get operators that are compatible with a field type.
+     * Gets operators that are compatible with a field type.
      *
-     * @return array<string, array<string, mixed>>
+     * @since 1.0.0
+     *
+     * @param string $fieldType The field type to get operators for.
+     *
+     * @return array<string, array<string, mixed>> The compatible operators.
      */
     public static function getOperatorsForType( string $fieldType ): array
     {
@@ -230,9 +263,13 @@ class ConditionalLogic
     }
 
     /**
-     * Get operator configuration by key.
+     * Gets operator configuration by key.
      *
-     * @return array<string, mixed>|null
+     * @since 1.0.0
+     *
+     * @param string $key The operator key.
+     *
+     * @return array<string, mixed>|null The operator configuration or null if not found.
      */
     public static function getOperator( string $key ): ?array
     {
@@ -240,7 +277,13 @@ class ConditionalLogic
     }
 
     /**
-     * Check if an operator exists.
+     * Checks if an operator exists.
+     *
+     * @since 1.0.0
+     *
+     * @param string $key The operator key.
+     *
+     * @return bool True if the operator exists.
      */
     public static function operatorExists( string $key ): bool
     {
@@ -248,7 +291,13 @@ class ConditionalLogic
     }
 
     /**
-     * Check if an operator requires a value.
+     * Checks if an operator requires a value.
+     *
+     * @since 1.0.0
+     *
+     * @param string $key The operator key.
+     *
+     * @return bool True if the operator requires a value.
      */
     public static function operatorNeedsValue( string $key ): bool
     {
@@ -256,9 +305,11 @@ class ConditionalLogic
     }
 
     /**
-     * Get the default conditional logic structure.
+     * Gets the default conditional logic structure.
      *
-     * @return array{action: string, logic: string, rules: array<int, array{field: string, operator: string, value: string}>}
+     * @since 1.0.0
+     *
+     * @return array{action: string, logic: string, rules: array<int, array{field: string, operator: string, value: string}>} The default structure.
      */
     public static function getDefaultStructure(): array
     {
@@ -270,9 +321,15 @@ class ConditionalLogic
     }
 
     /**
-     * Create a new condition rule structure.
+     * Creates a new condition rule structure.
      *
-     * @return array{field: string, operator: string, value: string}
+     * @since 1.0.0
+     *
+     * @param string $fieldName The field name for the rule.
+     * @param string $operator  The comparison operator.
+     * @param string $value     The value to compare against.
+     *
+     * @return array{field: string, operator: string, value: string} The rule structure.
      */
     public static function createRule( string $fieldName = '', string $operator = 'equals', string $value = '' ): array
     {
@@ -284,11 +341,13 @@ class ConditionalLogic
     }
 
     /**
-     * Validate a conditional logic structure.
+     * Validates a conditional logic structure.
      *
-     * @param  array<string, mixed>  $logic
+     * @since 1.0.0
      *
-     * @return array{valid: bool, errors: array<string>}
+     * @param array<string, mixed> $logic The conditional logic structure to validate.
+     *
+     * @return array{valid: bool, errors: array<string>} The validation result.
      */
     public static function validate( array $logic ): array
     {
@@ -322,7 +381,7 @@ class ConditionalLogic
         }
 
         return [
-            'valid'  => empty( $errors),
+            'valid'  => empty( $errors ),
             'errors' => $errors,
         ];
     }

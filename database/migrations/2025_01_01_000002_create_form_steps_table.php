@@ -1,4 +1,15 @@
 <?php
+/**
+ * Create form steps table migration.
+ *
+ * Creates the form_steps table for multi-step forms.
+ * Each step defines a page/section with navigation settings.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ * @since      1.0.0
+ */
 
 declare(strict_types=1);
 
@@ -7,12 +18,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Create Form Steps Table Migration
+ * Create form steps table migration class.
  *
- * Creates the form_steps table for multi-step forms.
- * Each step defines a page/section with navigation settings.
- *
- * @since   1.0.0
+ * @since 1.0.0
  */
 return new class extends Migration
 {

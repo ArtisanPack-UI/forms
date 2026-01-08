@@ -1,4 +1,16 @@
 <?php
+/**
+ * Form submission model factory.
+ *
+ * Provides factory methods for creating FormSubmission model instances
+ * during testing, including states for read, unread, spam, starred,
+ * with values, with notes, and old submissions.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ * @since      1.0.0
+ */
 
 declare(strict_types=1);
 
@@ -9,7 +21,7 @@ use ArtisanPackUI\Forms\Models\FormSubmission;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * Factory for the FormSubmission model.
+ * Form submission model factory class.
  *
  * @extends Factory<FormSubmission>
  *

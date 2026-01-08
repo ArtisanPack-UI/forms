@@ -1,4 +1,16 @@
 <?php
+/**
+ * Form model factory.
+ *
+ * Provides factory methods for creating Form model instances
+ * during testing, including states for inactive, multi-step,
+ * and forms with fields, notifications, and steps.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ * @since      1.0.0
+ */
 
 declare(strict_types=1);
 
@@ -9,7 +21,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * Factory for the Form model.
+ * Form model factory class.
  *
  * @extends Factory<Form>
  *

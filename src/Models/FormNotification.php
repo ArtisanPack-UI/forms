@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Form notification model.
+ *
+ * Represents email notification configuration including recipient
+ * settings, template content, and conditional logic.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
@@ -11,10 +25,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * FormNotification Model
+ * Form notification model class.
  *
  * Represents email notification configuration including recipient
  * settings, template content, and conditional logic.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
  *
  * @property int $id
  * @property int $form_id
@@ -50,14 +67,37 @@ class FormNotification extends Model
     // Constants
     // =========================================
 
+    /**
+     * Admin notification type constant.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
     public const TYPE_ADMIN = 'admin';
 
+    /**
+     * Autoresponder notification type constant.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
     public const TYPE_AUTORESPONDER = 'autoresponder';
 
+    /**
+     * Custom notification type constant.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
     public const TYPE_CUSTOM = 'custom';
 
     /**
      * The attributes that are mass assignable.
+     *
+     * @since 1.0.0
      *
      * @var list<string>
      */
@@ -86,9 +126,11 @@ class FormNotification extends Model
     // =========================================
 
     /**
-     * Get the form that owns this notification.
+     * Gets the form that owns this notification.
      *
-     * @return BelongsTo<Form, $this>
+     * @since 1.0.0
+     *
+     * @return BelongsTo<Form, $this> The form relationship.
      */
     public function form(): BelongsTo
     {
@@ -100,11 +142,13 @@ class FormNotification extends Model
     // =========================================
 
     /**
-     * Scope a query to only include active notifications.
+     * Scopes a query to only include active notifications.
      *
-     * @param  Builder<FormNotification>  $query
+     * @since 1.0.0
      *
-     * @return Builder<FormNotification>
+     * @param Builder<FormNotification> $query The query builder instance.
+     *
+     * @return Builder<FormNotification> The modified query builder.
      */
     public function scopeActive( Builder $query ): Builder
     {
@@ -112,11 +156,14 @@ class FormNotification extends Model
     }
 
     /**
-     * Scope a query to only include notifications of a specific type.
+     * Scopes a query to only include notifications of a specific type.
      *
-     * @param  Builder<FormNotification>  $query
+     * @since 1.0.0
      *
-     * @return Builder<FormNotification>
+     * @param Builder<FormNotification> $query The query builder instance.
+     * @param string                    $type  The notification type to filter by.
+     *
+     * @return Builder<FormNotification> The modified query builder.
      */
     public function scopeOfType( Builder $query, string $type ): Builder
     {
@@ -124,11 +171,13 @@ class FormNotification extends Model
     }
 
     /**
-     * Scope a query to only include admin notifications.
+     * Scopes a query to only include admin notifications.
      *
-     * @param  Builder<FormNotification>  $query
+     * @since 1.0.0
      *
-     * @return Builder<FormNotification>
+     * @param Builder<FormNotification> $query The query builder instance.
+     *
+     * @return Builder<FormNotification> The modified query builder.
      */
     public function scopeAdmin( Builder $query ): Builder
     {
@@ -136,11 +185,13 @@ class FormNotification extends Model
     }
 
     /**
-     * Scope a query to only include autoresponder notifications.
+     * Scopes a query to only include autoresponder notifications.
      *
-     * @param  Builder<FormNotification>  $query
+     * @since 1.0.0
      *
-     * @return Builder<FormNotification>
+     * @param Builder<FormNotification> $query The query builder instance.
+     *
+     * @return Builder<FormNotification> The modified query builder.
      */
     public function scopeAutoresponder( Builder $query ): Builder
     {
@@ -152,7 +203,11 @@ class FormNotification extends Model
     // =========================================
 
     /**
-     * Check if this notification has conditional logic configured.
+     * Checks if this notification has conditional logic configured.
+     *
+     * @since 1.0.0
+     *
+     * @return bool True if conditional logic is configured.
      */
     public function getHasConditionalLogicAttribute(): bool
     {
@@ -161,7 +216,11 @@ class FormNotification extends Model
     }
 
     /**
-     * Check if this is an autoresponder notification.
+     * Checks if this is an autoresponder notification.
+     *
+     * @since 1.0.0
+     *
+     * @return bool True if this is an autoresponder notification.
      */
     public function getIsAutoresponderAttribute(): bool
     {
@@ -173,9 +232,13 @@ class FormNotification extends Model
     // =========================================
 
     /**
-     * Get all recipient email addresses for this notification.
+     * Gets all recipient email addresses for this notification.
      *
-     * @return array<int, string>
+     * @since 1.0.0
+     *
+     * @param FormSubmission $submission The submission to get recipient emails from.
+     *
+     * @return array<int, string> The recipient email addresses.
      */
     public function getRecipientEmails( FormSubmission $submission ): array
     {
@@ -198,7 +261,13 @@ class FormNotification extends Model
     }
 
     /**
-     * Get the reply-to email address for this notification.
+     * Gets the reply-to email address for this notification.
+     *
+     * @since 1.0.0
+     *
+     * @param FormSubmission $submission The submission to get reply-to from.
+     *
+     * @return string|null The reply-to email address or null.
      */
     public function getReplyToEmail( FormSubmission $submission ): ?string
     {
@@ -210,7 +279,13 @@ class FormNotification extends Model
     }
 
     /**
-     * Parse the message template with submission data.
+     * Parses the message template with submission data.
+     *
+     * @since 1.0.0
+     *
+     * @param FormSubmission $submission The submission to parse the message with.
+     *
+     * @return string The parsed message.
      */
     public function parseMessage( FormSubmission $submission ): string
     {
@@ -232,7 +307,13 @@ class FormNotification extends Model
     }
 
     /**
-     * Parse the subject template with submission data.
+     * Parses the subject template with submission data.
+     *
+     * @since 1.0.0
+     *
+     * @param FormSubmission $submission The submission to parse the subject with.
+     *
+     * @return string The parsed subject.
      */
     public function parseSubject( FormSubmission $submission ): string
     {
@@ -251,7 +332,11 @@ class FormNotification extends Model
     }
 
     /**
-     * Create a new factory instance for the model.
+     * Creates a new factory instance for the model.
+     *
+     * @since 1.0.0
+     *
+     * @return FormNotificationFactory The factory instance.
      */
     protected static function newFactory(): FormNotificationFactory
     {
@@ -259,9 +344,11 @@ class FormNotification extends Model
     }
 
     /**
-     * Get the attributes that should be cast.
+     * Gets the attributes that should be cast.
      *
-     * @return array<string, string>
+     * @since 1.0.0
+     *
+     * @return array<string, string> The cast definitions.
      */
     protected function casts(): array
     {

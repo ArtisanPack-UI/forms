@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Conditional logic service.
+ *
+ * Handles server-side evaluation of conditional logic rules
+ * to determine field visibility based on form data values.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
@@ -9,17 +23,22 @@ use ArtisanPackUI\Forms\Models\FormField;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * ConditionalLogicService
+ * Conditional logic service class.
  *
  * Handles server-side evaluation of conditional logic rules
  * to determine field visibility based on form data values.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class ConditionalLogicService
 {
     /**
      * Field name to UUID mapping for the current form.
+     *
+     * @since 1.0.0
      *
      * @var array<string, string>
      */
@@ -28,17 +47,21 @@ class ConditionalLogicService
     /**
      * UUID to field name mapping for the current form.
      *
+     * @since 1.0.0
+     *
      * @var array<string, string>
      */
     protected array $uuidToFieldName = [];
 
     /**
-     * Evaluate conditional logic for all fields in a form.
+     * Evaluates conditional logic for all fields in a form.
      *
-     * @param  Collection<int, FormField>  $fields
-     * @param  array<string, mixed>  $formData
+     * @since 1.0.0
      *
-     * @return array<string, bool> Map of field names to visibility (true = visible)
+     * @param Collection<int, FormField> $fields   The form fields.
+     * @param array<string, mixed>        $formData The form data.
+     *
+     * @return array<string, bool> Map of field names to visibility (true = visible).
      */
     public function evaluateAllFields( Collection $fields, array $formData ): array
     {
@@ -54,12 +77,14 @@ class ConditionalLogicService
     }
 
     /**
-     * Get hidden fields (inverse of visibility).
+     * Gets hidden fields (inverse of visibility).
      *
-     * @param  Collection<int, FormField>  $fields
-     * @param  array<string, mixed>  $formData
+     * @since 1.0.0
      *
-     * @return array<string, bool> Map of field names to hidden state (true = hidden)
+     * @param Collection<int, FormField> $fields   The form fields.
+     * @param array<string, mixed>        $formData The form data.
+     *
+     * @return array<string, bool> Map of field names to hidden state (true = hidden).
      */
     public function getHiddenFields( Collection $fields, array $formData ): array
     {
@@ -69,9 +94,14 @@ class ConditionalLogicService
     }
 
     /**
-     * Evaluate conditional logic for a single field.
+     * Evaluates conditional logic for a single field.
      *
-     * @param  array<string, mixed>  $formData
+     * @since 1.0.0
+     *
+     * @param FormField            $field    The field to evaluate.
+     * @param array<string, mixed> $formData The form data.
+     *
+     * @return bool True if the field should be visible.
      */
     public function evaluateField( FormField $field, array $formData ): bool
     {
@@ -108,10 +138,14 @@ class ConditionalLogicService
     }
 
     /**
-     * Evaluate a single condition rule.
+     * Evaluates a single condition rule.
      *
-     * @param  array<string, mixed>  $rule
-     * @param  array<string, mixed>  $formData
+     * @since 1.0.0
+     *
+     * @param array<string, mixed> $rule     The rule to evaluate.
+     * @param array<string, mixed> $formData The form data.
+     *
+     * @return bool True if the rule condition is met.
      */
     public function evaluateRule( array $rule, array $formData ): bool
     {
@@ -131,10 +165,15 @@ class ConditionalLogicService
     }
 
     /**
-     * Compare field value against rule value using the specified operator.
+     * Compares field value against rule value using the specified operator.
      *
-     * @param  mixed  $fieldValue
-     * @param  mixed  $ruleValue
+     * @since 1.0.0
+     *
+     * @param mixed  $fieldValue The field value.
+     * @param string $operator   The comparison operator.
+     * @param mixed  $ruleValue  The rule value to compare against.
+     *
+     * @return bool True if the comparison passes.
      */
     public function compareValues( $fieldValue, string $operator, $ruleValue ): bool
     {
@@ -162,16 +201,19 @@ class ConditionalLogicService
     }
 
     /**
-     * Get list of fields that can be used as condition targets for a given field.
+     * Gets list of fields that can be used as condition targets for a given field.
      *
      * This filters out:
      * - The field itself (can't reference itself)
      * - Layout fields (they don't have values)
      * - Fields in later steps (for multi-step forms)
      *
-     * @param  Collection<int, FormField>  $allFields
+     * @since 1.0.0
      *
-     * @return Collection<int, FormField>
+     * @param FormField                   $field     The field to get targets for.
+     * @param Collection<int, FormField>  $allFields All form fields.
+     *
+     * @return Collection<int, FormField> The available target fields.
      */
     public function getAvailableConditionTargets( FormField $field, Collection $allFields ): Collection
     {
@@ -203,11 +245,13 @@ class ConditionalLogicService
     }
 
     /**
-     * Detect circular dependencies in conditional logic.
+     * Detects circular dependencies in conditional logic.
      *
-     * @param  Collection<int, FormField>  $fields
+     * @since 1.0.0
      *
-     * @return array<string, array<string>> Map of field names to their circular dependency chains
+     * @param Collection<int, FormField> $fields The form fields to check.
+     *
+     * @return array<string, array<string>> Map of field names to their circular dependency chains.
      */
     public function detectCircularDependencies( Collection $fields ): array
     {
@@ -242,12 +286,14 @@ class ConditionalLogicService
     }
 
     /**
-     * Clean up conditional logic rules that reference deleted fields.
+     * Cleans up conditional logic rules that reference deleted fields.
      *
-     * @param  array<string, mixed>  $logic
-     * @param  Collection<int, FormField>  $availableFields
+     * @since 1.0.0
      *
-     * @return array<string, mixed> Cleaned logic structure
+     * @param array<string, mixed>       $logic           The logic structure to clean.
+     * @param Collection<int, FormField> $availableFields The available fields.
+     *
+     * @return array<string, mixed> Cleaned logic structure.
      */
     public function cleanupDeletedFieldReferences( array $logic, Collection $availableFields ): array
     {
@@ -274,9 +320,13 @@ class ConditionalLogicService
     }
 
     /**
-     * Build field name/UUID mappings.
+     * Builds field name/UUID mappings.
      *
-     * @param  Collection<int, FormField>  $fields
+     * @since 1.0.0
+     *
+     * @param Collection<int, FormField> $fields The form fields.
+     *
+     * @return void
      */
     protected function buildFieldMaps( Collection $fields ): void
     {
@@ -290,8 +340,15 @@ class ConditionalLogicService
     }
 
     /**
-     * Resolve a field reference to a field name.
+     * Resolves a field reference to a field name.
+     *
      * The reference could be a UUID or a field name.
+     *
+     * @since 1.0.0
+     *
+     * @param string $fieldRef The field reference (UUID or name).
+     *
+     * @return string The resolved field name.
      */
     protected function resolveFieldName( string $fieldRef ): string
     {
@@ -305,10 +362,14 @@ class ConditionalLogicService
     }
 
     /**
-     * Check if two values are equal.
+     * Checks if two values are equal.
      *
-     * @param  mixed  $fieldValue
-     * @param  mixed  $ruleValue
+     * @since 1.0.0
+     *
+     * @param mixed $fieldValue The field value.
+     * @param mixed $ruleValue  The rule value.
+     *
+     * @return bool True if values are equal.
      */
     protected function compareEquals( $fieldValue, $ruleValue ): bool
     {
@@ -327,10 +388,14 @@ class ConditionalLogicService
     }
 
     /**
-     * Check if field value contains the rule value.
+     * Checks if field value contains the rule value.
      *
-     * @param  mixed  $fieldValue
-     * @param  mixed  $ruleValue
+     * @since 1.0.0
+     *
+     * @param mixed $fieldValue The field value.
+     * @param mixed $ruleValue  The rule value.
+     *
+     * @return bool True if field contains the value.
      */
     protected function compareContains( $fieldValue, $ruleValue ): bool
     {
@@ -342,10 +407,14 @@ class ConditionalLogicService
     }
 
     /**
-     * Check if field value starts with the rule value.
+     * Checks if field value starts with the rule value.
      *
-     * @param  mixed  $fieldValue
-     * @param  mixed  $ruleValue
+     * @since 1.0.0
+     *
+     * @param mixed $fieldValue The field value.
+     * @param mixed $ruleValue  The rule value.
+     *
+     * @return bool True if field starts with the value.
      */
     protected function compareStartsWith( $fieldValue, $ruleValue ): bool
     {
@@ -357,10 +426,14 @@ class ConditionalLogicService
     }
 
     /**
-     * Check if field value ends with the rule value.
+     * Checks if field value ends with the rule value.
      *
-     * @param  mixed  $fieldValue
-     * @param  mixed  $ruleValue
+     * @since 1.0.0
+     *
+     * @param mixed $fieldValue The field value.
+     * @param mixed $ruleValue  The rule value.
+     *
+     * @return bool True if field ends with the value.
      */
     protected function compareEndsWith( $fieldValue, $ruleValue ): bool
     {
@@ -372,9 +445,13 @@ class ConditionalLogicService
     }
 
     /**
-     * Check if a value is empty.
+     * Checks if a value is empty.
      *
-     * @param  mixed  $value
+     * @since 1.0.0
+     *
+     * @param mixed $value The value to check.
+     *
+     * @return bool True if the value is empty.
      */
     protected function isEmpty( $value ): bool
     {
@@ -394,10 +471,14 @@ class ConditionalLogicService
     }
 
     /**
-     * Check if field value is greater than rule value.
+     * Checks if field value is greater than rule value.
      *
-     * @param  mixed  $fieldValue
-     * @param  mixed  $ruleValue
+     * @since 1.0.0
+     *
+     * @param mixed $fieldValue The field value.
+     * @param mixed $ruleValue  The rule value.
+     *
+     * @return bool True if field is greater than value.
      */
     protected function compareGreaterThan( $fieldValue, $ruleValue ): bool
     {
@@ -409,10 +490,14 @@ class ConditionalLogicService
     }
 
     /**
-     * Check if field value is less than rule value.
+     * Checks if field value is less than rule value.
      *
-     * @param  mixed  $fieldValue
-     * @param  mixed  $ruleValue
+     * @since 1.0.0
+     *
+     * @param mixed $fieldValue The field value.
+     * @param mixed $ruleValue  The rule value.
+     *
+     * @return bool True if field is less than value.
      */
     protected function compareLessThan( $fieldValue, $ruleValue ): bool
     {
@@ -424,10 +509,14 @@ class ConditionalLogicService
     }
 
     /**
-     * Check if field value is greater than or equal to rule value.
+     * Checks if field value is greater than or equal to rule value.
      *
-     * @param  mixed  $fieldValue
-     * @param  mixed  $ruleValue
+     * @since 1.0.0
+     *
+     * @param mixed $fieldValue The field value.
+     * @param mixed $ruleValue  The rule value.
+     *
+     * @return bool True if field is greater than or equal to value.
      */
     protected function compareGreaterOrEqual( $fieldValue, $ruleValue ): bool
     {
@@ -439,10 +528,14 @@ class ConditionalLogicService
     }
 
     /**
-     * Check if field value is less than or equal to rule value.
+     * Checks if field value is less than or equal to rule value.
      *
-     * @param  mixed  $fieldValue
-     * @param  mixed  $ruleValue
+     * @since 1.0.0
+     *
+     * @param mixed $fieldValue The field value.
+     * @param mixed $ruleValue  The rule value.
+     *
+     * @return bool True if field is less than or equal to value.
      */
     protected function compareLessOrEqual( $fieldValue, $ruleValue ): bool
     {
@@ -454,10 +547,14 @@ class ConditionalLogicService
     }
 
     /**
-     * Check if field value is in a comma-separated list.
+     * Checks if field value is in a comma-separated list.
      *
-     * @param  mixed  $fieldValue
-     * @param  mixed  $ruleValue
+     * @since 1.0.0
+     *
+     * @param mixed $fieldValue The field value.
+     * @param mixed $ruleValue  The comma-separated list.
+     *
+     * @return bool True if field value is in the list.
      */
     protected function compareIn( $fieldValue, $ruleValue ): bool
     {
@@ -471,9 +568,13 @@ class ConditionalLogicService
     }
 
     /**
-     * Check if a checkbox is checked.
+     * Checks if a checkbox is checked.
      *
-     * @param  mixed  $value
+     * @since 1.0.0
+     *
+     * @param mixed $value The checkbox value.
+     *
+     * @return bool True if the checkbox is checked.
      */
     protected function isChecked( $value ): bool
     {
@@ -489,10 +590,14 @@ class ConditionalLogicService
     }
 
     /**
-     * Check if an array value includes a specific item.
+     * Checks if an array value includes a specific item.
      *
-     * @param  mixed  $fieldValue
-     * @param  mixed  $ruleValue
+     * @since 1.0.0
+     *
+     * @param mixed $fieldValue The array field value.
+     * @param mixed $ruleValue  The value to search for.
+     *
+     * @return bool True if the array includes the value.
      */
     protected function compareIncludes( $fieldValue, $ruleValue ): bool
     {
@@ -504,15 +609,20 @@ class ConditionalLogicService
     }
 
     /**
-     * Check if a field has a circular dependency using depth-first search.
+     * Checks if a field has a circular dependency using depth-first search.
      *
-     * @param  array<string, array<string>>  $dependencies
-     * @param  array<string, bool>  $visited
-     * @param  array<string>  $path
+     * @since 1.0.0
+     *
+     * @param string                       $fieldName    The field name to check.
+     * @param array<string, array<string>> $dependencies The dependency graph.
+     * @param array<string, bool>          $visited      Visited nodes tracker.
+     * @param array<string>                $path         Current path tracker.
+     *
+     * @return bool True if a cycle is detected.
      */
     protected function hasCycle( string $fieldName, array $dependencies, array &$visited, array &$path ): bool
     {
-        if ( isset( $visited[ $fieldName ])) {
+        if ( isset( $visited[ $fieldName ] ) ) {
             // Found a cycle
             $path[] = $fieldName;
 
@@ -522,8 +632,8 @@ class ConditionalLogicService
         $visited[ $fieldName ] = true;
         $path[]                = $fieldName;
 
-        foreach ( $dependencies[ $fieldName ] ?? [] as $dependency) {
-            if ( $dependency && $this->hasCycle( $dependency, $dependencies, $visited, $path)) {
+        foreach ( $dependencies[ $fieldName ] ?? [] as $dependency ) {
+            if ( $dependency && $this->hasCycle( $dependency, $dependencies, $visited, $path ) ) {
                 return true;
             }
         }

@@ -1,21 +1,40 @@
 <?php
 
+/**
+ * Field types configuration.
+ *
+ * Defines all available field types with their metadata, categories,
+ * icons, validation options, and default values for the form builder.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Config;
 
 /**
- * FieldTypes Configuration
+ * Field types configuration class.
  *
- * Defines all available field types with their metadata,
- * categories, icons, validation options, and default values.
+ * Provides static methods and constants for retrieving field type
+ * definitions, categories, and metadata used throughout the form builder.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class FieldTypes
 {
     /**
      * Field type categories for organizing the palette.
+     *
+     * @since 1.0.0
      *
      * @var array<string, array{label: string, fields: array<string>}>
      */
@@ -40,6 +59,8 @@ class FieldTypes
 
     /**
      * Field type definitions with metadata.
+     *
+     * @since 1.0.0
      *
      * @var array<string, array{
      *     label: string,
@@ -328,6 +349,8 @@ class FieldTypes
     /**
      * Width options for field layout.
      *
+     * @since 1.0.0
+     *
      * @var array<string, array{label: string, class: string}>
      */
     public const WIDTHS = [
@@ -350,9 +373,11 @@ class FieldTypes
     ];
 
     /**
-     * Get all field categories with their field types.
+     * Gets all field categories with their field types.
      *
-     * @return array<string, array{label: string, fields: array<string>}>
+     * @since 1.0.0
+     *
+     * @return array<string, array{label: string, fields: array<string>}> The field categories.
      */
     public static function getCategories(): array
     {
@@ -360,12 +385,14 @@ class FieldTypes
     }
 
     /**
-     * Get all field type definitions.
+     * Gets all field type definitions.
      *
      * Applies the 'forms.field_types' filter hook to allow
      * third-party packages to register custom field types.
      *
-     * @return array<string, array<string, mixed>>
+     * @since 1.0.0
+     *
+     * @return array<string, array<string, mixed>> The field type definitions.
      */
     public static function getTypes(): array
     {
@@ -380,12 +407,14 @@ class FieldTypes
     }
 
     /**
-     * Get all field categories with their field types.
+     * Gets all field categories with their field types (filtered).
      *
      * Applies the 'forms.field_categories' filter hook to allow
      * third-party packages to register custom categories.
      *
-     * @return array<string, array{label: string, fields: array<string>}>
+     * @since 1.0.0
+     *
+     * @return array<string, array{label: string, fields: array<string>}> The filtered field categories.
      */
     public static function getCategoriesFiltered(): array
     {
@@ -400,9 +429,11 @@ class FieldTypes
     }
 
     /**
-     * Get configuration for a specific field type.
+     * Gets configuration for a specific field type.
      *
-     * @param  string  $type  The field type name.
+     * @since 1.0.0
+     *
+     * @param string $type The field type name.
      *
      * @return array<string, mixed>|null The field type config or null if not found.
      */
@@ -414,9 +445,11 @@ class FieldTypes
     }
 
     /**
-     * Get default values for a specific field type.
+     * Gets default values for a specific field type.
      *
-     * @param  string  $type  The field type name.
+     * @since 1.0.0
+     *
+     * @param string $type The field type name.
      *
      * @return array<string, mixed> The default values for the field type.
      */
@@ -428,9 +461,11 @@ class FieldTypes
     }
 
     /**
-     * Check if a field type has options (for select, radio, checkbox_group).
+     * Checks if a field type has options (for select, radio, checkbox_group).
      *
-     * @param  string  $type  The field type name.
+     * @since 1.0.0
+     *
+     * @param string $type The field type name.
      *
      * @return bool True if the field type has configurable options.
      */
@@ -442,9 +477,11 @@ class FieldTypes
     }
 
     /**
-     * Get available validation options for a field type.
+     * Gets available validation options for a field type.
      *
-     * @param  string  $type  The field type name.
+     * @since 1.0.0
+     *
+     * @param string $type The field type name.
      *
      * @return array<string> Array of available validation option names.
      */
@@ -456,9 +493,11 @@ class FieldTypes
     }
 
     /**
-     * Get all width options.
+     * Gets all width options.
      *
-     * @return array<string, array{label: string, class: string}>
+     * @since 1.0.0
+     *
+     * @return array<string, array{label: string, class: string}> The width options.
      */
     public static function getWidths(): array
     {
@@ -466,9 +505,11 @@ class FieldTypes
     }
 
     /**
-     * Check if a field type exists.
+     * Checks if a field type exists.
      *
-     * @param  string  $type  The field type name.
+     * @since 1.0.0
+     *
+     * @param string $type The field type name.
      *
      * @return bool True if the field type exists.
      */
@@ -480,9 +521,11 @@ class FieldTypes
     }
 
     /**
-     * Check if a field type supports placeholders.
+     * Checks if a field type supports placeholders.
      *
-     * @param  string  $type  The field type name.
+     * @since 1.0.0
+     *
+     * @param string $type The field type name.
      *
      * @return bool True if the field type supports placeholders.
      */
@@ -494,9 +537,11 @@ class FieldTypes
     }
 
     /**
-     * Check if a field type supports default values.
+     * Checks if a field type supports default values.
      *
-     * @param  string  $type  The field type name.
+     * @since 1.0.0
+     *
+     * @param string $type The field type name.
      *
      * @return bool True if the field type supports default values.
      */
@@ -508,12 +553,14 @@ class FieldTypes
     }
 
     /**
-     * Check if a field type is a layout element (not a data input).
+     * Checks if a field type is a layout element (not a data input).
      *
      * Layout elements (heading, paragraph, divider, html) are display-only
      * and do not collect or store user input.
      *
-     * @param  string  $type  The field type name.
+     * @since 1.0.0
+     *
+     * @param string $type The field type name.
      *
      * @return bool True if the field type is a layout element.
      */
@@ -525,11 +572,13 @@ class FieldTypes
     }
 
     /**
-     * Get all field type definitions.
+     * Gets all field type definitions.
      *
      * Alias for getTypes() for convenience.
      *
-     * @return array<string, array<string, mixed>>
+     * @since 1.0.0
+     *
+     * @return array<string, array<string, mixed>> The field type definitions.
      */
     public static function all(): array
     {

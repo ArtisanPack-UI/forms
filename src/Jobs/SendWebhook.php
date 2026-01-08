@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Send webhook job.
+ *
+ * Queued job that sends a webhook notification when a form submission is created.
+ * Supports webhook secret verification for secure integrations.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Jobs;
@@ -17,12 +31,15 @@ use RuntimeException;
 use Throwable;
 
 /**
- * SendWebhook Job
+ * Send webhook job class.
  *
  * Queued job that sends a webhook notification when a form submission is created.
  * Supports webhook secret verification for secure integrations.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class SendWebhook implements ShouldQueue
 {
@@ -33,11 +50,19 @@ class SendWebhook implements ShouldQueue
 
     /**
      * The number of times the job may be attempted.
+     *
+     * @since 1.0.0
+     *
+     * @var int
      */
     public int $tries = 3;
 
     /**
      * The number of seconds to wait before retrying the job.
+     *
+     * Uses exponential backoff: 10 seconds, 60 seconds, then 5 minutes.
+     *
+     * @since 1.0.0
      *
      * @var array<int, int>
      */
@@ -45,21 +70,39 @@ class SendWebhook implements ShouldQueue
 
     /**
      * The form submission to send.
+     *
+     * @since 1.0.0
+     *
+     * @var FormSubmission
      */
     public FormSubmission $submission;
 
     /**
      * The webhook URL to send to.
+     *
+     * @since 1.0.0
+     *
+     * @var string
      */
     public string $url;
 
     /**
      * The optional webhook secret for signature verification.
+     *
+     * @since 1.0.0
+     *
+     * @var string|null
      */
     public ?string $secret;
 
     /**
-     * Create a new job instance.
+     * Creates a new job instance.
+     *
+     * @since 1.0.0
+     *
+     * @param FormSubmission $submission The form submission to send.
+     * @param string         $url        The webhook URL.
+     * @param string|null    $secret     Optional secret for signature verification.
      */
     public function __construct( FormSubmission $submission, string $url, ?string $secret = null )
     {
@@ -69,7 +112,13 @@ class SendWebhook implements ShouldQueue
     }
 
     /**
-     * Execute the job.
+     * Executes the job.
+     *
+     * Builds the payload, sends the webhook request, and handles the response.
+     *
+     * @since 1.0.0
+     *
+     * @return void
      */
     public function handle(): void
     {
@@ -121,7 +170,15 @@ class SendWebhook implements ShouldQueue
     }
 
     /**
-     * Handle a job failure.
+     * Handles a job failure.
+     *
+     * Logs an error when the job fails permanently after all retry attempts.
+     *
+     * @since 1.0.0
+     *
+     * @param Throwable $exception The exception that caused the failure.
+     *
+     * @return void
      */
     public function failed( Throwable $exception ): void
     {
@@ -134,9 +191,13 @@ class SendWebhook implements ShouldQueue
     }
 
     /**
-     * Get the tags that should be assigned to the job.
+     * Gets the tags that should be assigned to the job.
      *
-     * @return array<int, string>
+     * Tags are used for monitoring and filtering jobs in queue dashboards.
+     *
+     * @since 1.0.0
+     *
+     * @return array<int, string> The job tags.
      */
     public function tags(): array
     {
@@ -148,9 +209,14 @@ class SendWebhook implements ShouldQueue
     }
 
     /**
-     * Build the webhook payload.
+     * Builds the webhook payload.
      *
-     * @return array<string, mixed>
+     * Creates the JSON payload including form data, submission data, and metadata.
+     * Respects privacy settings for IP address and user agent.
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, mixed> The webhook payload.
      */
     protected function buildPayload(): array
     {
@@ -196,11 +262,15 @@ class SendWebhook implements ShouldQueue
     }
 
     /**
-     * Build the request headers.
+     * Builds the request headers.
      *
-     * @param  array<string, mixed>  $payload
+     * Includes content type, user agent, event type, and optional HMAC signature.
      *
-     * @return array<string, string>
+     * @since 1.0.0
+     *
+     * @param array<string, mixed> $payload The webhook payload for signature generation.
+     *
+     * @return array<string, string> The request headers.
      */
     protected function buildHeaders( array $payload ): array
     {
@@ -222,14 +292,20 @@ class SendWebhook implements ShouldQueue
     }
 
     /**
-     * Generate HMAC signature for the payload.
+     * Generates HMAC signature for the payload.
      *
-     * @param  array<string, mixed>  $payload
+     * Creates a SHA256 HMAC signature using the webhook secret.
+     *
+     * @since 1.0.0
+     *
+     * @param array<string, mixed> $payload The webhook payload to sign.
+     *
+     * @return string The HMAC signature.
      */
     protected function generateSignature( array $payload ): string
     {
-        $jsonPayload = json_encode( $payload, JSON_THROW_ON_ERROR);
+        $jsonPayload = json_encode( $payload, JSON_THROW_ON_ERROR );
 
-        return hash_hmac( 'sha256', $jsonPayload, $this->secret);
+        return hash_hmac( 'sha256', $jsonPayload, $this->secret );
     }
 }

@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Send form notification job.
+ *
+ * Queued job that sends a single form notification email.
+ * Handles recipient resolution, email building, and error logging.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Jobs;
@@ -18,12 +32,15 @@ use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 /**
- * SendFormNotification Job
+ * Send form notification job class.
  *
  * Queued job that sends a single form notification email.
  * Handles recipient resolution, email building, and error logging.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class SendFormNotification implements ShouldQueue
 {
@@ -34,26 +51,47 @@ class SendFormNotification implements ShouldQueue
 
     /**
      * The number of times the job may be attempted.
+     *
+     * @since 1.0.0
+     *
+     * @var int
      */
     public int $tries = 3;
 
     /**
      * The number of seconds to wait before retrying the job.
+     *
+     * @since 1.0.0
+     *
+     * @var int
      */
     public int $backoff = 60;
 
     /**
      * The form notification to send.
+     *
+     * @since 1.0.0
+     *
+     * @var FormNotification
      */
     public FormNotification $notification;
 
     /**
      * The form submission data.
+     *
+     * @since 1.0.0
+     *
+     * @var FormSubmission
      */
     public FormSubmission $submission;
 
     /**
-     * Create a new job instance.
+     * Creates a new job instance.
+     *
+     * @since 1.0.0
+     *
+     * @param FormNotification $notification The notification to send.
+     * @param FormSubmission   $submission   The form submission data.
      */
     public function __construct( FormNotification $notification, FormSubmission $submission )
     {
@@ -62,7 +100,13 @@ class SendFormNotification implements ShouldQueue
     }
 
     /**
-     * Execute the job.
+     * Executes the job.
+     *
+     * Loads required relationships, resolves recipients, and sends the notification email.
+     *
+     * @since 1.0.0
+     *
+     * @return void
      */
     public function handle(): void
     {
@@ -136,7 +180,15 @@ class SendFormNotification implements ShouldQueue
     }
 
     /**
-     * Handle a job failure.
+     * Handles a job failure.
+     *
+     * Logs an error when the job fails permanently after all retry attempts.
+     *
+     * @since 1.0.0
+     *
+     * @param Throwable $exception The exception that caused the failure.
+     *
+     * @return void
      */
     public function failed( Throwable $exception ): void
     {
@@ -149,9 +201,13 @@ class SendFormNotification implements ShouldQueue
     }
 
     /**
-     * Get the tags that should be assigned to the job.
+     * Gets the tags that should be assigned to the job.
      *
-     * @return array<int, string>
+     * Tags are used for monitoring and filtering jobs in queue dashboards.
+     *
+     * @since 1.0.0
+     *
+     * @return array<int, string> The job tags.
      */
     public function tags(): array
     {

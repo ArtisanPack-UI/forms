@@ -1,5 +1,20 @@
 <?php
 
+/**
+ * Forms package web routes.
+ *
+ * Defines admin routes for form management, submissions viewing,
+ * and file downloads. The route prefix and middleware are configurable
+ * via the forms config file.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 use ArtisanPackUI\Forms\Http\Controllers\FormController;
@@ -37,5 +52,5 @@ Route::prefix( config( 'artisanpack.forms.admin.prefix', 'admin/forms' ) )
         Route::get( '/{form}/submissions/{submission}', [SubmissionController::class, 'show'] )->name( 'submissions.show' );
 
         // File upload download route (includes form and submission for authorization)
-        Route::get( '/{form}/submissions/{submission}/uploads/{upload}/download', [SubmissionController::class, 'downloadUpload'])->name( 'uploads.download');
-    });
+        Route::get( '/{form}/submissions/{submission}/uploads/{upload}/download', [SubmissionController::class, 'downloadUpload'] )->name( 'uploads.download' );
+    } );

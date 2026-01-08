@@ -1,4 +1,15 @@
 <?php
+/**
+ * Create form fields table migration.
+ *
+ * Creates the form_fields table for storing individual field configurations.
+ * Fields can belong directly to a form or to a specific step for multi-step forms.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ * @since      1.0.0
+ */
 
 declare(strict_types=1);
 
@@ -7,12 +18,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Create Form Fields Table Migration
+ * Create form fields table migration class.
  *
- * Creates the form_fields table for storing individual field configurations.
- * Fields can belong directly to a form or to a specific step for multi-step forms.
- *
- * @since   1.0.0
+ * @since 1.0.0
  */
 return new class extends Migration
 {

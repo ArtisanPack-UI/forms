@@ -1,4 +1,16 @@
 <?php
+/**
+ * Create form notifications table migration.
+ *
+ * Creates the form_notifications table for storing email notification
+ * configurations per form. Supports admin notifications, autoresponders,
+ * and custom notifications with conditional sending.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ * @since      1.0.0
+ */
 
 declare(strict_types=1);
 
@@ -7,13 +19,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Create Form Notifications Table Migration
+ * Create form notifications table migration class.
  *
- * Creates the form_notifications table for storing email notification
- * configurations per form. Supports admin notifications, autoresponders,
- * and custom notifications with conditional sending.
- *
- * @since   1.0.0
+ * @since 1.0.0
  */
 return new class extends Migration
 {

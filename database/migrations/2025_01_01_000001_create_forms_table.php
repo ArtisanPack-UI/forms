@@ -1,4 +1,15 @@
 <?php
+/**
+ * Create forms table migration.
+ *
+ * Creates the forms table for storing main form definitions including
+ * basic info, display settings, multi-step configuration, and status.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ * @since      1.0.0
+ */
 
 declare(strict_types=1);
 
@@ -7,12 +18,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Create Forms Table Migration
+ * Create forms table migration class.
  *
- * Creates the forms table for storing main form definitions including
- * basic info, display settings, multi-step configuration, and status.
- *
- * @since   1.0.0
+ * @since 1.0.0
  */
 return new class extends Migration
 {

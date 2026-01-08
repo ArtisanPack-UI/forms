@@ -1,4 +1,16 @@
 <?php
+/**
+ * Form notification model factory.
+ *
+ * Provides factory methods for creating FormNotification model instances
+ * during testing, including states for admin notifications, autoresponders,
+ * custom notifications, and conditional logic.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ * @since      1.0.0
+ */
 
 declare(strict_types=1);
 
@@ -9,7 +21,7 @@ use ArtisanPackUI\Forms\Models\FormNotification;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * Factory for the FormNotification model.
+ * Form notification model factory class.
  *
  * @extends Factory<FormNotification>
  *

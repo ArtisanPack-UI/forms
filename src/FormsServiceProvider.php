@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Forms service provider.
+ *
+ * Bootstraps the Forms package by registering configuration, database migrations,
+ * Livewire components, event listeners, and authorization policies.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms;
@@ -36,17 +50,23 @@ use RuntimeException;
  * the main artisanpack.php config file following the ArtisanPack UI
  * package conventions.
  *
- * @since   1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class FormsServiceProvider extends ServiceProvider
 {
     /**
-     * Register any application services.
+     * Registers any application services.
      *
-     * This method merges the package's local forms configuration into a temporary key.
+     * Merges the package's local forms configuration into a temporary key.
      * The `boot` method will then handle merging this into the main `artisanpack` config.
+     * Also registers all service classes as singletons in the container.
      *
      * @since 1.0.0
+     *
+     * @return void
      */
     public function register(): void
     {
@@ -93,12 +113,14 @@ class FormsServiceProvider extends ServiceProvider
     }
 
     /**
-     * Bootstrap any application services.
+     * Bootstraps any application services.
      *
-     * This method publishes the configuration, merges it into the main `artisanpack`
-     * config array, and loads database migrations.
+     * Publishes the configuration, merges it into the main `artisanpack`
+     * config array, loads database migrations, views, and routes.
      *
      * @since 1.0.0
+     *
+     * @return void
      */
     public function boot(): void
     {
@@ -119,10 +141,12 @@ class FormsServiceProvider extends ServiceProvider
     /**
      * Merges the package's default configuration with the user's customizations.
      *
-     * This method ensures that the user's settings under the 'forms' key
-     * in `config/artisanpack.php` take precedence over the package's default values.
+     * Ensures that the user's settings under the 'forms' key in `config/artisanpack.php`
+     * take precedence over the package's default values.
      *
      * @since 1.0.0
+     *
+     * @return void
      */
     protected function mergeConfiguration(): void
     {
@@ -133,15 +157,17 @@ class FormsServiceProvider extends ServiceProvider
     }
 
     /**
-     * Validate the user model configuration.
+     * Validates the user model configuration.
      *
      * Ensures the configured user model class exists and extends Eloquent Model.
      * This validation only runs when ownership restriction is enabled to avoid
      * breaking applications that don't use the ownership feature.
      *
+     * @since 1.0.0
+     *
      * @throws RuntimeException If the user model class is invalid.
      *
-     * @since 1.0.0
+     * @return void
      */
     protected function validateUserModelConfiguration(): void
     {
@@ -175,6 +201,8 @@ class FormsServiceProvider extends ServiceProvider
      * if it hasn't already been defined by the user.
      *
      * @since 1.0.0
+     *
+     * @return void
      */
     protected function registerFilesystemDisk(): void
     {
@@ -189,9 +217,13 @@ class FormsServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register the package's artisan commands.
+     * Registers the package's artisan commands.
+     *
+     * Commands are only registered when running in the console environment.
      *
      * @since 1.0.0
+     *
+     * @return void
      */
     protected function registerCommands(): void
     {
@@ -203,9 +235,13 @@ class FormsServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register the package's event listeners.
+     * Registers the package's event listeners.
+     *
+     * Sets up listeners for form-related events such as submission webhooks.
      *
      * @since 1.0.0
+     *
+     * @return void
      */
     protected function registerEventListeners(): void
     {
@@ -213,9 +249,14 @@ class FormsServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register the package's authorization policies.
+     * Registers the package's authorization policies.
+     *
+     * Maps model classes to their corresponding policy classes for
+     * Laravel's Gate authorization system.
      *
      * @since 1.0.0
+     *
+     * @return void
      */
     protected function registerPolicies(): void
     {
@@ -224,12 +265,14 @@ class FormsServiceProvider extends ServiceProvider
     }
 
     /**
-     * Publish the configuration file to the application's config directory.
+     * Publishes the configuration file to the application's config directory.
      *
      * Configuration will be published to config/artisanpack/forms.php to maintain
      * the unified ArtisanPack UI configuration structure.
      *
      * @since 1.0.0
+     *
+     * @return void
      */
     protected function publishConfiguration(): void
     {
@@ -241,9 +284,13 @@ class FormsServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register the package's Livewire components.
+     * Registers the package's Livewire components.
+     *
+     * Components are only registered if Livewire is available in the application.
      *
      * @since 1.0.0
+     *
+     * @return void
      */
     protected function registerLivewireComponents(): void
     {
@@ -258,15 +305,19 @@ class FormsServiceProvider extends ServiceProvider
     }
 
     /**
-     * Publish the package's views.
+     * Publishes the package's views.
+     *
+     * Views are published to resources/views/vendor/forms for customization.
      *
      * @since 1.0.0
+     *
+     * @return void
      */
     protected function publishViews(): void
     {
-        if ( $this->app->runningInConsole()) {
+        if ( $this->app->runningInConsole() ) {
             $this->publishes( [
-                __DIR__ . '/../resources/views' => resource_path( 'views/vendor/forms'),
+                __DIR__ . '/../resources/views' => resource_path( 'views/vendor/forms' ),
             ], 'artisanpack-forms-views');
         }
     }

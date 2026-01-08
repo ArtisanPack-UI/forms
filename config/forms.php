@@ -1,12 +1,17 @@
 <?php
 
 /**
- * ArtisanPack UI Forms Configuration
+ * ArtisanPack UI Forms configuration.
  *
- * This configuration file defines all settings for the Forms package
- * including storage, submissions, spam protection, and notification defaults.
+ * Defines all settings for the Forms package including storage, submissions,
+ * spam protection, notification defaults, privacy settings, and authorization.
  *
- * @since   1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
  */
 return [
 
@@ -255,7 +260,7 @@ return [
     'disk_config' => [
         'form-uploads' => [
             'driver'     => 'local',
-            'root'       => storage_path( 'app/form-uploads'),
+            'root'       => storage_path( 'app/form-uploads' ),
             'visibility' => 'private',
         ],
     ],

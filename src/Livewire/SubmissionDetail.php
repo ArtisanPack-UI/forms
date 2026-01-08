@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Submission detail Livewire component.
+ *
+ * Displays detailed information about a form submission including
+ * field values, metadata, and admin actions.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire;
@@ -11,12 +25,15 @@ use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 /**
- * SubmissionDetail Livewire Component
+ * Submission detail Livewire component class.
  *
  * Displays detailed information about a form submission including
  * field values, metadata, and admin actions.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class SubmissionDetail extends Component
 {
@@ -198,7 +215,7 @@ class SubmissionDetail extends Component
             $this->redirect( route( 'forms.submissions.show', [
                 $this->form->slug,
                 $this->nextSubmission,
-            ]));
+            ] ) );
         }
     }
 
@@ -207,6 +224,6 @@ class SubmissionDetail extends Component
      */
     public function render(): View
     {
-        return view( 'forms::livewire.submission-detail');
+        return view( 'forms::livewire.submission-detail' );
     }
 }

@@ -1,5 +1,18 @@
 <?php
 
+/**
+ * Submission controller.
+ *
+ * Handles the admin interface for viewing and managing form submissions.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Http\Controllers;
@@ -17,18 +30,25 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * SubmissionController
+ * Submission controller class.
  *
  * Handles the admin interface for viewing and managing form submissions.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class SubmissionController extends Controller
 {
     use AuthorizesRequests;
 
     /**
-     * Display a listing of all submissions (across all forms).
+     * Displays a listing of all submissions across all forms.
+     *
+     * @since 1.0.0
+     *
+     * @return View The all submissions index view.
      */
     public function indexAll(): View
     {
@@ -38,7 +58,13 @@ class SubmissionController extends Controller
     }
 
     /**
-     * Display a listing of submissions for a specific form.
+     * Displays a listing of submissions for a specific form.
+     *
+     * @since 1.0.0
+     *
+     * @param Form $form The form to view submissions for.
+     *
+     * @return View The form submissions index view.
      */
     public function index( Form $form ): View
     {
@@ -50,7 +76,14 @@ class SubmissionController extends Controller
     }
 
     /**
-     * Display a specific submission.
+     * Displays a specific submission.
+     *
+     * @since 1.0.0
+     *
+     * @param Form           $form       The parent form.
+     * @param FormSubmission $submission The submission to display.
+     *
+     * @return View The submission detail view.
      */
     public function show( Form $form, FormSubmission $submission ): View
     {
@@ -68,7 +101,15 @@ class SubmissionController extends Controller
     }
 
     /**
-     * Export submissions to CSV.
+     * Exports submissions to CSV.
+     *
+     * @since 1.0.0
+     *
+     * @param Request       $request       The HTTP request.
+     * @param Form          $form          The form to export submissions for.
+     * @param ExportService $exportService The export service.
+     *
+     * @return StreamedResponse The CSV download response.
      */
     public function export( Request $request, Form $form, ExportService $exportService ): StreamedResponse
     {
@@ -83,7 +124,15 @@ class SubmissionController extends Controller
     }
 
     /**
-     * Download a file upload.
+     * Downloads a file upload.
+     *
+     * @since 1.0.0
+     *
+     * @param Form           $form       The parent form.
+     * @param FormSubmission $submission The parent submission.
+     * @param FormUpload     $upload     The upload to download.
+     *
+     * @return StreamedResponse The file download response.
      */
     public function downloadUpload( Form $form, FormSubmission $submission, FormUpload $upload ): StreamedResponse
     {
@@ -119,11 +168,15 @@ class SubmissionController extends Controller
     }
 
     /**
-     * Get the IP address for logging, respecting privacy settings.
+     * Gets the IP address for logging, respecting privacy settings.
      *
      * If IP anonymization is enabled, the last octet of IPv4 addresses
      * will be masked (e.g., 192.168.1.123 becomes 192.168.1.0).
      * Uses inet_pton/inet_ntop for proper handling of compressed IPv6 addresses.
+     *
+     * @since 1.0.0
+     *
+     * @return string|null The loggable IP address or null.
      */
     protected function getLoggableIp(): ?string
     {
@@ -157,9 +210,9 @@ class SubmissionController extends Controller
             $anonymized = substr( $binary, 0, 6 ) . str_repeat( "\x00", 10 );
 
             // Convert back to string representation
-            $result = @inet_ntop( $anonymized);
+            $result = @inet_ntop( $anonymized );
 
-            if ( false === $result) {
+            if ( false === $result ) {
                 // Fallback if conversion fails
                 return $ipAddress;
             }

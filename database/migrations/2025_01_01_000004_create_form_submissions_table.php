@@ -1,4 +1,15 @@
 <?php
+/**
+ * Create form submissions table migration.
+ *
+ * Creates the form_submissions table for storing header records
+ * for each form submission, including metadata and status flags.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ * @since      1.0.0
+ */
 
 declare(strict_types=1);
 
@@ -7,12 +18,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Create Form Submissions Table Migration
+ * Create form submissions table migration class.
  *
- * Creates the form_submissions table for storing header records
- * for each form submission, including metadata and status flags.
- *
- * @since   1.0.0
+ * @since 1.0.0
  */
 return new class extends Migration
 {

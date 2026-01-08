@@ -1,4 +1,15 @@
 <?php
+/**
+ * Form submission value model factory.
+ *
+ * Provides factory methods for creating FormSubmissionValue model instances
+ * during testing, including states for email fields, array values, and file fields.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ * @since      1.0.0
+ */
 
 declare(strict_types=1);
 
@@ -10,7 +21,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * Factory for the FormSubmissionValue model.
+ * Form submission value model factory class.
  *
  * @extends Factory<FormSubmissionValue>
  *

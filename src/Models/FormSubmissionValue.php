@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Form submission value model.
+ *
+ * Represents an individual submitted value with denormalized
+ * field reference for data integrity after field changes.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
@@ -10,10 +24,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * FormSubmissionValue Model
+ * Form submission value model class.
  *
  * Represents an individual submitted value with denormalized
  * field reference for data integrity after field changes.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
  *
  * @property int $id
  * @property int $submission_id
@@ -41,12 +58,16 @@ class FormSubmissionValue extends Model
     /**
      * Indicates if the model should be timestamped.
      *
+     * @since 1.0.0
+     *
      * @var bool
      */
     public $timestamps = false;
 
     /**
      * The attributes that are mass assignable.
+     *
+     * @since 1.0.0
      *
      * @var list<string>
      */
@@ -67,9 +88,11 @@ class FormSubmissionValue extends Model
     // =========================================
 
     /**
-     * Get the submission that owns this value.
+     * Gets the submission that owns this value.
      *
-     * @return BelongsTo<FormSubmission, $this>
+     * @since 1.0.0
+     *
+     * @return BelongsTo<FormSubmission, $this> The submission relationship.
      */
     public function submission(): BelongsTo
     {
@@ -77,9 +100,11 @@ class FormSubmissionValue extends Model
     }
 
     /**
-     * Get the field that this value belongs to.
+     * Gets the field that this value belongs to.
      *
-     * @return BelongsTo<FormField, $this>
+     * @since 1.0.0
+     *
+     * @return BelongsTo<FormField, $this> The field relationship.
      */
     public function field(): BelongsTo
     {
@@ -87,9 +112,11 @@ class FormSubmissionValue extends Model
     }
 
     /**
-     * Get the upload associated with this value.
+     * Gets the upload associated with this value.
      *
-     * @return BelongsTo<FormUpload, $this>
+     * @since 1.0.0
+     *
+     * @return BelongsTo<FormUpload, $this> The upload relationship.
      */
     public function upload(): BelongsTo
     {
@@ -101,7 +128,11 @@ class FormSubmissionValue extends Model
     // =========================================
 
     /**
-     * Get the display value, handling arrays and file uploads.
+     * Gets the display value, handling arrays and file uploads.
+     *
+     * @since 1.0.0
+     *
+     * @return string The display value.
      */
     public function getDisplayValueAttribute(): string
     {
@@ -119,7 +150,11 @@ class FormSubmissionValue extends Model
     }
 
     /**
-     * Check if this value is an array value.
+     * Checks if this value is an array value.
+     *
+     * @since 1.0.0
+     *
+     * @return bool True if this is an array value.
      */
     public function getIsArrayValueAttribute(): bool
     {
@@ -127,7 +162,11 @@ class FormSubmissionValue extends Model
     }
 
     /**
-     * Check if this value represents a file upload.
+     * Checks if this value represents a file upload.
+     *
+     * @since 1.0.0
+     *
+     * @return bool True if this value is a file upload.
      */
     public function getIsFileAttribute(): bool
     {
@@ -135,7 +174,11 @@ class FormSubmissionValue extends Model
     }
 
     /**
-     * Create a new factory instance for the model.
+     * Creates a new factory instance for the model.
+     *
+     * @since 1.0.0
+     *
+     * @return FormSubmissionValueFactory The factory instance.
      */
     protected static function newFactory(): FormSubmissionValueFactory
     {
@@ -143,9 +186,11 @@ class FormSubmissionValue extends Model
     }
 
     /**
-     * Get the attributes that should be cast.
+     * Gets the attributes that should be cast.
      *
-     * @return array<string, string>
+     * @since 1.0.0
+     *
+     * @return array<string, string> The cast definitions.
      */
     protected function casts(): array
     {

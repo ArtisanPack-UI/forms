@@ -1,4 +1,15 @@
 <?php
+/**
+ * Create form uploads table migration.
+ *
+ * Creates the form_uploads table for storing metadata about
+ * files uploaded through form submissions.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ * @since      1.0.0
+ */
 
 declare(strict_types=1);
 
@@ -7,12 +18,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Create Form Uploads Table Migration
+ * Create form uploads table migration class.
  *
- * Creates the form_uploads table for storing metadata about
- * files uploaded through form submissions.
- *
- * @since   1.0.0
+ * @since 1.0.0
  */
 return new class extends Migration
 {

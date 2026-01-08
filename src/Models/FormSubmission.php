@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Form submission model.
+ *
+ * Represents a form submission including metadata, status flags,
+ * and admin notes. Links to submitted values and file uploads.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
@@ -16,10 +30,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
 /**
- * FormSubmission Model
+ * Form submission model class.
  *
  * Represents a form submission including metadata, status flags,
  * and admin notes. Links to submitted values and file uploads.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
  *
  * @property int $id
  * @property int $form_id
@@ -47,6 +64,8 @@ class FormSubmission extends Model
     /**
      * The attributes that are mass assignable.
      *
+     * @since 1.0.0
+     *
      * @var list<string>
      */
     protected $fillable = [
@@ -67,9 +86,11 @@ class FormSubmission extends Model
     // =========================================
 
     /**
-     * Get the form that owns this submission.
+     * Gets the form that owns this submission.
      *
-     * @return BelongsTo<Form, $this>
+     * @since 1.0.0
+     *
+     * @return BelongsTo<Form, $this> The form relationship.
      */
     public function form(): BelongsTo
     {
@@ -77,9 +98,11 @@ class FormSubmission extends Model
     }
 
     /**
-     * Get the values associated with this submission.
+     * Gets the values associated with this submission.
      *
-     * @return HasMany<FormSubmissionValue, $this>
+     * @since 1.0.0
+     *
+     * @return HasMany<FormSubmissionValue, $this> The values relationship.
      */
     public function values(): HasMany
     {
@@ -87,9 +110,11 @@ class FormSubmission extends Model
     }
 
     /**
-     * Get the uploads associated with this submission.
+     * Gets the uploads associated with this submission.
      *
-     * @return HasMany<FormUpload, $this>
+     * @since 1.0.0
+     *
+     * @return HasMany<FormUpload, $this> The uploads relationship.
      */
     public function uploads(): HasMany
     {
@@ -101,11 +126,13 @@ class FormSubmission extends Model
     // =========================================
 
     /**
-     * Scope a query to only include unread submissions.
+     * Scopes a query to only include unread submissions.
      *
-     * @param  Builder<FormSubmission>  $query
+     * @since 1.0.0
      *
-     * @return Builder<FormSubmission>
+     * @param Builder<FormSubmission> $query The query builder instance.
+     *
+     * @return Builder<FormSubmission> The modified query builder.
      */
     public function scopeUnread( Builder $query ): Builder
     {
@@ -113,11 +140,13 @@ class FormSubmission extends Model
     }
 
     /**
-     * Scope a query to only include read submissions.
+     * Scopes a query to only include read submissions.
      *
-     * @param  Builder<FormSubmission>  $query
+     * @since 1.0.0
      *
-     * @return Builder<FormSubmission>
+     * @param Builder<FormSubmission> $query The query builder instance.
+     *
+     * @return Builder<FormSubmission> The modified query builder.
      */
     public function scopeRead( Builder $query ): Builder
     {
@@ -125,11 +154,13 @@ class FormSubmission extends Model
     }
 
     /**
-     * Scope a query to only include non-spam submissions.
+     * Scopes a query to only include non-spam submissions.
      *
-     * @param  Builder<FormSubmission>  $query
+     * @since 1.0.0
      *
-     * @return Builder<FormSubmission>
+     * @param Builder<FormSubmission> $query The query builder instance.
+     *
+     * @return Builder<FormSubmission> The modified query builder.
      */
     public function scopeNotSpam( Builder $query ): Builder
     {
@@ -137,11 +168,13 @@ class FormSubmission extends Model
     }
 
     /**
-     * Scope a query to only include spam submissions.
+     * Scopes a query to only include spam submissions.
      *
-     * @param  Builder<FormSubmission>  $query
+     * @since 1.0.0
      *
-     * @return Builder<FormSubmission>
+     * @param Builder<FormSubmission> $query The query builder instance.
+     *
+     * @return Builder<FormSubmission> The modified query builder.
      */
     public function scopeSpam( Builder $query ): Builder
     {
@@ -149,11 +182,13 @@ class FormSubmission extends Model
     }
 
     /**
-     * Scope a query to only include starred submissions.
+     * Scopes a query to only include starred submissions.
      *
-     * @param  Builder<FormSubmission>  $query
+     * @since 1.0.0
      *
-     * @return Builder<FormSubmission>
+     * @param Builder<FormSubmission> $query The query builder instance.
+     *
+     * @return Builder<FormSubmission> The modified query builder.
      */
     public function scopeStarred( Builder $query ): Builder
     {
@@ -161,11 +196,14 @@ class FormSubmission extends Model
     }
 
     /**
-     * Scope a query to only include recent submissions.
+     * Scopes a query to only include recent submissions.
      *
-     * @param  Builder<FormSubmission>  $query
+     * @since 1.0.0
      *
-     * @return Builder<FormSubmission>
+     * @param Builder<FormSubmission> $query The query builder instance.
+     * @param int                     $days  Number of days to look back.
+     *
+     * @return Builder<FormSubmission> The modified query builder.
      */
     public function scopeRecent( Builder $query, int $days = 30 ): Builder
     {
@@ -177,9 +215,11 @@ class FormSubmission extends Model
     // =========================================
 
     /**
-     * Get submission data as a collection keyed by field name.
+     * Gets submission data as a collection keyed by field name.
      *
-     * @return Collection<string, string>
+     * @since 1.0.0
+     *
+     * @return Collection<string, string> The submission data collection.
      */
     public function getDataAttribute(): Collection
     {
@@ -189,9 +229,11 @@ class FormSubmission extends Model
     }
 
     /**
-     * Get submission data as an array.
+     * Gets submission data as an array.
      *
-     * @return array<string, string>
+     * @since 1.0.0
+     *
+     * @return array<string, string> The submission data array.
      */
     public function getDataArrayAttribute(): array
     {
@@ -203,7 +245,11 @@ class FormSubmission extends Model
     // =========================================
 
     /**
-     * Mark the submission as read.
+     * Marks the submission as read.
+     *
+     * @since 1.0.0
+     *
+     * @return void
      */
     public function markAsRead(): void
     {
@@ -211,7 +257,11 @@ class FormSubmission extends Model
     }
 
     /**
-     * Mark the submission as unread.
+     * Marks the submission as unread.
+     *
+     * @since 1.0.0
+     *
+     * @return void
      */
     public function markAsUnread(): void
     {
@@ -219,7 +269,11 @@ class FormSubmission extends Model
     }
 
     /**
-     * Toggle the spam status.
+     * Toggles the spam status.
+     *
+     * @since 1.0.0
+     *
+     * @return void
      */
     public function toggleSpam(): void
     {
@@ -227,7 +281,11 @@ class FormSubmission extends Model
     }
 
     /**
-     * Toggle the starred status.
+     * Toggles the starred status.
+     *
+     * @since 1.0.0
+     *
+     * @return void
      */
     public function toggleStar(): void
     {
@@ -235,7 +293,13 @@ class FormSubmission extends Model
     }
 
     /**
-     * Get a submitted value by field name.
+     * Gets a submitted value by field name.
+     *
+     * @since 1.0.0
+     *
+     * @param string $fieldName The field name to retrieve.
+     *
+     * @return string|null The field value or null if not found.
      */
     public function getValue( string $fieldName ): ?string
     {
@@ -245,7 +309,11 @@ class FormSubmission extends Model
     }
 
     /**
-     * Get the first email value from the submission.
+     * Gets the first email value from the submission.
+     *
+     * @since 1.0.0
+     *
+     * @return string|null The email value or null if not found.
      */
     public function getEmailValue(): ?string
     {
@@ -257,7 +325,11 @@ class FormSubmission extends Model
     }
 
     /**
-     * Create a new factory instance for the model.
+     * Creates a new factory instance for the model.
+     *
+     * @since 1.0.0
+     *
+     * @return FormSubmissionFactory The factory instance.
      */
     protected static function newFactory(): FormSubmissionFactory
     {
@@ -265,9 +337,11 @@ class FormSubmission extends Model
     }
 
     /**
-     * Get the attributes that should be cast.
+     * Gets the attributes that should be cast.
      *
-     * @return array<string, string>
+     * @since 1.0.0
+     *
+     * @return array<string, string> The cast definitions.
      */
     protected function casts(): array
     {
@@ -283,7 +357,13 @@ class FormSubmission extends Model
     // =========================================
 
     /**
-     * Bootstrap the model and its traits.
+     * Bootstraps the model and its traits.
+     *
+     * Sets up model event listeners for creating, created, updated, and deleted events.
+     *
+     * @since 1.0.0
+     *
+     * @return void
      */
     protected static function boot(): void
     {
@@ -327,7 +407,13 @@ class FormSubmission extends Model
     }
 
     /**
-     * Generate a unique submission number for a form.
+     * Generates a unique submission number for a form.
+     *
+     * @since 1.0.0
+     *
+     * @param int $formId The form ID to generate a submission number for.
+     *
+     * @return string The unique submission number.
      */
     protected static function generateSubmissionNumber( int $formId ): string
     {
@@ -338,11 +424,11 @@ class FormSubmission extends Model
             ->count() + 1;
 
         $replacements = [
-            '{year}'     => now()->format( 'Y'),
-            '{sequence}' => sprintf( '%05d', $count),
+            '{year}'     => now()->format( 'Y' ),
+            '{sequence}' => sprintf( '%05d', $count ),
             '{form_id}'  => $formId,
         ];
 
-        return str_replace( array_keys( $replacements), array_values( $replacements), $format);
+        return str_replace( array_keys( $replacements ), array_values( $replacements), $format);
     }
 }

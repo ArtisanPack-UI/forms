@@ -1,5 +1,18 @@
 <?php
 
+/**
+ * Update form request.
+ *
+ * Handles validation for updating an existing form.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Http\Requests;
@@ -10,20 +23,27 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 /**
- * UpdateFormRequest
+ * Update form request class.
  *
  * Handles validation for updating an existing form.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class UpdateFormRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Determines if the user is authorized to make this request.
      *
      * If a 'update' ability is defined for Form in the consuming app's
      * AuthServiceProvider, it will be used. Otherwise, defaults to true
      * allowing any authenticated user to update forms.
+     *
+     * @since 1.0.0
+     *
+     * @return bool True if authorized to update the form.
      */
     public function authorize(): bool
     {
@@ -44,9 +64,11 @@ class UpdateFormRequest extends FormRequest
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * Gets the validation rules that apply to the request.
      *
-     * @return array<string, array<int, mixed>>
+     * @since 1.0.0
+     *
+     * @return array<string, array<int, mixed>> The validation rules.
      */
     public function rules(): array
     {
@@ -73,9 +95,11 @@ class UpdateFormRequest extends FormRequest
     }
 
     /**
-     * Get the validation error messages.
+     * Gets the validation error messages.
      *
-     * @return array<string, string>
+     * @since 1.0.0
+     *
+     * @return array<string, string> The validation messages.
      */
     public function messages(): array
     {
@@ -90,13 +114,19 @@ class UpdateFormRequest extends FormRequest
     }
 
     /**
-     * Prepare the data for validation.
+     * Prepares the data for validation.
+     *
+     * Converts empty slug to null so it gets auto-generated.
+     *
+     * @since 1.0.0
+     *
+     * @return void
      */
     protected function prepareForValidation(): void
     {
         // Convert empty slug to null so it gets auto-generated
         if ( $this->has( 'slug' ) && '' === $this->slug ) {
-            $this->merge( ['slug' => null]);
+            $this->merge( ['slug' => null] );
         }
     }
 }

@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Submissions list Livewire component.
+ *
+ * Displays a paginated, searchable, sortable list of form submissions
+ * with actions for read/unread, star, spam, and delete.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire;
@@ -19,12 +33,15 @@ use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * SubmissionsList Livewire Component
+ * Submissions list Livewire component class.
  *
  * Displays a paginated, searchable, sortable list of form submissions
  * with actions for read/unread, star, spam, and delete.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class SubmissionsList extends Component
 {
@@ -547,18 +564,18 @@ class SubmissionsList extends Component
             'today' => $query->whereDate( 'created_at', today() ),
             'week'  => $query->where( 'created_at', '>=', now()->subWeek() ),
             'month' => $query->where( 'created_at', '>=', now()->subMonth() ),
-            'year'  => $query->where( 'created_at', '>=', now()->subYear()),
+            'year'  => $query->where( 'created_at', '>=', now()->subYear() ),
             default => null, // 'all' - no date filter
         };
 
         // Apply sorting (validate to prevent injection)
-        $sortColumn = match ( $this->sortBy) {
+        $sortColumn = match ( $this->sortBy ) {
             'submission_number' => 'submission_number',
             default             => 'created_at',
         };
 
-        $sortDirection = strtolower( $this->sortDirection);
-        $sortDirection = in_array( $sortDirection, ['asc', 'desc'], true) ? $sortDirection : 'desc';
+        $sortDirection = strtolower( $this->sortDirection );
+        $sortDirection = in_array( $sortDirection, ['asc', 'desc'], true ) ? $sortDirection : 'desc';
 
         $query->orderBy( $sortColumn, $sortDirection);
 

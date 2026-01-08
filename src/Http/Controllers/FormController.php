@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Form controller.
+ *
+ * Handles HTTP requests for form management including listing,
+ * creating, editing, and deleting forms.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Http\Controllers;
@@ -14,19 +28,26 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
 
 /**
- * FormController
+ * Form controller class.
  *
  * Handles HTTP requests for form management including listing,
  * creating, editing, and deleting forms.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class FormController extends Controller
 {
     use AuthorizesRequests;
 
     /**
-     * Create a new controller instance.
+     * Creates a new controller instance.
+     *
+     * @since 1.0.0
+     *
+     * @param FormService $formService The form service instance.
      */
     public function __construct(
         protected FormService $formService,
@@ -34,7 +55,11 @@ class FormController extends Controller
     }
 
     /**
-     * Display a listing of forms.
+     * Displays a listing of forms.
+     *
+     * @since 1.0.0
+     *
+     * @return View The forms index view.
      */
     public function index(): View
     {
@@ -44,7 +69,11 @@ class FormController extends Controller
     }
 
     /**
-     * Show the form for creating a new form.
+     * Shows the form for creating a new form.
+     *
+     * @since 1.0.0
+     *
+     * @return View The form creation view.
      */
     public function create(): View
     {
@@ -54,7 +83,13 @@ class FormController extends Controller
     }
 
     /**
-     * Store a newly created form.
+     * Stores a newly created form.
+     *
+     * @since 1.0.0
+     *
+     * @param StoreFormRequest $request The validated form request.
+     *
+     * @return RedirectResponse Redirect to the form edit page.
      */
     public function store( StoreFormRequest $request ): RedirectResponse
     {
@@ -68,7 +103,13 @@ class FormController extends Controller
     }
 
     /**
-     * Show the form for editing a form.
+     * Shows the form for editing a form.
+     *
+     * @since 1.0.0
+     *
+     * @param Form $form The form to edit.
+     *
+     * @return View The form edit view.
      */
     public function edit( Form $form ): View
     {
@@ -88,7 +129,14 @@ class FormController extends Controller
     }
 
     /**
-     * Update the specified form.
+     * Updates the specified form.
+     *
+     * @since 1.0.0
+     *
+     * @param UpdateFormRequest $request The validated form request.
+     * @param Form              $form    The form to update.
+     *
+     * @return RedirectResponse Redirect to the form edit page.
      */
     public function update( UpdateFormRequest $request, Form $form ): RedirectResponse
     {
@@ -102,7 +150,13 @@ class FormController extends Controller
     }
 
     /**
-     * Remove the specified form.
+     * Removes the specified form.
+     *
+     * @since 1.0.0
+     *
+     * @param Form $form The form to delete.
+     *
+     * @return RedirectResponse Redirect to the forms index page.
      */
     public function destroy( Form $form ): RedirectResponse
     {
@@ -112,7 +166,7 @@ class FormController extends Controller
         $this->formService->delete( $form );
 
         return redirect()
-            ->route( 'forms.index')
-            ->with( 'success', "Form \"{$formName}\" has been deleted.");
+            ->route( 'forms.index' )
+            ->with( 'success', "Form \"{$formName}\" has been deleted." );
     }
 }

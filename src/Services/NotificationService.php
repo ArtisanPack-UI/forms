@@ -1,5 +1,20 @@
 <?php
 
+/**
+ * Notification service.
+ *
+ * Business logic layer for notification CRUD operations and sending.
+ * Handles creating, updating, deleting, duplicating notifications,
+ * and processing notifications for form submissions.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
@@ -13,23 +28,34 @@ use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * NotificationService
+ * Notification service class.
  *
  * Business logic layer for notification CRUD operations and sending.
  * Handles creating, updating, deleting, duplicating notifications,
  * and processing notifications for form submissions.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class NotificationService
 {
     /**
      * The conditional logic service instance.
+     *
+     * @since 1.0.0
+     *
+     * @var ConditionalLogicService
      */
     protected ConditionalLogicService $conditionalLogicService;
 
     /**
-     * Create a new notification service instance.
+     * Creates a new notification service instance.
+     *
+     * @since 1.0.0
+     *
+     * @param ConditionalLogicService $conditionalLogicService The conditional logic service.
      */
     public function __construct( ConditionalLogicService $conditionalLogicService )
     {
@@ -41,9 +67,15 @@ class NotificationService
     // =========================================
 
     /**
-     * Create a new notification for a form with defaults based on type.
+     * Creates a new notification for a form with defaults based on type.
      *
-     * @param  array<string, mixed>  $data  Additional data to override defaults.
+     * @since 1.0.0
+     *
+     * @param Form                 $form The form to add the notification to.
+     * @param string               $type The notification type.
+     * @param array<string, mixed> $data Additional data to override defaults.
+     *
+     * @return FormNotification The created notification.
      */
     public function create( Form $form, string $type, array $data = [] ): FormNotification
     {
@@ -60,9 +92,14 @@ class NotificationService
     }
 
     /**
-     * Update an existing notification.
+     * Updates an existing notification.
      *
-     * @param  array<string, mixed>  $data
+     * @since 1.0.0
+     *
+     * @param FormNotification     $notification The notification to update.
+     * @param array<string, mixed> $data         The updated data.
+     *
+     * @return FormNotification The updated notification.
      */
     public function update( FormNotification $notification, array $data ): FormNotification
     {
@@ -78,7 +115,13 @@ class NotificationService
     }
 
     /**
-     * Delete a notification.
+     * Deletes a notification.
+     *
+     * @since 1.0.0
+     *
+     * @param FormNotification $notification The notification to delete.
+     *
+     * @return bool True on success.
      */
     public function delete( FormNotification $notification ): bool
     {
@@ -86,7 +129,13 @@ class NotificationService
     }
 
     /**
-     * Duplicate a notification within the same form.
+     * Duplicates a notification within the same form.
+     *
+     * @since 1.0.0
+     *
+     * @param FormNotification $notification The notification to duplicate.
+     *
+     * @return FormNotification The duplicated notification.
      */
     public function duplicate( FormNotification $notification ): FormNotification
     {
@@ -103,9 +152,14 @@ class NotificationService
     }
 
     /**
-     * Reorder notifications based on an array of IDs.
+     * Reorders notifications based on an array of IDs.
      *
-     * @param  array<int, int>  $orderedIds
+     * @since 1.0.0
+     *
+     * @param Form            $form       The form containing the notifications.
+     * @param array<int, int> $orderedIds Array of notification IDs in desired order.
+     *
+     * @return void
      */
     public function reorder( Form $form, array $orderedIds ): void
     {
@@ -121,7 +175,14 @@ class NotificationService
     }
 
     /**
-     * Get a notification by its ID within a form.
+     * Gets a notification by its ID within a form.
+     *
+     * @since 1.0.0
+     *
+     * @param Form $form The form to search in.
+     * @param int  $id   The notification ID.
+     *
+     * @return FormNotification|null The notification or null if not found.
      */
     public function getById( Form $form, int $id ): ?FormNotification
     {
@@ -129,9 +190,13 @@ class NotificationService
     }
 
     /**
-     * Get all notifications for a form.
+     * Gets all notifications for a form.
      *
-     * @return Collection<int, FormNotification>
+     * @since 1.0.0
+     *
+     * @param Form $form The form to get notifications from.
+     *
+     * @return Collection<int, FormNotification> The notifications collection.
      */
     public function getNotifications( Form $form ): Collection
     {
@@ -139,7 +204,13 @@ class NotificationService
     }
 
     /**
-     * Toggle the active status of a notification.
+     * Toggles the active status of a notification.
+     *
+     * @since 1.0.0
+     *
+     * @param FormNotification $notification The notification to toggle.
+     *
+     * @return FormNotification The updated notification.
      */
     public function toggleActive( FormNotification $notification ): FormNotification
     {
@@ -153,9 +224,13 @@ class NotificationService
     // =========================================
 
     /**
-     * Send all applicable notifications for a form submission.
+     * Sends all applicable notifications for a form submission.
      *
-     * @return int Number of notifications queued
+     * @since 1.0.0
+     *
+     * @param FormSubmission $submission The form submission.
+     *
+     * @return int Number of notifications queued.
      */
     public function sendNotifications( FormSubmission $submission ): int
     {
@@ -180,7 +255,14 @@ class NotificationService
     }
 
     /**
-     * Determine if a notification should be sent based on its conditions.
+     * Determines if a notification should be sent based on its conditions.
+     *
+     * @since 1.0.0
+     *
+     * @param FormNotification $notification The notification to check.
+     * @param FormSubmission   $submission   The form submission.
+     *
+     * @return bool True if the notification should be sent.
      */
     public function shouldSendNotification( FormNotification $notification, FormSubmission $submission ): bool
     {
@@ -219,7 +301,14 @@ class NotificationService
     }
 
     /**
-     * Queue a notification for sending.
+     * Queues a notification for sending.
+     *
+     * @since 1.0.0
+     *
+     * @param FormNotification $notification The notification to queue.
+     * @param FormSubmission   $submission   The form submission.
+     *
+     * @return void
      */
     public function queueNotification( FormNotification $notification, FormSubmission $submission ): void
     {
@@ -234,9 +323,13 @@ class NotificationService
     // =========================================
 
     /**
-     * Get all available placeholders for a form.
+     * Gets all available placeholders for a form.
      *
-     * @return array<string, string> Map of placeholder to description
+     * @since 1.0.0
+     *
+     * @param Form $form The form to get placeholders for.
+     *
+     * @return array<string, string> Map of placeholder to description.
      */
     public function getAvailablePlaceholders( Form $form ): array
     {
@@ -259,7 +352,14 @@ class NotificationService
     }
 
     /**
-     * Parse a template string with submission data.
+     * Parses a template string with submission data.
+     *
+     * @since 1.0.0
+     *
+     * @param string         $template   The template string with placeholders.
+     * @param FormSubmission $submission The form submission data.
+     *
+     * @return string The parsed template with placeholders replaced.
      */
     public function parseTemplate( string $template, FormSubmission $submission ): string
     {
@@ -290,11 +390,17 @@ class NotificationService
     }
 
     /**
-     * Format all fields as a readable plain-text list.
+     * Formats all fields as a readable plain-text list.
      *
      * Note: This method is intended for plain-text contexts (e.g., text emails,
      * placeholders that will be escaped). Do not use in raw HTML output.
      * For HTML contexts, use formatAllFieldsAsTable() which escapes values.
+     *
+     * @since 1.0.0
+     *
+     * @param FormSubmission $submission The form submission.
+     *
+     * @return string The formatted plain-text field list.
      */
     public function formatAllFieldsPlainText( FormSubmission $submission ): string
     {
@@ -311,7 +417,13 @@ class NotificationService
     }
 
     /**
-     * Format all fields as an HTML table.
+     * Formats all fields as an HTML table.
+     *
+     * @since 1.0.0
+     *
+     * @param FormSubmission $submission The form submission.
+     *
+     * @return string The HTML table string.
      */
     public function formatAllFieldsAsTable( FormSubmission $submission ): string
     {
@@ -332,9 +444,13 @@ class NotificationService
     }
 
     /**
-     * Get CC email addresses as array.
+     * Gets CC email addresses as array.
      *
-     * @return array<int, string>
+     * @since 1.0.0
+     *
+     * @param FormNotification $notification The notification.
+     *
+     * @return array<int, string> The CC email addresses.
      */
     public function getCcEmails( FormNotification $notification ): array
     {
@@ -348,9 +464,13 @@ class NotificationService
     }
 
     /**
-     * Get BCC email addresses as array.
+     * Gets BCC email addresses as array.
      *
-     * @return array<int, string>
+     * @since 1.0.0
+     *
+     * @param FormNotification $notification The notification.
+     *
+     * @return array<int, string> The BCC email addresses.
      */
     public function getBccEmails( FormNotification $notification ): array
     {
@@ -368,9 +488,14 @@ class NotificationService
     // =========================================
 
     /**
-     * Get default values for a notification type.
+     * Gets default values for a notification type.
      *
-     * @return array<string, mixed>
+     * @since 1.0.0
+     *
+     * @param string $type The notification type.
+     * @param Form   $form The form.
+     *
+     * @return array<string, mixed> The default values.
      */
     protected function getDefaultsForType( string $type, Form $form ): array
     {
@@ -409,16 +534,22 @@ class NotificationService
                     'name'       => 'Custom Notification',
                     'subject'    => 'Form Submission: {form_name}',
                     'message'    => '{all_fields}',
-                    'from_name'  => config( 'mail.from.name', config( 'app.name')),
-                    'from_email' => config( 'mail.from.address', ''),
-                ]);
+                    'from_name'  => config( 'mail.from.name', config( 'app.name' ) ),
+                    'from_email' => config( 'mail.from.address', '' ),
+                ] );
         }
     }
 
     /**
-     * Get the maximum sort order for notifications in a form.
+     * Gets the maximum sort order for notifications in a form.
+     *
+     * @since 1.0.0
+     *
+     * @param Form $form The form to check.
+     *
+     * @return int The maximum sort order value.
      */
-    protected function getMaxSortOrder( Form $form): int
+    protected function getMaxSortOrder( Form $form ): int
     {
         return (int) $form->notifications()->max( 'sort_order');
     }

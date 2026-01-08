@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Form upload model.
+ *
+ * Represents metadata about a file uploaded through a form submission.
+ * Includes storage location, file info, and helper methods.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
@@ -12,10 +26,13 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * FormUpload Model
+ * Form upload model class.
  *
  * Represents metadata about a file uploaded through a form submission.
  * Includes storage location, file info, and helper methods.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
  *
  * @property int $id
  * @property int $submission_id
@@ -45,6 +62,8 @@ class FormUpload extends Model
     /**
      * The attributes that are mass assignable.
      *
+     * @since 1.0.0
+     *
      * @var list<string>
      */
     protected $fillable = [
@@ -63,9 +82,11 @@ class FormUpload extends Model
     // =========================================
 
     /**
-     * Get the submission that owns this upload.
+     * Gets the submission that owns this upload.
      *
-     * @return BelongsTo<FormSubmission, $this>
+     * @since 1.0.0
+     *
+     * @return BelongsTo<FormSubmission, $this> The submission relationship.
      */
     public function submission(): BelongsTo
     {
@@ -73,9 +94,11 @@ class FormUpload extends Model
     }
 
     /**
-     * Get the field that this upload belongs to.
+     * Gets the field that this upload belongs to.
      *
-     * @return BelongsTo<FormField, $this>
+     * @since 1.0.0
+     *
+     * @return BelongsTo<FormField, $this> The field relationship.
      */
     public function field(): BelongsTo
     {
@@ -87,7 +110,11 @@ class FormUpload extends Model
     // =========================================
 
     /**
-     * Get the public URL for this upload.
+     * Gets the public URL for this upload.
+     *
+     * @since 1.0.0
+     *
+     * @return string The public URL.
      */
     public function getUrlAttribute(): string
     {
@@ -95,7 +122,11 @@ class FormUpload extends Model
     }
 
     /**
-     * Get the full filesystem path for this upload.
+     * Gets the full filesystem path for this upload.
+     *
+     * @since 1.0.0
+     *
+     * @return string The full filesystem path.
      */
     public function getFullPathAttribute(): string
     {
@@ -103,7 +134,11 @@ class FormUpload extends Model
     }
 
     /**
-     * Get the human-readable file size.
+     * Gets the human-readable file size.
+     *
+     * @since 1.0.0
+     *
+     * @return string The human-readable file size.
      */
     public function getHumanSizeAttribute(): string
     {
@@ -111,7 +146,11 @@ class FormUpload extends Model
     }
 
     /**
-     * Get the human-readable file size as a method.
+     * Gets the human-readable file size as a method.
+     *
+     * @since 1.0.0
+     *
+     * @return string The human-readable file size.
      */
     public function humanFileSize(): string
     {
@@ -126,7 +165,11 @@ class FormUpload extends Model
     }
 
     /**
-     * Get the file extension.
+     * Gets the file extension.
+     *
+     * @since 1.0.0
+     *
+     * @return string The file extension.
      */
     public function getExtensionAttribute(): string
     {
@@ -134,7 +177,11 @@ class FormUpload extends Model
     }
 
     /**
-     * Check if this upload is an image.
+     * Checks if this upload is an image.
+     *
+     * @since 1.0.0
+     *
+     * @return bool True if this upload is an image.
      */
     public function getIsImageAttribute(): bool
     {
@@ -146,7 +193,11 @@ class FormUpload extends Model
     // =========================================
 
     /**
-     * Download this file.
+     * Downloads this file.
+     *
+     * @since 1.0.0
+     *
+     * @return StreamedResponse The streamed download response.
      */
     public function download(): StreamedResponse
     {
@@ -157,11 +208,15 @@ class FormUpload extends Model
     }
 
     /**
-     * Delete this upload including the file from storage.
+     * Deletes this upload including the file from storage.
      *
      * Deletes the database record first to avoid orphaned records
      * if the delete fails. The file is only removed after successful
      * database deletion.
+     *
+     * @since 1.0.0
+     *
+     * @return bool|null True on success, false on failure, null if not deleted.
      */
     public function delete(): ?bool
     {
@@ -181,7 +236,11 @@ class FormUpload extends Model
     }
 
     /**
-     * Create a new factory instance for the model.
+     * Creates a new factory instance for the model.
+     *
+     * @since 1.0.0
+     *
+     * @return FormUploadFactory The factory instance.
      */
     protected static function newFactory(): FormUploadFactory
     {

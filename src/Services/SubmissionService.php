@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Submission service.
+ *
+ * Business logic layer for handling form submissions including
+ * validation, file uploads, spam protection, and notification triggering.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
@@ -20,33 +34,47 @@ use InvalidArgumentException;
 use RuntimeException;
 
 /**
- * SubmissionService
+ * Submission service class.
  *
  * Business logic layer for handling form submissions including
  * validation, file uploads, spam protection, and notification triggering.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class SubmissionService
 {
-
     /**
      * The minimum time in seconds between form load and submission.
+     *
+     * @since 1.0.0
      */
     protected const MIN_SUBMISSION_TIME = 3;
 
     /**
      * The maximum submissions per IP per minute.
+     *
+     * @since 1.0.0
      */
     protected const RATE_LIMIT_MAX_ATTEMPTS = 5;
 
     /**
      * The notification service instance.
+     *
+     * @since 1.0.0
+     *
+     * @var NotificationService
      */
     protected NotificationService $notificationService;
 
     /**
-     * Create a new submission service instance.
+     * Creates a new submission service instance.
+     *
+     * @since 1.0.0
+     *
+     * @param NotificationService $notificationService The notification service.
      */
     public function __construct( NotificationService $notificationService )
     {
@@ -54,14 +82,17 @@ class SubmissionService
     }
 
     /**
-     * Create a new submission for a form.
+     * Creates a new submission for a form.
      *
      * Applies the 'forms.submission_data' filter hook to allow
      * third-party packages to modify submission data before saving.
      *
-     * @param  array<string, mixed>  $formData  The submitted form data.
-     * @param  array<string, UploadedFile|null>  $files  Uploaded files keyed by field name.
-     * @param  array<string, mixed>  $metadata  Additional metadata (ip, user_agent, etc.).
+     * @since 1.0.0
+     *
+     * @param Form                              $form     The form being submitted.
+     * @param array<string, mixed>              $formData The submitted form data.
+     * @param array<string, UploadedFile|null>  $files    Uploaded files keyed by field name.
+     * @param array<string, mixed>              $metadata Additional metadata (ip, user_agent, etc.).
      *
      * @throws RuntimeException If the submission cannot be created.
      *
@@ -132,14 +163,18 @@ class SubmissionService
     }
 
     /**
-     * Check if the submission appears to be spam.
+     * Checks if the submission appears to be spam.
      *
      * Logs security events when spam is detected for monitoring and analysis.
      *
-     * @param  string|null  $honeypot  The honeypot field value (should be empty).
-     * @param  int|null  $formLoadedAt  Timestamp when form was loaded.
-     * @param  int|null  $formId  The form ID for logging context.
-     * @param  string|null  $ipAddress  The IP address for logging context.
+     * @since 1.0.0
+     *
+     * @param string|null $honeypot     The honeypot field value (should be empty).
+     * @param int|null    $formLoadedAt Timestamp when form was loaded.
+     * @param int|null    $formId       The form ID for logging context.
+     * @param string|null $ipAddress    The IP address for logging context.
+     *
+     * @return bool True if the submission appears to be spam.
      */
     public function isSpam( ?string $honeypot, ?int $formLoadedAt, ?int $formId = null, ?string $ipAddress = null ): bool
     {
@@ -173,11 +208,17 @@ class SubmissionService
     }
 
     /**
-     * Check if the IP address is rate limited.
+     * Checks if the IP address is rate limited.
      *
      * Logs security events when rate limiting is triggered.
      *
-     * @param  bool  $logEvent  Whether to log the rate limit event.
+     * @since 1.0.0
+     *
+     * @param string $ipAddress The IP address to check.
+     * @param int    $formId    The form ID.
+     * @param bool   $logEvent  Whether to log the rate limit event.
+     *
+     * @return bool True if the IP is rate limited.
      */
     public function isRateLimited( string $ipAddress, int $formId, bool $logEvent = true ): bool
     {
@@ -196,7 +237,14 @@ class SubmissionService
     }
 
     /**
-     * Record a submission attempt for rate limiting.
+     * Records a submission attempt for rate limiting.
+     *
+     * @since 1.0.0
+     *
+     * @param string $ipAddress The IP address making the attempt.
+     * @param int    $formId    The form ID.
+     *
+     * @return void
      */
     public function recordAttempt( string $ipAddress, int $formId ): void
     {
@@ -206,12 +254,14 @@ class SubmissionService
     }
 
     /**
-     * Build validation rules for all visible fields.
+     * Builds validation rules for all visible fields.
      *
-     * @param  \Illuminate\Database\Eloquent\Collection<int, FormField>  $fields
-     * @param  array<string, bool>  $hiddenFields  Fields hidden by conditional logic.
+     * @since 1.0.0
      *
-     * @return array<string, array<int, string>>
+     * @param \Illuminate\Database\Eloquent\Collection<int, FormField> $fields       The form fields.
+     * @param array<string, bool>                                       $hiddenFields Fields hidden by conditional logic.
+     *
+     * @return array<string, array<int, string>> The validation rules.
      */
     public function buildValidationRules( $fields, array $hiddenFields = [] ): array
     {
@@ -239,11 +289,13 @@ class SubmissionService
     }
 
     /**
-     * Build custom validation messages for fields.
+     * Builds custom validation messages for fields.
      *
-     * @param  \Illuminate\Database\Eloquent\Collection<int, FormField>  $fields
+     * @since 1.0.0
      *
-     * @return array<string, string>
+     * @param \Illuminate\Database\Eloquent\Collection<int, FormField> $fields The form fields.
+     *
+     * @return array<string, string> The validation messages.
      */
     public function buildValidationMessages( $fields ): array
     {
@@ -282,12 +334,16 @@ class SubmissionService
     }
 
     /**
-     * Get metadata from the current request.
+     * Gets metadata from the current request.
      *
      * Respects privacy configuration settings for IP address collection
      * and anonymization.
      *
-     * @return array<string, string|null>
+     * @since 1.0.0
+     *
+     * @param Request $request The HTTP request.
+     *
+     * @return array<string, string|null> The request metadata.
      */
     public function getRequestMetadata( Request $request ): array
     {
@@ -317,11 +373,15 @@ class SubmissionService
     }
 
     /**
-     * Send notifications for a form submission.
+     * Sends notifications for a form submission.
      *
      * Queues all active notifications that pass their conditional logic checks.
      *
-     * @return int Number of notifications queued
+     * @since 1.0.0
+     *
+     * @param FormSubmission $submission The form submission.
+     *
+     * @return int Number of notifications queued.
      */
     protected function sendNotifications( FormSubmission $submission ): int
     {
@@ -329,7 +389,15 @@ class SubmissionService
     }
 
     /**
-     * Save a field value to the submission.
+     * Saves a field value to the submission.
+     *
+     * @since 1.0.0
+     *
+     * @param FormSubmission $submission The form submission.
+     * @param FormField      $field      The form field.
+     * @param mixed          $value      The field value.
+     *
+     * @return FormSubmissionValue The created submission value.
      */
     protected function saveFieldValue( FormSubmission $submission, FormField $field, mixed $value ): FormSubmissionValue
     {
@@ -355,9 +423,18 @@ class SubmissionService
     }
 
     /**
-     * Handle a file upload for a submission.
+     * Handles a file upload for a submission.
+     *
+     * @since 1.0.0
+     *
+     * @param FormSubmission $submission The form submission.
+     * @param FormField      $field      The file field.
+     * @param UploadedFile   $file       The uploaded file.
      *
      * @throws InvalidArgumentException If the file extension is not allowed.
+     *
+     * @return FormUpload The created upload record.
+     *
      */
     protected function handleFileUpload( FormSubmission $submission, FormField $field, UploadedFile $file ): FormUpload
     {
@@ -413,12 +490,19 @@ class SubmissionService
     }
 
     /**
-     * Get a validated file extension from the uploaded file.
+     * Gets a validated file extension from the uploaded file.
      *
      * Uses server-detected extension when available, falls back to client extension,
      * and validates against configured allowlist.
      *
+     * @since 1.0.0
+     *
+     * @param UploadedFile $file The uploaded file.
+     *
      * @throws InvalidArgumentException If the extension is not allowed.
+     *
+     * @return string The validated file extension.
+     *
      */
     protected function getValidatedExtension( UploadedFile $file ): string
     {
@@ -475,12 +559,17 @@ class SubmissionService
     }
 
     /**
-     * Log a security-related event.
+     * Logs a security-related event.
      *
      * Security events are logged at the warning level with a consistent format
      * for easy filtering and analysis.
      *
-     * @param  array<string, mixed>  $context
+     * @since 1.0.0
+     *
+     * @param string               $eventType The type of security event.
+     * @param array<string, mixed> $context   Additional context data.
+     *
+     * @return void
      */
     protected function logSecurityEvent( string $eventType, array $context = [] ): void
     {
@@ -495,10 +584,16 @@ class SubmissionService
     }
 
     /**
-     * Anonymize an IP address by masking the last octet (IPv4) or last 80 bits (IPv6).
+     * Anonymizes an IP address by masking the last octet (IPv4) or last 80 bits (IPv6).
      *
      * This provides privacy while still allowing for general geographic analysis.
      * Uses inet_pton/inet_ntop for proper handling of compressed IPv6 addresses.
+     *
+     * @since 1.0.0
+     *
+     * @param string $ipAddress The IP address to anonymize.
+     *
+     * @return string The anonymized IP address.
      */
     protected function anonymizeIpAddress( string $ipAddress ): string
     {
@@ -512,18 +607,18 @@ class SubmissionService
             // Convert to binary representation (16 bytes)
             $binary = @inet_pton( $ipAddress );
 
-            if ( false === $binary) {
+            if ( false === $binary ) {
                 // Fallback if conversion fails
                 return $ipAddress;
             }
 
             // Zero out the last 10 bytes (80 bits) - keep first 6 bytes (48 bits / 3 groups)
-            $anonymized = substr( $binary, 0, 6) . str_repeat( "\x00", 10);
+            $anonymized = substr( $binary, 0, 6 ) . str_repeat( "\x00", 10 );
 
             // Convert back to string representation
-            $result = @inet_ntop( $anonymized);
+            $result = @inet_ntop( $anonymized );
 
-            if ( false === $result) {
+            if ( false === $result ) {
                 // Fallback if conversion fails
                 return $ipAddress;
             }

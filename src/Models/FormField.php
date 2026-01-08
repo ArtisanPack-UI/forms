@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Form field model.
+ *
+ * Represents an individual field configuration including type,
+ * validation rules, conditional logic, and display settings.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
@@ -13,10 +27,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 /**
- * FormField Model
+ * Form field model class.
  *
  * Represents an individual field configuration including type,
  * validation rules, conditional logic, and display settings.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
  *
  * @property int $id
  * @property int $form_id
@@ -53,6 +70,8 @@ class FormField extends Model
     /**
      * The attributes that are mass assignable.
      *
+     * @since 1.0.0
+     *
      * @var list<string>
      */
     protected $fillable = [
@@ -79,9 +98,11 @@ class FormField extends Model
     // =========================================
 
     /**
-     * Get the form that owns this field.
+     * Gets the form that owns this field.
      *
-     * @return BelongsTo<Form, $this>
+     * @since 1.0.0
+     *
+     * @return BelongsTo<Form, $this> The form relationship.
      */
     public function form(): BelongsTo
     {
@@ -89,9 +110,11 @@ class FormField extends Model
     }
 
     /**
-     * Get the step that this field belongs to.
+     * Gets the step that this field belongs to.
      *
-     * @return BelongsTo<FormStep, $this>
+     * @since 1.0.0
+     *
+     * @return BelongsTo<FormStep, $this> The step relationship.
      */
     public function step(): BelongsTo
     {
@@ -99,9 +122,11 @@ class FormField extends Model
     }
 
     /**
-     * Get the submission values for this field.
+     * Gets the submission values for this field.
      *
-     * @return HasMany<FormSubmissionValue, $this>
+     * @since 1.0.0
+     *
+     * @return HasMany<FormSubmissionValue, $this> The submission values relationship.
      */
     public function submissionValues(): HasMany
     {
@@ -113,11 +138,13 @@ class FormField extends Model
     // =========================================
 
     /**
-     * Scope a query to only include required fields.
+     * Scopes a query to only include required fields.
      *
-     * @param  Builder<FormField>  $query
+     * @since 1.0.0
      *
-     * @return Builder<FormField>
+     * @param Builder<FormField> $query The query builder instance.
+     *
+     * @return Builder<FormField> The modified query builder.
      */
     public function scopeRequired( Builder $query ): Builder
     {
@@ -125,11 +152,14 @@ class FormField extends Model
     }
 
     /**
-     * Scope a query to only include fields of a specific type.
+     * Scopes a query to only include fields of a specific type.
      *
-     * @param  Builder<FormField>  $query
+     * @since 1.0.0
      *
-     * @return Builder<FormField>
+     * @param Builder<FormField> $query The query builder instance.
+     * @param string             $type  The field type to filter by.
+     *
+     * @return Builder<FormField> The modified query builder.
      */
     public function scopeOfType( Builder $query, string $type ): Builder
     {
@@ -137,11 +167,13 @@ class FormField extends Model
     }
 
     /**
-     * Scope a query to only include fields without a step.
+     * Scopes a query to only include fields without a step.
      *
-     * @param  Builder<FormField>  $query
+     * @since 1.0.0
      *
-     * @return Builder<FormField>
+     * @param Builder<FormField> $query The query builder instance.
+     *
+     * @return Builder<FormField> The modified query builder.
      */
     public function scopeWithoutStep( Builder $query ): Builder
     {
@@ -149,11 +181,14 @@ class FormField extends Model
     }
 
     /**
-     * Scope a query to only include fields in a specific step.
+     * Scopes a query to only include fields in a specific step.
      *
-     * @param  Builder<FormField>  $query
+     * @since 1.0.0
      *
-     * @return Builder<FormField>
+     * @param Builder<FormField> $query  The query builder instance.
+     * @param int                $stepId The step ID to filter by.
+     *
+     * @return Builder<FormField> The modified query builder.
      */
     public function scopeInStep( Builder $query, int $stepId ): Builder
     {
@@ -165,7 +200,11 @@ class FormField extends Model
     // =========================================
 
     /**
-     * Check if this field has conditional logic configured.
+     * Checks if this field has conditional logic configured.
+     *
+     * @since 1.0.0
+     *
+     * @return bool True if conditional logic is configured.
      */
     public function getHasConditionalLogicAttribute(): bool
     {
@@ -174,7 +213,11 @@ class FormField extends Model
     }
 
     /**
-     * Check if this is a file upload field.
+     * Checks if this is a file upload field.
+     *
+     * @since 1.0.0
+     *
+     * @return bool True if this is a file field.
      */
     public function getIsFileFieldAttribute(): bool
     {
@@ -182,9 +225,11 @@ class FormField extends Model
     }
 
     /**
-     * Get the options for select/checkbox/radio fields.
+     * Gets the options for select/checkbox/radio fields.
      *
-     * @return array<int|string, mixed>
+     * @since 1.0.0
+     *
+     * @return array<int|string, mixed> The field options array.
      */
     public function getOptionsAttribute(): array
     {
@@ -192,7 +237,11 @@ class FormField extends Model
     }
 
     /**
-     * Get the Tailwind CSS width class for this field.
+     * Gets the Tailwind CSS width class for this field.
+     *
+     * @since 1.0.0
+     *
+     * @return string The CSS width class.
      */
     public function getWidthClassAttribute(): string
     {
@@ -209,7 +258,14 @@ class FormField extends Model
     // =========================================
 
     /**
-     * Get a config value from the field_config array.
+     * Gets a config value from the field_config array.
+     *
+     * @since 1.0.0
+     *
+     * @param string $key     The config key using dot notation.
+     * @param mixed  $default The default value if key not found.
+     *
+     * @return mixed The config value or default.
      */
     public function getConfig( string $key, mixed $default = null ): mixed
     {
@@ -217,7 +273,14 @@ class FormField extends Model
     }
 
     /**
-     * Get a validation rule from the validation_rules array.
+     * Gets a validation rule from the validation_rules array.
+     *
+     * @since 1.0.0
+     *
+     * @param string $key     The validation rule key.
+     * @param mixed  $default The default value if key not found.
+     *
+     * @return mixed The validation rule or default.
      */
     public function getValidationRule( string $key, mixed $default = null ): mixed
     {
@@ -225,12 +288,14 @@ class FormField extends Model
     }
 
     /**
-     * Build the Laravel validation rules array for this field.
+     * Builds the Laravel validation rules array for this field.
      *
      * Applies the 'forms.validation_rules' filter hook to allow
      * third-party packages to modify validation rules for a field.
      *
-     * @return array<int, string>
+     * @since 1.0.0
+     *
+     * @return array<int, string> The validation rules array.
      */
     public function buildValidationRules(): array
     {
@@ -290,9 +355,13 @@ class FormField extends Model
     }
 
     /**
-     * Check if this field is a layout-only field (no data input).
+     * Checks if this field is a layout-only field (no data input).
      *
      * Delegates to FieldTypes::isLayoutField() to use the central config-driven logic.
+     *
+     * @since 1.0.0
+     *
+     * @return bool True if this is a layout-only field.
      */
     public function isLayoutField(): bool
     {
@@ -300,7 +369,11 @@ class FormField extends Model
     }
 
     /**
-     * Create a new factory instance for the model.
+     * Creates a new factory instance for the model.
+     *
+     * @since 1.0.0
+     *
+     * @return FormFieldFactory The factory instance.
      */
     protected static function newFactory(): FormFieldFactory
     {
@@ -308,9 +381,11 @@ class FormField extends Model
     }
 
     /**
-     * Get the attributes that should be cast.
+     * Gets the attributes that should be cast.
      *
-     * @return array<string, string>
+     * @since 1.0.0
+     *
+     * @return array<string, string> The cast definitions.
      */
     protected function casts(): array
     {
@@ -327,7 +402,13 @@ class FormField extends Model
     // =========================================
 
     /**
-     * Bootstrap the model and its traits.
+     * Bootstraps the model and its traits.
+     *
+     * Sets up model event listeners to auto-generate UUIDs on creation.
+     *
+     * @since 1.0.0
+     *
+     * @return void
      */
     protected static function boot(): void
     {
@@ -341,12 +422,14 @@ class FormField extends Model
     }
 
     /**
-     * Get validation rules specific to the field type.
+     * Gets validation rules specific to the field type.
      *
      * Supports custom field types registered via the 'artisanpack.forms.field_types'
      * filter hook by checking for a 'type_validation' key in the field type config.
      *
-     * @return array<int, string>
+     * @since 1.0.0
+     *
+     * @return array<int, string> The type-specific validation rules.
      */
     protected function getTypeValidationRules(): array
     {
@@ -383,19 +466,21 @@ class FormField extends Model
     }
 
     /**
-     * Get validation rules specific to file uploads.
+     * Gets validation rules specific to file uploads.
      *
-     * @return array<int, string>
+     * @since 1.0.0
+     *
+     * @return array<int, string> The file validation rules.
      */
     protected function getFileValidationRules(): array
     {
         $rules = ['file'];
 
         if ( $types = $this->getConfig( 'allowed_types' ) ) {
-            $rules[] = 'mimes:' . implode( ',', $types);
+            $rules[] = 'mimes:' . implode( ',', $types );
         }
 
-        if ( $maxSize = $this->getConfig( 'max_size')) {
+        if ( $maxSize = $this->getConfig( 'max_size' ) ) {
             $rules[] = "max:{$maxSize}";
         }
 

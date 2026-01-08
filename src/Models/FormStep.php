@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * Form step model.
+ *
+ * Represents a step/page in a multi-step form including
+ * title, description, and navigation button text.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
@@ -11,10 +25,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * FormStep Model
+ * Form step model class.
  *
  * Represents a step/page in a multi-step form including
  * title, description, and navigation button text.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
  *
  * @property int $id
  * @property int $form_id
@@ -38,21 +55,35 @@ class FormStep extends Model
 
     /**
      * Cached step number (set when loading via withStepNumbers scope).
+     *
+     * @since 1.0.0
+     *
+     * @var int|null
      */
     public ?int $cached_step_number = null;
 
     /**
      * Cached min sort_order for the form's steps.
+     *
+     * @since 1.0.0
+     *
+     * @var int|null
      */
     public ?int $cached_min_sort_order = null;
 
     /**
      * Cached max sort_order for the form's steps.
+     *
+     * @since 1.0.0
+     *
+     * @var int|null
      */
     public ?int $cached_max_sort_order = null;
 
     /**
      * The attributes that are mass assignable.
+     *
+     * @since 1.0.0
      *
      * @var list<string>
      */
@@ -70,9 +101,11 @@ class FormStep extends Model
     // =========================================
 
     /**
-     * Get the form that owns this step.
+     * Gets the form that owns this step.
      *
-     * @return BelongsTo<Form, $this>
+     * @since 1.0.0
+     *
+     * @return BelongsTo<Form, $this> The form relationship.
      */
     public function form(): BelongsTo
     {
@@ -80,9 +113,11 @@ class FormStep extends Model
     }
 
     /**
-     * Get the fields associated with this step.
+     * Gets the fields associated with this step.
      *
-     * @return HasMany<FormField, $this>
+     * @since 1.0.0
+     *
+     * @return HasMany<FormField, $this> The fields relationship.
      */
     public function fields(): HasMany
     {
@@ -94,10 +129,14 @@ class FormStep extends Model
     // =========================================
 
     /**
-     * Get the step number (1-indexed position).
+     * Gets the step number (1-indexed position).
      *
      * Uses cached value if available (set via withStepNumbers()),
      * otherwise falls back to a query.
+     *
+     * @since 1.0.0
+     *
+     * @return int The step number.
      */
     public function getStepNumberAttribute(): int
     {
@@ -128,9 +167,13 @@ class FormStep extends Model
     }
 
     /**
-     * Check if this is the first step.
+     * Checks if this is the first step.
      *
      * Uses cached value if available, otherwise falls back to a query.
+     *
+     * @since 1.0.0
+     *
+     * @return bool True if this is the first step.
      */
     public function getIsFirstStepAttribute(): bool
     {
@@ -151,9 +194,13 @@ class FormStep extends Model
     }
 
     /**
-     * Check if this is the last step.
+     * Checks if this is the last step.
      *
      * Uses cached value if available, otherwise falls back to a query.
+     *
+     * @since 1.0.0
+     *
+     * @return bool True if this is the last step.
      */
     public function getIsLastStepAttribute(): bool
     {
@@ -178,14 +225,16 @@ class FormStep extends Model
     // =========================================
 
     /**
-     * Compute and cache step numbers and bounds for a collection of steps.
+     * Computes and caches step numbers and bounds for a collection of steps.
      *
      * Call this after loading steps to avoid N+1 queries when accessing
      * step_number, is_first_step, and is_last_step attributes.
      *
-     * @param  \Illuminate\Support\Collection<int, FormStep>  $steps
+     * @since 1.0.0
      *
-     * @return \Illuminate\Support\Collection<int, FormStep>
+     * @param \Illuminate\Support\Collection<int, FormStep> $steps The steps collection.
+     *
+     * @return \Illuminate\Support\Collection<int, FormStep> The steps with cached values.
      */
     public static function withStepNumbers( \Illuminate\Support\Collection $steps ): \Illuminate\Support\Collection
     {
@@ -213,7 +262,11 @@ class FormStep extends Model
     }
 
     /**
-     * Get the previous step in the form.
+     * Gets the previous step in the form.
+     *
+     * @since 1.0.0
+     *
+     * @return self|null The previous step or null if this is the first step.
      */
     public function getPreviousStep(): ?self
     {
@@ -224,7 +277,11 @@ class FormStep extends Model
     }
 
     /**
-     * Get the next step in the form.
+     * Gets the next step in the form.
+     *
+     * @since 1.0.0
+     *
+     * @return self|null The next step or null if this is the last step.
      */
     public function getNextStep(): ?self
     {
@@ -235,7 +292,11 @@ class FormStep extends Model
     }
 
     /**
-     * Create a new factory instance for the model.
+     * Creates a new factory instance for the model.
+     *
+     * @since 1.0.0
+     *
+     * @return FormStepFactory The factory instance.
      */
     protected static function newFactory(): FormStepFactory
     {

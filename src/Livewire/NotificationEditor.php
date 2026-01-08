@@ -1,5 +1,22 @@
 <?php
 
+/**
+ * Notification editor Livewire component.
+ *
+ * Provides an interface for managing form notifications including:
+ * - Notification list with add/delete/duplicate actions
+ * - Recipient, sender, and content configuration
+ * - Placeholder system for dynamic content
+ * - Conditional sending logic
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire;
@@ -16,7 +33,7 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
- * NotificationEditor Livewire Component
+ * Notification editor Livewire component class.
  *
  * Provides an interface for managing form notifications including:
  * - Notification list with add/delete/duplicate actions
@@ -24,7 +41,10 @@ use Livewire\Component;
  * - Placeholder system for dynamic content
  * - Conditional sending logic
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class NotificationEditor extends Component
 {
@@ -398,7 +418,7 @@ class NotificationEditor extends Component
      */
     public function render(): View
     {
-        return view( 'forms::livewire.notification-editor');
+        return view( 'forms::livewire.notification-editor' );
     }
 
     // =========================================

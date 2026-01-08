@@ -1,5 +1,20 @@
 <?php
 
+/**
+ * Integration service.
+ *
+ * Business logic layer for managing third-party integrations.
+ * Provides hooks for integration packages to register settings panels
+ * and handles integration settings storage.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @author     Jacob Martella <support@artisanpackui.dev>
+ *
+ * @since      1.0.0
+ */
+
 declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
@@ -7,18 +22,21 @@ namespace ArtisanPackUI\Forms\Services;
 use ArtisanPackUI\Forms\Models\Form;
 
 /**
- * IntegrationService
+ * Integration service class.
  *
  * Business logic layer for managing third-party integrations.
  * Provides hooks for integration packages to register settings panels
  * and handles integration settings storage.
  *
- * @since 1.0.0
+ * @package    ArtisanPack_UI
+ * @subpackage Forms
+ *
+ * @since      1.0.0
  */
 class IntegrationService
 {
     /**
-     * Get all registered integration settings tabs.
+     * Gets all registered integration settings tabs.
      *
      * Applies the 'forms.settings_tabs' filter hook to allow
      * third-party packages to register custom settings tabs.
@@ -32,7 +50,9 @@ class IntegrationService
      *     'description' => 'Optional description',
      * ]
      *
-     * @return array<int, array{id: string, label: string, icon: string, component: string, description?: string}>
+     * @since 1.0.0
+     *
+     * @return array<int, array{id: string, label: string, icon: string, component: string, description?: string}> The settings tabs.
      */
     public function getSettingsTabs(): array
     {
@@ -47,12 +67,17 @@ class IntegrationService
     }
 
     /**
-     * Get integration settings for a specific form and provider.
+     * Gets integration settings for a specific form and provider.
      *
      * Settings are stored in the form's `settings` JSON column
      * under the path: `settings.integrations.{provider}.{key}`
      *
-     * @param  string|null  $key  Specific setting key, or null for all provider settings.
+     * @since 1.0.0
+     *
+     * @param Form        $form     The form.
+     * @param string      $provider The integration provider name.
+     * @param string|null $key      Specific setting key, or null for all provider settings.
+     * @param mixed       $default  Default value if setting not found.
      *
      * @return mixed The setting value, provider settings array, or default.
      */
@@ -68,9 +93,15 @@ class IntegrationService
     }
 
     /**
-     * Set integration settings for a specific form and provider.
+     * Sets integration settings for a specific form and provider.
      *
-     * @param  array<string, mixed>  $settings  The settings to store.
+     * @since 1.0.0
+     *
+     * @param Form                 $form     The form.
+     * @param string               $provider The integration provider name.
+     * @param array<string, mixed> $settings The settings to store.
+     *
+     * @return void
      */
     public function setIntegrationSettings( Form $form, string $provider, array $settings ): void
     {
@@ -86,7 +117,16 @@ class IntegrationService
     }
 
     /**
-     * Update a specific integration setting for a form.
+     * Updates a specific integration setting for a form.
+     *
+     * @since 1.0.0
+     *
+     * @param Form   $form     The form.
+     * @param string $provider The integration provider name.
+     * @param string $key      The setting key.
+     * @param mixed  $value    The setting value.
+     *
+     * @return void
      */
     public function updateIntegrationSetting( Form $form, string $provider, string $key, mixed $value ): void
     {
@@ -106,7 +146,14 @@ class IntegrationService
     }
 
     /**
-     * Remove all integration settings for a specific provider.
+     * Removes all integration settings for a specific provider.
+     *
+     * @since 1.0.0
+     *
+     * @param Form   $form     The form.
+     * @param string $provider The integration provider name.
+     *
+     * @return void
      */
     public function removeIntegrationSettings( Form $form, string $provider ): void
     {
@@ -119,7 +166,14 @@ class IntegrationService
     }
 
     /**
-     * Check if a form has integration settings for a specific provider.
+     * Checks if a form has integration settings for a specific provider.
+     *
+     * @since 1.0.0
+     *
+     * @param Form   $form     The form.
+     * @param string $provider The integration provider name.
+     *
+     * @return bool True if the form has settings for the provider.
      */
     public function hasIntegration( Form $form, string $provider ): bool
     {
@@ -127,9 +181,13 @@ class IntegrationService
     }
 
     /**
-     * Get all integration providers configured for a form.
+     * Gets all integration providers configured for a form.
      *
-     * @return array<int, string>
+     * @since 1.0.0
+     *
+     * @param Form $form The form.
+     *
+     * @return array<int, string> The configured provider names.
      */
     public function getConfiguredProviders( Form $form ): array
     {
@@ -139,6 +197,6 @@ class IntegrationService
             return [];
         }
 
-        return array_keys( array_filter( $integrations, fn ( $config) => ! empty( $config)));
+        return array_keys( array_filter( $integrations, fn ( $config ) => ! empty( $config )));
     }
 }
