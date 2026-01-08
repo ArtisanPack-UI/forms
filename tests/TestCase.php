@@ -31,6 +31,19 @@ abstract class TestCase extends BaseTestCase
         Blade::component('artisanpack-input', \Tests\Stubs\InputStub::class);
         Blade::component('artisanpack-textarea', \Tests\Stubs\TextareaStub::class);
         Blade::component('artisanpack-select', \Tests\Stubs\SelectStub::class);
+        Blade::component('artisanpack-badge', \Tests\Stubs\BadgeStub::class);
+        Blade::component('artisanpack-alert', \Tests\Stubs\AlertStub::class);
+        Blade::component('artisanpack-card', \Tests\Stubs\CardStub::class);
+        Blade::component('artisanpack-checkbox', \Tests\Stubs\CheckboxStub::class);
+        Blade::component('artisanpack-collapse', \Tests\Stubs\CollapseStub::class);
+        Blade::component('artisanpack-dropdown', \Tests\Stubs\DropdownStub::class);
+        Blade::component('artisanpack-form', \Tests\Stubs\FormStub::class);
+        Blade::component('artisanpack-menu', \Tests\Stubs\MenuStub::class);
+        Blade::component('artisanpack-menu-item', \Tests\Stubs\MenuItemStub::class);
+        Blade::component('artisanpack-tabs', \Tests\Stubs\TabsStub::class);
+        Blade::component('artisanpack-tab', \Tests\Stubs\TabStub::class);
+        Blade::component('artisanpack-toggle', \Tests\Stubs\ToggleStub::class);
+        Blade::component('artisanpack-breadcrumbs', \Tests\Stubs\BreadcrumbsStub::class);
     }
 
     /**
