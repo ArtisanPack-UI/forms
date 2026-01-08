@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
 
@@ -43,14 +43,6 @@ class FormUpload extends Model
     use HasFactory;
 
     /**
-     * Create a new factory instance for the model.
-     */
-    protected static function newFactory(): FormUploadFactory
-    {
-        return FormUploadFactory::new();
-    }
-
-    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -77,7 +69,7 @@ class FormUpload extends Model
      */
     public function submission(): BelongsTo
     {
-        return $this->belongsTo(FormSubmission::class, 'submission_id');
+        return $this->belongsTo( FormSubmission::class, 'submission_id' );
     }
 
     /**
@@ -87,7 +79,7 @@ class FormUpload extends Model
      */
     public function field(): BelongsTo
     {
-        return $this->belongsTo(FormField::class, 'field_id');
+        return $this->belongsTo( FormField::class, 'field_id' );
     }
 
     // =========================================
@@ -99,7 +91,7 @@ class FormUpload extends Model
      */
     public function getUrlAttribute(): string
     {
-        return Storage::disk($this->disk)->url($this->path);
+        return Storage::disk( $this->disk )->url( $this->path );
     }
 
     /**
@@ -107,7 +99,7 @@ class FormUpload extends Model
      */
     public function getFullPathAttribute(): string
     {
-        return Storage::disk($this->disk)->path($this->path);
+        return Storage::disk( $this->disk )->path( $this->path );
     }
 
     /**
@@ -126,11 +118,11 @@ class FormUpload extends Model
         $bytes = $this->size;
         $units = ['B', 'KB', 'MB', 'GB'];
 
-        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+        for ( $i = 0; $bytes > 1024 && $i < count( $units ) - 1; $i++ ) {
             $bytes /= 1024;
         }
 
-        return round($bytes, 2).' '.$units[$i];
+        return round( $bytes, 2 ) . ' ' . $units[ $i ];
     }
 
     /**
@@ -138,7 +130,7 @@ class FormUpload extends Model
      */
     public function getExtensionAttribute(): string
     {
-        return pathinfo($this->original_name, PATHINFO_EXTENSION);
+        return pathinfo( $this->original_name, PATHINFO_EXTENSION );
     }
 
     /**
@@ -146,7 +138,7 @@ class FormUpload extends Model
      */
     public function getIsImageAttribute(): bool
     {
-        return str_starts_with($this->mime_type ?? '', 'image/');
+        return str_starts_with( $this->mime_type ?? '', 'image/' );
     }
 
     // =========================================
@@ -158,9 +150,9 @@ class FormUpload extends Model
      */
     public function download(): StreamedResponse
     {
-        return Storage::disk($this->disk)->download(
+        return Storage::disk( $this->disk )->download(
             $this->path,
-            $this->original_name
+            $this->original_name,
         );
     }
 
@@ -181,10 +173,18 @@ class FormUpload extends Model
         $result = parent::delete();
 
         // Only delete the file if the database record was successfully deleted
-        if ($result) {
-            Storage::disk($disk)->delete($path);
+        if ( $result ) {
+            Storage::disk( $disk )->delete( $path );
         }
 
         return $result;
+    }
+
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory(): FormUploadFactory
+    {
+        return FormUploadFactory::new();
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire;
 
@@ -28,25 +28,25 @@ class FormsList extends Component
     /**
      * The search query string.
      */
-    #[Url(as: 'q')]
+    #[Url( as: 'q' )]
     public string $search = '';
 
     /**
      * The column to sort by.
      */
-    #[Url(as: 'sort')]
+    #[Url( as: 'sort' )]
     public string $sortBy = 'created_at';
 
     /**
      * The sort direction (asc or desc).
      */
-    #[Url(as: 'dir')]
+    #[Url( as: 'dir' )]
     public string $sortDirection = 'desc';
 
     /**
      * Filter by status (all, active, inactive).
      */
-    #[Url(as: 'status')]
+    #[Url( as: 'status' )]
     public string $statusFilter = 'all';
 
     /**
@@ -68,12 +68,12 @@ class FormsList extends Component
     /**
      * Sort by a given column.
      */
-    public function sort(string $column): void
+    public function sort( string $column ): void
     {
-        if ($this->sortBy === $column) {
-            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        if ( $this->sortBy === $column ) {
+            $this->sortDirection = 'asc' === $this->sortDirection ? 'desc' : 'asc';
         } else {
-            $this->sortBy = $column;
+            $this->sortBy        = $column;
             $this->sortDirection = 'asc';
         }
 
@@ -83,47 +83,47 @@ class FormsList extends Component
     /**
      * Duplicate a form.
      */
-    public function duplicate(int $formId): void
+    public function duplicate( int $formId ): void
     {
-        $form = Form::find($formId);
+        $form = Form::find( $formId );
 
-        if ($form) {
-            $formService = app(FormService::class);
-            $newForm = $formService->duplicate($form);
+        if ( $form ) {
+            $formService = app( FormService::class );
+            $newForm     = $formService->duplicate( $form );
 
-            session()->flash('success', "Form duplicated as \"{$newForm->name}\".");
+            session()->flash( 'success', "Form duplicated as \"{$newForm->name}\"." );
         }
     }
 
     /**
      * Delete a form.
      */
-    public function delete(int $formId): void
+    public function delete( int $formId ): void
     {
-        $form = Form::find($formId);
+        $form = Form::find( $formId );
 
-        if ($form) {
-            $formName = $form->name;
-            $formService = app(FormService::class);
-            $formService->delete($form);
+        if ( $form ) {
+            $formName    = $form->name;
+            $formService = app( FormService::class );
+            $formService->delete( $form );
 
-            session()->flash('success', "Form \"{$formName}\" has been deleted.");
+            session()->flash( 'success', "Form \"{$formName}\" has been deleted." );
         }
     }
 
     /**
      * Toggle the published status of a form.
      */
-    public function togglePublish(int $formId): void
+    public function togglePublish( int $formId ): void
     {
-        $form = Form::find($formId);
+        $form = Form::find( $formId );
 
-        if ($form) {
-            $formService = app(FormService::class);
-            $formService->togglePublish($form);
+        if ( $form ) {
+            $formService = app( FormService::class );
+            $formService->togglePublish( $form );
 
             $status = $form->fresh()->is_active ? 'published' : 'unpublished';
-            session()->flash('success', "Form \"{$form->name}\" has been {$status}.");
+            session()->flash( 'success', "Form \"{$form->name}\" has been {$status}." );
         }
     }
 
@@ -136,40 +136,40 @@ class FormsList extends Component
     public function forms(): LengthAwarePaginator
     {
         $query = Form::query()
-            ->withCount(['fields', 'submissions'])
-            ->withCount(['submissions as unread_count' => function ($q): void {
-                $q->where('is_read', false);
-            }]);
+            ->withCount( ['fields', 'submissions'] )
+            ->withCount( ['submissions as unread_count' => function ( $q ): void {
+                $q->where( 'is_read', false );
+            }] );
 
         // Apply search filter (escape special LIKE characters to prevent wildcard injection)
-        if ($this->search !== '') {
-            $search = str_replace(['%', '_'], ['\%', '\_'], $this->search);
-            $query->where(function ($q) use ($search): void {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('slug', 'like', "%{$search}%");
-            });
+        if ( '' !== $this->search ) {
+            $search = str_replace( ['%', '_'], ['\%', '\_'], $this->search );
+            $query->where( function ( $q ) use ( $search ): void {
+                $q->where( 'name', 'like', "%{$search}%" )
+                    ->orWhere( 'slug', 'like', "%{$search}%" );
+            } );
         }
 
         // Apply status filter
-        if ($this->statusFilter === 'active') {
-            $query->where('is_active', true);
-        } elseif ($this->statusFilter === 'inactive') {
-            $query->where('is_active', false);
+        if ( 'active' === $this->statusFilter ) {
+            $query->where( 'is_active', true );
+        } elseif ( 'inactive' === $this->statusFilter ) {
+            $query->where( 'is_active', false );
         }
 
         // Apply sorting (validate sortDirection to prevent injection)
-        $sortColumn = match ($this->sortBy) {
-            'name' => 'name',
+        $sortColumn = match ( $this->sortBy ) {
+            'name'        => 'name',
             'submissions' => 'submissions_count',
-            default => 'created_at',
+            default       => 'created_at',
         };
 
-        $sortDirection = strtolower($this->sortDirection);
-        $sortDirection = in_array($sortDirection, ['asc', 'desc'], true) ? $sortDirection : 'desc';
+        $sortDirection = strtolower( $this->sortDirection );
+        $sortDirection = in_array( $sortDirection, ['asc', 'desc'], true ) ? $sortDirection : 'desc';
 
-        $query->orderBy($sortColumn, $sortDirection);
+        $query->orderBy( $sortColumn, $sortDirection );
 
-        return $query->paginate(config('artisanpack.forms.admin.per_page', 15));
+        return $query->paginate( config( 'artisanpack.forms.admin.per_page', 15));
     }
 
     /**
@@ -177,6 +177,6 @@ class FormsList extends Component
      */
     public function render(): View
     {
-        return view('forms::livewire.forms-list');
+        return view( 'forms::livewire.forms-list');
     }
 }

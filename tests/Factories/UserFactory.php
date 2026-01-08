@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace Tests\Factories;
 
@@ -34,9 +34,9 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'password' => Hash::make('password'),
+            'name'     => fake()->name(),
+            'email'    => fake()->unique()->safeEmail(),
+            'password' => Hash::make( 'password' ),
             'is_admin' => false,
         ];
     }

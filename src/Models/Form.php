@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
 
@@ -49,14 +49,6 @@ class Form extends Model
     use HasFactory;
 
     /**
-     * Create a new factory instance for the model.
-     */
-    protected static function newFactory(): FormFactory
-    {
-        return FormFactory::new();
-    }
-
-    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -76,87 +68,6 @@ class Form extends Model
         'is_active',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'settings' => 'array',
-            'is_multi_step' => 'boolean',
-            'show_progress_bar' => 'boolean',
-            'allow_step_navigation' => 'boolean',
-            'is_active' => 'boolean',
-        ];
-    }
-
-    // =========================================
-    // Boot
-    // =========================================
-
-    /**
-     * Bootstrap the model and its traits.
-     */
-    protected static function boot(): void
-    {
-        parent::boot();
-
-        static::creating(function (Form $form): void {
-            if (empty($form->slug)) {
-                $form->slug = static::generateUniqueSlug($form->name);
-            }
-        });
-
-        static::created(function (Form $form): void {
-            // Fire action hook for extensibility
-            if (function_exists('doAction')) {
-                doAction('forms.form.created', $form);
-            }
-
-            // Dispatch Laravel event
-            FormCreated::dispatch($form);
-        });
-
-        static::updated(function (Form $form): void {
-            // Fire action hook for extensibility
-            if (function_exists('doAction')) {
-                doAction('forms.form.updated', $form);
-            }
-
-            // Dispatch Laravel event
-            FormUpdated::dispatch($form);
-        });
-
-        static::deleted(function (Form $form): void {
-            // Fire action hook for extensibility
-            if (function_exists('doAction')) {
-                doAction('forms.form.deleted', $form);
-            }
-
-            // Dispatch Laravel event
-            FormDeleted::dispatch($form);
-        });
-    }
-
-    /**
-     * Generate a unique slug from the given name.
-     */
-    protected static function generateUniqueSlug(string $name): string
-    {
-        $slug = Str::slug($name);
-        $originalSlug = $slug;
-        $count = 1;
-
-        while (static::where('slug', $slug)->exists()) {
-            $slug = $originalSlug.'-'.$count;
-            $count++;
-        }
-
-        return $slug;
-    }
-
     // =========================================
     // Relationships
     // =========================================
@@ -167,13 +78,13 @@ class Form extends Model
      * Returns the user model based on the configured user model class.
      * If no user_id is set, this relationship returns null.
      *
-     * @return BelongsTo<\Illuminate\Database\Eloquent\Model, $this>
+     * @return BelongsTo<Model, $this>
      */
     public function owner(): BelongsTo
     {
-        $userModel = config('artisanpack.forms.authorization.user_model', 'App\\Models\\User');
+        $userModel = config( 'artisanpack.forms.authorization.user_model', 'App\\Models\\User' );
 
-        return $this->belongsTo($userModel, 'user_id');
+        return $this->belongsTo( $userModel, 'user_id' );
     }
 
     /**
@@ -183,7 +94,7 @@ class Form extends Model
      */
     public function fields(): HasMany
     {
-        return $this->hasMany(FormField::class)->orderBy('sort_order');
+        return $this->hasMany( FormField::class )->orderBy( 'sort_order' );
     }
 
     /**
@@ -193,7 +104,7 @@ class Form extends Model
      */
     public function steps(): HasMany
     {
-        return $this->hasMany(FormStep::class)->orderBy('sort_order');
+        return $this->hasMany( FormStep::class )->orderBy( 'sort_order' );
     }
 
     /**
@@ -203,7 +114,7 @@ class Form extends Model
      */
     public function submissions(): HasMany
     {
-        return $this->hasMany(FormSubmission::class);
+        return $this->hasMany( FormSubmission::class );
     }
 
     /**
@@ -213,7 +124,7 @@ class Form extends Model
      */
     public function notifications(): HasMany
     {
-        return $this->hasMany(FormNotification::class)->orderBy('sort_order');
+        return $this->hasMany( FormNotification::class )->orderBy( 'sort_order' );
     }
 
     // =========================================
@@ -224,33 +135,36 @@ class Form extends Model
      * Scope a query to only include active forms.
      *
      * @param  Builder<Form>  $query
+     *
      * @return Builder<Form>
      */
-    public function scopeActive(Builder $query): Builder
+    public function scopeActive( Builder $query ): Builder
     {
-        return $query->where('is_active', true);
+        return $query->where( 'is_active', true );
     }
 
     /**
      * Scope a query to only include multi-step forms.
      *
      * @param  Builder<Form>  $query
+     *
      * @return Builder<Form>
      */
-    public function scopeMultiStep(Builder $query): Builder
+    public function scopeMultiStep( Builder $query ): Builder
     {
-        return $query->where('is_multi_step', true);
+        return $query->where( 'is_multi_step', true );
     }
 
     /**
      * Scope a query to only include single-step forms.
      *
      * @param  Builder<Form>  $query
+     *
      * @return Builder<Form>
      */
-    public function scopeSingleStep(Builder $query): Builder
+    public function scopeSingleStep( Builder $query ): Builder
     {
-        return $query->where('is_multi_step', false);
+        return $query->where( 'is_multi_step', false );
     }
 
     // =========================================
@@ -290,14 +204,14 @@ class Form extends Model
      */
     public function getFieldsOrderedAttribute(): Collection
     {
-        if ($this->is_multi_step) {
+        if ( $this->is_multi_step ) {
             return $this->steps()
-                ->with(['fields' => fn ($q) => $q->orderBy('sort_order')])
+                ->with( ['fields' => fn ( $q ) => $q->orderBy( 'sort_order' )] )
                 ->get()
                 ->flatMap->fields;
         }
 
-        return $this->fields()->orderBy('sort_order')->get();
+        return $this->fields()->orderBy( 'sort_order' )->get();
     }
 
     // =========================================
@@ -307,9 +221,9 @@ class Form extends Model
     /**
      * Get a setting value from the settings array.
      */
-    public function getSetting(string $key, mixed $default = null): mixed
+    public function getSetting( string $key, mixed $default = null ): mixed
     {
-        return data_get($this->settings, $key, $default);
+        return data_get( $this->settings, $key, $default );
     }
 
     /**
@@ -317,39 +231,39 @@ class Form extends Model
      */
     public function duplicate(): self
     {
-        $clone = $this->replicate();
-        $clone->name = $this->name.' (Copy)';
-        $clone->slug = static::generateUniqueSlug($clone->name);
+        $clone            = $this->replicate();
+        $clone->name      = $this->name . ' (Copy)';
+        $clone->slug      = static::generateUniqueSlug( $clone->name );
         $clone->is_active = false;
         $clone->save();
 
         // Clone steps and their fields
-        foreach ($this->steps as $step) {
-            $newStep = $step->replicate();
+        foreach ( $this->steps as $step ) {
+            $newStep          = $step->replicate();
             $newStep->form_id = $clone->id;
             $newStep->save();
 
             // Clone fields in step
-            foreach ($step->fields as $field) {
-                $newField = $field->replicate();
+            foreach ( $step->fields as $field ) {
+                $newField          = $field->replicate();
                 $newField->form_id = $clone->id;
                 $newField->step_id = $newStep->id;
-                $newField->uuid = Str::uuid()->toString();
+                $newField->uuid    = Str::uuid()->toString();
                 $newField->save();
             }
         }
 
         // Clone fields without steps
-        foreach ($this->fields()->whereNull('step_id')->get() as $field) {
-            $newField = $field->replicate();
+        foreach ( $this->fields()->whereNull( 'step_id' )->get() as $field ) {
+            $newField          = $field->replicate();
             $newField->form_id = $clone->id;
-            $newField->uuid = Str::uuid()->toString();
+            $newField->uuid    = Str::uuid()->toString();
             $newField->save();
         }
 
         // Clone notifications
-        foreach ($this->notifications as $notification) {
-            $newNotification = $notification->replicate();
+        foreach ( $this->notifications as $notification ) {
+            $newNotification          = $notification->replicate();
             $newNotification->form_id = $clone->id;
             $newNotification->save();
         }
@@ -363,5 +277,94 @@ class Form extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory(): FormFactory
+    {
+        return FormFactory::new();
+    }
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'settings'              => 'array',
+            'is_multi_step'         => 'boolean',
+            'show_progress_bar'     => 'boolean',
+            'allow_step_navigation' => 'boolean',
+            'is_active'             => 'boolean',
+        ];
+    }
+
+    // =========================================
+    // Boot
+    // =========================================
+
+    /**
+     * Bootstrap the model and its traits.
+     */
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::creating( function ( Form $form ): void {
+            if ( empty( $form->slug ) ) {
+                $form->slug = static::generateUniqueSlug( $form->name );
+            }
+        } );
+
+        static::created( function ( Form $form ): void {
+            // Fire action hook for extensibility
+            if ( function_exists( 'doAction' ) ) {
+                doAction( 'forms.form.created', $form );
+            }
+
+            // Dispatch Laravel event
+            FormCreated::dispatch( $form );
+        } );
+
+        static::updated( function ( Form $form ): void {
+            // Fire action hook for extensibility
+            if ( function_exists( 'doAction' ) ) {
+                doAction( 'forms.form.updated', $form );
+            }
+
+            // Dispatch Laravel event
+            FormUpdated::dispatch( $form );
+        } );
+
+        static::deleted( function ( Form $form ): void {
+            // Fire action hook for extensibility
+            if ( function_exists( 'doAction' ) ) {
+                doAction( 'forms.form.deleted', $form );
+            }
+
+            // Dispatch Laravel event
+            FormDeleted::dispatch( $form );
+        } );
+    }
+
+    /**
+     * Generate a unique slug from the given name.
+     */
+    protected static function generateUniqueSlug( string $name ): string
+    {
+        $slug         = Str::slug( $name );
+        $originalSlug = $slug;
+        $count        = 1;
+
+        while ( static::where( 'slug', $slug)->exists()) {
+            $slug = $originalSlug . '-' . $count;
+            $count++;
+        }
+
+        return $slug;
     }
 }

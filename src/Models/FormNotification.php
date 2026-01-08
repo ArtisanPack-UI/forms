@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
 
@@ -46,14 +46,6 @@ class FormNotification extends Model
 {
     use HasFactory;
 
-    /**
-     * Create a new factory instance for the model.
-     */
-    protected static function newFactory(): FormNotificationFactory
-    {
-        return FormNotificationFactory::new();
-    }
-
     // =========================================
     // Constants
     // =========================================
@@ -89,20 +81,6 @@ class FormNotification extends Model
         'sort_order',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'conditional_logic' => 'array',
-            'include_submission_data' => 'boolean',
-            'is_active' => 'boolean',
-        ];
-    }
-
     // =========================================
     // Relationships
     // =========================================
@@ -114,7 +92,7 @@ class FormNotification extends Model
      */
     public function form(): BelongsTo
     {
-        return $this->belongsTo(Form::class);
+        return $this->belongsTo( Form::class );
     }
 
     // =========================================
@@ -125,44 +103,48 @@ class FormNotification extends Model
      * Scope a query to only include active notifications.
      *
      * @param  Builder<FormNotification>  $query
+     *
      * @return Builder<FormNotification>
      */
-    public function scopeActive(Builder $query): Builder
+    public function scopeActive( Builder $query ): Builder
     {
-        return $query->where('is_active', true);
+        return $query->where( 'is_active', true );
     }
 
     /**
      * Scope a query to only include notifications of a specific type.
      *
      * @param  Builder<FormNotification>  $query
+     *
      * @return Builder<FormNotification>
      */
-    public function scopeOfType(Builder $query, string $type): Builder
+    public function scopeOfType( Builder $query, string $type ): Builder
     {
-        return $query->where('type', $type);
+        return $query->where( 'type', $type );
     }
 
     /**
      * Scope a query to only include admin notifications.
      *
      * @param  Builder<FormNotification>  $query
+     *
      * @return Builder<FormNotification>
      */
-    public function scopeAdmin(Builder $query): Builder
+    public function scopeAdmin( Builder $query ): Builder
     {
-        return $query->ofType(self::TYPE_ADMIN);
+        return $query->ofType( self::TYPE_ADMIN );
     }
 
     /**
      * Scope a query to only include autoresponder notifications.
      *
      * @param  Builder<FormNotification>  $query
+     *
      * @return Builder<FormNotification>
      */
-    public function scopeAutoresponder(Builder $query): Builder
+    public function scopeAutoresponder( Builder $query ): Builder
     {
-        return $query->ofType(self::TYPE_AUTORESPONDER);
+        return $query->ofType( self::TYPE_AUTORESPONDER );
     }
 
     // =========================================
@@ -174,8 +156,8 @@ class FormNotification extends Model
      */
     public function getHasConditionalLogicAttribute(): bool
     {
-        return ! empty($this->conditional_logic) &&
-               ! empty($this->conditional_logic['rules']);
+        return ! empty( $this->conditional_logic ) &&
+               ! empty( $this->conditional_logic['rules'] );
     }
 
     /**
@@ -183,7 +165,7 @@ class FormNotification extends Model
      */
     public function getIsAutoresponderAttribute(): bool
     {
-        return $this->type === self::TYPE_AUTORESPONDER;
+        return self::TYPE_AUTORESPONDER === $this->type;
     }
 
     // =========================================
@@ -195,33 +177,33 @@ class FormNotification extends Model
      *
      * @return array<int, string>
      */
-    public function getRecipientEmails(FormSubmission $submission): array
+    public function getRecipientEmails( FormSubmission $submission ): array
     {
         $emails = [];
 
         // Static emails
-        if ($this->to_email) {
-            $emails = array_merge($emails, array_map('trim', explode(',', $this->to_email)));
+        if ( $this->to_email ) {
+            $emails = array_merge( $emails, array_map( 'trim', explode( ',', $this->to_email ) ) );
         }
 
         // Dynamic email from field
-        if ($this->to_field) {
-            $fieldEmail = $submission->getValue($this->to_field);
-            if ($fieldEmail && filter_var($fieldEmail, FILTER_VALIDATE_EMAIL)) {
+        if ( $this->to_field ) {
+            $fieldEmail = $submission->getValue( $this->to_field );
+            if ( $fieldEmail && filter_var( $fieldEmail, FILTER_VALIDATE_EMAIL ) ) {
                 $emails[] = $fieldEmail;
             }
         }
 
-        return array_unique(array_filter($emails));
+        return array_unique( array_filter( $emails ) );
     }
 
     /**
      * Get the reply-to email address for this notification.
      */
-    public function getReplyToEmail(FormSubmission $submission): ?string
+    public function getReplyToEmail( FormSubmission $submission ): ?string
     {
-        if ($this->reply_to_field) {
-            return $submission->getValue($this->reply_to_field);
+        if ( $this->reply_to_field ) {
+            return $submission->getValue( $this->reply_to_field );
         }
 
         return $this->reply_to_email;
@@ -230,21 +212,21 @@ class FormNotification extends Model
     /**
      * Parse the message template with submission data.
      */
-    public function parseMessage(FormSubmission $submission): string
+    public function parseMessage( FormSubmission $submission ): string
     {
         $message = $this->message;
 
         // Replace {field_name} placeholders
-        foreach ($submission->values as $value) {
-            $placeholder = '{'.$value->field_name.'}';
-            $message = str_replace($placeholder, $value->display_value, $message);
+        foreach ( $submission->values as $value ) {
+            $placeholder = '{' . $value->field_name . '}';
+            $message     = str_replace( $placeholder, $value->display_value, $message );
         }
 
         // Replace system placeholders
-        $message = str_replace('{submission_date}', $submission->created_at->format('F j, Y'), $message);
-        $message = str_replace('{submission_time}', $submission->created_at->format('g:i A'), $message);
-        $message = str_replace('{submission_number}', $submission->submission_number, $message);
-        $message = str_replace('{form_name}', $submission->form->name, $message);
+        $message = str_replace( '{submission_date}', $submission->created_at->format( 'F j, Y' ), $message );
+        $message = str_replace( '{submission_time}', $submission->created_at->format( 'g:i A' ), $message );
+        $message = str_replace( '{submission_number}', $submission->submission_number, $message );
+        $message = str_replace( '{form_name}', $submission->form->name, $message );
 
         return $message;
     }
@@ -252,19 +234,41 @@ class FormNotification extends Model
     /**
      * Parse the subject template with submission data.
      */
-    public function parseSubject(FormSubmission $submission): string
+    public function parseSubject( FormSubmission $submission ): string
     {
         $subject = $this->subject;
 
         // Same placeholder replacement as message
-        foreach ($submission->values as $value) {
-            $placeholder = '{'.$value->field_name.'}';
-            $subject = str_replace($placeholder, $value->display_value, $subject);
+        foreach ( $submission->values as $value ) {
+            $placeholder = '{' . $value->field_name . '}';
+            $subject     = str_replace( $placeholder, $value->display_value, $subject );
         }
 
-        $subject = str_replace('{form_name}', $submission->form->name, $subject);
-        $subject = str_replace('{submission_number}', $submission->submission_number, $subject);
+        $subject = str_replace( '{form_name}', $submission->form->name, $subject );
+        $subject = str_replace( '{submission_number}', $submission->submission_number, $subject );
 
         return $subject;
+    }
+
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory(): FormNotificationFactory
+    {
+        return FormNotificationFactory::new();
+    }
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'conditional_logic'       => 'array',
+            'include_submission_data' => 'boolean',
+            'is_active'               => 'boolean',
+        ];
     }
 }

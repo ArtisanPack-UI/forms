@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Http\Controllers;
 
@@ -29,17 +29,18 @@ class FormController extends Controller
      * Create a new controller instance.
      */
     public function __construct(
-        protected FormService $formService
-    ) {}
+        protected FormService $formService,
+    ) {
+    }
 
     /**
      * Display a listing of forms.
      */
     public function index(): View
     {
-        $this->authorize('viewAny', Form::class);
+        $this->authorize( 'viewAny', Form::class );
 
-        return view('forms::forms.index');
+        return view( 'forms::forms.index' );
     }
 
     /**
@@ -47,71 +48,71 @@ class FormController extends Controller
      */
     public function create(): View
     {
-        $this->authorize('create', Form::class);
+        $this->authorize( 'create', Form::class );
 
-        return view('forms::forms.create');
+        return view( 'forms::forms.create' );
     }
 
     /**
      * Store a newly created form.
      */
-    public function store(StoreFormRequest $request): RedirectResponse
+    public function store( StoreFormRequest $request ): RedirectResponse
     {
-        $this->authorize('create', Form::class);
+        $this->authorize( 'create', Form::class );
 
-        $form = $this->formService->create($request->validated());
+        $form = $this->formService->create( $request->validated() );
 
         return redirect()
-            ->route('forms.edit', $form)
-            ->with('success', 'Form created successfully.');
+            ->route( 'forms.edit', $form )
+            ->with( 'success', 'Form created successfully.' );
     }
 
     /**
      * Show the form for editing a form.
      */
-    public function edit(Form $form): View
+    public function edit( Form $form ): View
     {
-        $this->authorize('update', $form);
+        $this->authorize( 'update', $form );
 
         // Eager load relationships and counts to prevent N+1 queries
-        $form->load(['fields', 'steps.fields']);
-        $form->loadCount([
+        $form->load( ['fields', 'steps.fields'] );
+        $form->loadCount( [
             'fields',
             'submissions as total_submissions_count',
-            'submissions as unread_submissions_count' => fn ($q) => $q->where('is_read', false),
-        ]);
+            'submissions as unread_submissions_count' => fn ( $q ) => $q->where( 'is_read', false ),
+        ] );
 
-        return view('forms::forms.edit', [
+        return view( 'forms::forms.edit', [
             'form' => $form,
-        ]);
+        ] );
     }
 
     /**
      * Update the specified form.
      */
-    public function update(UpdateFormRequest $request, Form $form): RedirectResponse
+    public function update( UpdateFormRequest $request, Form $form ): RedirectResponse
     {
-        $this->authorize('update', $form);
+        $this->authorize( 'update', $form );
 
-        $this->formService->update($form, $request->validated());
+        $this->formService->update( $form, $request->validated() );
 
         return redirect()
-            ->route('forms.edit', $form)
-            ->with('success', 'Form updated successfully.');
+            ->route( 'forms.edit', $form )
+            ->with( 'success', 'Form updated successfully.' );
     }
 
     /**
      * Remove the specified form.
      */
-    public function destroy(Form $form): RedirectResponse
+    public function destroy( Form $form ): RedirectResponse
     {
-        $this->authorize('delete', $form);
+        $this->authorize( 'delete', $form );
 
         $formName = $form->name;
-        $this->formService->delete($form);
+        $this->formService->delete( $form );
 
         return redirect()
-            ->route('forms.index')
-            ->with('success', "Form \"{$formName}\" has been deleted.");
+            ->route( 'forms.index')
+            ->with( 'success', "Form \"{$formName}\" has been deleted.");
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace Tests\Stubs;
 
@@ -23,13 +23,14 @@ class CollapseStub extends Component
     public function __construct(
         public ?string $title = null,
         public bool $open = false,
-    ) {}
+    ) {
+    }
 
     /**
      * Get the view / contents that represent the component.
      */
     public function render(): View
     {
-        return view('stubs.collapse');
+        return view( 'stubs.collapse' );
     }
 }

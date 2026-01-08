@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire;
 
@@ -82,22 +82,22 @@ class FormBuilder extends Component
     public function boot(
         FieldService $fieldService,
         StepService $stepService,
-        ConditionalLogicService $conditionalLogicService
+        ConditionalLogicService $conditionalLogicService,
     ): void {
-        $this->fieldService = $fieldService;
-        $this->stepService = $stepService;
+        $this->fieldService            = $fieldService;
+        $this->stepService             = $stepService;
         $this->conditionalLogicService = $conditionalLogicService;
     }
 
     /**
      * Mount the component.
      */
-    public function mount(Form $form): void
+    public function mount( Form $form ): void
     {
-        $this->form = $form->load(['fields', 'steps.fields']);
+        $this->form = $form->load( ['fields', 'steps.fields'] );
 
         // Set active step to first step for multi-step forms
-        if ($this->form->is_multi_step && $this->form->steps->isNotEmpty()) {
+        if ( $this->form->is_multi_step && $this->form->steps->isNotEmpty() ) {
             $this->activeStepId = $this->form->steps->first()->id;
         }
     }
@@ -116,16 +116,16 @@ class FormBuilder extends Component
     {
         $categories = [];
 
-        foreach (FieldTypes::getCategories() as $key => $category) {
+        foreach ( FieldTypes::getCategories() as $key => $category ) {
             $fields = [];
-            foreach ($category['fields'] as $fieldType) {
-                $config = FieldTypes::getTypeConfig($fieldType);
-                if ($config) {
-                    $fields[$fieldType] = $config;
+            foreach ( $category['fields'] as $fieldType ) {
+                $config = FieldTypes::getTypeConfig( $fieldType );
+                if ( $config ) {
+                    $fields[ $fieldType ] = $config;
                 }
             }
-            $categories[$key] = [
-                'label' => $category['label'],
+            $categories[ $key ] = [
+                'label'  => $category['label'],
                 'fields' => $fields,
             ];
         }
@@ -141,12 +141,12 @@ class FormBuilder extends Component
     #[Computed]
     public function fields(): Collection
     {
-        $query = $this->form->fields()->orderBy('sort_order');
+        $query = $this->form->fields()->orderBy( 'sort_order' );
 
-        if ($this->form->is_multi_step && $this->activeStepId !== null) {
-            $query->where('step_id', $this->activeStepId);
-        } elseif (! $this->form->is_multi_step) {
-            $query->whereNull('step_id');
+        if ( $this->form->is_multi_step && null !== $this->activeStepId ) {
+            $query->where( 'step_id', $this->activeStepId );
+        } elseif ( ! $this->form->is_multi_step ) {
+            $query->whereNull( 'step_id' );
         }
 
         return $query->get();
@@ -158,11 +158,11 @@ class FormBuilder extends Component
     #[Computed]
     public function selectedField(): ?FormField
     {
-        if ($this->selectedFieldId === null) {
+        if ( null === $this->selectedFieldId ) {
             return null;
         }
 
-        return $this->form->fields()->where('uuid', $this->selectedFieldId)->first();
+        return $this->form->fields()->where( 'uuid', $this->selectedFieldId )->first();
     }
 
     /**
@@ -173,7 +173,7 @@ class FormBuilder extends Component
     #[Computed]
     public function steps(): Collection
     {
-        return $this->form->steps()->withCount('fields')->orderBy('sort_order')->get();
+        return $this->form->steps()->withCount( 'fields' )->orderBy( 'sort_order' )->get();
     }
 
     /**
@@ -200,13 +200,13 @@ class FormBuilder extends Component
     {
         $selectedField = $this->selectedField;
 
-        if (! $selectedField) {
+        if ( ! $selectedField ) {
             return collect();
         }
 
         return $this->conditionalLogicService->getAvailableConditionTargets(
             $selectedField,
-            $this->form->fields
+            $this->form->fields,
         );
     }
 
@@ -250,28 +250,28 @@ class FormBuilder extends Component
     /**
      * Add a new field to the form.
      */
-    public function addField(string $type): void
+    public function addField( string $type ): void
     {
         $stepId = $this->form->is_multi_step ? $this->activeStepId : null;
 
-        $field = $this->fieldService->create($this->form, $type, $stepId);
+        $field = $this->fieldService->create( $this->form, $type, $stepId );
 
         $this->selectedFieldId = $field->uuid;
         $this->markDirty();
 
         // Refresh computed properties
-        unset($this->fields);
+        unset( $this->fields );
 
-        $this->dispatch('field-added', uuid: $field->uuid);
+        $this->dispatch( 'field-added', uuid: $field->uuid );
     }
 
     /**
      * Select a field for editing.
      */
-    public function selectField(string $uuid): void
+    public function selectField( string $uuid ): void
     {
         $this->selectedFieldId = $uuid;
-        unset($this->selectedField);
+        unset( $this->selectedField );
     }
 
     /**
@@ -280,7 +280,7 @@ class FormBuilder extends Component
     public function deselectField(): void
     {
         $this->selectedFieldId = null;
-        unset($this->selectedField);
+        unset( $this->selectedField );
     }
 
     /**
@@ -288,19 +288,19 @@ class FormBuilder extends Component
      *
      * @param  array<string, mixed>  $data
      */
-    public function updateField(array $data): void
+    public function updateField( array $data ): void
     {
-        if ($this->selectedFieldId === null) {
+        if ( null === $this->selectedFieldId ) {
             return;
         }
 
-        $field = $this->fieldService->getByUuid($this->form, $this->selectedFieldId);
+        $field = $this->fieldService->getByUuid( $this->form, $this->selectedFieldId );
 
-        if ($field) {
-            $this->fieldService->update($field, $data);
+        if ( $field ) {
+            $this->fieldService->update( $field, $data );
             $this->markDirty();
 
-            unset($this->fields, $this->selectedField);
+            unset( $this->fields, $this->selectedField );
         }
     }
 
@@ -309,20 +309,20 @@ class FormBuilder extends Component
      *
      * @param  array<string, mixed>  $logic
      */
-    public function updateConditionalLogic(array $logic): void
+    public function updateConditionalLogic( array $logic ): void
     {
-        if ($this->selectedFieldId === null) {
+        if ( null === $this->selectedFieldId ) {
             return;
         }
 
-        $field = $this->fieldService->getByUuid($this->form, $this->selectedFieldId);
+        $field = $this->fieldService->getByUuid( $this->form, $this->selectedFieldId );
 
-        if ($field) {
+        if ( $field ) {
             // Validate the logic structure
-            $validation = ConditionalLogic::validate($logic);
+            $validation = ConditionalLogic::validate( $logic );
 
-            if (! $validation['valid']) {
-                $this->dispatch('conditional-logic-error', errors: $validation['errors']);
+            if ( ! $validation['valid'] ) {
+                $this->dispatch( 'conditional-logic-error', errors: $validation['errors'] );
 
                 return;
             }
@@ -330,15 +330,15 @@ class FormBuilder extends Component
             // Clean up any references to deleted fields
             $logic = $this->conditionalLogicService->cleanupDeletedFieldReferences(
                 $logic,
-                $this->form->fields
+                $this->form->fields,
             );
 
-            $this->fieldService->update($field, ['conditional_logic' => $logic]);
+            $this->fieldService->update( $field, ['conditional_logic' => $logic] );
             $this->markDirty();
 
-            unset($this->fields, $this->selectedField);
+            unset( $this->fields, $this->selectedField );
 
-            $this->dispatch('conditional-logic-updated');
+            $this->dispatch( 'conditional-logic-updated' );
         }
     }
 
@@ -347,59 +347,59 @@ class FormBuilder extends Component
      */
     public function clearConditionalLogic(): void
     {
-        if ($this->selectedFieldId === null) {
+        if ( null === $this->selectedFieldId ) {
             return;
         }
 
-        $field = $this->fieldService->getByUuid($this->form, $this->selectedFieldId);
+        $field = $this->fieldService->getByUuid( $this->form, $this->selectedFieldId );
 
-        if ($field) {
-            $this->fieldService->update($field, ['conditional_logic' => null]);
+        if ( $field ) {
+            $this->fieldService->update( $field, ['conditional_logic' => null] );
             $this->markDirty();
 
-            unset($this->fields, $this->selectedField);
+            unset( $this->fields, $this->selectedField );
 
-            $this->dispatch('conditional-logic-cleared');
+            $this->dispatch( 'conditional-logic-cleared' );
         }
     }
 
     /**
      * Delete a field.
      */
-    public function deleteField(string $uuid): void
+    public function deleteField( string $uuid ): void
     {
-        $field = $this->fieldService->getByUuid($this->form, $uuid);
+        $field = $this->fieldService->getByUuid( $this->form, $uuid );
 
-        if ($field) {
-            $this->fieldService->delete($field);
+        if ( $field ) {
+            $this->fieldService->delete( $field );
             $this->markDirty();
 
-            if ($this->selectedFieldId === $uuid) {
+            if ( $this->selectedFieldId === $uuid ) {
                 $this->selectedFieldId = null;
-                unset($this->selectedField);
+                unset( $this->selectedField );
             }
 
-            unset($this->fields);
+            unset( $this->fields );
 
-            $this->dispatch('field-deleted', uuid: $uuid);
+            $this->dispatch( 'field-deleted', uuid: $uuid );
         }
     }
 
     /**
      * Duplicate a field.
      */
-    public function duplicateField(string $uuid): void
+    public function duplicateField( string $uuid ): void
     {
-        $field = $this->fieldService->getByUuid($this->form, $uuid);
+        $field = $this->fieldService->getByUuid( $this->form, $uuid );
 
-        if ($field) {
-            $newField = $this->fieldService->duplicate($field);
+        if ( $field ) {
+            $newField              = $this->fieldService->duplicate( $field );
             $this->selectedFieldId = $newField->uuid;
             $this->markDirty();
 
-            unset($this->fields, $this->selectedField);
+            unset( $this->fields, $this->selectedField );
 
-            $this->dispatch('field-duplicated', uuid: $newField->uuid);
+            $this->dispatch( 'field-duplicated', uuid: $newField->uuid );
         }
     }
 
@@ -408,15 +408,15 @@ class FormBuilder extends Component
      *
      * @param  array<int, string>  $orderedUuids
      */
-    #[On('fields-reordered')]
-    public function reorderFields(array $orderedUuids): void
+    #[On( 'fields-reordered' )]
+    public function reorderFields( array $orderedUuids ): void
     {
         $stepId = $this->form->is_multi_step ? $this->activeStepId : null;
 
-        $this->fieldService->reorder($this->form, $orderedUuids, $stepId);
+        $this->fieldService->reorder( $this->form, $orderedUuids, $stepId );
         $this->markDirty();
 
-        unset($this->fields);
+        unset( $this->fields );
     }
 
     // =========================================
@@ -428,33 +428,33 @@ class FormBuilder extends Component
      */
     public function addStep(): void
     {
-        if (! $this->form->is_multi_step) {
+        if ( ! $this->form->is_multi_step ) {
             return;
         }
 
-        $step = $this->stepService->create($this->form);
-        $this->activeStepId = $step->id;
+        $step                  = $this->stepService->create( $this->form );
+        $this->activeStepId    = $step->id;
         $this->selectedFieldId = null;
         $this->markDirty();
 
-        unset($this->steps, $this->fields, $this->selectedField);
+        unset( $this->steps, $this->fields, $this->selectedField );
 
-        $this->dispatch('step-added', stepId: $step->id);
+        $this->dispatch( 'step-added', stepId: $step->id );
     }
 
     /**
      * Select a step.
      */
-    public function selectStep(int $stepId): void
+    public function selectStep( int $stepId ): void
     {
-        if (! $this->form->is_multi_step) {
+        if ( ! $this->form->is_multi_step ) {
             return;
         }
 
-        $this->activeStepId = $stepId;
+        $this->activeStepId    = $stepId;
         $this->selectedFieldId = null;
 
-        unset($this->fields, $this->selectedField);
+        unset( $this->fields, $this->selectedField );
     }
 
     /**
@@ -462,40 +462,40 @@ class FormBuilder extends Component
      *
      * @param  array<string, mixed>  $data
      */
-    public function updateStep(int $stepId, array $data): void
+    public function updateStep( int $stepId, array $data ): void
     {
-        $step = $this->stepService->getById($this->form, $stepId);
+        $step = $this->stepService->getById( $this->form, $stepId );
 
-        if ($step) {
-            $this->stepService->update($step, $data);
+        if ( $step ) {
+            $this->stepService->update( $step, $data );
             $this->markDirty();
 
-            unset($this->steps);
+            unset( $this->steps );
         }
     }
 
     /**
      * Delete a step.
      */
-    public function deleteStep(int $stepId): void
+    public function deleteStep( int $stepId ): void
     {
-        $step = $this->stepService->getById($this->form, $stepId);
+        $step = $this->stepService->getById( $this->form, $stepId );
 
-        if ($step && $this->form->steps()->count() > 1) {
-            $this->stepService->delete($step);
+        if ( $step && $this->form->steps()->count() > 1 ) {
+            $this->stepService->delete( $step );
             $this->markDirty();
 
             // Refresh the form's steps relationship before getting the first step
-            $this->form->unsetRelation('steps');
+            $this->form->unsetRelation( 'steps' );
 
             // Select the first remaining step
-            $firstStep = $this->stepService->getFirstStep($this->form);
-            $this->activeStepId = $firstStep?->id;
+            $firstStep             = $this->stepService->getFirstStep( $this->form );
+            $this->activeStepId    = $firstStep?->id;
             $this->selectedFieldId = null;
 
-            unset($this->steps, $this->fields, $this->selectedField);
+            unset( $this->steps, $this->fields, $this->selectedField );
 
-            $this->dispatch('step-deleted', stepId: $stepId);
+            $this->dispatch( 'step-deleted', stepId: $stepId );
         }
     }
 
@@ -504,17 +504,17 @@ class FormBuilder extends Component
      *
      * @param  array<int, int>  $orderedIds
      */
-    #[On('steps-reordered')]
-    public function reorderSteps(array $orderedIds): void
+    #[On( 'steps-reordered' )]
+    public function reorderSteps( array $orderedIds ): void
     {
-        if (! $this->form->is_multi_step) {
+        if ( ! $this->form->is_multi_step ) {
             return;
         }
 
-        $this->stepService->reorder($this->form, $orderedIds);
+        $this->stepService->reorder( $this->form, $orderedIds );
         $this->markDirty();
 
-        unset($this->steps);
+        unset( $this->steps );
     }
 
     /**
@@ -524,25 +524,25 @@ class FormBuilder extends Component
      */
     public function enableMultiStep(): void
     {
-        if ($this->form->is_multi_step) {
+        if ( $this->form->is_multi_step ) {
             return;
         }
 
         // Convert the form to multi-step
-        $step = $this->stepService->convertToMultiStep($this->form);
+        $step = $this->stepService->convertToMultiStep( $this->form );
 
         // Update the form's multi-step flag
-        $this->form->update(['is_multi_step' => true]);
+        $this->form->update( ['is_multi_step' => true] );
         $this->form->refresh();
 
         // Set the active step
-        $this->activeStepId = $step->id;
+        $this->activeStepId    = $step->id;
         $this->selectedFieldId = null;
         $this->markDirty();
 
-        unset($this->steps, $this->fields, $this->selectedField);
+        unset( $this->steps, $this->fields, $this->selectedField );
 
-        $this->dispatch('multi-step-enabled');
+        $this->dispatch( 'multi-step-enabled' );
     }
 
     /**
@@ -552,25 +552,25 @@ class FormBuilder extends Component
      */
     public function disableMultiStep(): void
     {
-        if (! $this->form->is_multi_step) {
+        if ( ! $this->form->is_multi_step ) {
             return;
         }
 
         // Convert the form to single-step
-        $this->stepService->convertToSingleStep($this->form);
+        $this->stepService->convertToSingleStep( $this->form );
 
         // Update the form's multi-step flag
-        $this->form->update(['is_multi_step' => false]);
+        $this->form->update( ['is_multi_step' => false] );
         $this->form->refresh();
 
         // Clear step-related state
-        $this->activeStepId = null;
+        $this->activeStepId    = null;
         $this->selectedFieldId = null;
         $this->markDirty();
 
-        unset($this->steps, $this->fields, $this->selectedField);
+        unset( $this->steps, $this->fields, $this->selectedField );
 
-        $this->dispatch('multi-step-disabled');
+        $this->dispatch( 'multi-step-disabled' );
     }
 
     // =========================================
@@ -582,7 +582,7 @@ class FormBuilder extends Component
      */
     public function saveForm(): void
     {
-        if (! $this->isDirty) {
+        if ( ! $this->isDirty ) {
             return;
         }
 
@@ -592,23 +592,12 @@ class FormBuilder extends Component
         // This component only manages fields and steps, which are saved immediately
         // when modified. This method just updates the UI state.
 
-        $this->isDirty = false;
-        $this->lastSavedAt = now()->format('g:i A');
+        $this->isDirty     = false;
+        $this->lastSavedAt = now()->format( 'g:i A');
 
         // Dispatch events - Alpine will handle resetting isSaving asynchronously
-        $this->dispatch('form-saved');
-        $this->dispatch('save-complete');
-    }
-
-    /**
-     * Mark the form as having unsaved changes.
-     */
-    protected function markDirty(): void
-    {
-        $this->isDirty = true;
-
-        // Trigger auto-save after a delay
-        $this->dispatch('auto-save-trigger');
+        $this->dispatch( 'form-saved');
+        $this->dispatch( 'save-complete');
     }
 
     // =========================================
@@ -620,6 +609,17 @@ class FormBuilder extends Component
      */
     public function render(): View
     {
-        return view('forms::livewire.form-builder');
+        return view( 'forms::livewire.form-builder');
+    }
+
+    /**
+     * Mark the form as having unsaved changes.
+     */
+    protected function markDirty(): void
+    {
+        $this->isDirty = true;
+
+        // Trigger auto-save after a delay
+        $this->dispatch( 'auto-save-trigger');
     }
 }

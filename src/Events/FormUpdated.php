@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Events;
 
@@ -31,7 +31,7 @@ class FormUpdated
     /**
      * Create a new event instance.
      */
-    public function __construct(Form $form)
+    public function __construct( Form $form )
     {
         $this->form = $form;
     }

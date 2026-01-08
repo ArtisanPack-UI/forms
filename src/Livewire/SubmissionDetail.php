@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire;
 
@@ -33,13 +33,13 @@ class SubmissionDetail extends Component
     /**
      * Initialize the component.
      */
-    public function mount(FormSubmission $submission): void
+    public function mount( FormSubmission $submission ): void
     {
         $this->submissionId = $submission->id;
-        $this->adminNotes = $submission->admin_notes ?? '';
+        $this->adminNotes   = $submission->admin_notes ?? '';
 
         // Mark as read when viewed
-        if (! $submission->is_read) {
+        if ( ! $submission->is_read ) {
             $submission->markAsRead();
         }
     }
@@ -50,8 +50,8 @@ class SubmissionDetail extends Component
     #[Computed]
     public function submission(): ?FormSubmission
     {
-        return FormSubmission::with(['form', 'values', 'uploads'])
-            ->find($this->submissionId);
+        return FormSubmission::with( ['form', 'values', 'uploads'] )
+            ->find( $this->submissionId );
     }
 
     /**
@@ -69,13 +69,13 @@ class SubmissionDetail extends Component
     #[Computed]
     public function previousSubmission(): ?FormSubmission
     {
-        if (! $this->submission) {
+        if ( ! $this->submission ) {
             return null;
         }
 
-        return FormSubmission::where('form_id', $this->submission->form_id)
-            ->where('id', '<', $this->submissionId)
-            ->orderBy('id', 'desc')
+        return FormSubmission::where( 'form_id', $this->submission->form_id )
+            ->where( 'id', '<', $this->submissionId )
+            ->orderBy( 'id', 'desc' )
             ->first();
     }
 
@@ -85,13 +85,13 @@ class SubmissionDetail extends Component
     #[Computed]
     public function nextSubmission(): ?FormSubmission
     {
-        if (! $this->submission) {
+        if ( ! $this->submission ) {
             return null;
         }
 
-        return FormSubmission::where('form_id', $this->submission->form_id)
-            ->where('id', '>', $this->submissionId)
-            ->orderBy('id', 'asc')
+        return FormSubmission::where( 'form_id', $this->submission->form_id )
+            ->where( 'id', '>', $this->submissionId )
+            ->orderBy( 'id', 'asc' )
             ->first();
     }
 
@@ -100,10 +100,10 @@ class SubmissionDetail extends Component
      */
     public function updatedAdminNotes(): void
     {
-        $submission = FormSubmission::find($this->submissionId);
+        $submission = FormSubmission::find( $this->submissionId );
 
-        if ($submission) {
-            $submission->update(['admin_notes' => $this->adminNotes]);
+        if ( $submission ) {
+            $submission->update( ['admin_notes' => $this->adminNotes] );
         }
     }
 
@@ -112,11 +112,11 @@ class SubmissionDetail extends Component
      */
     public function toggleStar(): void
     {
-        $submission = FormSubmission::find($this->submissionId);
+        $submission = FormSubmission::find( $this->submissionId );
 
-        if ($submission) {
+        if ( $submission ) {
             $submission->toggleStar();
-            unset($this->submission); // Clear cached computed property
+            unset( $this->submission ); // Clear cached computed property
         }
     }
 
@@ -125,11 +125,11 @@ class SubmissionDetail extends Component
      */
     public function toggleSpam(): void
     {
-        $submission = FormSubmission::find($this->submissionId);
+        $submission = FormSubmission::find( $this->submissionId );
 
-        if ($submission) {
+        if ( $submission ) {
             $submission->toggleSpam();
-            unset($this->submission); // Clear cached computed property
+            unset( $this->submission ); // Clear cached computed property
         }
     }
 
@@ -138,11 +138,11 @@ class SubmissionDetail extends Component
      */
     public function markAsRead(): void
     {
-        $submission = FormSubmission::find($this->submissionId);
+        $submission = FormSubmission::find( $this->submissionId );
 
-        if ($submission) {
+        if ( $submission ) {
             $submission->markAsRead();
-            unset($this->submission); // Clear cached computed property
+            unset( $this->submission ); // Clear cached computed property
         }
     }
 
@@ -151,11 +151,11 @@ class SubmissionDetail extends Component
      */
     public function markAsUnread(): void
     {
-        $submission = FormSubmission::find($this->submissionId);
+        $submission = FormSubmission::find( $this->submissionId );
 
-        if ($submission) {
+        if ( $submission ) {
             $submission->markAsUnread();
-            unset($this->submission); // Clear cached computed property
+            unset( $this->submission ); // Clear cached computed property
         }
     }
 
@@ -164,15 +164,15 @@ class SubmissionDetail extends Component
      */
     public function delete(): void
     {
-        $submission = FormSubmission::find($this->submissionId);
+        $submission = FormSubmission::find( $this->submissionId );
 
-        if ($submission) {
+        if ( $submission ) {
             $formSlug = $submission->form->slug;
             $submission->delete();
 
-            session()->flash('success', 'Submission deleted successfully.');
+            session()->flash( 'success', 'Submission deleted successfully.' );
 
-            $this->redirect(route('forms.submissions.index', $formSlug));
+            $this->redirect( route( 'forms.submissions.index', $formSlug ) );
         }
     }
 
@@ -181,11 +181,11 @@ class SubmissionDetail extends Component
      */
     public function goToPrevious(): void
     {
-        if ($this->previousSubmission) {
-            $this->redirect(route('forms.submissions.show', [
+        if ( $this->previousSubmission ) {
+            $this->redirect( route( 'forms.submissions.show', [
                 $this->form->slug,
                 $this->previousSubmission,
-            ]));
+            ] ) );
         }
     }
 
@@ -194,8 +194,8 @@ class SubmissionDetail extends Component
      */
     public function goToNext(): void
     {
-        if ($this->nextSubmission) {
-            $this->redirect(route('forms.submissions.show', [
+        if ( $this->nextSubmission ) {
+            $this->redirect( route( 'forms.submissions.show', [
                 $this->form->slug,
                 $this->nextSubmission,
             ]));
@@ -207,6 +207,6 @@ class SubmissionDetail extends Component
      */
     public function render(): View
     {
-        return view('forms::livewire.submission-detail');
+        return view( 'forms::livewire.submission-detail');
     }
 }

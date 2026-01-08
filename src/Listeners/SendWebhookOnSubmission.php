@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Listeners;
 
@@ -21,9 +21,9 @@ class SendWebhookOnSubmission
     /**
      * Handle the event.
      */
-    public function handle(FormSubmitted $event): void
+    public function handle( FormSubmitted $event ): void
     {
-        $this->sendWebhooks($event->submission);
+        $this->sendWebhooks( $event->submission );
     }
 
     /**
@@ -31,52 +31,52 @@ class SendWebhookOnSubmission
      *
      * Checks both global webhook configuration and form-specific webhook settings.
      */
-    public function sendWebhooks(FormSubmission $submission): void
+    public function sendWebhooks( FormSubmission $submission ): void
     {
         // Send global webhook if configured
-        $this->sendGlobalWebhook($submission);
+        $this->sendGlobalWebhook( $submission );
 
         // Send form-specific webhook if configured
-        $this->sendFormWebhook($submission);
+        $this->sendFormWebhook( $submission );
     }
 
     /**
      * Send the global webhook if configured.
      */
-    protected function sendGlobalWebhook(FormSubmission $submission): void
+    protected function sendGlobalWebhook( FormSubmission $submission ): void
     {
-        $enabled = config('artisanpack.forms.webhooks.enabled', false);
-        $url = config('artisanpack.forms.webhooks.url');
+        $enabled = config( 'artisanpack.forms.webhooks.enabled', false );
+        $url     = config( 'artisanpack.forms.webhooks.url' );
 
-        if (! $enabled || empty($url)) {
+        if ( ! $enabled || empty( $url ) ) {
             return;
         }
 
-        $secret = config('artisanpack.forms.webhooks.secret');
-        $queue = config('artisanpack.forms.webhooks.queue', 'default');
+        $secret = config( 'artisanpack.forms.webhooks.secret' );
+        $queue  = config( 'artisanpack.forms.webhooks.queue', 'default' );
 
-        SendWebhook::dispatch($submission, $url, $secret)
-            ->onQueue($queue);
+        SendWebhook::dispatch( $submission, $url, $secret )
+            ->onQueue( $queue );
     }
 
     /**
      * Send the form-specific webhook if configured.
      */
-    protected function sendFormWebhook(FormSubmission $submission): void
+    protected function sendFormWebhook( FormSubmission $submission ): void
     {
-        $submission->loadMissing('form');
+        $submission->loadMissing( 'form' );
 
-        $webhookSettings = $submission->form->getSetting('webhook');
+        $webhookSettings = $submission->form->getSetting( 'webhook' );
 
-        if (empty($webhookSettings) || empty($webhookSettings['enabled']) || empty($webhookSettings['url'])) {
+        if ( empty( $webhookSettings ) || empty( $webhookSettings['enabled'] ) || empty( $webhookSettings['url'] ) ) {
             return;
         }
 
-        $url = $webhookSettings['url'];
+        $url    = $webhookSettings['url'];
         $secret = $webhookSettings['secret'] ?? null;
-        $queue = config('artisanpack.forms.webhooks.queue', 'default');
+        $queue  = config( 'artisanpack.forms.webhooks.queue', 'default' );
 
-        SendWebhook::dispatch($submission, $url, $secret)
-            ->onQueue($queue);
+        SendWebhook::dispatch( $submission, $url, $secret)
+            ->onQueue( $queue);
     }
 }

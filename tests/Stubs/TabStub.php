@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace Tests\Stubs;
 
@@ -24,13 +24,14 @@ class TabStub extends Component
         public ?string $name = null,
         public ?string $label = null,
         public ?string $icon = null,
-    ) {}
+    ) {
+    }
 
     /**
      * Get the view / contents that represent the component.
      */
     public function render(): View
     {
-        return view('stubs.tab');
+        return view( 'stubs.tab' );
     }
 }

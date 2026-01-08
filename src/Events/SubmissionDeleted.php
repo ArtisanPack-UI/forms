@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Events;
 
@@ -31,7 +31,7 @@ class SubmissionDeleted
     /**
      * Create a new event instance.
      */
-    public function __construct(FormSubmission $submission)
+    public function __construct( FormSubmission $submission )
     {
         $this->submission = $submission;
     }

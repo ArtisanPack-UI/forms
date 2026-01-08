@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Models\Form;
@@ -9,196 +9,196 @@ use ArtisanPackUI\Forms\Services\ExportService;
 use ArtisanPackUI\Forms\Services\IntegrationService;
 use ArtisanPackUI\Forms\Services\SubmissionService;
 
-beforeEach(function (): void {
+beforeEach( function (): void {
     // Reset any registered filters between tests
-    if (function_exists('removeAllFilters')) {
-        removeAllFilters('forms.field_types');
-        removeAllFilters('forms.field_categories');
-        removeAllFilters('forms.validation_rules');
-        removeAllFilters('forms.submission_data');
-        removeAllFilters('forms.export_headers');
-        removeAllFilters('forms.export_data');
-        removeAllFilters('forms.settings_tabs');
+    if ( function_exists( 'removeAllFilters' ) ) {
+        removeAllFilters( 'forms.field_types' );
+        removeAllFilters( 'forms.field_categories' );
+        removeAllFilters( 'forms.validation_rules' );
+        removeAllFilters( 'forms.submission_data' );
+        removeAllFilters( 'forms.export_headers' );
+        removeAllFilters( 'forms.export_data' );
+        removeAllFilters( 'forms.settings_tabs' );
     }
-});
+} );
 
-describe('Filter Hooks', function (): void {
-    describe('forms.field_types filter', function (): void {
-        it('allows registering custom field types', function (): void {
-            if (! function_exists('addFilter')) {
-                $this->markTestSkipped('Hook system not available');
+describe( 'Filter Hooks', function (): void {
+    describe( 'forms.field_types filter', function (): void {
+        it( 'allows registering custom field types', function (): void {
+            if ( ! function_exists( 'addFilter' ) ) {
+                $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter('forms.field_types', function (array $types): array {
+            addFilter( 'forms.field_types', function ( array $types ): array {
                 $types['custom_rating'] = [
-                    'label' => 'Star Rating',
-                    'icon' => 'o-star',
-                    'category' => 'advanced',
-                    'has_options' => false,
-                    'supports_placeholder' => false,
+                    'label'                  => 'Star Rating',
+                    'icon'                   => 'o-star',
+                    'category'               => 'advanced',
+                    'has_options'            => false,
+                    'supports_placeholder'   => false,
                     'supports_default_value' => true,
-                    'validation_options' => ['min', 'max'],
-                    'defaults' => [
+                    'validation_options'     => ['min', 'max'],
+                    'defaults'               => [
                         'label' => 'Rating',
                     ],
                 ];
 
                 return $types;
-            });
+            } );
 
             $types = FieldTypes::getTypes();
 
-            expect($types)->toHaveKey('custom_rating')
-                ->and($types['custom_rating']['label'])->toBe('Star Rating');
-        });
+            expect( $types )->toHaveKey( 'custom_rating' )
+                ->and( $types['custom_rating']['label'] )->toBe( 'Star Rating' );
+        } );
 
-        it('can modify existing field types', function (): void {
-            if (! function_exists('addFilter')) {
-                $this->markTestSkipped('Hook system not available');
+        it( 'can modify existing field types', function (): void {
+            if ( ! function_exists( 'addFilter' ) ) {
+                $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter('forms.field_types', function (array $types): array {
+            addFilter( 'forms.field_types', function ( array $types ): array {
                 $types['text']['label'] = 'Modified Text Input';
 
                 return $types;
-            });
+            } );
 
             $types = FieldTypes::getTypes();
 
-            expect($types['text']['label'])->toBe('Modified Text Input');
-        });
-    });
+            expect( $types['text']['label'] )->toBe( 'Modified Text Input' );
+        } );
+    } );
 
-    describe('forms.field_categories filter', function (): void {
-        it('allows registering custom field categories', function (): void {
-            if (! function_exists('addFilter')) {
-                $this->markTestSkipped('Hook system not available');
+    describe( 'forms.field_categories filter', function (): void {
+        it( 'allows registering custom field categories', function (): void {
+            if ( ! function_exists( 'addFilter' ) ) {
+                $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter('forms.field_categories', function (array $categories): array {
+            addFilter( 'forms.field_categories', function ( array $categories ): array {
                 $categories['custom'] = [
-                    'label' => 'Custom Fields',
+                    'label'  => 'Custom Fields',
                     'fields' => ['custom_rating'],
                 ];
 
                 return $categories;
-            });
+            } );
 
             $categories = FieldTypes::getCategoriesFiltered();
 
-            expect($categories)->toHaveKey('custom')
-                ->and($categories['custom']['label'])->toBe('Custom Fields');
-        });
-    });
+            expect( $categories )->toHaveKey( 'custom' )
+                ->and( $categories['custom']['label'] )->toBe( 'Custom Fields' );
+        } );
+    } );
 
-    describe('forms.validation_rules filter', function (): void {
-        it('allows modifying validation rules for a field', function (): void {
-            if (! function_exists('addFilter')) {
-                $this->markTestSkipped('Hook system not available');
+    describe( 'forms.validation_rules filter', function (): void {
+        it( 'allows modifying validation rules for a field', function (): void {
+            if ( ! function_exists( 'addFilter' ) ) {
+                $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter('forms.validation_rules', function (array $rules, FormField $field): array {
+            addFilter( 'forms.validation_rules', function ( array $rules, FormField $field ): array {
                 // Add a custom rule for email fields
-                if ($field->type === 'email') {
+                if ( 'email' === $field->type ) {
                     $rules[] = 'ends_with:@example.com';
                 }
 
                 return $rules;
-            });
+            } );
 
-            $form = Form::factory()->create();
-            $field = FormField::factory()->for($form)->create([
-                'type' => 'email',
+            $form  = Form::factory()->create();
+            $field = FormField::factory()->for( $form )->create( [
+                'type'        => 'email',
                 'is_required' => true,
-            ]);
+            ] );
 
             $rules = $field->buildValidationRules();
 
-            expect($rules)->toContain('email')
-                ->and($rules)->toContain('ends_with:@example.com');
-        });
-    });
+            expect( $rules )->toContain( 'email' )
+                ->and( $rules )->toContain( 'ends_with:@example.com' );
+        } );
+    } );
 
-    describe('forms.submission_data filter', function (): void {
-        it('allows modifying submission data before saving', function (): void {
-            if (! function_exists('addFilter')) {
-                $this->markTestSkipped('Hook system not available');
+    describe( 'forms.submission_data filter', function (): void {
+        it( 'allows modifying submission data before saving', function (): void {
+            if ( ! function_exists( 'addFilter' ) ) {
+                $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter('forms.submission_data', function (array $data, Form $form): array {
+            addFilter( 'forms.submission_data', function ( array $data, Form $form ): array {
                 // Add a tracking field to all submissions
-                $data['_tracking_id'] = 'TRACK-'.uniqid();
+                $data['_tracking_id'] = 'TRACK-' . uniqid();
 
                 return $data;
-            });
+            } );
 
             $form = Form::factory()->create();
-            FormField::factory()->for($form)->create(['name' => 'name', 'type' => 'text']);
+            FormField::factory()->for( $form )->create( ['name' => 'name', 'type' => 'text'] );
 
-            $service = app(SubmissionService::class);
+            $service = app( SubmissionService::class );
 
             // Note: The filter modifies the data before processing
             // but in practice, the tracking_id would need to be stored
             // This test verifies the filter is called
-            $submission = $service->create($form, ['name' => 'Test User'], [], []);
+            $submission = $service->create( $form, ['name' => 'Test User'], [], [] );
 
-            expect($submission)->not->toBeNull();
-        });
-    });
+            expect( $submission )->not->toBeNull();
+        } );
+    } );
 
-    describe('forms.export_headers filter', function (): void {
-        it('allows modifying export headers', function (): void {
-            if (! function_exists('addFilter')) {
-                $this->markTestSkipped('Hook system not available');
+    describe( 'forms.export_headers filter', function (): void {
+        it( 'allows modifying export headers', function (): void {
+            if ( ! function_exists( 'addFilter' ) ) {
+                $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter('forms.export_headers', function (array $headers, Form $form): array {
+            addFilter( 'forms.export_headers', function ( array $headers, Form $form ): array {
                 $headers[] = 'Custom Column';
 
                 return $headers;
-            });
+            } );
 
-            $form = Form::factory()->create();
-            $service = app(ExportService::class);
+            $form    = Form::factory()->create();
+            $service = app( ExportService::class );
 
-            $headers = $service->buildHeaders($form);
+            $headers = $service->buildHeaders( $form );
 
-            expect($headers)->toContain('Custom Column');
-        });
-    });
+            expect( $headers )->toContain( 'Custom Column' );
+        } );
+    } );
 
-    describe('forms.settings_tabs filter', function (): void {
-        it('allows registering custom settings tabs', function (): void {
-            if (! function_exists('addFilter')) {
-                $this->markTestSkipped('Hook system not available');
+    describe( 'forms.settings_tabs filter', function (): void {
+        it( 'allows registering custom settings tabs', function (): void {
+            if ( ! function_exists( 'addFilter' ) ) {
+                $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter('forms.settings_tabs', function (array $tabs): array {
+            addFilter( 'forms.settings_tabs', function ( array $tabs ): array {
                 $tabs[] = [
-                    'id' => 'mailchimp',
-                    'label' => 'Mailchimp',
-                    'icon' => 'o-envelope',
-                    'component' => 'mailchimp-settings',
+                    'id'          => 'mailchimp',
+                    'label'       => 'Mailchimp',
+                    'icon'        => 'o-envelope',
+                    'component'   => 'mailchimp-settings',
                     'description' => 'Configure Mailchimp integration',
                 ];
 
                 return $tabs;
-            });
+            } );
 
-            $service = app(IntegrationService::class);
-            $tabs = $service->getSettingsTabs();
+            $service = app( IntegrationService::class );
+            $tabs    = $service->getSettingsTabs();
 
-            expect($tabs)->toHaveCount(1)
-                ->and($tabs[0]['id'])->toBe('mailchimp')
-                ->and($tabs[0]['label'])->toBe('Mailchimp');
+            expect( $tabs )->toHaveCount( 1 )
+                ->and( $tabs[0]['id'] )->toBe( 'mailchimp' )
+                ->and( $tabs[0]['label'])->toBe( 'Mailchimp');
         });
 
-        it('returns empty array when no tabs registered', function (): void {
-            $service = app(IntegrationService::class);
-            $tabs = $service->getSettingsTabs();
+        it( 'returns empty array when no tabs registered', function (): void {
+            $service = app( IntegrationService::class);
+            $tabs    = $service->getSettingsTabs();
 
-            expect($tabs)->toBeArray()
-                ->and($tabs)->toBeEmpty();
+            expect( $tabs)->toBeArray()
+                ->and( $tabs)->toBeEmpty();
         });
     });
 });

@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms;
 
@@ -51,45 +51,45 @@ class FormsServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(
-            __DIR__.'/../config/forms.php',
-            'artisanpack-forms-temp'
+            __DIR__ . '/../config/forms.php',
+            'artisanpack-forms-temp',
         );
 
-        $this->app->singleton('forms', function ($app) {
+        $this->app->singleton( 'forms', function ( $app ) {
             return new Forms;
-        });
+        } );
 
-        $this->app->singleton(FormService::class, function ($app) {
+        $this->app->singleton( FormService::class, function ( $app ) {
             return new FormService;
-        });
+        } );
 
-        $this->app->singleton(FieldService::class, function ($app) {
+        $this->app->singleton( FieldService::class, function ( $app ) {
             return new FieldService;
-        });
+        } );
 
-        $this->app->singleton(StepService::class, function ($app) {
+        $this->app->singleton( StepService::class, function ( $app ) {
             return new StepService;
-        });
+        } );
 
-        $this->app->singleton(ConditionalLogicService::class, function ($app) {
+        $this->app->singleton( ConditionalLogicService::class, function ( $app ) {
             return new ConditionalLogicService;
-        });
+        } );
 
-        $this->app->singleton(NotificationService::class, function ($app) {
-            return new NotificationService($app->make(ConditionalLogicService::class));
-        });
+        $this->app->singleton( NotificationService::class, function ( $app ) {
+            return new NotificationService( $app->make( ConditionalLogicService::class ) );
+        } );
 
-        $this->app->singleton(SubmissionService::class, function ($app) {
-            return new SubmissionService($app->make(NotificationService::class));
-        });
+        $this->app->singleton( SubmissionService::class, function ( $app ) {
+            return new SubmissionService( $app->make( NotificationService::class ) );
+        } );
 
-        $this->app->singleton(ExportService::class, function ($app) {
+        $this->app->singleton( ExportService::class, function ( $app ) {
             return new ExportService;
-        });
+        } );
 
-        $this->app->singleton(IntegrationService::class, function ($app) {
+        $this->app->singleton( IntegrationService::class, function ( $app ) {
             return new IntegrationService;
-        });
+        } );
     }
 
     /**
@@ -109,9 +109,9 @@ class FormsServiceProvider extends ServiceProvider
         $this->registerEventListeners();
         $this->registerPolicies();
         $this->publishConfiguration();
-        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-        $this->loadViewsFrom(__DIR__.'/../resources/views', 'forms');
-        $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        $this->loadMigrationsFrom( __DIR__ . '/../database/migrations' );
+        $this->loadViewsFrom( __DIR__ . '/../resources/views', 'forms' );
+        $this->loadRoutesFrom( __DIR__ . '/../routes/web.php' );
         $this->registerLivewireComponents();
         $this->publishViews();
     }
@@ -126,10 +126,10 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function mergeConfiguration(): void
     {
-        $packageDefaults = config('artisanpack-forms-temp', []);
-        $userConfig = config('artisanpack.forms', []);
-        $mergedConfig = array_replace_recursive($packageDefaults, $userConfig);
-        config(['artisanpack.forms' => $mergedConfig]);
+        $packageDefaults = config( 'artisanpack-forms-temp', [] );
+        $userConfig      = config( 'artisanpack.forms', [] );
+        $mergedConfig    = array_replace_recursive( $packageDefaults, $userConfig );
+        config( ['artisanpack.forms' => $mergedConfig] );
     }
 
     /**
@@ -146,24 +146,24 @@ class FormsServiceProvider extends ServiceProvider
     protected function validateUserModelConfiguration(): void
     {
         // Only validate if ownership restriction is enabled
-        if (! config('artisanpack.forms.authorization.restrict_by_owner', false)) {
+        if ( ! config( 'artisanpack.forms.authorization.restrict_by_owner', false ) ) {
             return;
         }
 
-        $userModel = config('artisanpack.forms.authorization.user_model', 'App\\Models\\User');
+        $userModel = config( 'artisanpack.forms.authorization.user_model', 'App\\Models\\User' );
 
-        if (! class_exists($userModel)) {
+        if ( ! class_exists( $userModel ) ) {
             throw new RuntimeException(
-                "The configured user model class '{$userModel}' does not exist. ".
-                'Please set a valid class in FORMS_USER_MODEL environment variable or '.
-                'artisanpack.forms.authorization.user_model configuration.'
+                "The configured user model class '{$userModel}' does not exist. " .
+                'Please set a valid class in FORMS_USER_MODEL environment variable or ' .
+                'artisanpack.forms.authorization.user_model configuration.',
             );
         }
 
-        if (! is_subclass_of($userModel, Model::class)) {
+        if ( ! is_subclass_of( $userModel, Model::class ) ) {
             throw new RuntimeException(
-                "The configured user model class '{$userModel}' must extend ".
-                'Illuminate\\Database\\Eloquent\\Model.'
+                "The configured user model class '{$userModel}' must extend " .
+                'Illuminate\\Database\\Eloquent\\Model.',
             );
         }
     }
@@ -178,12 +178,12 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function registerFilesystemDisk(): void
     {
-        $diskConfig = config('artisanpack.forms.disk_config', []);
+        $diskConfig = config( 'artisanpack.forms.disk_config', [] );
 
-        foreach ($diskConfig as $diskName => $diskSettings) {
+        foreach ( $diskConfig as $diskName => $diskSettings ) {
             // Only add the disk if it doesn't already exist
-            if (config("filesystems.disks.{$diskName}") === null) {
-                config(["filesystems.disks.{$diskName}" => $diskSettings]);
+            if ( null === config( "filesystems.disks.{$diskName}" ) ) {
+                config( ["filesystems.disks.{$diskName}" => $diskSettings] );
             }
         }
     }
@@ -195,10 +195,10 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function registerCommands(): void
     {
-        if ($this->app->runningInConsole()) {
-            $this->commands([
+        if ( $this->app->runningInConsole() ) {
+            $this->commands( [
                 PruneFormSubmissions::class,
-            ]);
+            ] );
         }
     }
 
@@ -209,7 +209,7 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function registerEventListeners(): void
     {
-        Event::listen(FormSubmitted::class, SendWebhookOnSubmission::class);
+        Event::listen( FormSubmitted::class, SendWebhookOnSubmission::class );
     }
 
     /**
@@ -219,8 +219,8 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function registerPolicies(): void
     {
-        Gate::policy(Models\Form::class, Policies\FormPolicy::class);
-        Gate::policy(Models\FormSubmission::class, Policies\SubmissionPolicy::class);
+        Gate::policy( Models\Form::class, Policies\FormPolicy::class );
+        Gate::policy( Models\FormSubmission::class, Policies\SubmissionPolicy::class );
     }
 
     /**
@@ -233,10 +233,10 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function publishConfiguration(): void
     {
-        if ($this->app->runningInConsole()) {
-            $this->publishes([
-                __DIR__.'/../config/forms.php' => config_path('artisanpack/forms.php'),
-            ], 'artisanpack-package-config');
+        if ( $this->app->runningInConsole() ) {
+            $this->publishes( [
+                __DIR__ . '/../config/forms.php' => config_path( 'artisanpack/forms.php' ),
+            ], 'artisanpack-package-config' );
         }
     }
 
@@ -247,13 +247,13 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function registerLivewireComponents(): void
     {
-        if (class_exists(Livewire::class)) {
-            Livewire::component('forms-list', FormsList::class);
-            Livewire::component('form-builder', FormBuilder::class);
-            Livewire::component('form-renderer', FormRenderer::class);
-            Livewire::component('notification-editor', NotificationEditor::class);
-            Livewire::component('submissions-list', SubmissionsList::class);
-            Livewire::component('submission-detail', SubmissionDetail::class);
+        if ( class_exists( Livewire::class ) ) {
+            Livewire::component( 'forms-list', FormsList::class );
+            Livewire::component( 'form-builder', FormBuilder::class );
+            Livewire::component( 'form-renderer', FormRenderer::class );
+            Livewire::component( 'notification-editor', NotificationEditor::class );
+            Livewire::component( 'submissions-list', SubmissionsList::class );
+            Livewire::component( 'submission-detail', SubmissionDetail::class );
         }
     }
 
@@ -264,9 +264,9 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function publishViews(): void
     {
-        if ($this->app->runningInConsole()) {
-            $this->publishes([
-                __DIR__.'/../resources/views' => resource_path('views/vendor/forms'),
+        if ( $this->app->runningInConsole()) {
+            $this->publishes( [
+                __DIR__ . '/../resources/views' => resource_path( 'views/vendor/forms'),
             ], 'artisanpack-forms-views');
         }
     }

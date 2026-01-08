@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace Tests\Stubs;
 
@@ -24,13 +24,14 @@ class DropdownStub extends Component
         public ?string $label = null,
         public ?string $icon = null,
         public ?string $position = 'bottom',
-    ) {}
+    ) {
+    }
 
     /**
      * Get the view / contents that represent the component.
      */
     public function render(): View
     {
-        return view('stubs.dropdown');
+        return view( 'stubs.dropdown' );
     }
 }

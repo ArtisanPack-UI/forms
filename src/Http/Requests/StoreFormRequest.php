@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Http\Requests;
 
@@ -27,8 +27,8 @@ class StoreFormRequest extends FormRequest
     public function authorize(): bool
     {
         // Check if a policy/gate is defined for creating forms
-        if (Gate::has('create-form') || Gate::getPolicyFor(Form::class)) {
-            return $this->user()?->can('create', Form::class) ?? false;
+        if ( Gate::has( 'create-form' ) || Gate::getPolicyFor( Form::class ) ) {
+            return $this->user()?->can( 'create', Form::class ) ?? false;
         }
 
         // Default: allow authenticated users (auth middleware handles unauthenticated)
@@ -43,15 +43,15 @@ class StoreFormRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'slug' => ['nullable', 'string', 'max:255', 'unique:forms,slug', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'submit_button_text' => ['nullable', 'string', 'max:100'],
-            'success_message' => ['nullable', 'string', 'max:2000'],
-            'redirect_url' => ['nullable', 'url', 'max:255'],
-            'is_active' => ['nullable', 'boolean'],
-            'is_multi_step' => ['nullable', 'boolean'],
-            'show_progress_bar' => ['nullable', 'boolean'],
+            'name'                  => ['required', 'string', 'max:255'],
+            'slug'                  => ['nullable', 'string', 'max:255', 'unique:forms,slug', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
+            'description'           => ['nullable', 'string', 'max:1000'],
+            'submit_button_text'    => ['nullable', 'string', 'max:100'],
+            'success_message'       => ['nullable', 'string', 'max:2000'],
+            'redirect_url'          => ['nullable', 'url', 'max:255'],
+            'is_active'             => ['nullable', 'boolean'],
+            'is_multi_step'         => ['nullable', 'boolean'],
+            'show_progress_bar'     => ['nullable', 'boolean'],
             'allow_step_navigation' => ['nullable', 'boolean'],
         ];
     }
@@ -64,11 +64,11 @@ class StoreFormRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => 'The form name is required.',
-            'name.max' => 'The form name cannot exceed 255 characters.',
-            'slug.unique' => 'This slug is already in use by another form.',
-            'slug.regex' => 'The slug may only contain lowercase letters, numbers, and hyphens.',
-            'description.max' => 'The description cannot exceed 1000 characters.',
+            'name.required'    => 'The form name is required.',
+            'name.max'         => 'The form name cannot exceed 255 characters.',
+            'slug.unique'      => 'This slug is already in use by another form.',
+            'slug.regex'       => 'The slug may only contain lowercase letters, numbers, and hyphens.',
+            'description.max'  => 'The description cannot exceed 1000 characters.',
             'redirect_url.url' => 'Please enter a valid URL for the redirect.',
         ];
     }
@@ -79,8 +79,8 @@ class StoreFormRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         // Convert empty slug to null so it gets auto-generated
-        if ($this->has('slug') && $this->slug === '') {
-            $this->merge(['slug' => null]);
+        if ( $this->has( 'slug' ) && '' === $this->slug ) {
+            $this->merge( ['slug' => null] );
         }
     }
 }

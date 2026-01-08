@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Mail;
 
@@ -75,37 +75,37 @@ class FormSubmissionNotification extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct(FormNotification $notification, FormSubmission $submission)
+    public function __construct( FormNotification $notification, FormSubmission $submission )
     {
         $this->notification = $notification;
-        $this->submission = $submission;
+        $this->submission   = $submission;
 
         // Pre-parse templates
-        $notificationService = app(NotificationService::class);
-        $this->parsedSubject = $notificationService->parseTemplate($notification->subject, $submission);
-        $this->parsedMessage = $notificationService->parseTemplate($notification->message, $submission);
+        $notificationService = app( NotificationService::class );
+        $this->parsedSubject = $notificationService->parseTemplate( $notification->subject, $submission );
+        $this->parsedMessage = $notificationService->parseTemplate( $notification->message, $submission );
 
         // Apply filter hook to allow modifying the message
-        if (function_exists('applyFilters')) {
+        if ( function_exists( 'applyFilters' ) ) {
             $this->parsedMessage = applyFilters(
                 'forms.notification_message',
                 $this->parsedMessage,
                 $notification,
-                $submission
+                $submission,
             );
         }
 
-        $this->submissionDataTable = $notificationService->formatAllFieldsAsTable($submission);
+        $this->submissionDataTable = $notificationService->formatAllFieldsAsTable( $submission );
 
         // Get CC/BCC recipients upfront
-        $this->ccEmails = $notificationService->getCcEmails($notification);
-        $this->bccEmails = $notificationService->getBccEmails($notification);
+        $this->ccEmails  = $notificationService->getCcEmails( $notification );
+        $this->bccEmails = $notificationService->getBccEmails( $notification );
 
         // Determine whether to show IP address:
         // - Check config setting
         // - Hide for autoresponder emails (privacy: don't show submitter their own IP)
-        $this->showIpAddress = config('artisanpack.forms.notifications.show_ip_in_emails', true)
-            && $notification->type !== FormNotification::TYPE_AUTORESPONDER;
+        $this->showIpAddress = config( 'artisanpack.forms.notifications.show_ip_in_emails', true )
+            && FormNotification::TYPE_AUTORESPONDER !== $notification->type;
     }
 
     /**
@@ -115,18 +115,18 @@ class FormSubmissionNotification extends Mailable
     {
         // Build from address
         $from = null;
-        if ($this->notification->from_email) {
+        if ( $this->notification->from_email ) {
             $from = new Address(
                 $this->notification->from_email,
-                $this->notification->from_name ?? config('app.name')
+                $this->notification->from_name ?? config( 'app.name' ),
             );
         }
 
         // Build reply-to
-        $replyTo = [];
-        $replyToEmail = $this->notification->getReplyToEmail($this->submission);
-        if ($replyToEmail && filter_var($replyToEmail, FILTER_VALIDATE_EMAIL)) {
-            $replyTo = [new Address($replyToEmail)];
+        $replyTo      = [];
+        $replyToEmail = $this->notification->getReplyToEmail( $this->submission );
+        if ( $replyToEmail && filter_var( $replyToEmail, FILTER_VALIDATE_EMAIL ) ) {
+            $replyTo = [new Address( $replyToEmail )];
         }
 
         return new Envelope(

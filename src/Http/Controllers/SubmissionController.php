@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Http\Controllers;
 
@@ -32,90 +32,90 @@ class SubmissionController extends Controller
      */
     public function indexAll(): View
     {
-        $this->authorize('viewAny', FormSubmission::class);
+        $this->authorize( 'viewAny', FormSubmission::class );
 
-        return view('forms::submissions.index-all');
+        return view( 'forms::submissions.index-all' );
     }
 
     /**
      * Display a listing of submissions for a specific form.
      */
-    public function index(Form $form): View
+    public function index( Form $form ): View
     {
-        $this->authorize('viewSubmissions', $form);
+        $this->authorize( 'viewSubmissions', $form );
 
-        return view('forms::submissions.index', [
+        return view( 'forms::submissions.index', [
             'form' => $form,
-        ]);
+        ] );
     }
 
     /**
      * Display a specific submission.
      */
-    public function show(Form $form, FormSubmission $submission): View
+    public function show( Form $form, FormSubmission $submission ): View
     {
         // Ensure the submission belongs to this form
-        if ($submission->form_id !== $form->id) {
-            abort(404);
+        if ( $submission->form_id !== $form->id ) {
+            abort( 404 );
         }
 
-        $this->authorize('view', $submission);
+        $this->authorize( 'view', $submission );
 
-        return view('forms::submissions.show', [
-            'form' => $form,
+        return view( 'forms::submissions.show', [
+            'form'       => $form,
             'submission' => $submission,
-        ]);
+        ] );
     }
 
     /**
      * Export submissions to CSV.
      */
-    public function export(Request $request, Form $form, ExportService $exportService): StreamedResponse
+    public function export( Request $request, Form $form, ExportService $exportService ): StreamedResponse
     {
-        $this->authorize('exportSubmissions', $form);
+        $this->authorize( 'exportSubmissions', $form );
 
-        $submissions = FormSubmission::where('form_id', $form->id)
-            ->with('values')
-            ->orderBy('created_at', 'desc')
+        $submissions = FormSubmission::where( 'form_id', $form->id )
+            ->with( 'values' )
+            ->orderBy( 'created_at', 'desc' )
             ->get();
 
-        return $exportService->exportToCsv($form, $submissions);
+        return $exportService->exportToCsv( $form, $submissions );
     }
 
     /**
      * Download a file upload.
      */
-    public function downloadUpload(Form $form, FormSubmission $submission, FormUpload $upload): StreamedResponse
+    public function downloadUpload( Form $form, FormSubmission $submission, FormUpload $upload ): StreamedResponse
     {
         // Ensure the submission belongs to this form
-        if ($submission->form_id !== $form->id) {
-            Log::warning('Unauthorized file download attempt: submission does not belong to form', [
-                'form_id' => $form->id,
+        if ( $submission->form_id !== $form->id ) {
+            Log::warning( 'Unauthorized file download attempt: submission does not belong to form', [
+                'form_id'       => $form->id,
                 'submission_id' => $submission->id,
-                'upload_id' => $upload->id,
-                'ip' => $this->getLoggableIp(),
-            ]);
-            abort(404);
+                'upload_id'     => $upload->id,
+                'ip'            => $this->getLoggableIp(),
+            ] );
+            abort( 404 );
         }
 
         // Ensure the upload belongs to this submission
-        if ($upload->submission_id !== $submission->id) {
-            Log::warning('Unauthorized file download attempt: upload does not belong to submission', [
-                'form_id' => $form->id,
+        if ( $upload->submission_id !== $submission->id ) {
+            Log::warning( 'Unauthorized file download attempt: upload does not belong to submission', [
+                'form_id'       => $form->id,
                 'submission_id' => $submission->id,
-                'upload_id' => $upload->id,
-                'ip' => $this->getLoggableIp(),
-            ]);
-            abort(404);
+                'upload_id'     => $upload->id,
+                'ip'            => $this->getLoggableIp(),
+            ] );
+            abort( 404 );
         }
 
-        $this->authorize('view', $submission);
+        $this->authorize( 'view', $submission );
 
-        if (! Storage::disk($upload->disk)->exists($upload->path)) {
-            abort(404, 'File not found.');
+        if ( ! Storage::disk( $upload->disk )->exists( $upload->path ) ) {
+            abort( 404, 'File not found.' );
         }
 
-        return Storage::disk($upload->disk)->download($upload->path, $upload->original_name);
+        return Storage::disk( $upload->disk )->download( $upload->path, $upload->original_name );
     }
 
     /**
@@ -129,37 +129,37 @@ class SubmissionController extends Controller
     {
         $ipAddress = request()->ip();
 
-        if ($ipAddress === null) {
+        if ( null === $ipAddress ) {
             return null;
         }
 
         // Check if anonymization is enabled
-        if (! config('artisanpack.forms.privacy.submission.anonymize_ip', false)) {
+        if ( ! config( 'artisanpack.forms.privacy.submission.anonymize_ip', false ) ) {
             return $ipAddress;
         }
 
         // Anonymize IPv4
-        if (filter_var($ipAddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-            return preg_replace('/\.\d+$/', '.0', $ipAddress) ?? $ipAddress;
+        if ( filter_var( $ipAddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
+            return preg_replace( '/\.\d+$/', '.0', $ipAddress ) ?? $ipAddress;
         }
 
         // Anonymize IPv6 - mask the last 80 bits (10 bytes)
-        if (filter_var($ipAddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+        if ( filter_var( $ipAddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 ) ) {
             // Convert to binary representation (16 bytes)
-            $binary = @inet_pton($ipAddress);
+            $binary = @inet_pton( $ipAddress );
 
-            if ($binary === false) {
+            if ( false === $binary ) {
                 // Fallback if conversion fails
                 return $ipAddress;
             }
 
             // Zero out the last 10 bytes (80 bits) - keep first 6 bytes (48 bits / 3 groups)
-            $anonymized = substr($binary, 0, 6).str_repeat("\x00", 10);
+            $anonymized = substr( $binary, 0, 6 ) . str_repeat( "\x00", 10 );
 
             // Convert back to string representation
-            $result = @inet_ntop($anonymized);
+            $result = @inet_ntop( $anonymized);
 
-            if ($result === false) {
+            if ( false === $result) {
                 // Fallback if conversion fails
                 return $ipAddress;
             }

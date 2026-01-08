@@ -39,7 +39,18 @@
     "artisanpack-ui/code-style": "^1.1",
     "artisanpack-ui/code-style-pint": "^1.1",
     "laravel/pint": "^1.26",
-    "orchestra/testbench": "^10.2"
+    "orchestra/testbench": "^10.2",
+    "friendsofphp/php-cs-fixer": "^3.75"
+  },
+  "scripts": {
+    "lint": [
+      "./vendor/bin/php-cs-fixer fix --dry-run --diff",
+      "./vendor/bin/phpcs"
+    ],
+    "fix": "./vendor/bin/php-cs-fixer fix",
+    "cs": "./vendor/bin/phpcs",
+    "cs:fix": "./vendor/bin/phpcbf",
+    "test": "./vendor/bin/pest"
   },
   "config": {
     "allow-plugins": {

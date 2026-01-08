@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire;
 
@@ -58,22 +58,22 @@ class NotificationEditor extends Component
      */
     public function boot(
         NotificationService $notificationService,
-        ConditionalLogicService $conditionalLogicService
+        ConditionalLogicService $conditionalLogicService,
     ): void {
-        $this->notificationService = $notificationService;
+        $this->notificationService     = $notificationService;
         $this->conditionalLogicService = $conditionalLogicService;
     }
 
     /**
      * Mount the component.
      */
-    public function mount(Form $form): void
+    public function mount( Form $form ): void
     {
-        $this->form = $form->load(['notifications', 'fields']);
+        $this->form = $form->load( ['notifications', 'fields'] );
 
         // Select first notification if exists
-        $firstNotification = $this->form->notifications()->orderBy('sort_order')->first();
-        if ($firstNotification) {
+        $firstNotification = $this->form->notifications()->orderBy( 'sort_order' )->first();
+        if ( $firstNotification ) {
             $this->selectedNotificationId = $firstNotification->id;
         }
     }
@@ -90,7 +90,7 @@ class NotificationEditor extends Component
     #[Computed]
     public function notifications(): Collection
     {
-        return $this->form->notifications()->orderBy('sort_order')->get();
+        return $this->form->notifications()->orderBy( 'sort_order' )->get();
     }
 
     /**
@@ -99,11 +99,11 @@ class NotificationEditor extends Component
     #[Computed]
     public function selectedNotification(): ?FormNotification
     {
-        if ($this->selectedNotificationId === null) {
+        if ( null === $this->selectedNotificationId ) {
             return null;
         }
 
-        return $this->form->notifications()->where('id', $this->selectedNotificationId)->first();
+        return $this->form->notifications()->where( 'id', $this->selectedNotificationId )->first();
     }
 
     /**
@@ -116,19 +116,19 @@ class NotificationEditor extends Component
     {
         return [
             FormNotification::TYPE_ADMIN => [
-                'label' => 'Admin Notification',
+                'label'       => 'Admin Notification',
                 'description' => 'Notify administrators of new submissions',
-                'icon' => 'o-bell',
+                'icon'        => 'o-bell',
             ],
             FormNotification::TYPE_AUTORESPONDER => [
-                'label' => 'Autoresponder',
+                'label'       => 'Autoresponder',
                 'description' => 'Auto-reply to form submitter',
-                'icon' => 'o-envelope',
+                'icon'        => 'o-envelope',
             ],
             FormNotification::TYPE_CUSTOM => [
-                'label' => 'Custom Notification',
+                'label'       => 'Custom Notification',
                 'description' => 'Send to any recipients',
-                'icon' => 'o-paper-airplane',
+                'icon'        => 'o-paper-airplane',
             ],
         ];
     }
@@ -141,7 +141,7 @@ class NotificationEditor extends Component
     #[Computed]
     public function emailFields(): Collection
     {
-        return $this->form->fields()->where('type', 'email')->orderBy('sort_order')->get();
+        return $this->form->fields()->where( 'type', 'email' )->orderBy( 'sort_order' )->get();
     }
 
     /**
@@ -152,7 +152,7 @@ class NotificationEditor extends Component
     #[Computed]
     public function availablePlaceholders(): array
     {
-        return $this->notificationService->getAvailablePlaceholders($this->form);
+        return $this->notificationService->getAvailablePlaceholders( $this->form );
     }
 
     /**
@@ -164,8 +164,8 @@ class NotificationEditor extends Component
     public function availableConditionFields(): Collection
     {
         return $this->form->fields()
-            ->whereNotIn('type', ['heading', 'paragraph', 'divider', 'spacer', 'html'])
-            ->orderBy('sort_order')
+            ->whereNotIn( 'type', ['heading', 'paragraph', 'divider', 'spacer', 'html'] )
+            ->orderBy( 'sort_order' )
             ->get();
     }
 
@@ -179,11 +179,11 @@ class NotificationEditor extends Component
     {
         return [
             'send' => [
-                'label' => 'Send notification',
+                'label'       => 'Send notification',
                 'description' => 'Send when conditions are met',
             ],
             'skip' => [
-                'label' => 'Skip notification',
+                'label'       => 'Skip notification',
                 'description' => 'Skip when conditions are met',
             ],
         ];
@@ -218,25 +218,25 @@ class NotificationEditor extends Component
     /**
      * Add a new notification.
      */
-    public function addNotification(string $type): void
+    public function addNotification( string $type ): void
     {
-        $notification = $this->notificationService->create($this->form, $type);
+        $notification = $this->notificationService->create( $this->form, $type );
 
         $this->selectedNotificationId = $notification->id;
         $this->markDirty();
 
-        unset($this->notifications);
+        unset( $this->notifications );
 
-        $this->dispatch('notification-added', notificationId: $notification->id);
+        $this->dispatch( 'notification-added', notificationId: $notification->id );
     }
 
     /**
      * Select a notification for editing.
      */
-    public function selectNotification(int $notificationId): void
+    public function selectNotification( int $notificationId ): void
     {
         $this->selectedNotificationId = $notificationId;
-        unset($this->selectedNotification);
+        unset( $this->selectedNotification );
     }
 
     /**
@@ -244,74 +244,74 @@ class NotificationEditor extends Component
      *
      * @param  array<string, mixed>  $data
      */
-    public function updateNotification(array $data): void
+    public function updateNotification( array $data ): void
     {
         $notification = $this->selectedNotification;
 
-        if ($notification === null) {
+        if ( null === $notification ) {
             return;
         }
 
-        $this->notificationService->update($notification, $data);
+        $this->notificationService->update( $notification, $data );
         $this->markDirty();
 
-        unset($this->notifications, $this->selectedNotification);
+        unset( $this->notifications, $this->selectedNotification );
     }
 
     /**
      * Toggle the active status of a notification.
      */
-    public function toggleActive(int $notificationId): void
+    public function toggleActive( int $notificationId ): void
     {
-        $notification = $this->notificationService->getById($this->form, $notificationId);
+        $notification = $this->notificationService->getById( $this->form, $notificationId );
 
-        if ($notification) {
-            $this->notificationService->toggleActive($notification);
+        if ( $notification ) {
+            $this->notificationService->toggleActive( $notification );
             $this->markDirty();
 
-            unset($this->notifications, $this->selectedNotification);
+            unset( $this->notifications, $this->selectedNotification );
         }
     }
 
     /**
      * Duplicate a notification.
      */
-    public function duplicateNotification(int $notificationId): void
+    public function duplicateNotification( int $notificationId ): void
     {
-        $notification = $this->notificationService->getById($this->form, $notificationId);
+        $notification = $this->notificationService->getById( $this->form, $notificationId );
 
-        if ($notification) {
-            $newNotification = $this->notificationService->duplicate($notification);
+        if ( $notification ) {
+            $newNotification              = $this->notificationService->duplicate( $notification );
             $this->selectedNotificationId = $newNotification->id;
             $this->markDirty();
 
-            unset($this->notifications, $this->selectedNotification);
+            unset( $this->notifications, $this->selectedNotification );
 
-            $this->dispatch('notification-duplicated', notificationId: $newNotification->id);
+            $this->dispatch( 'notification-duplicated', notificationId: $newNotification->id );
         }
     }
 
     /**
      * Delete a notification.
      */
-    public function deleteNotification(int $notificationId): void
+    public function deleteNotification( int $notificationId ): void
     {
-        $notification = $this->notificationService->getById($this->form, $notificationId);
+        $notification = $this->notificationService->getById( $this->form, $notificationId );
 
-        if ($notification) {
-            $this->notificationService->delete($notification);
+        if ( $notification ) {
+            $this->notificationService->delete( $notification );
             $this->markDirty();
 
             // Select next available notification
-            if ($this->selectedNotificationId === $notificationId) {
-                $this->form->unsetRelation('notifications');
-                $firstNotification = $this->form->notifications()->orderBy('sort_order')->first();
+            if ( $this->selectedNotificationId === $notificationId ) {
+                $this->form->unsetRelation( 'notifications' );
+                $firstNotification            = $this->form->notifications()->orderBy( 'sort_order' )->first();
                 $this->selectedNotificationId = $firstNotification?->id;
             }
 
-            unset($this->notifications, $this->selectedNotification);
+            unset( $this->notifications, $this->selectedNotification );
 
-            $this->dispatch('notification-deleted', notificationId: $notificationId);
+            $this->dispatch( 'notification-deleted', notificationId: $notificationId );
         }
     }
 
@@ -320,13 +320,13 @@ class NotificationEditor extends Component
      *
      * @param  array<int, int>  $orderedIds
      */
-    #[On('notifications-reordered')]
-    public function reorderNotifications(array $orderedIds): void
+    #[On( 'notifications-reordered' )]
+    public function reorderNotifications( array $orderedIds ): void
     {
-        $this->notificationService->reorder($this->form, $orderedIds);
+        $this->notificationService->reorder( $this->form, $orderedIds );
         $this->markDirty();
 
-        unset($this->notifications);
+        unset( $this->notifications );
     }
 
     // =========================================
@@ -338,26 +338,26 @@ class NotificationEditor extends Component
      *
      * @param  array<string, mixed>  $logic
      */
-    public function updateConditionalLogic(array $logic): void
+    public function updateConditionalLogic( array $logic ): void
     {
         $notification = $this->selectedNotification;
 
-        if ($notification === null) {
+        if ( null === $notification ) {
             return;
         }
 
         // Clean up any references to deleted fields
         $logic = $this->conditionalLogicService->cleanupDeletedFieldReferences(
             $logic,
-            $this->form->fields
+            $this->form->fields,
         );
 
-        $this->notificationService->update($notification, ['conditional_logic' => $logic]);
+        $this->notificationService->update( $notification, ['conditional_logic' => $logic] );
         $this->markDirty();
 
-        unset($this->notifications, $this->selectedNotification);
+        unset( $this->notifications, $this->selectedNotification );
 
-        $this->dispatch('conditional-logic-updated');
+        $this->dispatch( 'conditional-logic-updated' );
     }
 
     /**
@@ -367,16 +367,38 @@ class NotificationEditor extends Component
     {
         $notification = $this->selectedNotification;
 
-        if ($notification === null) {
+        if ( null === $notification ) {
             return;
         }
 
-        $this->notificationService->update($notification, ['conditional_logic' => null]);
+        $this->notificationService->update( $notification, ['conditional_logic' => null] );
         $this->markDirty();
 
-        unset($this->notifications, $this->selectedNotification);
+        unset( $this->notifications, $this->selectedNotification );
 
-        $this->dispatch('conditional-logic-cleared');
+        $this->dispatch( 'conditional-logic-cleared' );
+    }
+
+    /**
+     * Save changes (triggered by auto-save).
+     */
+    public function save(): void
+    {
+        // All changes are already saved immediately via service methods
+        $this->isDirty = false;
+        $this->dispatch( 'notifications-saved' );
+    }
+
+    // =========================================
+    // Render
+    // =========================================
+
+    /**
+     * Render the component.
+     */
+    public function render(): View
+    {
+        return view( 'forms::livewire.notification-editor');
     }
 
     // =========================================
@@ -389,28 +411,6 @@ class NotificationEditor extends Component
     protected function markDirty(): void
     {
         $this->isDirty = true;
-        $this->dispatch('auto-save-trigger');
-    }
-
-    /**
-     * Save changes (triggered by auto-save).
-     */
-    public function save(): void
-    {
-        // All changes are already saved immediately via service methods
-        $this->isDirty = false;
-        $this->dispatch('notifications-saved');
-    }
-
-    // =========================================
-    // Render
-    // =========================================
-
-    /**
-     * Render the component.
-     */
-    public function render(): View
-    {
-        return view('forms::livewire.notification-editor');
+        $this->dispatch( 'auto-save-trigger');
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
 
@@ -52,14 +52,6 @@ class FormStep extends Model
     public ?int $cached_max_sort_order = null;
 
     /**
-     * Create a new factory instance for the model.
-     */
-    protected static function newFactory(): FormStepFactory
-    {
-        return FormStepFactory::new();
-    }
-
-    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -84,7 +76,7 @@ class FormStep extends Model
      */
     public function form(): BelongsTo
     {
-        return $this->belongsTo(Form::class);
+        return $this->belongsTo( Form::class );
     }
 
     /**
@@ -94,7 +86,7 @@ class FormStep extends Model
      */
     public function fields(): HasMany
     {
-        return $this->hasMany(FormField::class, 'step_id')->orderBy('sort_order');
+        return $this->hasMany( FormField::class, 'step_id' )->orderBy( 'sort_order' );
     }
 
     // =========================================
@@ -110,16 +102,16 @@ class FormStep extends Model
     public function getStepNumberAttribute(): int
     {
         // Use cached value if available
-        if ($this->cached_step_number !== null) {
+        if ( null !== $this->cached_step_number ) {
             return $this->cached_step_number;
         }
 
         // Try to compute from loaded relation to avoid N+1
-        if ($this->relationLoaded('form') && $this->form->relationLoaded('steps')) {
+        if ( $this->relationLoaded( 'form' ) && $this->form->relationLoaded( 'steps' ) ) {
             $stepNumber = 1;
-            foreach ($this->form->steps as $step) {
-                if ($step->sort_order <= $this->sort_order) {
-                    if ($step->id === $this->id) {
+            foreach ( $this->form->steps as $step ) {
+                if ( $step->sort_order <= $this->sort_order ) {
+                    if ( $step->id === $this->id ) {
                         return $stepNumber;
                     }
                     $stepNumber++;
@@ -131,7 +123,7 @@ class FormStep extends Model
 
         // Fallback to query
         return $this->form->steps()
-            ->where('sort_order', '<=', $this->sort_order)
+            ->where( 'sort_order', '<=', $this->sort_order )
             ->count();
     }
 
@@ -143,19 +135,19 @@ class FormStep extends Model
     public function getIsFirstStepAttribute(): bool
     {
         // Use cached value if available
-        if ($this->cached_min_sort_order !== null) {
+        if ( null !== $this->cached_min_sort_order ) {
             return $this->sort_order === $this->cached_min_sort_order;
         }
 
         // Try to compute from loaded relation to avoid N+1
-        if ($this->relationLoaded('form') && $this->form->relationLoaded('steps')) {
-            $minSortOrder = $this->form->steps->min('sort_order');
+        if ( $this->relationLoaded( 'form' ) && $this->form->relationLoaded( 'steps' ) ) {
+            $minSortOrder = $this->form->steps->min( 'sort_order' );
 
             return $this->sort_order === $minSortOrder;
         }
 
         // Fallback to query
-        return $this->sort_order === $this->form->steps()->min('sort_order');
+        return $this->sort_order === $this->form->steps()->min( 'sort_order' );
     }
 
     /**
@@ -166,19 +158,19 @@ class FormStep extends Model
     public function getIsLastStepAttribute(): bool
     {
         // Use cached value if available
-        if ($this->cached_max_sort_order !== null) {
+        if ( null !== $this->cached_max_sort_order ) {
             return $this->sort_order === $this->cached_max_sort_order;
         }
 
         // Try to compute from loaded relation to avoid N+1
-        if ($this->relationLoaded('form') && $this->form->relationLoaded('steps')) {
-            $maxSortOrder = $this->form->steps->max('sort_order');
+        if ( $this->relationLoaded( 'form' ) && $this->form->relationLoaded( 'steps' ) ) {
+            $maxSortOrder = $this->form->steps->max( 'sort_order' );
 
             return $this->sort_order === $maxSortOrder;
         }
 
         // Fallback to query
-        return $this->sort_order === $this->form->steps()->max('sort_order');
+        return $this->sort_order === $this->form->steps()->max( 'sort_order' );
     }
 
     // =========================================
@@ -192,16 +184,17 @@ class FormStep extends Model
      * step_number, is_first_step, and is_last_step attributes.
      *
      * @param  \Illuminate\Support\Collection<int, FormStep>  $steps
+     *
      * @return \Illuminate\Support\Collection<int, FormStep>
      */
-    public static function withStepNumbers(\Illuminate\Support\Collection $steps): \Illuminate\Support\Collection
+    public static function withStepNumbers( \Illuminate\Support\Collection $steps ): \Illuminate\Support\Collection
     {
-        if ($steps->isEmpty()) {
+        if ( $steps->isEmpty() ) {
             return $steps;
         }
 
         // Sort by sort_order to ensure correct numbering
-        $sorted = $steps->sortBy('sort_order')->values();
+        $sorted = $steps->sortBy( 'sort_order' )->values();
 
         // Calculate bounds
         $minSortOrder = $sorted->first()->sort_order;
@@ -209,8 +202,8 @@ class FormStep extends Model
 
         // Assign step numbers and cache bounds
         $stepNumber = 1;
-        foreach ($sorted as $step) {
-            $step->cached_step_number = $stepNumber;
+        foreach ( $sorted as $step ) {
+            $step->cached_step_number    = $stepNumber;
             $step->cached_min_sort_order = $minSortOrder;
             $step->cached_max_sort_order = $maxSortOrder;
             $stepNumber++;
@@ -225,8 +218,8 @@ class FormStep extends Model
     public function getPreviousStep(): ?self
     {
         return $this->form->steps()
-            ->where('sort_order', '<', $this->sort_order)
-            ->orderBy('sort_order', 'desc')
+            ->where( 'sort_order', '<', $this->sort_order )
+            ->orderBy( 'sort_order', 'desc' )
             ->first();
     }
 
@@ -236,8 +229,16 @@ class FormStep extends Model
     public function getNextStep(): ?self
     {
         return $this->form->steps()
-            ->where('sort_order', '>', $this->sort_order)
-            ->orderBy('sort_order')
+            ->where( 'sort_order', '>', $this->sort_order )
+            ->orderBy( 'sort_order' )
             ->first();
+    }
+
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory(): FormStepFactory
+    {
+        return FormStepFactory::new();
     }
 }

@@ -1,12 +1,13 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
 
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormStep;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
  * StepService
@@ -23,21 +24,21 @@ class StepService
      *
      * @param  array<string, mixed>  $data  Additional data to override defaults.
      */
-    public function create(Form $form, array $data = []): FormStep
+    public function create( Form $form, array $data = [] ): FormStep
     {
-        $maxSortOrder = $this->getMaxSortOrder($form);
-        $stepNumber = $form->steps()->count() + 1;
+        $maxSortOrder = $this->getMaxSortOrder( $form );
+        $stepNumber   = $form->steps()->count() + 1;
 
-        $stepData = array_merge([
-            'form_id' => $form->id,
-            'title' => "Step {$stepNumber}",
-            'description' => null,
-            'sort_order' => $maxSortOrder + 1,
+        $stepData = array_merge( [
+            'form_id'          => $form->id,
+            'title'            => "Step {$stepNumber}",
+            'description'      => null,
+            'sort_order'       => $maxSortOrder + 1,
             'next_button_text' => 'Next',
             'prev_button_text' => 'Previous',
-        ], $data);
+        ], $data );
 
-        return FormStep::create($stepData);
+        return FormStep::create( $stepData );
     }
 
     /**
@@ -45,16 +46,16 @@ class StepService
      *
      * @param  array<string, mixed>  $data
      *
-     * @throws \RuntimeException If the step cannot be refreshed after update.
+     * @throws RuntimeException If the step cannot be refreshed after update.
      */
-    public function update(FormStep $step, array $data): FormStep
+    public function update( FormStep $step, array $data ): FormStep
     {
-        $step->update($data);
+        $step->update( $data );
 
         $refreshed = $step->fresh();
 
-        if ($refreshed === null) {
-            throw new \RuntimeException("Failed to refresh step after update. Step ID: {$step->id}");
+        if ( null === $refreshed ) {
+            throw new RuntimeException( "Failed to refresh step after update. Step ID: {$step->id}" );
         }
 
         return $refreshed;
@@ -66,30 +67,30 @@ class StepService
      * Fields from the deleted step are moved to the previous step,
      * or to no step (null) if this was the first step.
      */
-    public function delete(FormStep $step): bool
+    public function delete( FormStep $step ): bool
     {
-        return DB::transaction(function () use ($step): bool {
+        return DB::transaction( function () use ( $step ): bool {
             $form = $step->form;
 
             // Find the step to reassign fields to
             $previousStep = $step->getPreviousStep();
-            $nextStep = $step->getNextStep();
+            $nextStep     = $step->getNextStep();
             $targetStepId = $previousStep?->id ?? $nextStep?->id;
 
             // Reassign all fields from this step
-            $step->fields()->update(['step_id' => $targetStepId]);
+            $step->fields()->update( ['step_id' => $targetStepId] );
 
             // Delete the step
             $result = (bool) $step->delete();
 
             // If this form now has no steps but is marked as multi-step,
             // we should probably create a default step or let the form builder handle it
-            if ($result && $form->is_multi_step && $form->steps()->count() === 0) {
-                $this->create($form, ['title' => 'Step 1']);
+            if ( $result && $form->is_multi_step && 0 === $form->steps()->count() ) {
+                $this->create( $form, ['title' => 'Step 1'] );
             }
 
             return $result;
-        });
+        } );
     }
 
     /**
@@ -97,25 +98,25 @@ class StepService
      *
      * @param  array<int, int>  $orderedIds  Array of step IDs in desired order.
      */
-    public function reorder(Form $form, array $orderedIds): void
+    public function reorder( Form $form, array $orderedIds ): void
     {
-        DB::transaction(function () use ($form, $orderedIds): void {
-            $steps = $form->steps()->get()->keyBy('id');
+        DB::transaction( function () use ( $form, $orderedIds ): void {
+            $steps = $form->steps()->get()->keyBy( 'id' );
 
-            foreach ($orderedIds as $index => $id) {
-                if (isset($steps[$id])) {
-                    $steps[$id]->update(['sort_order' => $index + 1]);
+            foreach ( $orderedIds as $index => $id ) {
+                if ( isset( $steps[ $id ] ) ) {
+                    $steps[ $id ]->update( ['sort_order' => $index + 1] );
                 }
             }
-        });
+        } );
     }
 
     /**
      * Get a step by its ID within a form.
      */
-    public function getById(Form $form, int $stepId): ?FormStep
+    public function getById( Form $form, int $stepId ): ?FormStep
     {
-        return $form->steps()->where('id', $stepId)->first();
+        return $form->steps()->where( 'id', $stepId )->first();
     }
 
     /**
@@ -123,11 +124,11 @@ class StepService
      *
      * @return \Illuminate\Database\Eloquent\Collection<int, FormStep>
      */
-    public function getSteps(Form $form): \Illuminate\Database\Eloquent\Collection
+    public function getSteps( Form $form ): \Illuminate\Database\Eloquent\Collection
     {
         return $form->steps()
-            ->with(['fields' => fn ($q) => $q->orderBy('sort_order')])
-            ->orderBy('sort_order')
+            ->with( ['fields' => fn ( $q ) => $q->orderBy( 'sort_order' )] )
+            ->orderBy( 'sort_order' )
             ->get();
     }
 
@@ -136,13 +137,13 @@ class StepService
      *
      * Creates a step only if the form has no existing steps.
      */
-    public function initializeMultiStep(Form $form): ?FormStep
+    public function initializeMultiStep( Form $form ): ?FormStep
     {
-        if ($form->steps()->count() > 0) {
+        if ( $form->steps()->count() > 0 ) {
             return null;
         }
 
-        return $this->create($form, ['title' => 'Step 1']);
+        return $this->create( $form, ['title' => 'Step 1'] );
     }
 
     /**
@@ -150,19 +151,19 @@ class StepService
      *
      * Creates a default step and assigns all existing fields to it.
      */
-    public function convertToMultiStep(Form $form): FormStep
+    public function convertToMultiStep( Form $form ): FormStep
     {
-        return DB::transaction(function () use ($form): FormStep {
+        return DB::transaction( function () use ( $form ): FormStep {
             // Create the first step
-            $step = $this->create($form, ['title' => 'Step 1']);
+            $step = $this->create( $form, ['title' => 'Step 1'] );
 
             // Move all existing fields without a step to this new step
             $form->fields()
-                ->whereNull('step_id')
-                ->update(['step_id' => $step->id]);
+                ->whereNull( 'step_id' )
+                ->update( ['step_id' => $step->id] );
 
             return $step;
-        });
+        } );
     }
 
     /**
@@ -170,29 +171,21 @@ class StepService
      *
      * Removes all steps and sets all fields to have no step.
      */
-    public function convertToSingleStep(Form $form): void
+    public function convertToSingleStep( Form $form ): void
     {
-        DB::transaction(function () use ($form): void {
+        DB::transaction( function () use ( $form ): void {
             // Remove step assignments from all fields
-            $form->fields()->update(['step_id' => null]);
+            $form->fields()->update( ['step_id' => null] );
 
             // Delete all steps
             $form->steps()->delete();
-        });
-    }
-
-    /**
-     * Get the maximum sort order for steps in a form.
-     */
-    protected function getMaxSortOrder(Form $form): int
-    {
-        return (int) $form->steps()->max('sort_order');
+        } );
     }
 
     /**
      * Get the first step of a form.
      */
-    public function getFirstStep(Form $form): ?FormStep
+    public function getFirstStep( Form $form ): ?FormStep
     {
         // The steps() relationship already orders by sort_order ASC
         return $form->steps()->first();
@@ -201,9 +194,17 @@ class StepService
     /**
      * Get the last step of a form.
      */
-    public function getLastStep(Form $form): ?FormStep
+    public function getLastStep( Form $form ): ?FormStep
     {
         // Use reorder() to clear the default ascending order from the relationship
-        return $form->steps()->reorder('sort_order', 'desc')->first();
+        return $form->steps()->reorder( 'sort_order', 'desc' )->first();
+    }
+
+    /**
+     * Get the maximum sort order for steps in a form.
+     */
+    protected function getMaxSortOrder( Form $form): int
+    {
+        return (int) $form->steps()->max( 'sort_order');
     }
 }

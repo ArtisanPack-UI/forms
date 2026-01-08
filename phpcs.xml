@@ -1,0 +1,69 @@
+<?xml version="1.0"?>
+<ruleset name="ArtisanPackUI Forms">
+    <description>ArtisanPack UI coding standard for the Forms package</description>
+
+    <!-- Set arguments -->
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <!-- Paths to check -->
+    <file>src</file>
+    <file>routes</file>
+    <file>tests</file>
+
+    <!-- Exclude paths -->
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+    <exclude-pattern>*/database/migrations/*</exclude-pattern>
+    <exclude-pattern>*/resources/views/*</exclude-pattern>
+    <exclude-pattern>*/tests/views/*</exclude-pattern>
+
+    <!--
+    NOTE: PHP-CS-Fixer handles most formatting rules (spacing, alignment, braces, etc.)
+    PHPCS is used here for rules that PHP-CS-Fixer cannot enforce.
+
+    Many sniffs from ArtisanPackUIStandard are disabled because:
+    - PHP-CS-Fixer already handles formatting
+    - Security sniffs produce false positives (e.g., flagging $this->property in Eloquent queries)
+    - Laravel's Eloquent ORM already protects against SQL injection
+    -->
+
+    <!-- Functions sniffs - catch disallowed functions like die(), var_dump() -->
+    <rule ref="ArtisanPackUIStandard.Functions.DisallowedFunctions"/>
+
+    <!-- PHP sniffs -->
+    <rule ref="ArtisanPackUIStandard.PHP.PhpTags"/>
+
+    <!--
+    DISABLED SNIFFS:
+
+    Formatting (handled by PHP-CS-Fixer):
+    - Formatting.Indentation
+    - Formatting.Braces
+    - Formatting.Spacing
+    - Formatting.Alignment
+
+    Code Style (handled by PHP-CS-Fixer):
+    - Operators.YodaConditionals (yoda_style rule)
+    - Strings.Quotes (single_quote rule)
+    - ControlStructures.ControlStructures
+    - Arrays.ArraySyntax (array_syntax, trailing_comma rules)
+    - Imports.ImportOrdering (ordered_imports rule)
+    - Classes.ClassStructure (ordered_class_elements rule)
+
+    Security (produces false positives with Eloquent):
+    - Security.ValidatedSanitizedInput - flags $this->property and model attributes
+    - Security.EscapeOutput - Blade already escapes by default with {{ }}
+
+    Type Hints:
+    - TypeHints.TypeDeclaration - too strict for forms package with varied input types
+
+    Naming Conventions:
+    - NamingConventions.NamingConventions - conflicts with some intentional patterns
+    -->
+
+    <!-- Disable line length checks -->
+    <rule ref="Generic.Files.LineLength">
+        <severity>0</severity>
+    </rule>
+</ruleset>

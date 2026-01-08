@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace Tests\Stubs;
 
@@ -28,13 +28,14 @@ class TextareaStub extends Component
         public ?string $error = null,
         public bool $required = false,
         public int $rows = 4,
-    ) {}
+    ) {
+    }
 
     /**
      * Get the view / contents that represent the component.
      */
     public function render(): View
     {
-        return view('stubs.textarea');
+        return view( 'stubs.textarea' );
     }
 }

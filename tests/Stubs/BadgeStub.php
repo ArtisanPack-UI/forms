@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace Tests\Stubs;
 
@@ -23,16 +23,17 @@ class BadgeStub extends Component
         public ?string $value = null,
         public ?string $color = null,
         public ?string $class = '',
-    ) {}
+    ) {
+    }
 
     /**
      * Get the view / contents that represent the component.
      */
     public function render(): string
     {
-        $escapedValue = htmlspecialchars((string) $this->value, ENT_QUOTES, 'UTF-8');
-        $escapedClass = htmlspecialchars((string) $this->class, ENT_QUOTES, 'UTF-8');
-        $colorClass = $this->color ? ' badge-'.htmlspecialchars($this->color, ENT_QUOTES, 'UTF-8') : '';
+        $escapedValue = htmlspecialchars( (string) $this->value, ENT_QUOTES, 'UTF-8' );
+        $escapedClass = htmlspecialchars( (string) $this->class, ENT_QUOTES, 'UTF-8' );
+        $colorClass   = $this->color ? ' badge-' . htmlspecialchars( $this->color, ENT_QUOTES, 'UTF-8' ) : '';
 
         return "<span class=\"badge-stub{$colorClass} {$escapedClass}\">{$escapedValue}</span>";
     }

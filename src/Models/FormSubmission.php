@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
 
@@ -45,14 +45,6 @@ class FormSubmission extends Model
     use HasFactory;
 
     /**
-     * Create a new factory instance for the model.
-     */
-    protected static function newFactory(): FormSubmissionFactory
-    {
-        return FormSubmissionFactory::new();
-    }
-
-    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -70,88 +62,6 @@ class FormSubmission extends Model
         'admin_notes',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'is_read' => 'boolean',
-            'is_spam' => 'boolean',
-            'is_starred' => 'boolean',
-        ];
-    }
-
-    // =========================================
-    // Boot
-    // =========================================
-
-    /**
-     * Bootstrap the model and its traits.
-     */
-    protected static function boot(): void
-    {
-        parent::boot();
-
-        static::creating(function (FormSubmission $submission): void {
-            if (empty($submission->submission_number)) {
-                $submission->submission_number = static::generateSubmissionNumber($submission->form_id);
-            }
-        });
-
-        static::created(function (FormSubmission $submission): void {
-            // Fire action hook for extensibility
-            if (function_exists('doAction')) {
-                doAction('forms.submission.created', $submission);
-            }
-
-            // Dispatch Laravel event
-            FormSubmitted::dispatch($submission);
-        });
-
-        static::updated(function (FormSubmission $submission): void {
-            // Fire action hook for extensibility
-            if (function_exists('doAction')) {
-                doAction('forms.submission.updated', $submission);
-            }
-
-            // Dispatch Laravel event
-            SubmissionUpdated::dispatch($submission);
-        });
-
-        static::deleted(function (FormSubmission $submission): void {
-            // Fire action hook for extensibility
-            if (function_exists('doAction')) {
-                doAction('forms.submission.deleted', $submission);
-            }
-
-            // Dispatch Laravel event
-            SubmissionDeleted::dispatch($submission);
-        });
-    }
-
-    /**
-     * Generate a unique submission number for a form.
-     */
-    protected static function generateSubmissionNumber(int $formId): string
-    {
-        $format = config('artisanpack.forms.submissions.submission_number_format', 'FORM-{year}-{sequence}');
-
-        $count = static::where('form_id', $formId)
-            ->whereYear('created_at', now()->year)
-            ->count() + 1;
-
-        $replacements = [
-            '{year}' => now()->format('Y'),
-            '{sequence}' => sprintf('%05d', $count),
-            '{form_id}' => $formId,
-        ];
-
-        return str_replace(array_keys($replacements), array_values($replacements), $format);
-    }
-
     // =========================================
     // Relationships
     // =========================================
@@ -163,7 +73,7 @@ class FormSubmission extends Model
      */
     public function form(): BelongsTo
     {
-        return $this->belongsTo(Form::class);
+        return $this->belongsTo( Form::class );
     }
 
     /**
@@ -173,7 +83,7 @@ class FormSubmission extends Model
      */
     public function values(): HasMany
     {
-        return $this->hasMany(FormSubmissionValue::class, 'submission_id');
+        return $this->hasMany( FormSubmissionValue::class, 'submission_id' );
     }
 
     /**
@@ -183,7 +93,7 @@ class FormSubmission extends Model
      */
     public function uploads(): HasMany
     {
-        return $this->hasMany(FormUpload::class, 'submission_id');
+        return $this->hasMany( FormUpload::class, 'submission_id' );
     }
 
     // =========================================
@@ -194,66 +104,72 @@ class FormSubmission extends Model
      * Scope a query to only include unread submissions.
      *
      * @param  Builder<FormSubmission>  $query
+     *
      * @return Builder<FormSubmission>
      */
-    public function scopeUnread(Builder $query): Builder
+    public function scopeUnread( Builder $query ): Builder
     {
-        return $query->where('is_read', false);
+        return $query->where( 'is_read', false );
     }
 
     /**
      * Scope a query to only include read submissions.
      *
      * @param  Builder<FormSubmission>  $query
+     *
      * @return Builder<FormSubmission>
      */
-    public function scopeRead(Builder $query): Builder
+    public function scopeRead( Builder $query ): Builder
     {
-        return $query->where('is_read', true);
+        return $query->where( 'is_read', true );
     }
 
     /**
      * Scope a query to only include non-spam submissions.
      *
      * @param  Builder<FormSubmission>  $query
+     *
      * @return Builder<FormSubmission>
      */
-    public function scopeNotSpam(Builder $query): Builder
+    public function scopeNotSpam( Builder $query ): Builder
     {
-        return $query->where('is_spam', false);
+        return $query->where( 'is_spam', false );
     }
 
     /**
      * Scope a query to only include spam submissions.
      *
      * @param  Builder<FormSubmission>  $query
+     *
      * @return Builder<FormSubmission>
      */
-    public function scopeSpam(Builder $query): Builder
+    public function scopeSpam( Builder $query ): Builder
     {
-        return $query->where('is_spam', true);
+        return $query->where( 'is_spam', true );
     }
 
     /**
      * Scope a query to only include starred submissions.
      *
      * @param  Builder<FormSubmission>  $query
+     *
      * @return Builder<FormSubmission>
      */
-    public function scopeStarred(Builder $query): Builder
+    public function scopeStarred( Builder $query ): Builder
     {
-        return $query->where('is_starred', true);
+        return $query->where( 'is_starred', true );
     }
 
     /**
      * Scope a query to only include recent submissions.
      *
      * @param  Builder<FormSubmission>  $query
+     *
      * @return Builder<FormSubmission>
      */
-    public function scopeRecent(Builder $query, int $days = 30): Builder
+    public function scopeRecent( Builder $query, int $days = 30 ): Builder
     {
-        return $query->where('created_at', '>=', now()->subDays($days));
+        return $query->where( 'created_at', '>=', now()->subDays( $days ) );
     }
 
     // =========================================
@@ -267,9 +183,9 @@ class FormSubmission extends Model
      */
     public function getDataAttribute(): Collection
     {
-        return $this->values->mapWithKeys(function (FormSubmissionValue $value) {
+        return $this->values->mapWithKeys( function ( FormSubmissionValue $value ) {
             return [$value->field_name => $value->display_value];
-        });
+        } );
     }
 
     /**
@@ -291,7 +207,7 @@ class FormSubmission extends Model
      */
     public function markAsRead(): void
     {
-        $this->update(['is_read' => true]);
+        $this->update( ['is_read' => true] );
     }
 
     /**
@@ -299,7 +215,7 @@ class FormSubmission extends Model
      */
     public function markAsUnread(): void
     {
-        $this->update(['is_read' => false]);
+        $this->update( ['is_read' => false] );
     }
 
     /**
@@ -307,7 +223,7 @@ class FormSubmission extends Model
      */
     public function toggleSpam(): void
     {
-        $this->update(['is_spam' => ! $this->is_spam]);
+        $this->update( ['is_spam' => ! $this->is_spam] );
     }
 
     /**
@@ -315,16 +231,16 @@ class FormSubmission extends Model
      */
     public function toggleStar(): void
     {
-        $this->update(['is_starred' => ! $this->is_starred]);
+        $this->update( ['is_starred' => ! $this->is_starred] );
     }
 
     /**
      * Get a submitted value by field name.
      */
-    public function getValue(string $fieldName): ?string
+    public function getValue( string $fieldName ): ?string
     {
         return $this->values
-            ->firstWhere('field_name', $fieldName)
+            ->firstWhere( 'field_name', $fieldName )
             ?->display_value;
     }
 
@@ -333,10 +249,100 @@ class FormSubmission extends Model
      */
     public function getEmailValue(): ?string
     {
-        $emailValue = $this->values->first(function ($value) {
-            return $value->field_type === 'email';
-        });
+        $emailValue = $this->values->first( function ( $value ) {
+            return 'email' === $value->field_type;
+        } );
 
         return $emailValue?->value;
+    }
+
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory(): FormSubmissionFactory
+    {
+        return FormSubmissionFactory::new();
+    }
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'is_read'    => 'boolean',
+            'is_spam'    => 'boolean',
+            'is_starred' => 'boolean',
+        ];
+    }
+
+    // =========================================
+    // Boot
+    // =========================================
+
+    /**
+     * Bootstrap the model and its traits.
+     */
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::creating( function ( FormSubmission $submission ): void {
+            if ( empty( $submission->submission_number ) ) {
+                $submission->submission_number = static::generateSubmissionNumber( $submission->form_id );
+            }
+        } );
+
+        static::created( function ( FormSubmission $submission ): void {
+            // Fire action hook for extensibility
+            if ( function_exists( 'doAction' ) ) {
+                doAction( 'forms.submission.created', $submission );
+            }
+
+            // Dispatch Laravel event
+            FormSubmitted::dispatch( $submission );
+        } );
+
+        static::updated( function ( FormSubmission $submission ): void {
+            // Fire action hook for extensibility
+            if ( function_exists( 'doAction' ) ) {
+                doAction( 'forms.submission.updated', $submission );
+            }
+
+            // Dispatch Laravel event
+            SubmissionUpdated::dispatch( $submission );
+        } );
+
+        static::deleted( function ( FormSubmission $submission ): void {
+            // Fire action hook for extensibility
+            if ( function_exists( 'doAction' ) ) {
+                doAction( 'forms.submission.deleted', $submission );
+            }
+
+            // Dispatch Laravel event
+            SubmissionDeleted::dispatch( $submission );
+        } );
+    }
+
+    /**
+     * Generate a unique submission number for a form.
+     */
+    protected static function generateSubmissionNumber( int $formId ): string
+    {
+        $format = config( 'artisanpack.forms.submissions.submission_number_format', 'FORM-{year}-{sequence}' );
+
+        $count = static::where( 'form_id', $formId )
+            ->whereYear( 'created_at', now()->year )
+            ->count() + 1;
+
+        $replacements = [
+            '{year}'     => now()->format( 'Y'),
+            '{sequence}' => sprintf( '%05d', $count),
+            '{form_id}'  => $formId,
+        ];
+
+        return str_replace( array_keys( $replacements), array_values( $replacements), $format);
     }
 }

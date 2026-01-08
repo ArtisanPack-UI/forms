@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace Tests\Stubs;
 
@@ -28,13 +28,14 @@ class InputStub extends Component
         public ?string $hint = null,
         public ?string $error = null,
         public bool $required = false,
-    ) {}
+    ) {
+    }
 
     /**
      * Get the view / contents that represent the component.
      */
     public function render(): View
     {
-        return view('stubs.input');
+        return view( 'stubs.input' );
     }
 }

@@ -112,7 +112,7 @@ tests:
 # CODE STYLE STAGE
 # =============================================================================
 
-pint:
+php-cs-fixer:
   stage: code-style
   image: php:${PHP_VERSION}
   needs:
@@ -127,28 +127,28 @@ pint:
     paths:
       - vendor/
   script:
-    - ./vendor/bin/pint --test
+    - PHP_CS_FIXER_IGNORE_ENV=1 ./vendor/bin/php-cs-fixer fix --dry-run --diff
   interruptible: true
 
-# Uncomment to enable PHPCS with ArtisanPackUIStandard
-# phpcs:
-#   stage: code-style
-#   image: php:${PHP_VERSION}
-#   needs:
-#     - job: build:vendors
-#       artifacts: true
-#   cache:
-#     key:
-#       files:
-#         - composer.lock
-#       prefix: v1-${PHP_VERSION}
-#     policy: pull
-#     paths:
-#       - vendor/
-#   script:
-#     - ./vendor/bin/phpcs --standard=ArtisanPackUIStandard src
-#   allow_failure: true
-#   interruptible: true
+phpcs:
+  stage: code-style
+  image: php:${PHP_VERSION}
+  needs:
+    - job: build:vendors
+      artifacts: true
+  cache:
+    key:
+      files:
+        - composer.lock
+      prefix: v1-${PHP_VERSION}
+    policy: pull
+    paths:
+      - vendor/
+  before_script:
+    - ./vendor/bin/phpcs --config-set installed_paths vendor/artisanpack-ui/code-style
+  script:
+    - ./vendor/bin/phpcs
+  interruptible: true
 
 # Uncomment to enable PHPStan static analysis
 # phpstan:

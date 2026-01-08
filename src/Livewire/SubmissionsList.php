@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire;
 
@@ -38,37 +38,37 @@ class SubmissionsList extends Component
     /**
      * The search query string.
      */
-    #[Url(as: 'q')]
+    #[Url( as: 'q' )]
     public string $search = '';
 
     /**
      * The status filter (all, unread, read, spam, starred).
      */
-    #[Url(as: 'status')]
+    #[Url( as: 'status' )]
     public string $status = 'all';
 
     /**
      * The date range filter (all, today, week, month, year).
      */
-    #[Url(as: 'date')]
+    #[Url( as: 'date' )]
     public string $dateRange = 'all';
 
     /**
      * The form filter (for when viewing all submissions).
      */
-    #[Url(as: 'form')]
+    #[Url( as: 'form' )]
     public string $formFilter = '';
 
     /**
      * The column to sort by.
      */
-    #[Url(as: 'sort')]
+    #[Url( as: 'sort' )]
     public string $sortBy = 'created_at';
 
     /**
      * The sort direction (asc or desc).
      */
-    #[Url(as: 'dir')]
+    #[Url( as: 'dir' )]
     public string $sortDirection = 'desc';
 
     /**
@@ -86,7 +86,7 @@ class SubmissionsList extends Component
     /**
      * Initialize the component.
      */
-    public function mount(?int $formId = null): void
+    public function mount( ?int $formId = null ): void
     {
         $this->formId = $formId;
     }
@@ -132,64 +132,26 @@ class SubmissionsList extends Component
      */
     public function updatedSelectAll(): void
     {
-        if ($this->selectAll) {
-            $this->selected = $this->submissions->pluck('id')->toArray();
+        if ( $this->selectAll ) {
+            $this->selected = $this->submissions->pluck( 'id' )->toArray();
         } else {
             $this->selected = [];
         }
     }
 
     /**
-     * Reset selection state.
-     */
-    protected function resetSelection(): void
-    {
-        $this->selected = [];
-        $this->selectAll = false;
-    }
-
-    /**
      * Sort by a given column.
      */
-    public function sort(string $column): void
+    public function sort( string $column ): void
     {
-        if ($this->sortBy === $column) {
-            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        if ( $this->sortBy === $column ) {
+            $this->sortDirection = 'asc' === $this->sortDirection ? 'desc' : 'asc';
         } else {
-            $this->sortBy = $column;
+            $this->sortBy        = $column;
             $this->sortDirection = 'desc';
         }
 
         $this->resetPage();
-    }
-
-    // =========================================
-    // Individual Actions
-    // =========================================
-
-    /**
-     * Find a submission by ID that the user has access to.
-     *
-     * Returns null if the submission doesn't exist or user doesn't have access.
-     * When ownership restriction is disabled, no access check is performed.
-     */
-    protected function findOwnedSubmission(int $id): ?FormSubmission
-    {
-        $submission = FormSubmission::find($id);
-
-        if (! $submission) {
-            return null;
-        }
-
-        // Only check policy when ownership restriction is enabled
-        if (config('artisanpack.forms.authorization.restrict_by_owner', false)) {
-            $policy = app(SubmissionPolicy::class);
-            if (! $policy->update(Auth::user(), $submission)) {
-                return null;
-            }
-        }
-
-        return $submission;
     }
 
     /**
@@ -197,11 +159,11 @@ class SubmissionsList extends Component
      *
      * Only affects submissions the user has access to.
      */
-    public function markAsRead(int $id): void
+    public function markAsRead( int $id ): void
     {
-        $submission = $this->findOwnedSubmission($id);
+        $submission = $this->findOwnedSubmission( $id );
 
-        if ($submission) {
+        if ( $submission ) {
             $submission->markAsRead();
         }
     }
@@ -211,11 +173,11 @@ class SubmissionsList extends Component
      *
      * Only affects submissions the user has access to.
      */
-    public function markAsUnread(int $id): void
+    public function markAsUnread( int $id ): void
     {
-        $submission = $this->findOwnedSubmission($id);
+        $submission = $this->findOwnedSubmission( $id );
 
-        if ($submission) {
+        if ( $submission ) {
             $submission->markAsUnread();
         }
     }
@@ -225,11 +187,11 @@ class SubmissionsList extends Component
      *
      * Only affects submissions the user has access to.
      */
-    public function toggleStar(int $id): void
+    public function toggleStar( int $id ): void
     {
-        $submission = $this->findOwnedSubmission($id);
+        $submission = $this->findOwnedSubmission( $id );
 
-        if ($submission) {
+        if ( $submission ) {
             $submission->toggleStar();
         }
     }
@@ -239,11 +201,11 @@ class SubmissionsList extends Component
      *
      * Only affects submissions the user has access to.
      */
-    public function toggleSpam(int $id): void
+    public function toggleSpam( int $id ): void
     {
-        $submission = $this->findOwnedSubmission($id);
+        $submission = $this->findOwnedSubmission( $id );
 
-        if ($submission) {
+        if ( $submission ) {
             $submission->toggleSpam();
         }
     }
@@ -253,45 +215,24 @@ class SubmissionsList extends Component
      *
      * Only affects submissions the user has access to.
      */
-    public function delete(int $id): void
+    public function delete( int $id ): void
     {
-        $submission = FormSubmission::find($id);
+        $submission = FormSubmission::find( $id );
 
-        if (! $submission) {
+        if ( ! $submission ) {
             return;
         }
 
         // Only check policy when ownership restriction is enabled
-        if (config('artisanpack.forms.authorization.restrict_by_owner', false)) {
-            $policy = app(SubmissionPolicy::class);
-            if (! $policy->delete(Auth::user(), $submission)) {
+        if ( config( 'artisanpack.forms.authorization.restrict_by_owner', false ) ) {
+            $policy = app( SubmissionPolicy::class );
+            if ( ! $policy->delete( Auth::user(), $submission ) ) {
                 return;
             }
         }
 
         $submission->delete();
-        session()->flash('success', 'Submission deleted successfully.');
-    }
-
-    // =========================================
-    // Bulk Actions
-    // =========================================
-
-    /**
-     * Get a query builder scoped to selected submissions the user has access to.
-     *
-     * @return \Illuminate\Database\Eloquent\Builder<FormSubmission>
-     */
-    protected function getOwnedSelectedQuery(): \Illuminate\Database\Eloquent\Builder
-    {
-        $query = FormSubmission::whereIn('id', $this->selected);
-
-        // Apply ownership scope to ensure user can only affect their submissions
-        $policy = app(SubmissionPolicy::class);
-        $ownershipScope = $policy->getOwnedSubmissionsScope(Auth::user());
-        $query->tap($ownershipScope);
-
-        return $query;
+        session()->flash( 'success', 'Submission deleted successfully.' );
     }
 
     /**
@@ -301,10 +242,10 @@ class SubmissionsList extends Component
      */
     public function bulkMarkAsRead(): void
     {
-        $count = $this->getOwnedSelectedQuery()->update(['is_read' => true]);
+        $count = $this->getOwnedSelectedQuery()->update( ['is_read' => true] );
 
         $this->resetSelection();
-        session()->flash('success', "{$count} submission(s) marked as read.");
+        session()->flash( 'success', "{$count} submission(s) marked as read." );
     }
 
     /**
@@ -314,10 +255,10 @@ class SubmissionsList extends Component
      */
     public function bulkMarkAsUnread(): void
     {
-        $count = $this->getOwnedSelectedQuery()->update(['is_read' => false]);
+        $count = $this->getOwnedSelectedQuery()->update( ['is_read' => false] );
 
         $this->resetSelection();
-        session()->flash('success', "{$count} submission(s) marked as unread.");
+        session()->flash( 'success', "{$count} submission(s) marked as unread." );
     }
 
     /**
@@ -327,10 +268,10 @@ class SubmissionsList extends Component
      */
     public function bulkMarkAsSpam(): void
     {
-        $count = $this->getOwnedSelectedQuery()->update(['is_spam' => true]);
+        $count = $this->getOwnedSelectedQuery()->update( ['is_spam' => true] );
 
         $this->resetSelection();
-        session()->flash('success', "{$count} submission(s) marked as spam.");
+        session()->flash( 'success', "{$count} submission(s) marked as spam." );
     }
 
     /**
@@ -343,7 +284,7 @@ class SubmissionsList extends Component
         $count = $this->getOwnedSelectedQuery()->delete();
 
         $this->resetSelection();
-        session()->flash('success', "{$count} submission(s) deleted.");
+        session()->flash( 'success', "{$count} submission(s) deleted." );
     }
 
     // =========================================
@@ -359,41 +300,41 @@ class SubmissionsList extends Component
     {
         // Determine form: use formId if set, otherwise try formFilter
         $form = null;
-        if ($this->formId) {
-            $form = Form::find($this->formId);
-        } elseif ($this->formFilter !== '') {
-            $form = Form::find((int) $this->formFilter);
+        if ( $this->formId ) {
+            $form = Form::find( $this->formId );
+        } elseif ( '' !== $this->formFilter ) {
+            $form = Form::find( (int) $this->formFilter );
         }
 
-        if (! $form) {
-            session()->flash('error', 'Please select a form to export submissions.');
+        if ( ! $form ) {
+            session()->flash( 'error', 'Please select a form to export submissions.' );
 
-            return $this->redirect(request()->header('Referer', route('forms.submissions.all')));
+            return $this->redirect( request()->header( 'Referer', route( 'forms.submissions.all' ) ) );
         }
 
         // Check if user can access this form's submissions
-        $policy = app(SubmissionPolicy::class);
-        if (! $policy->canAccessFormSubmissions(Auth::user(), $form)) {
-            session()->flash('error', 'You do not have permission to export submissions for this form.');
+        $policy = app( SubmissionPolicy::class );
+        if ( ! $policy->canAccessFormSubmissions( Auth::user(), $form ) ) {
+            session()->flash( 'error', 'You do not have permission to export submissions for this form.' );
 
-            return $this->redirect(request()->header('Referer', route('forms.submissions.all')));
+            return $this->redirect( request()->header( 'Referer', route( 'forms.submissions.all' ) ) );
         }
 
-        $exportService = app(ExportService::class);
+        $exportService = app( ExportService::class );
 
         // Get submissions to export (selected or all visible)
         // Both paths apply ownership scope via getFilteredQuery or getOwnedSelectedQuery
-        if (! empty($this->selected)) {
+        if ( ! empty( $this->selected ) ) {
             $submissions = $this->getOwnedSelectedQuery()
-                ->with('values')
+                ->with( 'values' )
                 ->get();
         } else {
             $submissions = $this->getFilteredQuery()
-                ->with('values')
+                ->with( 'values' )
                 ->get();
         }
 
-        return $exportService->exportToCsv($form, $submissions);
+        return $exportService->exportToCsv( $form, $submissions );
     }
 
     // =========================================
@@ -409,8 +350,8 @@ class SubmissionsList extends Component
     public function submissions(): LengthAwarePaginator
     {
         return $this->getFilteredQuery()
-            ->with(['form', 'values'])
-            ->paginate(config('artisanpack.forms.admin.per_page', 15));
+            ->with( ['form', 'values'] )
+            ->paginate( config( 'artisanpack.forms.admin.per_page', 15 ) );
     }
 
     /**
@@ -426,20 +367,20 @@ class SubmissionsList extends Component
         $baseQuery = FormSubmission::query();
 
         // Apply ownership scope
-        $policy = app(SubmissionPolicy::class);
-        $ownershipScope = $policy->getOwnedSubmissionsScope(Auth::user());
-        $baseQuery->tap($ownershipScope);
+        $policy         = app( SubmissionPolicy::class );
+        $ownershipScope = $policy->getOwnedSubmissionsScope( Auth::user() );
+        $baseQuery->tap( $ownershipScope );
 
-        if ($this->formId) {
-            $baseQuery->where('form_id', $this->formId);
+        if ( $this->formId ) {
+            $baseQuery->where( 'form_id', $this->formId );
         }
 
         return [
-            'all' => (clone $baseQuery)->count(),
-            'unread' => (clone $baseQuery)->where('is_read', false)->count(),
-            'read' => (clone $baseQuery)->where('is_read', true)->count(),
-            'spam' => (clone $baseQuery)->where('is_spam', true)->count(),
-            'starred' => (clone $baseQuery)->where('is_starred', true)->count(),
+            'all'     => ( clone $baseQuery )->count(),
+            'unread'  => ( clone $baseQuery )->where( 'is_read', false )->count(),
+            'read'    => ( clone $baseQuery )->where( 'is_read', true )->count(),
+            'spam'    => ( clone $baseQuery )->where( 'is_spam', true )->count(),
+            'starred' => ( clone $baseQuery )->where( 'is_starred', true )->count(),
         ];
     }
 
@@ -457,28 +398,28 @@ class SubmissionsList extends Component
         $query = Form::query();
 
         // Apply ownership filter if restriction is enabled
-        if (config('artisanpack.forms.authorization.restrict_by_owner', false)) {
+        if ( config( 'artisanpack.forms.authorization.restrict_by_owner', false ) ) {
             $user = Auth::user();
 
             // Check if user is admin with bypass
             $isAdmin = false;
-            if ($user && method_exists($user, 'getAttribute')) {
-                $isAdmin = (bool) $user->getAttribute('is_admin');
+            if ( $user && method_exists( $user, 'getAttribute' ) ) {
+                $isAdmin = (bool) $user->getAttribute( 'is_admin' );
             }
 
-            if (! $isAdmin || ! config('artisanpack.forms.authorization.allow_admin_bypass', true)) {
-                $query->where(function ($q) use ($user): void {
-                    if ($user) {
-                        $q->where('user_id', $user->getAuthIdentifier())
-                            ->orWhereNull('user_id');
+            if ( ! $isAdmin || ! config( 'artisanpack.forms.authorization.allow_admin_bypass', true ) ) {
+                $query->where( function ( $q ) use ( $user ): void {
+                    if ( $user ) {
+                        $q->where( 'user_id', $user->getAuthIdentifier() )
+                            ->orWhereNull( 'user_id' );
                     } else {
-                        $q->whereNull('user_id');
+                        $q->whereNull( 'user_id' );
                     }
-                });
+                } );
             }
         }
 
-        return $query->orderBy('name')->get(['id', 'name', 'slug']);
+        return $query->orderBy( 'name' )->get( ['id', 'name', 'slug'] );
     }
 
     /**
@@ -487,7 +428,74 @@ class SubmissionsList extends Component
     #[Computed]
     public function currentForm(): ?Form
     {
-        return $this->formId ? Form::find($this->formId) : null;
+        return $this->formId ? Form::find( $this->formId ) : null;
+    }
+
+    /**
+     * Render the component.
+     */
+    public function render(): View
+    {
+        return view( 'forms::livewire.submissions-list' );
+    }
+
+    /**
+     * Reset selection state.
+     */
+    protected function resetSelection(): void
+    {
+        $this->selected  = [];
+        $this->selectAll = false;
+    }
+
+    // =========================================
+    // Individual Actions
+    // =========================================
+
+    /**
+     * Find a submission by ID that the user has access to.
+     *
+     * Returns null if the submission doesn't exist or user doesn't have access.
+     * When ownership restriction is disabled, no access check is performed.
+     */
+    protected function findOwnedSubmission( int $id ): ?FormSubmission
+    {
+        $submission = FormSubmission::find( $id );
+
+        if ( ! $submission ) {
+            return null;
+        }
+
+        // Only check policy when ownership restriction is enabled
+        if ( config( 'artisanpack.forms.authorization.restrict_by_owner', false ) ) {
+            $policy = app( SubmissionPolicy::class );
+            if ( ! $policy->update( Auth::user(), $submission ) ) {
+                return null;
+            }
+        }
+
+        return $submission;
+    }
+
+    // =========================================
+    // Bulk Actions
+    // =========================================
+
+    /**
+     * Get a query builder scoped to selected submissions the user has access to.
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<FormSubmission>
+     */
+    protected function getOwnedSelectedQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = FormSubmission::whereIn( 'id', $this->selected );
+
+        // Apply ownership scope to ensure user can only affect their submissions
+        $policy         = app( SubmissionPolicy::class );
+        $ownershipScope = $policy->getOwnedSubmissionsScope( Auth::user() );
+        $query->tap( $ownershipScope );
+
+        return $query;
     }
 
     /**
@@ -503,65 +511,57 @@ class SubmissionsList extends Component
         $query = FormSubmission::query();
 
         // Apply ownership scope - users only see submissions from their forms
-        $policy = app(SubmissionPolicy::class);
-        $ownershipScope = $policy->getOwnedSubmissionsScope(Auth::user());
-        $query->tap($ownershipScope);
+        $policy         = app( SubmissionPolicy::class );
+        $ownershipScope = $policy->getOwnedSubmissionsScope( Auth::user() );
+        $query->tap( $ownershipScope );
 
         // Filter by form
-        if ($this->formId) {
-            $query->where('form_id', $this->formId);
-        } elseif ($this->formFilter !== '') {
-            $query->where('form_id', (int) $this->formFilter);
+        if ( $this->formId ) {
+            $query->where( 'form_id', $this->formId );
+        } elseif ( '' !== $this->formFilter ) {
+            $query->where( 'form_id', (int) $this->formFilter );
         }
 
         // Apply search filter (escape special LIKE characters)
-        if ($this->search !== '') {
-            $search = str_replace(['%', '_'], ['\%', '\_'], $this->search);
-            $query->where(function ($q) use ($search): void {
-                $q->where('submission_number', 'like', "%{$search}%")
-                    ->orWhereHas('values', function ($vq) use ($search): void {
-                        $vq->where('value', 'like', "%{$search}%");
-                    });
-            });
+        if ( '' !== $this->search ) {
+            $search = str_replace( ['%', '_'], ['\%', '\_'], $this->search );
+            $query->where( function ( $q ) use ( $search ): void {
+                $q->where( 'submission_number', 'like', "%{$search}%" )
+                    ->orWhereHas( 'values', function ( $vq ) use ( $search ): void {
+                        $vq->where( 'value', 'like', "%{$search}%" );
+                    } );
+            } );
         }
 
         // Apply status filter
-        match ($this->status) {
-            'unread' => $query->where('is_read', false)->where('is_spam', false),
-            'read' => $query->where('is_read', true)->where('is_spam', false),
-            'spam' => $query->where('is_spam', true),
-            'starred' => $query->where('is_starred', true),
-            default => $query->where('is_spam', false), // 'all' excludes spam by default
+        match ( $this->status ) {
+            'unread'  => $query->where( 'is_read', false )->where( 'is_spam', false ),
+            'read'    => $query->where( 'is_read', true )->where( 'is_spam', false ),
+            'spam'    => $query->where( 'is_spam', true ),
+            'starred' => $query->where( 'is_starred', true ),
+            default   => $query->where( 'is_spam', false ), // 'all' excludes spam by default
         };
 
         // Apply date range filter
-        match ($this->dateRange) {
-            'today' => $query->whereDate('created_at', today()),
-            'week' => $query->where('created_at', '>=', now()->subWeek()),
-            'month' => $query->where('created_at', '>=', now()->subMonth()),
-            'year' => $query->where('created_at', '>=', now()->subYear()),
+        match ( $this->dateRange ) {
+            'today' => $query->whereDate( 'created_at', today() ),
+            'week'  => $query->where( 'created_at', '>=', now()->subWeek() ),
+            'month' => $query->where( 'created_at', '>=', now()->subMonth() ),
+            'year'  => $query->where( 'created_at', '>=', now()->subYear()),
             default => null, // 'all' - no date filter
         };
 
         // Apply sorting (validate to prevent injection)
-        $sortColumn = match ($this->sortBy) {
+        $sortColumn = match ( $this->sortBy) {
             'submission_number' => 'submission_number',
-            default => 'created_at',
+            default             => 'created_at',
         };
 
-        $sortDirection = strtolower($this->sortDirection);
-        $sortDirection = in_array($sortDirection, ['asc', 'desc'], true) ? $sortDirection : 'desc';
+        $sortDirection = strtolower( $this->sortDirection);
+        $sortDirection = in_array( $sortDirection, ['asc', 'desc'], true) ? $sortDirection : 'desc';
 
-        $query->orderBy($sortColumn, $sortDirection);
+        $query->orderBy( $sortColumn, $sortDirection);
 
         return $query;
-    }
-
-    /**
-     * Render the component.
-     */
-    public function render(): View
-    {
-        return view('forms::livewire.submissions-list');
     }
 }

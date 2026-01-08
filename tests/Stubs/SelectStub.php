@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace Tests\Stubs;
 
@@ -32,13 +32,14 @@ class SelectStub extends Component
         public ?array $options = null,
         public ?string $optionValue = 'value',
         public ?string $optionLabel = 'label',
-    ) {}
+    ) {
+    }
 
     /**
      * Get the view / contents that represent the component.
      */
     public function render(): View
     {
-        return view('stubs.select');
+        return view( 'stubs.select' );
     }
 }

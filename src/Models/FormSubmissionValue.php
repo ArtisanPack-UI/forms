@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
 
@@ -39,14 +39,6 @@ class FormSubmissionValue extends Model
     use HasFactory;
 
     /**
-     * Create a new factory instance for the model.
-     */
-    protected static function newFactory(): FormSubmissionValueFactory
-    {
-        return FormSubmissionValueFactory::new();
-    }
-
-    /**
      * Indicates if the model should be timestamped.
      *
      * @var bool
@@ -70,19 +62,6 @@ class FormSubmissionValue extends Model
         'created_at',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'value_array' => 'array',
-            'created_at' => 'datetime',
-        ];
-    }
-
     // =========================================
     // Relationships
     // =========================================
@@ -94,7 +73,7 @@ class FormSubmissionValue extends Model
      */
     public function submission(): BelongsTo
     {
-        return $this->belongsTo(FormSubmission::class, 'submission_id');
+        return $this->belongsTo( FormSubmission::class, 'submission_id' );
     }
 
     /**
@@ -104,7 +83,7 @@ class FormSubmissionValue extends Model
      */
     public function field(): BelongsTo
     {
-        return $this->belongsTo(FormField::class, 'field_id');
+        return $this->belongsTo( FormField::class, 'field_id' );
     }
 
     /**
@@ -114,7 +93,7 @@ class FormSubmissionValue extends Model
      */
     public function upload(): BelongsTo
     {
-        return $this->belongsTo(FormUpload::class, 'upload_id');
+        return $this->belongsTo( FormUpload::class, 'upload_id' );
     }
 
     // =========================================
@@ -127,12 +106,12 @@ class FormSubmissionValue extends Model
     public function getDisplayValueAttribute(): string
     {
         // Handle array values (checkbox groups, multi-select)
-        if (! empty($this->value_array)) {
-            return implode(', ', $this->value_array);
+        if ( ! empty( $this->value_array ) ) {
+            return implode( ', ', $this->value_array );
         }
 
         // Handle file uploads
-        if ($this->upload_id && $this->upload) {
+        if ( $this->upload_id && $this->upload ) {
             return $this->upload->original_name;
         }
 
@@ -144,7 +123,7 @@ class FormSubmissionValue extends Model
      */
     public function getIsArrayValueAttribute(): bool
     {
-        return ! empty($this->value_array);
+        return ! empty( $this->value_array );
     }
 
     /**
@@ -152,6 +131,27 @@ class FormSubmissionValue extends Model
      */
     public function getIsFileAttribute(): bool
     {
-        return $this->field_type === 'file' && $this->upload_id !== null;
+        return 'file' === $this->field_type && null !== $this->upload_id;
+    }
+
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory(): FormSubmissionValueFactory
+    {
+        return FormSubmissionValueFactory::new();
+    }
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'value_array' => 'array',
+            'created_at'  => 'datetime',
+        ];
     }
 }

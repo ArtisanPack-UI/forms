@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace Tests\Stubs;
 
@@ -24,13 +24,14 @@ class MenuStub extends Component
         public ?string $title = null,
         public ?string $icon = null,
         public bool $activatable = false,
-    ) {}
+    ) {
+    }
 
     /**
      * Get the view / contents that represent the component.
      */
     public function render(): View
     {
-        return view('stubs.menu');
+        return view( 'stubs.menu' );
     }
 }

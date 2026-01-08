@@ -2,7 +2,7 @@
 
 use ArtisanPackUI\Forms\A11y;
 
-if (! function_exists('a11y')) {
+if ( ! function_exists( 'a11y' ) ) {
     /**
      * Get the Eventy instance.
      *
@@ -10,11 +10,11 @@ if (! function_exists('a11y')) {
      */
     function a11y()
     {
-        return app('a11y');
+        return app( 'a11y' );
     }
 }
 
-if (! function_exists('a11yCSSVarBlackOrWhite')) {
+if ( ! function_exists( 'a11yCSSVarBlackOrWhite' ) ) {
     /**
      * Returns whether a text color should be black or white based on the background color.
      *
@@ -22,13 +22,13 @@ if (! function_exists('a11yCSSVarBlackOrWhite')) {
      *
      * @since 1.0.0
      */
-    function a11yCSSVarBlackOrWhite(string $hexColor): string
+    function a11yCSSVarBlackOrWhite( string $hexColor ): string
     {
-        return a11y()->a11yCSSVarBlackOrWhite($hexColor);
+        return a11y()->a11yCSSVarBlackOrWhite( $hexColor );
     }
 }
 
-if (! function_exists('a11yGetContrastColor')) {
+if ( ! function_exists( 'a11yGetContrastColor' ) ) {
     /**
      * Returns whether a text color should be black or white based on the background color.
      *
@@ -36,13 +36,13 @@ if (! function_exists('a11yGetContrastColor')) {
      *
      * @since 1.0.0
      */
-    function a11yGetContrastColor(string $hexColor): string
+    function a11yGetContrastColor( string $hexColor ): string
     {
-        return a11y()->a11yGetContrastColor($hexColor);
+        return a11y()->a11yGetContrastColor( $hexColor );
     }
 }
 
-if (! function_exists('getToastDuration')) {
+if ( ! function_exists( 'getToastDuration' ) ) {
     /**
      * Gets the user's setting for how long the toast element should stay on the screen.
      *
@@ -54,7 +54,7 @@ if (! function_exists('getToastDuration')) {
     }
 }
 
-if (! function_exists('a11yCheckContrastColor')) {
+if ( ! function_exists( 'a11yCheckContrastColor' ) ) {
     /**
      * Returns whether two given colors have the correct amount of contrast between them.
      *
@@ -63,8 +63,8 @@ if (! function_exists('a11yCheckContrastColor')) {
      *
      * @since 1.0.0
      */
-    function a11yCheckContrastColor(string $firstHexColor, string $secondHexColor): bool
+    function a11yCheckContrastColor( string $firstHexColor, string $secondHexColor ): bool
     {
-        return a11y()->a11yCheckContrastColor($firstHexColor, $secondHexColor);
+        return a11y()->a11yCheckContrastColor( $firstHexColor, $secondHexColor);
     }
 }

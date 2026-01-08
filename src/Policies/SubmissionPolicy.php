@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Policies;
 
@@ -49,9 +49,9 @@ class SubmissionPolicy
      *
      * @see getOwnedSubmissionsScope() for query-level filtering
      */
-    public function viewAny(?Authenticatable $user): bool
+    public function viewAny( ?Authenticatable $user ): bool
     {
-        return $user !== null;
+        return null !== $user;
     }
 
     /**
@@ -60,14 +60,14 @@ class SubmissionPolicy
      * When ownership restriction is enabled, access is determined by the
      * parent form's ownership. This protects potentially sensitive PII.
      */
-    public function view(?Authenticatable $user, FormSubmission $submission): bool
+    public function view( ?Authenticatable $user, FormSubmission $submission ): bool
     {
-        if ($user === null) {
+        if ( null === $user ) {
             return false;
         }
 
-        if ($this->isOwnershipRestricted()) {
-            return $this->canAccessForm($user, $submission);
+        if ( $this->isOwnershipRestricted() ) {
+            return $this->canAccessForm( $user, $submission );
         }
 
         return true;
@@ -78,14 +78,14 @@ class SubmissionPolicy
      *
      * This includes marking as read/unread, starring, and adding notes.
      */
-    public function update(?Authenticatable $user, FormSubmission $submission): bool
+    public function update( ?Authenticatable $user, FormSubmission $submission ): bool
     {
-        if ($user === null) {
+        if ( null === $user ) {
             return false;
         }
 
-        if ($this->isOwnershipRestricted()) {
-            return $this->canAccessForm($user, $submission);
+        if ( $this->isOwnershipRestricted() ) {
+            return $this->canAccessForm( $user, $submission );
         }
 
         return true;
@@ -97,14 +97,14 @@ class SubmissionPolicy
      * When ownership restriction is enabled, only the form owner (or admin)
      * can delete submissions.
      */
-    public function delete(?Authenticatable $user, FormSubmission $submission): bool
+    public function delete( ?Authenticatable $user, FormSubmission $submission ): bool
     {
-        if ($user === null) {
+        if ( null === $user ) {
             return false;
         }
 
-        if ($this->isOwnershipRestricted()) {
-            return $this->canAccessForm($user, $submission);
+        if ( $this->isOwnershipRestricted() ) {
+            return $this->canAccessForm( $user, $submission );
         }
 
         return true;
@@ -115,9 +115,9 @@ class SubmissionPolicy
      *
      * By default, users who can update the submission can mark it as spam.
      */
-    public function markAsSpam(?Authenticatable $user, FormSubmission $submission): bool
+    public function markAsSpam( ?Authenticatable $user, FormSubmission $submission ): bool
     {
-        return $this->update($user, $submission);
+        return $this->update( $user, $submission );
     }
 
     /**
@@ -125,14 +125,14 @@ class SubmissionPolicy
      *
      * By default, users who can view the submission can download its files.
      */
-    public function downloadFile(?Authenticatable $user, FormSubmission $submission, FormUpload $upload): bool
+    public function downloadFile( ?Authenticatable $user, FormSubmission $submission, FormUpload $upload ): bool
     {
         // Verify the upload belongs to this submission
-        if ($upload->submission_id !== $submission->id) {
+        if ( $upload->submission_id !== $submission->id ) {
             return false;
         }
 
-        return $this->view($user, $submission);
+        return $this->view( $user, $submission );
     }
 
     /**
@@ -144,9 +144,9 @@ class SubmissionPolicy
      *
      * @see getOwnedSubmissionsScope() for query-level filtering
      */
-    public function export(?Authenticatable $user): bool
+    public function export( ?Authenticatable $user ): bool
     {
-        return $user !== null;
+        return null !== $user;
     }
 
     /**
@@ -158,9 +158,9 @@ class SubmissionPolicy
      *
      * @see getOwnedSubmissionsScope() for query-level filtering
      */
-    public function bulkAction(?Authenticatable $user): bool
+    public function bulkAction( ?Authenticatable $user ): bool
     {
-        return $user !== null;
+        return null !== $user;
     }
 
     /**
@@ -172,19 +172,19 @@ class SubmissionPolicy
      *
      * Use this to determine if query-level filtering is needed.
      */
-    public function hasUnrestrictedAccess(?Authenticatable $user): bool
+    public function hasUnrestrictedAccess( ?Authenticatable $user ): bool
     {
-        if ($user === null) {
+        if ( null === $user ) {
             return false;
         }
 
         // If ownership is not restricted, everyone has unrestricted access
-        if (! $this->isOwnershipRestricted()) {
+        if ( ! $this->isOwnershipRestricted() ) {
             return true;
         }
 
         // Admins have unrestricted access if bypass is enabled
-        if ($this->isAdmin($user) && config('artisanpack.forms.authorization.allow_admin_bypass', true)) {
+        if ( $this->isAdmin( $user ) && config( 'artisanpack.forms.authorization.allow_admin_bypass', true ) ) {
             return true;
         }
 
@@ -210,33 +210,60 @@ class SubmissionPolicy
      *
      * @return Closure(Builder<FormSubmission>): Builder<FormSubmission>
      */
-    public function getOwnedSubmissionsScope(?Authenticatable $user): Closure
+    public function getOwnedSubmissionsScope( ?Authenticatable $user ): Closure
     {
-        return function (Builder $query) use ($user): Builder {
+        return function ( Builder $query ) use ( $user ): Builder {
             // If ownership is not restricted, no filtering needed
-            if (! $this->isOwnershipRestricted()) {
+            if ( ! $this->isOwnershipRestricted() ) {
                 return $query;
             }
 
             // Ownership is restricted - check user access
-            if ($user === null) {
+            if ( null === $user ) {
                 // No user with ownership enabled = no access
-                return $query->whereRaw('1 = 0');
+                return $query->whereRaw( '1 = 0' );
             }
 
             // Admins have unrestricted access if bypass is enabled
-            if ($this->isAdmin($user) && config('artisanpack.forms.authorization.allow_admin_bypass', true)) {
+            if ( $this->isAdmin( $user ) && config( 'artisanpack.forms.authorization.allow_admin_bypass', true ) ) {
                 return $query;
             }
 
             // Restricted users only see submissions from their forms or unowned forms
-            return $query->whereHas('form', function (Builder $formQuery) use ($user): void {
-                $formQuery->where(function (Builder $q) use ($user): void {
-                    $q->where('user_id', $user->getAuthIdentifier())
-                        ->orWhereNull('user_id');
-                });
-            });
+            return $query->whereHas( 'form', function ( Builder $formQuery ) use ( $user ): void {
+                $formQuery->where( function ( Builder $q ) use ( $user ): void {
+                    $q->where( 'user_id', $user->getAuthIdentifier() )
+                        ->orWhereNull( 'user_id' );
+                } );
+            } );
         };
+    }
+
+    /**
+     * Scope a query to only include submissions for a specific form that the user can access.
+     *
+     * This is a convenience method for checking access to a single form's submissions.
+     */
+    public function canAccessFormSubmissions( ?Authenticatable $user, Form $form ): bool
+    {
+        if ( null === $user ) {
+            return false;
+        }
+
+        if ( ! $this->isOwnershipRestricted() ) {
+            return true;
+        }
+
+        if ( $this->isAdmin( $user ) && config( 'artisanpack.forms.authorization.allow_admin_bypass', true ) ) {
+            return true;
+        }
+
+        // Form without owner is accessible
+        if ( null === $form->user_id ) {
+            return true;
+        }
+
+        return $form->user_id === $user->getAuthIdentifier();
     }
 
     /**
@@ -244,7 +271,7 @@ class SubmissionPolicy
      */
     protected function isOwnershipRestricted(): bool
     {
-        return (bool) config('artisanpack.forms.authorization.restrict_by_owner', false);
+        return (bool) config( 'artisanpack.forms.authorization.restrict_by_owner', false );
     }
 
     /**
@@ -255,23 +282,23 @@ class SubmissionPolicy
      * - The form has no owner (legacy/shared forms)
      * - The user owns the form
      */
-    protected function canAccessForm(Authenticatable $user, FormSubmission $submission): bool
+    protected function canAccessForm( Authenticatable $user, FormSubmission $submission ): bool
     {
         // Check if user is admin and admin bypass is allowed
-        if ($this->isAdmin($user) && config('artisanpack.forms.authorization.allow_admin_bypass', true)) {
+        if ( $this->isAdmin( $user ) && config( 'artisanpack.forms.authorization.allow_admin_bypass', true ) ) {
             return true;
         }
 
         // Load the form if not already loaded
         $form = $submission->form;
 
-        if ($form === null) {
+        if ( null === $form ) {
             // Orphaned submission - deny access when restricted
             return false;
         }
 
         // Forms without owners are accessible to all authenticated users
-        if ($form->user_id === null) {
+        if ( null === $form->user_id ) {
             return true;
         }
 
@@ -285,40 +312,13 @@ class SubmissionPolicy
      * Checks for an `is_admin` attribute on the user model.
      * Override this method to implement custom admin detection.
      */
-    protected function isAdmin(Authenticatable $user): bool
+    protected function isAdmin( Authenticatable $user): bool
     {
         // Check for is_admin attribute if it exists
-        if (method_exists($user, 'getAttribute')) {
-            return (bool) $user->getAttribute('is_admin');
+        if ( method_exists( $user, 'getAttribute')) {
+            return (bool) $user->getAttribute( 'is_admin');
         }
 
         return false;
-    }
-
-    /**
-     * Scope a query to only include submissions for a specific form that the user can access.
-     *
-     * This is a convenience method for checking access to a single form's submissions.
-     */
-    public function canAccessFormSubmissions(?Authenticatable $user, Form $form): bool
-    {
-        if ($user === null) {
-            return false;
-        }
-
-        if (! $this->isOwnershipRestricted()) {
-            return true;
-        }
-
-        if ($this->isAdmin($user) && config('artisanpack.forms.authorization.allow_admin_bypass', true)) {
-            return true;
-        }
-
-        // Form without owner is accessible
-        if ($form->user_id === null) {
-            return true;
-        }
-
-        return $form->user_id === $user->getAuthIdentifier();
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire;
 
@@ -9,6 +9,7 @@ use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormStep;
 use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\SubmissionService;
+use Exception;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
@@ -93,37 +94,21 @@ class FormRenderer extends Component
     /**
      * Boot the component.
      */
-    public function boot(SubmissionService $submissionService, ConditionalLogicService $conditionalLogicService): void
+    public function boot( SubmissionService $submissionService, ConditionalLogicService $conditionalLogicService ): void
     {
-        $this->submissionService = $submissionService;
+        $this->submissionService       = $submissionService;
         $this->conditionalLogicService = $conditionalLogicService;
     }
 
     /**
      * Mount the component.
      */
-    public function mount(Form $form): void
+    public function mount( Form $form ): void
     {
-        $this->form = $form->load(['fields', 'steps.fields']);
+        $this->form         = $form->load( ['fields', 'steps.fields'] );
         $this->formLoadedAt = time();
         $this->initializeFormData();
         $this->evaluateConditionalLogic();
-    }
-
-    /**
-     * Initialize form data with default values.
-     */
-    protected function initializeFormData(): void
-    {
-        foreach ($this->form->fields as $field) {
-            if ($field->default_value !== null) {
-                $this->formData[$field->name] = $field->default_value;
-            } elseif (in_array($field->type, ['checkbox_group', 'select_multiple'])) {
-                $this->formData[$field->name] = [];
-            } else {
-                $this->formData[$field->name] = '';
-            }
-        }
     }
 
     // =========================================
@@ -138,15 +123,15 @@ class FormRenderer extends Component
     #[Computed]
     public function currentFields(): Collection
     {
-        if ($this->form->is_multi_step) {
+        if ( $this->form->is_multi_step ) {
             $currentStep = $this->currentStep;
 
             return $currentStep
-                ? $currentStep->fields()->orderBy('sort_order')->get()
+                ? $currentStep->fields()->orderBy( 'sort_order' )->get()
                 : collect();
         }
 
-        return $this->form->fields()->whereNull('step_id')->orderBy('sort_order')->get();
+        return $this->form->fields()->whereNull( 'step_id' )->orderBy( 'sort_order' )->get();
     }
 
     /**
@@ -155,13 +140,13 @@ class FormRenderer extends Component
     #[Computed]
     public function currentStep(): ?FormStep
     {
-        if (! $this->form->is_multi_step) {
+        if ( ! $this->form->is_multi_step ) {
             return null;
         }
 
-        $steps = $this->form->steps()->orderBy('sort_order')->get();
+        $steps = $this->form->steps()->orderBy( 'sort_order' )->get();
 
-        return $steps->get($this->currentStepIndex);
+        return $steps->get( $this->currentStepIndex );
     }
 
     /**
@@ -170,7 +155,7 @@ class FormRenderer extends Component
     #[Computed]
     public function totalSteps(): int
     {
-        if (! $this->form->is_multi_step) {
+        if ( ! $this->form->is_multi_step ) {
             return 1;
         }
 
@@ -183,7 +168,7 @@ class FormRenderer extends Component
     #[Computed]
     public function isFirstStep(): bool
     {
-        return $this->currentStepIndex === 0;
+        return 0 === $this->currentStepIndex;
     }
 
     /**
@@ -201,11 +186,11 @@ class FormRenderer extends Component
     #[Computed]
     public function progressPercentage(): int
     {
-        if ($this->totalSteps <= 1) {
+        if ( $this->totalSteps <= 1 ) {
             return 100;
         }
 
-        return (int) round((($this->currentStepIndex + 1) / $this->totalSteps) * 100);
+        return (int) round( ( ( $this->currentStepIndex + 1 ) / $this->totalSteps ) * 100 );
     }
 
     /**
@@ -216,7 +201,7 @@ class FormRenderer extends Component
     #[Computed]
     public function steps(): Collection
     {
-        return $this->form->steps()->orderBy('sort_order')->get();
+        return $this->form->steps()->orderBy( 'sort_order' )->get();
     }
 
     /**
@@ -228,8 +213,8 @@ class FormRenderer extends Component
     public function fieldMap(): array
     {
         $map = [];
-        foreach ($this->form->fields as $field) {
-            $map[$field->name] = $field->uuid;
+        foreach ( $this->form->fields as $field ) {
+            $map[ $field->name ] = $field->uuid;
         }
 
         return $map;
@@ -244,9 +229,9 @@ class FormRenderer extends Component
     public function conditionalLogicConfig(): array
     {
         $config = [];
-        foreach ($this->form->fields as $field) {
-            if ($field->has_conditional_logic) {
-                $config[$field->name] = $field->conditional_logic;
+        foreach ( $this->form->fields as $field ) {
+            if ( $field->has_conditional_logic ) {
+                $config[ $field->name ] = $field->conditional_logic;
             }
         }
 
@@ -262,19 +247,19 @@ class FormRenderer extends Component
      */
     public function nextStep(): void
     {
-        if (! $this->form->is_multi_step || $this->isLastStep) {
+        if ( ! $this->form->is_multi_step || $this->isLastStep ) {
             return;
         }
 
         // Validate current step fields before proceeding
-        if (! $this->validateCurrentStep()) {
+        if ( ! $this->validateCurrentStep() ) {
             return;
         }
 
         $this->currentStepIndex++;
         $this->clearComputedProperties();
 
-        $this->dispatch('step-changed', step: $this->currentStepIndex + 1);
+        $this->dispatch( 'step-changed', step: $this->currentStepIndex + 1 );
     }
 
     /**
@@ -282,30 +267,30 @@ class FormRenderer extends Component
      */
     public function previousStep(): void
     {
-        if (! $this->form->is_multi_step || $this->isFirstStep) {
+        if ( ! $this->form->is_multi_step || $this->isFirstStep ) {
             return;
         }
 
         $this->currentStepIndex--;
         $this->clearComputedProperties();
 
-        $this->dispatch('step-changed', step: $this->currentStepIndex + 1);
+        $this->dispatch( 'step-changed', step: $this->currentStepIndex + 1 );
     }
 
     /**
      * Go to a specific step (if allowed).
      */
-    public function goToStep(int $stepIndex): void
+    public function goToStep( int $stepIndex ): void
     {
-        if (! $this->form->is_multi_step) {
+        if ( ! $this->form->is_multi_step ) {
             return;
         }
 
-        if (! $this->form->allow_step_navigation) {
+        if ( ! $this->form->allow_step_navigation ) {
             return;
         }
 
-        if ($stepIndex < 0 || $stepIndex >= $this->totalSteps) {
+        if ( $stepIndex < 0 || $stepIndex >= $this->totalSteps ) {
             return;
         }
 
@@ -313,14 +298,14 @@ class FormRenderer extends Component
         $originalStepIndex = $this->currentStepIndex;
 
         // Only allow going back or to current step without validation
-        if ($stepIndex > $this->currentStepIndex) {
+        if ( $stepIndex > $this->currentStepIndex ) {
             // Validate all steps up to the target step
-            for ($i = $originalStepIndex; $i < $stepIndex; $i++) {
+            for ( $i = $originalStepIndex; $i < $stepIndex; $i++ ) {
                 // Temporarily set index for validation
                 $this->currentStepIndex = $i;
                 $this->clearComputedProperties();
 
-                if (! $this->validateCurrentStep()) {
+                if ( ! $this->validateCurrentStep() ) {
                     // Restore original index on validation failure
                     $this->currentStepIndex = $originalStepIndex;
                     $this->clearComputedProperties();
@@ -333,53 +318,7 @@ class FormRenderer extends Component
         $this->currentStepIndex = $stepIndex;
         $this->clearComputedProperties();
 
-        $this->dispatch('step-changed', step: $this->currentStepIndex + 1);
-    }
-
-    // =========================================
-    // Validation Methods
-    // =========================================
-
-    /**
-     * Validate the current step's fields.
-     */
-    protected function validateCurrentStep(): bool
-    {
-        $rules = $this->submissionService->buildValidationRules(
-            $this->currentFields,
-            $this->hiddenFields
-        );
-
-        $messages = $this->submissionService->buildValidationMessages($this->currentFields);
-
-        if (empty($rules)) {
-            return true;
-        }
-
-        $this->validate($rules, $messages);
-
-        return true;
-    }
-
-    /**
-     * Validate all form fields.
-     */
-    protected function validateAllFields(): bool
-    {
-        $allFields = $this->form->is_multi_step
-            ? $this->form->fields_ordered
-            : $this->form->fields()->whereNull('step_id')->orderBy('sort_order')->get();
-
-        $rules = $this->submissionService->buildValidationRules($allFields, $this->hiddenFields);
-        $messages = $this->submissionService->buildValidationMessages($allFields);
-
-        if (empty($rules)) {
-            return true;
-        }
-
-        $this->validate($rules, $messages);
-
-        return true;
+        $this->dispatch( 'step-changed', step: $this->currentStepIndex + 1 );
     }
 
     // =========================================
@@ -394,17 +333,17 @@ class FormRenderer extends Component
         $this->errorMessage = null;
 
         // Check for spam
-        if ($this->submissionService->isSpam($this->honeypot, $this->formLoadedAt)) {
+        if ( $this->submissionService->isSpam( $this->honeypot, $this->formLoadedAt ) ) {
             // Silent success for bots - don't save but pretend it worked
             $this->isSubmitted = true;
-            $this->dispatch('form-submitted', formId: $this->form->id, isSpam: true);
+            $this->dispatch( 'form-submitted', formId: $this->form->id, isSpam: true );
 
             return;
         }
 
         // Check rate limiting
         $ipAddress = request()->ip() ?? 'unknown';
-        if ($this->submissionService->isRateLimited($ipAddress, $this->form->id)) {
+        if ( $this->submissionService->isRateLimited( $ipAddress, $this->form->id ) ) {
             $this->errorMessage = 'Too many submissions. Please try again later.';
 
             return;
@@ -412,44 +351,44 @@ class FormRenderer extends Component
 
         // Validate all fields
         try {
-            if (! $this->validateAllFields()) {
+            if ( ! $this->validateAllFields() ) {
                 return;
             }
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch ( \Illuminate\Validation\ValidationException $e ) {
             // Validation errors are handled by Livewire
             throw $e;
         }
 
         // Record the attempt for rate limiting
-        $this->submissionService->recordAttempt($ipAddress, $this->form->id);
+        $this->submissionService->recordAttempt( $ipAddress, $this->form->id );
 
         try {
             // Get metadata
-            $metadata = $this->submissionService->getRequestMetadata(request());
+            $metadata = $this->submissionService->getRequestMetadata( request() );
 
             // Create the submission
             $submission = $this->submissionService->create(
                 $this->form,
                 $this->formData,
                 $this->files,
-                $metadata
+                $metadata,
             );
 
             $this->isSubmitted = true;
 
             // Dispatch success event
-            $this->dispatch('form-submitted', formId: $this->form->id, submissionId: $submission->id);
+            $this->dispatch( 'form-submitted', formId: $this->form->id, submissionId: $submission->id );
 
             // Handle redirect if configured
-            if ($this->form->redirect_url) {
-                $this->dispatch('redirect-to', url: $this->form->redirect_url);
+            if ( $this->form->redirect_url ) {
+                $this->dispatch( 'redirect-to', url: $this->form->redirect_url );
             }
 
-        } catch (\Exception $e) {
-            Log::error('Form submission failed', [
+        } catch ( Exception $e ) {
+            Log::error( 'Form submission failed', [
                 'form_id' => $this->form->id,
-                'error' => $e->getMessage(),
-            ]);
+                'error'   => $e->getMessage(),
+            ] );
 
             $this->errorMessage = 'An error occurred while submitting the form. Please try again.';
         }
@@ -460,15 +399,15 @@ class FormRenderer extends Component
      */
     public function resetForm(): void
     {
-        $this->isSubmitted = false;
+        $this->isSubmitted      = false;
         $this->currentStepIndex = 0;
-        $this->errorMessage = null;
-        $this->files = [];
-        $this->formLoadedAt = time();
+        $this->errorMessage     = null;
+        $this->files            = [];
+        $this->formLoadedAt     = time();
         $this->initializeFormData();
         $this->clearComputedProperties();
 
-        $this->dispatch('form-reset', formId: $this->form->id);
+        $this->dispatch( 'form-reset', formId: $this->form->id );
     }
 
     // =========================================
@@ -486,13 +425,125 @@ class FormRenderer extends Component
     }
 
     /**
+     * Check if a field should be visible.
+     */
+    public function isFieldVisible( string $fieldName ): bool
+    {
+        return ! ( $this->hiddenFields[ $fieldName ] ?? false );
+    }
+
+    /**
+     * Get the CSS class for a field based on its width.
+     */
+    public function getFieldWidthClass( FormField $field ): string
+    {
+        return $field->width_class;
+    }
+
+    // =========================================
+    // Serialization
+    // =========================================
+
+    /**
+     * Return data for JSON serialization.
+     *
+     * This method is called by Alpine/Livewire integration when serializing
+     * component data. Required to prevent "toJSON method not found" errors.
+     *
+     * @return array<string, mixed>
+     */
+    public function toJSON(): array
+    {
+        return [
+            'formData'         => $this->formData,
+            'hiddenFields'     => $this->hiddenFields,
+            'currentStepIndex' => $this->currentStepIndex,
+            'isSubmitted'      => $this->isSubmitted,
+        ];
+    }
+
+    // =========================================
+    // Render
+    // =========================================
+
+    /**
+     * Render the component.
+     */
+    public function render(): View
+    {
+        return view( 'forms::livewire.form-renderer' );
+    }
+
+    /**
+     * Initialize form data with default values.
+     */
+    protected function initializeFormData(): void
+    {
+        foreach ( $this->form->fields as $field ) {
+            if ( null !== $field->default_value ) {
+                $this->formData[ $field->name ] = $field->default_value;
+            } elseif ( in_array( $field->type, ['checkbox_group', 'select_multiple'] ) ) {
+                $this->formData[ $field->name ] = [];
+            } else {
+                $this->formData[ $field->name ] = '';
+            }
+        }
+    }
+
+    // =========================================
+    // Validation Methods
+    // =========================================
+
+    /**
+     * Validate the current step's fields.
+     */
+    protected function validateCurrentStep(): bool
+    {
+        $rules = $this->submissionService->buildValidationRules(
+            $this->currentFields,
+            $this->hiddenFields,
+        );
+
+        $messages = $this->submissionService->buildValidationMessages( $this->currentFields );
+
+        if ( empty( $rules ) ) {
+            return true;
+        }
+
+        $this->validate( $rules, $messages );
+
+        return true;
+    }
+
+    /**
+     * Validate all form fields.
+     */
+    protected function validateAllFields(): bool
+    {
+        $allFields = $this->form->is_multi_step
+            ? $this->form->fields_ordered
+            : $this->form->fields()->whereNull( 'step_id' )->orderBy( 'sort_order' )->get();
+
+        $rules    = $this->submissionService->buildValidationRules( $allFields, $this->hiddenFields );
+        $messages = $this->submissionService->buildValidationMessages( $allFields );
+
+        if ( empty( $rules ) ) {
+            return true;
+        }
+
+        $this->validate( $rules, $messages );
+
+        return true;
+    }
+
+    /**
      * Evaluate conditional logic for all fields.
      */
     protected function evaluateConditionalLogic(): void
     {
         $this->hiddenFields = $this->conditionalLogicService->getHiddenFields(
             $this->form->fields,
-            $this->formData
+            $this->formData,
         );
     }
 
@@ -514,57 +565,7 @@ class FormRenderer extends Component
             $this->progressPercentage,
             $this->steps,
             $this->fieldMap,
-            $this->conditionalLogicConfig
+            $this->conditionalLogicConfig,
         );
-    }
-
-    /**
-     * Check if a field should be visible.
-     */
-    public function isFieldVisible(string $fieldName): bool
-    {
-        return ! ($this->hiddenFields[$fieldName] ?? false);
-    }
-
-    /**
-     * Get the CSS class for a field based on its width.
-     */
-    public function getFieldWidthClass(FormField $field): string
-    {
-        return $field->width_class;
-    }
-
-    // =========================================
-    // Serialization
-    // =========================================
-
-    /**
-     * Return data for JSON serialization.
-     *
-     * This method is called by Alpine/Livewire integration when serializing
-     * component data. Required to prevent "toJSON method not found" errors.
-     *
-     * @return array<string, mixed>
-     */
-    public function toJSON(): array
-    {
-        return [
-            'formData' => $this->formData,
-            'hiddenFields' => $this->hiddenFields,
-            'currentStepIndex' => $this->currentStepIndex,
-            'isSubmitted' => $this->isSubmitted,
-        ];
-    }
-
-    // =========================================
-    // Render
-    // =========================================
-
-    /**
-     * Render the component.
-     */
-    public function render(): View
-    {
-        return view('forms::livewire.form-renderer');
     }
 }
