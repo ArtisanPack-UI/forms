@@ -1,6 +1,6 @@
 <div class="field-palette rounded-box bg-base-200 p-4">
     <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-base-content/70">
-        Add Fields
+        {{ __( 'Add Fields' ) }}
     </h3>
 
     <div class="space-y-4">
@@ -18,7 +18,7 @@
                             wire:click="addField('{{ $type }}')"
                             wire:loading.attr="disabled"
                             class="btn btn-ghost btn-sm h-auto flex-col gap-1 py-2 text-xs hover:bg-base-300"
-                            title="Add {{ $config['label'] }}"
+                            title="{{ __( 'Add :field', ['field' => $config['label']] ) }}"
                         >
                             <x-artisanpack-icon name="{{ $config['icon'] }}" class="h-5 w-5" />
                             <span class="truncate">{{ $config['label'] }}</span>
@@ -34,10 +34,10 @@
     {{-- Quick tips --}}
     <div class="text-xs text-base-content/60">
         <p class="mb-1">
-            <strong>Tip:</strong> Click a field type to add it to your form.
+            <strong>{{ __( 'Tip:' ) }}</strong> {{ __( 'Click a field type to add it to your form.' ) }}
         </p>
         <p>
-            Drag fields in the canvas to reorder them.
+            {{ __( 'Drag fields in the canvas to reorder them.' ) }}
         </p>
     </div>
 </div>

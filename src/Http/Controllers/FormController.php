@@ -99,7 +99,7 @@ class FormController extends Controller
 
         return redirect()
             ->route( 'forms.edit', $form )
-            ->with( 'success', 'Form created successfully.' );
+            ->with( 'success', __( 'Form created successfully.' ) );
     }
 
     /**
@@ -146,7 +146,7 @@ class FormController extends Controller
 
         return redirect()
             ->route( 'forms.edit', $form )
-            ->with( 'success', 'Form updated successfully.' );
+            ->with( 'success', __( 'Form updated successfully.' ) );
     }
 
     /**
@@ -167,6 +167,6 @@ class FormController extends Controller
 
         return redirect()
             ->route( 'forms.index' )
-            ->with( 'success', "Form \"{$formName}\" has been deleted." );
+            ->with( 'success', __( 'Form ":name" has been deleted.', ['name' => $formName] ) );
     }
 }

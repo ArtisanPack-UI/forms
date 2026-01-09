@@ -108,7 +108,7 @@ class FormsList extends Component
             $formService = app( FormService::class );
             $newForm     = $formService->duplicate( $form );
 
-            session()->flash( 'success', "Form duplicated as \"{$newForm->name}\"." );
+            session()->flash( 'success', __( 'Form duplicated as ":name".', ['name' => $newForm->name] ) );
         }
     }
 
@@ -124,7 +124,7 @@ class FormsList extends Component
             $formService = app( FormService::class );
             $formService->delete( $form );
 
-            session()->flash( 'success', "Form \"{$formName}\" has been deleted." );
+            session()->flash( 'success', __( 'Form ":name" has been deleted.', ['name' => $formName] ) );
         }
     }
 
@@ -139,8 +139,8 @@ class FormsList extends Component
             $formService = app( FormService::class );
             $formService->togglePublish( $form );
 
-            $status = $form->fresh()->is_active ? 'published' : 'unpublished';
-            session()->flash( 'success', "Form \"{$form->name}\" has been {$status}." );
+            $status = $form->fresh()->is_active ? __( 'published' ) : __( 'unpublished' );
+            session()->flash( 'success', __( 'Form ":name" has been :status.', ['name' => $form->name, 'status' => $status] ) );
         }
     }
 

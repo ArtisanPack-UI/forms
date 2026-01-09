@@ -32,182 +32,253 @@ namespace ArtisanPackUI\Forms\Config;
 class ConditionalLogic
 {
     /**
-     * Available condition actions.
+     * Action keys.
      *
      * @since 1.0.0
      *
-     * @var array<string, array{label: string, description: string}>
+     * @var array<string>
      */
-    public const ACTIONS = [
-        'show' => [
-            'label'       => 'Show this field',
-            'description' => 'Field is visible when conditions are met',
-        ],
-        'hide' => [
-            'label'       => 'Hide this field',
-            'description' => 'Field is hidden when conditions are met',
-        ],
-    ];
+    public const ACTION_KEYS = ['show', 'hide'];
 
     /**
-     * Available logic types for combining multiple rules.
+     * Logic type keys.
      *
      * @since 1.0.0
      *
-     * @var array<string, array{label: string, description: string}>
+     * @var array<string>
      */
-    public const LOGIC_TYPES = [
-        'all' => [
-            'label'       => 'All conditions (AND)',
-            'description' => 'All conditions must be true',
-        ],
-        'any' => [
-            'label'       => 'Any condition (OR)',
-            'description' => 'At least one condition must be true',
-        ],
-    ];
+    public const LOGIC_TYPE_KEYS = ['all', 'any'];
 
     /**
-     * Available comparison operators with metadata.
+     * Gets available condition actions with translated labels.
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, array{label: string, description: string}> The available actions.
+     */
+    public static function actions(): array
+    {
+        return [
+            'show' => [
+                'label'       => __( 'Show this field' ),
+                'description' => __( 'Field is visible when conditions are met' ),
+            ],
+            'hide' => [
+                'label'       => __( 'Hide this field' ),
+                'description' => __( 'Field is hidden when conditions are met' ),
+            ],
+        ];
+    }
+
+    /**
+     * Gets available logic types with translated labels.
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, array{label: string, description: string}> The available logic types.
+     */
+    public static function logicTypes(): array
+    {
+        return [
+            'all' => [
+                'label'       => __( 'All conditions (AND)' ),
+                'description' => __( 'All conditions must be true' ),
+            ],
+            'any' => [
+                'label'       => __( 'Any condition (OR)' ),
+                'description' => __( 'At least one condition must be true' ),
+            ],
+        ];
+    }
+
+    /**
+     * Operator metadata without translatable strings.
      *
      * @since 1.0.0
      *
      * @var array<string, array{
-     *     label: string,
-     *     description: string,
      *     needs_value: bool,
      *     value_type: string,
      *     supports_types: array<string>
      * }>
      */
-    public const OPERATORS = [
+    public const OPERATOR_METADATA = [
         'equals' => [
-            'label'          => 'Equals',
-            'description'    => 'Value exactly matches',
             'needs_value'    => true,
             'value_type'     => 'text',
             'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden', 'date', 'time'],
         ],
         'not_equals' => [
-            'label'          => 'Does not equal',
-            'description'    => 'Value does not match',
             'needs_value'    => true,
             'value_type'     => 'text',
             'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden', 'date', 'time'],
         ],
         'contains' => [
-            'label'          => 'Contains',
-            'description'    => 'Value contains the text',
             'needs_value'    => true,
             'value_type'     => 'text',
             'supports_types' => ['text', 'email', 'url', 'phone', 'textarea'],
         ],
         'not_contains' => [
-            'label'          => 'Does not contain',
-            'description'    => 'Value does not contain the text',
             'needs_value'    => true,
             'value_type'     => 'text',
             'supports_types' => ['text', 'email', 'url', 'phone', 'textarea'],
         ],
         'starts_with' => [
-            'label'          => 'Starts with',
-            'description'    => 'Value starts with the text',
             'needs_value'    => true,
             'value_type'     => 'text',
             'supports_types' => ['text', 'email', 'url', 'phone', 'textarea'],
         ],
         'ends_with' => [
-            'label'          => 'Ends with',
-            'description'    => 'Value ends with the text',
             'needs_value'    => true,
             'value_type'     => 'text',
             'supports_types' => ['text', 'email', 'url', 'phone', 'textarea'],
         ],
         'is_empty' => [
-            'label'          => 'Is empty',
-            'description'    => 'Field has no value',
             'needs_value'    => false,
             'value_type'     => 'none',
             'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'textarea', 'select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple', 'file', 'date', 'time', 'hidden'],
         ],
         'is_not_empty' => [
-            'label'          => 'Is not empty',
-            'description'    => 'Field has a value',
             'needs_value'    => false,
             'value_type'     => 'none',
             'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'textarea', 'select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple', 'file', 'date', 'time', 'hidden'],
         ],
         'greater_than' => [
-            'label'          => 'Greater than',
-            'description'    => 'Value is greater than',
             'needs_value'    => true,
             'value_type'     => 'number',
             'supports_types' => ['number'],
         ],
         'less_than' => [
-            'label'          => 'Less than',
-            'description'    => 'Value is less than',
             'needs_value'    => true,
             'value_type'     => 'number',
             'supports_types' => ['number'],
         ],
         'greater_or_equal' => [
-            'label'          => 'Greater than or equal',
-            'description'    => 'Value is greater than or equal to',
             'needs_value'    => true,
             'value_type'     => 'number',
             'supports_types' => ['number'],
         ],
         'less_or_equal' => [
-            'label'          => 'Less than or equal',
-            'description'    => 'Value is less than or equal to',
             'needs_value'    => true,
             'value_type'     => 'number',
             'supports_types' => ['number'],
         ],
         'in' => [
-            'label'          => 'Is one of',
-            'description'    => 'Value is in the list (comma-separated)',
             'needs_value'    => true,
             'value_type'     => 'list',
             'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden'],
         ],
         'not_in' => [
-            'label'          => 'Is not one of',
-            'description'    => 'Value is not in the list (comma-separated)',
             'needs_value'    => true,
             'value_type'     => 'list',
             'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden'],
         ],
         'checked' => [
-            'label'          => 'Is checked',
-            'description'    => 'Checkbox is checked',
             'needs_value'    => false,
             'value_type'     => 'none',
             'supports_types' => ['checkbox'],
         ],
         'unchecked' => [
-            'label'          => 'Is not checked',
-            'description'    => 'Checkbox is not checked',
             'needs_value'    => false,
             'value_type'     => 'none',
             'supports_types' => ['checkbox'],
         ],
         'includes' => [
-            'label'          => 'Includes',
-            'description'    => 'Selection includes the value',
             'needs_value'    => true,
             'value_type'     => 'text',
             'supports_types' => ['checkbox_group', 'select_multiple'],
         ],
         'not_includes' => [
-            'label'          => 'Does not include',
-            'description'    => 'Selection does not include the value',
             'needs_value'    => true,
             'value_type'     => 'text',
             'supports_types' => ['checkbox_group', 'select_multiple'],
         ],
     ];
+
+    /**
+     * Gets available comparison operators with translated labels.
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, array<string, mixed>> The available operators.
+     */
+    public static function operators(): array
+    {
+        return [
+            'equals' => array_merge( self::OPERATOR_METADATA['equals'], [
+                'label'       => __( 'Equals' ),
+                'description' => __( 'Value exactly matches' ),
+            ] ),
+            'not_equals' => array_merge( self::OPERATOR_METADATA['not_equals'], [
+                'label'       => __( 'Does not equal' ),
+                'description' => __( 'Value does not match' ),
+            ] ),
+            'contains' => array_merge( self::OPERATOR_METADATA['contains'], [
+                'label'       => __( 'Contains' ),
+                'description' => __( 'Value contains the text' ),
+            ] ),
+            'not_contains' => array_merge( self::OPERATOR_METADATA['not_contains'], [
+                'label'       => __( 'Does not contain' ),
+                'description' => __( 'Value does not contain the text' ),
+            ] ),
+            'starts_with' => array_merge( self::OPERATOR_METADATA['starts_with'], [
+                'label'       => __( 'Starts with' ),
+                'description' => __( 'Value starts with the text' ),
+            ] ),
+            'ends_with' => array_merge( self::OPERATOR_METADATA['ends_with'], [
+                'label'       => __( 'Ends with' ),
+                'description' => __( 'Value ends with the text' ),
+            ] ),
+            'is_empty' => array_merge( self::OPERATOR_METADATA['is_empty'], [
+                'label'       => __( 'Is empty' ),
+                'description' => __( 'Field has no value' ),
+            ] ),
+            'is_not_empty' => array_merge( self::OPERATOR_METADATA['is_not_empty'], [
+                'label'       => __( 'Is not empty' ),
+                'description' => __( 'Field has a value' ),
+            ] ),
+            'greater_than' => array_merge( self::OPERATOR_METADATA['greater_than'], [
+                'label'       => __( 'Greater than' ),
+                'description' => __( 'Value is greater than' ),
+            ] ),
+            'less_than' => array_merge( self::OPERATOR_METADATA['less_than'], [
+                'label'       => __( 'Less than' ),
+                'description' => __( 'Value is less than' ),
+            ] ),
+            'greater_or_equal' => array_merge( self::OPERATOR_METADATA['greater_or_equal'], [
+                'label'       => __( 'Greater than or equal' ),
+                'description' => __( 'Value is greater than or equal to' ),
+            ] ),
+            'less_or_equal' => array_merge( self::OPERATOR_METADATA['less_or_equal'], [
+                'label'       => __( 'Less than or equal' ),
+                'description' => __( 'Value is less than or equal to' ),
+            ] ),
+            'in' => array_merge( self::OPERATOR_METADATA['in'], [
+                'label'       => __( 'Is one of' ),
+                'description' => __( 'Value is in the list (comma-separated)' ),
+            ] ),
+            'not_in' => array_merge( self::OPERATOR_METADATA['not_in'], [
+                'label'       => __( 'Is not one of' ),
+                'description' => __( 'Value is not in the list (comma-separated)' ),
+            ] ),
+            'checked' => array_merge( self::OPERATOR_METADATA['checked'], [
+                'label'       => __( 'Is checked' ),
+                'description' => __( 'Checkbox is checked' ),
+            ] ),
+            'unchecked' => array_merge( self::OPERATOR_METADATA['unchecked'], [
+                'label'       => __( 'Is not checked' ),
+                'description' => __( 'Checkbox is not checked' ),
+            ] ),
+            'includes' => array_merge( self::OPERATOR_METADATA['includes'], [
+                'label'       => __( 'Includes' ),
+                'description' => __( 'Selection includes the value' ),
+            ] ),
+            'not_includes' => array_merge( self::OPERATOR_METADATA['not_includes'], [
+                'label'       => __( 'Does not include' ),
+                'description' => __( 'Selection does not include the value' ),
+            ] ),
+        ];
+    }
 
     /**
      * Gets all available actions.
@@ -218,7 +289,7 @@ class ConditionalLogic
      */
     public static function getActions(): array
     {
-        return self::ACTIONS;
+        return self::actions();
     }
 
     /**
@@ -230,7 +301,7 @@ class ConditionalLogic
      */
     public static function getLogicTypes(): array
     {
-        return self::LOGIC_TYPES;
+        return self::logicTypes();
     }
 
     /**
@@ -242,7 +313,7 @@ class ConditionalLogic
      */
     public static function getOperators(): array
     {
-        return self::OPERATORS;
+        return self::operators();
     }
 
     /**
@@ -257,7 +328,7 @@ class ConditionalLogic
     public static function getOperatorsForType( string $fieldType ): array
     {
         return array_filter(
-            self::OPERATORS,
+            self::operators(),
             fn ( array $operator ) => in_array( $fieldType, $operator['supports_types'], true ),
         );
     }
@@ -273,7 +344,9 @@ class ConditionalLogic
      */
     public static function getOperator( string $key ): ?array
     {
-        return self::OPERATORS[ $key ] ?? null;
+        $operators = self::operators();
+
+        return $operators[ $key ] ?? null;
     }
 
     /**
@@ -287,7 +360,7 @@ class ConditionalLogic
      */
     public static function operatorExists( string $key ): bool
     {
-        return isset( self::OPERATORS[ $key ] );
+        return isset( self::OPERATOR_METADATA[ $key ] );
     }
 
     /**
@@ -301,7 +374,7 @@ class ConditionalLogic
      */
     public static function operatorNeedsValue( string $key ): bool
     {
-        return self::OPERATORS[ $key ]['needs_value'] ?? true;
+        return self::OPERATOR_METADATA[ $key ]['needs_value'] ?? true;
     }
 
     /**
@@ -354,28 +427,28 @@ class ConditionalLogic
         $errors = [];
 
         // Check action
-        if ( ! isset( $logic['action'] ) || ! isset( self::ACTIONS[ $logic['action'] ] ) ) {
-            $errors[] = 'Invalid action. Must be "show" or "hide".';
+        if ( ! isset( $logic['action'] ) || ! in_array( $logic['action'], self::ACTION_KEYS, true ) ) {
+            $errors[] = __( 'Invalid action. Must be "show" or "hide".' );
         }
 
         // Check logic type
-        if ( ! isset( $logic['logic'] ) || ! isset( self::LOGIC_TYPES[ $logic['logic'] ] ) ) {
-            $errors[] = 'Invalid logic type. Must be "all" or "any".';
+        if ( ! isset( $logic['logic'] ) || ! in_array( $logic['logic'], self::LOGIC_TYPE_KEYS, true ) ) {
+            $errors[] = __( 'Invalid logic type. Must be "all" or "any".' );
         }
 
         // Check rules
         if ( ! isset( $logic['rules'] ) || ! is_array( $logic['rules'] ) ) {
-            $errors[] = 'Rules must be an array.';
+            $errors[] = __( 'Rules must be an array.' );
         } else {
             foreach ( $logic['rules'] as $index => $rule ) {
                 if ( ! isset( $rule['field'] ) || empty( $rule['field'] ) ) {
-                    $errors[] = "Rule {$index}: Field is required.";
+                    $errors[] = __( 'Rule :index: Field is required.', ['index' => $index] );
                 }
 
                 if ( ! isset( $rule['operator'] ) || ! self::operatorExists( $rule['operator'] ) ) {
-                    $errors[] = "Rule {$index}: Invalid operator.";
+                    $errors[] = __( 'Rule :index: Invalid operator.', ['index' => $index] );
                 } elseif ( self::operatorNeedsValue( $rule['operator'] ) && ! isset( $rule['value'] ) ) {
-                    $errors[] = "Rule {$index}: Value is required for operator '{$rule['operator']}'.";
+                    $errors[] = __( 'Rule :index: Value is required for operator \':operator\'.', ['index' => $index, 'operator' => $rule['operator']] );
                 }
             }
         }

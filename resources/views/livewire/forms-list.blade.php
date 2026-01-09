@@ -7,7 +7,7 @@
                 <x-artisanpack-input
                     wire:model.live.debounce.300ms="search"
                     icon="o-magnifying-glass"
-                    placeholder="Search forms by name or slug..."
+                    :placeholder="__( 'Search forms by name or slug...' )"
                 />
             </div>
 
@@ -16,9 +16,9 @@
                 <x-artisanpack-select
                     wire:model.live="statusFilter"
                     :options="[
-                        ['value' => 'all', 'label' => 'All Forms'],
-                        ['value' => 'active', 'label' => 'Active'],
-                        ['value' => 'inactive', 'label' => 'Inactive'],
+                        ['value' => 'all', 'label' => __( 'All Forms' )],
+                        ['value' => 'active', 'label' => __( 'Active' )],
+                        ['value' => 'inactive', 'label' => __( 'Inactive' )],
                     ]"
                     option-value="value"
                     option-label="label"
@@ -36,31 +36,31 @@
                         <tr>
                             <th>
                                 <button wire:click="sort('name')" class="group inline-flex items-center gap-1">
-                                    Name
+                                    {{ __( 'Name' ) }}
                                     @if ($sortBy === 'name')
                                         <x-artisanpack-icon name="o-chevron-up" class="w-4 h-4 {{ $sortDirection === 'desc' ? 'rotate-180' : '' }}" />
                                     @endif
                                 </button>
                             </th>
-                            <th>Fields</th>
+                            <th>{{ __( 'Fields' ) }}</th>
                             <th>
                                 <button wire:click="sort('submissions')" class="group inline-flex items-center gap-1">
-                                    Submissions
+                                    {{ __( 'Submissions' ) }}
                                     @if ($sortBy === 'submissions')
                                         <x-artisanpack-icon name="o-chevron-up" class="w-4 h-4 {{ $sortDirection === 'desc' ? 'rotate-180' : '' }}" />
                                     @endif
                                 </button>
                             </th>
-                            <th>Status</th>
+                            <th>{{ __( 'Status' ) }}</th>
                             <th>
                                 <button wire:click="sort('created_at')" class="group inline-flex items-center gap-1">
-                                    Created
+                                    {{ __( 'Created' ) }}
                                     @if ($sortBy === 'created_at')
                                         <x-artisanpack-icon name="o-chevron-up" class="w-4 h-4 {{ $sortDirection === 'desc' ? 'rotate-180' : '' }}" />
                                     @endif
                                 </button>
                             </th>
-                            <th class="text-right">Actions</th>
+                            <th class="text-right">{{ __( 'Actions' ) }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -79,15 +79,15 @@
                                     <div class="flex items-center gap-2">
                                         {{ $form->submissions_count }}
                                         @if ($form->unread_count > 0)
-                                            <x-artisanpack-badge value="{{ $form->unread_count }} new" color="info" class="badge-sm" />
+                                            <x-artisanpack-badge :value="$form->unread_count . ' ' . __( 'new' )" color="info" class="badge-sm" />
                                         @endif
                                     </div>
                                 </td>
                                 <td>
                                     @if ($form->is_active)
-                                        <x-artisanpack-badge value="Active" color="success" />
+                                        <x-artisanpack-badge :value="__( 'Active' )" color="success" />
                                     @else
-                                        <x-artisanpack-badge value="Inactive" color="neutral" />
+                                        <x-artisanpack-badge :value="__( 'Inactive' )" color="neutral" />
                                     @endif
                                 </td>
                                 <td>{{ $form->created_at->format('M j, Y') }}</td>
@@ -98,30 +98,30 @@
                                             icon="o-pencil-square"
                                             color="ghost"
                                             class="btn-sm"
-                                            title="Edit"
+                                            :title="__( 'Edit' )"
                                         />
                                         <x-artisanpack-button
                                             wire:click="togglePublish({{ $form->id }})"
                                             icon="{{ $form->is_active ? 'o-no-symbol' : 'o-check-circle' }}"
                                             color="ghost"
                                             class="btn-sm {{ $form->is_active ? 'text-warning' : 'text-success' }}"
-                                            title="{{ $form->is_active ? 'Unpublish' : 'Publish' }}"
+                                            :title="$form->is_active ? __( 'Unpublish' ) : __( 'Publish' )"
                                         />
                                         <x-artisanpack-button
                                             wire:click="duplicate({{ $form->id }})"
-                                            wire:confirm="Are you sure you want to duplicate this form?"
+                                            :wire:confirm="__( 'Are you sure you want to duplicate this form?' )"
                                             icon="o-document-duplicate"
                                             color="ghost"
                                             class="btn-sm"
-                                            title="Duplicate"
+                                            :title="__( 'Duplicate' )"
                                         />
                                         <x-artisanpack-button
                                             wire:click="delete({{ $form->id }})"
-                                            wire:confirm="Are you sure you want to delete this form? This will also delete all submissions and cannot be undone."
+                                            :wire:confirm="__( 'Are you sure you want to delete this form? This will also delete all submissions and cannot be undone.' )"
                                             icon="o-trash"
                                             color="ghost"
                                             class="btn-sm text-error"
-                                            title="Delete"
+                                            :title="__( 'Delete' )"
                                         />
                                     </div>
                                 </td>
@@ -141,19 +141,19 @@
             <!-- Empty State -->
             <div class="text-center py-12">
                 <x-artisanpack-icon name="o-document-text" class="mx-auto h-12 w-12 opacity-40" />
-                <h3 class="mt-2 text-sm font-medium">No forms found</h3>
+                <h3 class="mt-2 text-sm font-medium">{{ __( 'No forms found' ) }}</h3>
                 <p class="mt-1 text-sm opacity-60">
                     @if ($search || $statusFilter !== 'all')
-                        Try adjusting your search or filter criteria.
+                        {{ __( 'Try adjusting your search or filter criteria.' ) }}
                     @else
-                        Get started by creating your first form.
+                        {{ __( 'Get started by creating your first form.' ) }}
                     @endif
                 </p>
                 @if (!$search && $statusFilter === 'all')
                     <div class="mt-6">
                         <x-artisanpack-button
                             link="{{ route('forms.create') }}"
-                            label="Create Form"
+                            :label="__( 'Create Form' )"
                             icon="o-plus"
                             color="primary"
                         />
