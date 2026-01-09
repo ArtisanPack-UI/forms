@@ -50,7 +50,7 @@
             name="{{ $field->name }}"
             value="0"
             class="rating-hidden"
-            aria-label="No rating"
+            aria-label="{{ __( 'No rating' ) }}"
             @if(empty($value) || $value == 0) checked @endif
         />
 
@@ -64,7 +64,7 @@
                     value="{{ $i - 0.5 }}"
                     class="mask mask-star-2 mask-half-1 bg-warning"
                     id="field-{{ $field->name }}-{{ $i }}-half"
-                    aria-label="{{ $i - 0.5 }} stars"
+                    aria-label="{{ __( ':count stars', ['count' => $i - 0.5] ) }}"
                 />
                 {{-- Full star (right half) --}}
                 <input
@@ -74,7 +74,7 @@
                     value="{{ $i }}"
                     class="mask mask-star-2 mask-half-2 bg-warning"
                     id="field-{{ $field->name }}-{{ $i }}"
-                    aria-label="{{ $i }} stars"
+                    aria-label="{{ __( ':count stars', ['count' => $i] ) }}"
                 />
             @endfor
         @else
@@ -86,7 +86,7 @@
                     value="{{ $i }}"
                     class="mask mask-star-2 bg-warning"
                     id="field-{{ $field->name }}-{{ $i }}"
-                    aria-label="{{ $i }} star{{ $i > 1 ? 's' : '' }}"
+                    aria-label="{{ trans_choice( ':count star|:count stars', $i, ['count' => $i] ) }}"
                 />
             @endfor
         @endif

@@ -42,7 +42,7 @@
 
     <div wire:loading wire:target="files.{{ $field->name }}" class="mt-2">
         <span class="loading loading-spinner loading-sm"></span>
-        <span class="text-sm text-base-content/70">Uploading...</span>
+        <span class="text-sm text-base-content/70">{{ __( 'Uploading...' ) }}</span>
     </div>
 
     @if($field->help_text)
@@ -54,7 +54,7 @@
     @if($maxSize)
         <label class="label">
             <span class="label-text-alt text-base-content/50">
-                Maximum file size: {{ $maxSize }}KB
+                {{ __( 'Maximum file size: :size KB', ['size' => $maxSize] ) }}
             </span>
         </label>
     @endif

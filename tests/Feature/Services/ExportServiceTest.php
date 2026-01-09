@@ -104,8 +104,8 @@ describe( 'ExportService', function (): void {
                 ->and( $row )->toContain( $submission->submission_number )
                 ->and( $row )->toContain( 'test@example.com' )
                 ->and( $row )->toContain( 'https://example.com' )
-                ->and( $row )->toContain( 'Yes' ) // is_read
-                ->and( $row )->toContain( 'No' );  // is_spam
+                ->and( $row )->toContain( '1' ) // is_read (default: stable 1/0 values)
+                ->and( $row )->toContain( '0' );  // is_spam (default: stable 1/0 values)
 
             // IP address should NOT be included by default (privacy)
             expect( $row )->not->toContain( '192.168.1.1' );

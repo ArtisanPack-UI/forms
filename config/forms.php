@@ -202,6 +202,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Export Settings
+    |--------------------------------------------------------------------------
+    |
+    | Configure settings for exporting form submissions to CSV and other formats.
+    | These settings control localization and data format preferences for exports.
+    |
+    */
+
+    'export' => [
+        // Localize export headers (e.g., "Submission ID" vs English literals)
+        // When false, headers use stable English strings for machine processing
+        'localize_headers' => env( 'FORMS_EXPORT_LOCALIZE_HEADERS', false ),
+
+        // Localize boolean values in exports (e.g., "Yes"/"No" vs 1/0)
+        // When false, booleans export as 1/0 for consistent machine parsing
+        'localize_booleans' => env( 'FORMS_EXPORT_LOCALIZE_BOOLEANS', false ),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Security Settings
     |--------------------------------------------------------------------------
     |

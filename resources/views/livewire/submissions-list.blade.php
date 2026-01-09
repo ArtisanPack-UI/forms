@@ -14,15 +14,15 @@
             <div>
                 <h2 class="text-lg font-semibold">
                     @if ($this->currentForm)
-                        {{ $this->currentForm->name }} Submissions
+                        {{ __( ':name Submissions', ['name' => $this->currentForm->name] ) }}
                     @else
-                        All Submissions
+                        {{ __( 'All Submissions' ) }}
                     @endif
                 </h2>
                 <p class="mt-1 text-sm opacity-60">
-                    {{ $this->statusCounts['all'] }} total submissions
+                    {{ trans_choice( ':count total submission|:count total submissions', $this->statusCounts['all'], ['count' => $this->statusCounts['all']] ) }}
                     @if ($this->statusCounts['unread'] > 0)
-                        <x-artisanpack-badge value="{{ $this->statusCounts['unread'] }} unread" color="info" class="ml-2 badge-sm" />
+                        <x-artisanpack-badge :value="trans_choice( ':count unread|:count unread', $this->statusCounts['unread'], ['count' => $this->statusCounts['unread']] )" color="info" class="ml-2 badge-sm" />
                     @endif
                 </p>
             </div>
@@ -33,19 +33,19 @@
                     <x-artisanpack-dropdown>
                         <x-slot:trigger>
                             <x-artisanpack-button color="neutral" class="btn-sm">
-                                {{ count($selected) }} selected
+                                {{ trans_choice( ':count selected|:count selected', count($selected), ['count' => count($selected)] ) }}
                                 <x-artisanpack-icon name="o-chevron-down" class="w-4 h-4 ml-1" />
                             </x-artisanpack-button>
                         </x-slot:trigger>
                         <x-artisanpack-menu>
-                            <x-artisanpack-menu-item wire:click="bulkMarkAsRead" label="Mark as read" />
-                            <x-artisanpack-menu-item wire:click="bulkMarkAsUnread" label="Mark as unread" />
-                            <x-artisanpack-menu-item wire:click="bulkMarkAsSpam" label="Mark as spam" />
+                            <x-artisanpack-menu-item wire:click="bulkMarkAsRead" :label="__( 'Mark as read' )" />
+                            <x-artisanpack-menu-item wire:click="bulkMarkAsUnread" :label="__( 'Mark as unread' )" />
+                            <x-artisanpack-menu-item wire:click="bulkMarkAsSpam" :label="__( 'Mark as spam' )" />
                             <div class="divider my-1"></div>
                             <x-artisanpack-menu-item
                                 wire:click="bulkDelete"
-                                wire:confirm="Are you sure you want to delete {{ count($selected) }} submission(s)? This cannot be undone."
-                                label="Delete selected"
+                                wire:confirm="{{ trans_choice( 'Are you sure you want to delete :count submission? This cannot be undone.|Are you sure you want to delete :count submissions? This cannot be undone.', count($selected), ['count' => count($selected)] ) }}"
+                                :label="__( 'Delete selected' )"
                                 class="text-error"
                             />
                         </x-artisanpack-menu>
@@ -56,7 +56,7 @@
                 @if ($formId)
                     <x-artisanpack-button
                         wire:click="exportCsv"
-                        label="Export CSV"
+                        :label="__( 'Export CSV' )"
                         icon="o-arrow-down-tray"
                         color="ghost"
                         class="btn-sm"
@@ -74,7 +74,7 @@
                 <x-artisanpack-input
                     wire:model.live.debounce.300ms="search"
                     icon="o-magnifying-glass"
-                    placeholder="Search by submission number or content..."
+                    :placeholder="__( 'Search by submission number or content...' )"
                 />
             </div>
 
@@ -83,7 +83,7 @@
                 <div class="sm:w-48">
                     <x-artisanpack-select
                         wire:model.live="formFilter"
-                        placeholder="All Forms"
+                        :placeholder="__( 'All Forms' )"
                         :options="$this->forms->map(fn($f) => ['value' => $f->id, 'label' => $f->name])->toArray()"
                         option-value="value"
                         option-label="label"
@@ -96,11 +96,11 @@
                 <x-artisanpack-select
                     wire:model.live="dateRange"
                     :options="[
-                        ['value' => 'all', 'label' => 'All Time'],
-                        ['value' => 'today', 'label' => 'Today'],
-                        ['value' => 'week', 'label' => 'This Week'],
-                        ['value' => 'month', 'label' => 'This Month'],
-                        ['value' => 'year', 'label' => 'This Year'],
+                        ['value' => 'all', 'label' => __( 'All Time' )],
+                        ['value' => 'today', 'label' => __( 'Today' )],
+                        ['value' => 'week', 'label' => __( 'This Week' )],
+                        ['value' => 'month', 'label' => __( 'This Month' )],
+                        ['value' => 'year', 'label' => __( 'This Year' )],
                     ]"
                     option-value="value"
                     option-label="label"
@@ -113,23 +113,23 @@
     <x-artisanpack-card class="mb-6 p-0">
         <div class="tabs tabs-bordered px-4">
             <button wire:click="$set('status', 'all')" class="tab {{ $status === 'all' ? 'tab-active' : '' }}">
-                All
+                {{ __( 'All' ) }}
                 <x-artisanpack-badge value="{{ $this->statusCounts['all'] }}" class="ml-2 badge-sm" />
             </button>
             <button wire:click="$set('status', 'unread')" class="tab {{ $status === 'unread' ? 'tab-active' : '' }}">
-                Unread
+                {{ __( 'Unread' ) }}
                 <x-artisanpack-badge value="{{ $this->statusCounts['unread'] }}" class="ml-2 badge-sm" />
             </button>
             <button wire:click="$set('status', 'read')" class="tab {{ $status === 'read' ? 'tab-active' : '' }}">
-                Read
+                {{ __( 'Read' ) }}
                 <x-artisanpack-badge value="{{ $this->statusCounts['read'] }}" class="ml-2 badge-sm" />
             </button>
             <button wire:click="$set('status', 'starred')" class="tab {{ $status === 'starred' ? 'tab-active' : '' }}">
-                Starred
+                {{ __( 'Starred' ) }}
                 <x-artisanpack-badge value="{{ $this->statusCounts['starred'] }}" class="ml-2 badge-sm" />
             </button>
             <button wire:click="$set('status', 'spam')" class="tab {{ $status === 'spam' ? 'tab-active' : '' }}">
-                Spam
+                {{ __( 'Spam' ) }}
                 <x-artisanpack-badge value="{{ $this->statusCounts['spam'] }}" class="ml-2 badge-sm" />
             </button>
         </div>
@@ -147,30 +147,30 @@
                                     type="checkbox"
                                     wire:model.live="selectAll"
                                     class="checkbox checkbox-sm"
-                                    aria-label="Select all submissions"
+                                    aria-label="{{ __( 'Select all submissions' ) }}"
                                 />
                             </th>
                             <th>
                                 <button wire:click="sort('submission_number')" class="group inline-flex items-center gap-1">
-                                    Submission
+                                    {{ __( 'Submission' ) }}
                                     @if ($sortBy === 'submission_number')
                                         <x-artisanpack-icon name="o-chevron-up" class="w-4 h-4 {{ $sortDirection === 'desc' ? 'rotate-180' : '' }}" />
                                     @endif
                                 </button>
                             </th>
                             @if (!$formId)
-                                <th>Form</th>
+                                <th>{{ __( 'Form' ) }}</th>
                             @endif
-                            <th>Summary</th>
+                            <th>{{ __( 'Summary' ) }}</th>
                             <th>
                                 <button wire:click="sort('created_at')" class="group inline-flex items-center gap-1">
-                                    Date
+                                    {{ __( 'Date' ) }}
                                     @if ($sortBy === 'created_at')
                                         <x-artisanpack-icon name="o-chevron-up" class="w-4 h-4 {{ $sortDirection === 'desc' ? 'rotate-180' : '' }}" />
                                     @endif
                                 </button>
                             </th>
-                            <th class="text-right">Actions</th>
+                            <th class="text-right">{{ __( 'Actions' ) }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -182,7 +182,7 @@
                                         wire:model.live="selected"
                                         value="{{ $submission->id }}"
                                         class="checkbox checkbox-sm"
-                                        aria-label="Select submission {{ $submission->submission_number }}"
+                                        aria-label="{{ __( 'Select submission :number', ['number' => $submission->submission_number] ) }}"
                                     />
                                 </td>
                                 <td>
@@ -191,7 +191,7 @@
                                             <x-artisanpack-icon name="s-star" class="w-4 h-4 text-warning" />
                                         @endif
                                         @if ($submission->is_spam)
-                                            <x-artisanpack-badge value="Spam" color="error" class="badge-sm" />
+                                            <x-artisanpack-badge :value="__( 'Spam' )" color="error" class="badge-sm" />
                                         @endif
                                         <a href="{{ route('forms.submissions.show', [$submission->form, $submission]) }}"
                                            class="{{ !$submission->is_read ? 'font-semibold' : 'font-medium' }} link link-hover link-primary">
@@ -200,7 +200,7 @@
                                     </div>
                                 </td>
                                 @if (!$formId)
-                                    <td class="opacity-60">{{ $submission->form->name ?? 'Unknown' }}</td>
+                                    <td class="opacity-60">{{ $submission->form->name ?? __( 'Unknown' ) }}</td>
                                 @endif
                                 <td>
                                     <div class="max-w-md truncate">
@@ -228,7 +228,7 @@
                                             icon="{{ $submission->is_starred ? 's-star' : 'o-star' }}"
                                             color="ghost"
                                             class="btn-sm {{ $submission->is_starred ? 'text-warning' : '' }}"
-                                            title="{{ $submission->is_starred ? 'Unstar' : 'Star' }}"
+                                            :title="$submission->is_starred ? __( 'Unstar' ) : __( 'Star' )"
                                         />
                                         @if ($submission->is_read)
                                             <x-artisanpack-button
@@ -236,7 +236,7 @@
                                                 icon="o-envelope"
                                                 color="ghost"
                                                 class="btn-sm"
-                                                title="Mark as unread"
+                                                :title="__( 'Mark as unread' )"
                                             />
                                         @else
                                             <x-artisanpack-button
@@ -244,7 +244,7 @@
                                                 icon="o-envelope-open"
                                                 color="ghost"
                                                 class="btn-sm text-primary"
-                                                title="Mark as read"
+                                                :title="__( 'Mark as read' )"
                                             />
                                         @endif
                                         <x-artisanpack-button
@@ -252,15 +252,15 @@
                                             icon="o-exclamation-triangle"
                                             color="ghost"
                                             class="btn-sm {{ $submission->is_spam ? 'text-error' : '' }}"
-                                            title="{{ $submission->is_spam ? 'Not spam' : 'Mark as spam' }}"
+                                            :title="$submission->is_spam ? __( 'Not spam' ) : __( 'Mark as spam' )"
                                         />
                                         <x-artisanpack-button
                                             wire:click="delete({{ $submission->id }})"
-                                            wire:confirm="Are you sure you want to delete this submission? This cannot be undone."
+                                            wire:confirm="{{ __( 'Are you sure you want to delete this submission? This cannot be undone.' ) }}"
                                             icon="o-trash"
                                             color="ghost"
                                             class="btn-sm text-error"
-                                            title="Delete"
+                                            :title="__( 'Delete' )"
                                         />
                                     </div>
                                 </td>
@@ -280,12 +280,12 @@
             <!-- Empty State -->
             <div class="text-center py-12">
                 <x-artisanpack-icon name="o-inbox" class="mx-auto h-12 w-12 opacity-40" />
-                <h3 class="mt-2 text-sm font-medium">No submissions found</h3>
+                <h3 class="mt-2 text-sm font-medium">{{ __( 'No submissions found' ) }}</h3>
                 <p class="mt-1 text-sm opacity-60">
                     @if ($search || $status !== 'all' || $dateRange !== 'all')
-                        Try adjusting your search or filter criteria.
+                        {{ __( 'Try adjusting your search or filter criteria.' ) }}
                     @else
-                        No submissions have been received yet.
+                        {{ __( 'No submissions have been received yet.' ) }}
                     @endif
                 </p>
             </div>

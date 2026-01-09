@@ -1,8 +1,7 @@
 <div class="step-manager">
     {{-- Hidden instructions for aria-describedby --}}
     <div id="step-listbox-instructions" class="sr-only">
-        Use arrow keys to navigate between steps. Press Alt plus left or right arrow to reorder steps.
-        Drag and drop is also available for reordering. Press Enter or click to select a step for editing.
+        {{ __( 'Use arrow keys to navigate between steps. Press Alt plus left or right arrow to reorder steps. Drag and drop is also available for reordering. Press Enter or click to select a step for editing.' ) }}
     </div>
 
     {{-- ARIA live region for drag/reorder announcements --}}
@@ -19,7 +18,7 @@
         <div
             class="tabs tabs-boxed flex-1 bg-base-300"
             role="listbox"
-            aria-label="Form steps"
+            aria-label="{{ __( 'Form steps' ) }}"
             aria-describedby="step-listbox-instructions"
             aria-orientation="horizontal"
             :aria-activedescendant="'step-option-' + {{ $activeStepId ?? 'null' }}"
@@ -232,7 +231,7 @@
         {{-- Reorder toolbar (outside listbox for proper ARIA structure) --}}
         <div
             role="toolbar"
-            aria-label="Step reorder controls"
+            aria-label="{{ __( 'Step reorder controls' ) }}"
             aria-controls="step-listbox"
             class="flex items-center"
             x-data="{
@@ -254,8 +253,8 @@
                 <button
                     type="button"
                     class="btn btn-ghost btn-xs p-0 min-h-0 h-6 w-6"
-                    title="Move selected step left (Alt + Left Arrow)"
-                    aria-label="Move selected step left"
+                    title="{{ __( 'Move selected step left (Alt + Left Arrow)' ) }}"
+                    aria-label="{{ __( 'Move selected step left' ) }}"
                     wire:click="$parent.dispatch('move-step-left')"
                     x-on:click="$dispatch('move-step-left')"
                     :disabled="!canMoveLeft()"
@@ -266,8 +265,8 @@
                 <button
                     type="button"
                     class="btn btn-ghost btn-xs p-0 min-h-0 h-6 w-6"
-                    title="Move selected step right (Alt + Right Arrow)"
-                    aria-label="Move selected step right"
+                    title="{{ __( 'Move selected step right (Alt + Right Arrow)' ) }}"
+                    aria-label="{{ __( 'Move selected step right' ) }}"
                     wire:click="$parent.dispatch('move-step-right')"
                     x-on:click="$dispatch('move-step-right')"
                     :disabled="!canMoveRight()"
@@ -283,11 +282,11 @@
             type="button"
             wire:click="addStep"
             class="btn btn-ghost btn-sm"
-            title="Add new step"
-            aria-label="Add new step to form"
+            title="{{ __( 'Add new step' ) }}"
+            aria-label="{{ __( 'Add new step to form' ) }}"
         >
             <x-artisanpack-icon name="o-plus" class="h-4 w-4" aria-hidden="true" />
-            Add Step
+            {{ __( 'Add Step' ) }}
         </button>
     </div>
 
@@ -322,15 +321,15 @@
                             :class="{ 'btn-active': showSettings }"
                         >
                             <x-artisanpack-icon name="o-cog-6-tooth" class="h-4 w-4" aria-hidden="true" />
-                            <span class="text-xs">Settings</span>
+                            <span class="text-xs">{{ __( 'Settings' ) }}</span>
                         </button>
                         @if ($this->steps->count() > 1)
                             <button
                                 type="button"
                                 wire:click="deleteStep({{ $activeStep->id }})"
-                                wire:confirm="Are you sure you want to delete this step? Fields will be moved to another step."
+                                wire:confirm="{{ __( 'Are you sure you want to delete this step? Fields will be moved to another step.' ) }}"
                                 class="btn btn-ghost btn-xs text-error"
-                                title="Delete step"
+                                title="{{ __( 'Delete step' ) }}"
                                 aria-label="Delete {{ $activeStep->title }}"
                             >
                                 <x-artisanpack-icon name="o-trash" class="h-4 w-4" aria-hidden="true" />
@@ -352,12 +351,12 @@
                     class="mt-3 space-y-3 border-t border-base-content/10 pt-3"
                     id="step-settings-{{ $activeStep->id }}"
                     role="group"
-                    aria-label="Step configuration options"
+                    aria-label="{{ __( 'Step configuration options' ) }}"
                 >
                     <div class="grid grid-cols-2 gap-3">
                         <div class="form-control">
                             <label class="label" for="step-title-{{ $activeStep->id }}">
-                                <span class="label-text text-xs">Step Title</span>
+                                <span class="label-text text-xs">{{ __( 'Step Title' ) }}</span>
                             </label>
                             <input
                                 type="text"
@@ -368,57 +367,57 @@
                                 aria-describedby="step-title-help-{{ $activeStep->id }}"
                             />
                             <span id="step-title-help-{{ $activeStep->id }}" class="sr-only">
-                                The title displayed for this step in the progress indicator
+                                {{ __( 'The title displayed for this step in the progress indicator' ) }}
                             </span>
                         </div>
                         <div class="form-control">
                             <label class="label" for="step-description-{{ $activeStep->id }}">
-                                <span class="label-text text-xs">Description <span class="text-base-content/40">(optional)</span></span>
+                                <span class="label-text text-xs">{{ __( 'Description' ) }} <span class="text-base-content/40">({{ __( 'optional' ) }})</span></span>
                             </label>
                             <input
                                 type="text"
                                 id="step-description-{{ $activeStep->id }}"
                                 class="input input-sm input-bordered w-full"
                                 value="{{ $activeStep->description }}"
-                                placeholder="Brief description of this step"
+                                placeholder="{{ __( 'Brief description of this step' ) }}"
                                 x-on:change="$wire.updateStep({{ $activeStep->id }}, { description: $event.target.value })"
                             />
                         </div>
                     </div>
 
-                    <div class="divider text-xs text-base-content/40 my-2" role="separator">Navigation Buttons</div>
+                    <div class="divider text-xs text-base-content/40 my-2" role="separator">{{ __( 'Navigation Buttons' ) }}</div>
 
                     <div class="grid grid-cols-2 gap-3">
                         <div class="form-control">
                             <label class="label" for="step-prev-btn-{{ $activeStep->id }}">
-                                <span class="label-text text-xs">Previous Button Text</span>
+                                <span class="label-text text-xs">{{ __( 'Previous Button Text' ) }}</span>
                             </label>
                             <input
                                 type="text"
                                 id="step-prev-btn-{{ $activeStep->id }}"
                                 class="input input-sm input-bordered w-full"
                                 value="{{ $activeStep->prev_button_text }}"
-                                placeholder="Previous"
+                                placeholder="{{ __( 'Previous' ) }}"
                                 x-on:change="$wire.updateStep({{ $activeStep->id }}, { prev_button_text: $event.target.value })"
                             />
                             <label class="label">
-                                <span class="label-text-alt text-xs text-base-content/40">Shown on all steps except the first</span>
+                                <span class="label-text-alt text-xs text-base-content/40">{{ __( 'Shown on all steps except the first' ) }}</span>
                             </label>
                         </div>
                         <div class="form-control">
                             <label class="label" for="step-next-btn-{{ $activeStep->id }}">
-                                <span class="label-text text-xs">Next Button Text</span>
+                                <span class="label-text text-xs">{{ __( 'Next Button Text' ) }}</span>
                             </label>
                             <input
                                 type="text"
                                 id="step-next-btn-{{ $activeStep->id }}"
                                 class="input input-sm input-bordered w-full"
                                 value="{{ $activeStep->next_button_text }}"
-                                placeholder="Next"
+                                placeholder="{{ __( 'Next' ) }}"
                                 x-on:change="$wire.updateStep({{ $activeStep->id }}, { next_button_text: $event.target.value })"
                             />
                             <label class="label">
-                                <span class="label-text-alt text-xs text-base-content/40">Shown on all steps except the last</span>
+                                <span class="label-text-alt text-xs text-base-content/40">{{ __( 'Shown on all steps except the last' ) }}</span>
                             </label>
                         </div>
                     </div>
@@ -430,7 +429,6 @@
     {{-- Help text with keyboard instructions --}}
     <div class="mt-2 text-xs text-base-content/40" role="note">
         <x-artisanpack-icon name="o-information-circle" class="inline h-3 w-3" aria-hidden="true" />
-        Drag tabs or use <kbd class="kbd kbd-xs">Alt</kbd>+<kbd class="kbd kbd-xs">&larr;</kbd>/<kbd class="kbd kbd-xs">&rarr;</kbd> to reorder.
-        Click a step to edit its fields.
+        {{ __( 'Drag tabs or use Alt+Arrow keys to reorder. Click a step to edit its fields.' ) }}
     </div>
 </div>

@@ -311,22 +311,22 @@ class SubmissionService
 
             // Required message
             if ( $field->is_required ) {
-                $messages[ "{$fieldKey}.required" ] = "The {$field->label} field is required.";
+                $messages[ "{$fieldKey}.required" ] = __( 'The :field field is required.', ['field' => $field->label] );
             }
 
             // Type-specific messages
             if ( 'email' === $field->type ) {
-                $messages[ "{$fieldKey}.email" ] = "Please enter a valid email address for {$field->label}.";
+                $messages[ "{$fieldKey}.email" ] = __( 'Please enter a valid email address for :field.', ['field' => $field->label] );
             }
 
             if ( 'url' === $field->type ) {
-                $messages[ "{$fieldKey}.url" ] = "Please enter a valid URL for {$field->label}.";
+                $messages[ "{$fieldKey}.url" ] = __( 'Please enter a valid URL for :field.', ['field' => $field->label] );
             }
 
             if ( 'file' === $field->type ) {
-                $messages[ "{$fieldKey}.file" ]  = "Please upload a valid file for {$field->label}.";
-                $messages[ "{$fieldKey}.mimes" ] = "The {$field->label} must be a file of the allowed types.";
-                $messages[ "{$fieldKey}.max" ]   = "The {$field->label} must not exceed the maximum file size.";
+                $messages[ "{$fieldKey}.file" ]  = __( 'Please upload a valid file for :field.', ['field' => $field->label] );
+                $messages[ "{$fieldKey}.mimes" ] = __( 'The :field must be a file of the allowed types.', ['field' => $field->label] );
+                $messages[ "{$fieldKey}.max" ]   = __( 'The :field must not exceed the maximum file size.', ['field' => $field->label] );
             }
         }
 
@@ -455,7 +455,7 @@ class SubmissionService
         $path = $file->storeAs( $storagePath, $storedName, $disk );
 
         if ( false === $path ) {
-            throw new RuntimeException( 'Unable to store uploaded file.' );
+            throw new RuntimeException( __( 'Unable to store uploaded file.' ) );
         }
 
         // Fallback: get size from stored file if original size was 0 or false
@@ -518,7 +518,7 @@ class SubmissionService
         $extension = preg_replace( '/[^a-z0-9]/', '', strtolower( $extension ) );
 
         if ( null === $extension || '' === $extension ) {
-            throw new InvalidArgumentException( 'Unable to determine file extension.' );
+            throw new InvalidArgumentException( __( 'Unable to determine file extension.' ) );
         }
 
         // Get allowed extensions from config
@@ -536,7 +536,7 @@ class SubmissionService
         // If empty array, something is misconfigured - fail safely
         if ( empty( $allowedExtensions ) ) {
             throw new InvalidArgumentException(
-                'No allowed file extensions configured. Please set artisanpack.forms.uploads.allowed_extensions.',
+                __( 'No allowed file extensions configured. Please set artisanpack.forms.uploads.allowed_extensions.' ),
             );
         }
 
@@ -551,7 +551,7 @@ class SubmissionService
             ] );
 
             throw new InvalidArgumentException(
-                "File extension '{$extension}' is not allowed. Allowed extensions: " . implode( ', ', $allowedExtensions ),
+                __( "File extension ':extension' is not allowed. Allowed extensions: :allowed", ['extension' => $extension, 'allowed' => implode( ', ', $allowedExtensions )] ),
             );
         }
 
