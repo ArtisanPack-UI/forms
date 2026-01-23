@@ -117,7 +117,7 @@
                 x-model="enabled"
                 @change="toggleConditions()"
             />
-            <span class="label-text font-medium">Enable conditional logic</span>
+            <span class="label-text font-medium">{{ __( 'Enable conditional logic' ) }}</span>
         </label>
     </div>
 
@@ -126,7 +126,7 @@
         {{-- Action Selector --}}
         <div class="form-control">
             <label class="label" for="condition-action">
-                <span class="label-text text-xs">Action</span>
+                <span class="label-text text-xs">{{ __( 'Action' ) }}</span>
             </label>
             <select
                 id="condition-action"
@@ -143,7 +143,7 @@
         {{-- Logic Type Selector --}}
         <div class="form-control">
             <label class="label" for="condition-logic">
-                <span class="label-text text-xs">When</span>
+                <span class="label-text text-xs">{{ __( 'When' ) }}</span>
             </label>
             <select
                 id="condition-logic"
@@ -160,7 +160,7 @@
         {{-- Rules --}}
         <div class="space-y-3">
             <div class="flex items-center justify-between">
-                <span class="label-text text-xs font-medium">Conditions</span>
+                <span class="label-text text-xs font-medium">{{ __( 'Conditions' ) }}</span>
                 <button
                     type="button"
                     class="btn btn-xs btn-ghost"
@@ -168,7 +168,7 @@
                     :disabled="availableFields.length === 0"
                 >
                     <x-artisanpack-icon name="o-plus" class="h-3 w-3" />
-                    Add
+                    {{ __( 'Add' ) }}
                 </button>
             </div>
 
@@ -176,7 +176,7 @@
             <template x-if="availableFields.length === 0">
                 <div class="alert alert-warning py-2 text-xs">
                     <x-artisanpack-icon name="o-exclamation-triangle" class="h-4 w-4" />
-                    <span>No fields available for conditions. Add more fields to the form first.</span>
+                    <span>{{ __( 'No fields available for conditions. Add more fields to the form first.' ) }}</span>
                 </div>
             </template>
 
@@ -189,7 +189,7 @@
                             type="button"
                             class="btn btn-xs btn-ghost btn-circle text-error"
                             @click="removeRule(index)"
-                            title="Remove rule"
+                            title="{{ __( 'Remove rule' ) }}"
                         >
                             <x-artisanpack-icon name="o-x-mark" class="h-3 w-3" />
                         </button>
@@ -198,14 +198,14 @@
                     {{-- Target Field --}}
                     <div class="form-control">
                         <label class="label py-0">
-                            <span class="label-text text-xs">Field</span>
+                            <span class="label-text text-xs">{{ __( 'Field' ) }}</span>
                         </label>
                         <select
                             class="select select-xs select-bordered w-full"
                             x-model="rule.field"
                             @change="updateConditions()"
                         >
-                            <option value="">Select a field...</option>
+                            <option value="">{{ __( 'Select a field...' ) }}</option>
                             <template x-for="f in availableFields" :key="f.name">
                                 <option :value="f.name" x-text="f.label" :selected="rule.field === f.name"></option>
                             </template>
@@ -215,7 +215,7 @@
                     {{-- Operator --}}
                     <div class="form-control">
                         <label class="label py-0">
-                            <span class="label-text text-xs">Operator</span>
+                            <span class="label-text text-xs">{{ __( 'Operator' ) }}</span>
                         </label>
                         <select
                             class="select select-xs select-bordered w-full"
@@ -232,7 +232,7 @@
                     <template x-if="operatorNeedsValue(rule.operator)">
                         <div class="form-control">
                             <label class="label py-0">
-                                <span class="label-text text-xs">Value</span>
+                                <span class="label-text text-xs">{{ __( 'Value' ) }}</span>
                             </label>
 
                             {{-- For fields with options (select/radio), show dropdown --}}
@@ -242,7 +242,7 @@
                                     x-model="rule.value"
                                     @change="updateConditions()"
                                 >
-                                    <option value="">Select a value...</option>
+                                    <option value="">{{ __( 'Select a value...' ) }}</option>
                                     <template x-for="option in getFieldOptions(rule.field)" :key="option.value">
                                         <option :value="option.value" x-text="option.label" :selected="rule.value === option.value"></option>
                                     </template>
@@ -267,8 +267,8 @@
             {{-- No rules message --}}
             <template x-if="logic.rules.length === 0 &amp;&amp; availableFields.length &gt; 0">
                 <div class="text-center py-4 text-base-content/50 text-xs">
-                    <p>No conditions added yet.</p>
-                    <p>Click "Add" to create a condition.</p>
+                    <p>{{ __( 'No conditions added yet.' ) }}</p>
+                    <p>{{ __( 'Click "Add" to create a condition.' ) }}</p>
                 </div>
             </template>
         </div>
@@ -277,10 +277,10 @@
         <template x-if="logic.rules.length &gt; 0">
             <div class="rounded-lg bg-base-300/50 p-3">
                 <p class="text-xs text-base-content/70">
-                    <span class="font-medium" x-text="logic.action === 'show' ? 'Show' : 'Hide'"></span>
-                    this field when
-                    <span class="font-medium" x-text="logic.logic === 'all' ? 'all' : 'any'"></span>
-                    of the following conditions are met:
+                    <span class="font-medium" x-text="logic.action === 'show' ? @js(__( 'Show' )) : @js(__( 'Hide' ))"></span>
+                    {{ __( 'this field when' ) }}
+                    <span class="font-medium" x-text="logic.logic === 'all' ? @js(__( 'all' )) : @js(__( 'any' ))"></span>
+                    {{ __( 'of the following conditions are met:' ) }}
                 </p>
                 <ul class="list-disc list-inside mt-2 text-xs text-base-content/60">
                     <template x-for="(rule, index) in logic.rules" :key="index">

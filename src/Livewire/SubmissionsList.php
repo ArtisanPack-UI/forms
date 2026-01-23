@@ -249,7 +249,7 @@ class SubmissionsList extends Component
         }
 
         $submission->delete();
-        session()->flash( 'success', 'Submission deleted successfully.' );
+        session()->flash( 'success', __( 'Submission deleted successfully.' ) );
     }
 
     /**
@@ -262,7 +262,7 @@ class SubmissionsList extends Component
         $count = $this->getOwnedSelectedQuery()->update( ['is_read' => true] );
 
         $this->resetSelection();
-        session()->flash( 'success', "{$count} submission(s) marked as read." );
+        session()->flash( 'success', trans_choice( ':count submission marked as read.|:count submissions marked as read.', $count, ['count' => $count] ) );
     }
 
     /**
@@ -275,7 +275,7 @@ class SubmissionsList extends Component
         $count = $this->getOwnedSelectedQuery()->update( ['is_read' => false] );
 
         $this->resetSelection();
-        session()->flash( 'success', "{$count} submission(s) marked as unread." );
+        session()->flash( 'success', trans_choice( ':count submission marked as unread.|:count submissions marked as unread.', $count, ['count' => $count] ) );
     }
 
     /**
@@ -288,7 +288,7 @@ class SubmissionsList extends Component
         $count = $this->getOwnedSelectedQuery()->update( ['is_spam' => true] );
 
         $this->resetSelection();
-        session()->flash( 'success', "{$count} submission(s) marked as spam." );
+        session()->flash( 'success', trans_choice( ':count submission marked as spam.|:count submissions marked as spam.', $count, ['count' => $count] ) );
     }
 
     /**
@@ -301,7 +301,7 @@ class SubmissionsList extends Component
         $count = $this->getOwnedSelectedQuery()->delete();
 
         $this->resetSelection();
-        session()->flash( 'success', "{$count} submission(s) deleted." );
+        session()->flash( 'success', trans_choice( ':count submission deleted.|:count submissions deleted.', $count, ['count' => $count] ) );
     }
 
     // =========================================
@@ -324,7 +324,7 @@ class SubmissionsList extends Component
         }
 
         if ( ! $form ) {
-            session()->flash( 'error', 'Please select a form to export submissions.' );
+            session()->flash( 'error', __( 'Please select a form to export submissions.' ) );
 
             return $this->redirect( request()->header( 'Referer', route( 'forms.submissions.all' ) ) );
         }
@@ -332,7 +332,7 @@ class SubmissionsList extends Component
         // Check if user can access this form's submissions
         $policy = app( SubmissionPolicy::class );
         if ( ! $policy->canAccessFormSubmissions( Auth::user(), $form ) ) {
-            session()->flash( 'error', 'You do not have permission to export submissions for this form.' );
+            session()->flash( 'error', __( 'You do not have permission to export submissions for this form.' ) );
 
             return $this->redirect( request()->header( 'Referer', route( 'forms.submissions.all' ) ) );
         }

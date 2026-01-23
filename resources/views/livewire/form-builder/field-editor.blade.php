@@ -9,14 +9,14 @@
 
         <div class="mb-4 flex items-center justify-between">
             <h3 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">
-                Edit Field
+                {{ __( 'Edit Field' ) }}
             </h3>
             <button
                 type="button"
                 wire:click="deselectField"
                 class="btn btn-ghost btn-xs"
-                title="Close editor"
-                aria-label="Close field editor"
+                title="{{ __( 'Close editor' ) }}"
+                aria-label="{{ __( 'Close field editor' ) }}"
             >
                 <x-artisanpack-icon name="o-x-mark" class="h-4 w-4" />
             </button>
@@ -41,7 +41,7 @@
                     :class="activeTab === 'general' ? 'tab-active' : ''"
                     class="tab tab-sm"
                 >
-                    General
+                    {{ __( 'General' ) }}
                 </button>
                 <button
                     type="button"
@@ -49,7 +49,7 @@
                     :class="activeTab === 'validation' ? 'tab-active' : ''"
                     class="tab tab-sm"
                 >
-                    Validation
+                    {{ __( 'Validation Settings' ) }}
                 </button>
                 @if ($hasOptions)
                     <button
@@ -58,7 +58,7 @@
                         :class="activeTab === 'options' ? 'tab-active' : ''"
                         class="tab tab-sm"
                     >
-                        Options
+                        {{ __( 'Options' ) }}
                     </button>
                 @endif
                 <button
@@ -67,7 +67,7 @@
                     :class="activeTab === 'advanced' ? 'tab-active' : ''"
                     class="tab tab-sm"
                 >
-                    Advanced
+                    {{ __( 'Advanced' ) }}
                 </button>
             </div>
 
@@ -76,7 +76,7 @@
                 {{-- Label --}}
                 <div class="form-control">
                     <label class="label" for="field-label">
-                        <span class="label-text text-xs">Label</span>
+                        <span class="label-text text-xs">{{ __( 'Label' ) }}</span>
                     </label>
                     <input
                         type="text"
@@ -91,7 +91,7 @@
                 @if (\ArtisanPackUI\Forms\Config\FieldTypes::supportsPlaceholder($field->type))
                     <div class="form-control">
                         <label class="label" for="field-placeholder">
-                            <span class="label-text text-xs">Placeholder</span>
+                            <span class="label-text text-xs">{{ __( 'Placeholder' ) }}</span>
                         </label>
                         <input
                             type="text"
@@ -106,7 +106,7 @@
                 {{-- Help text --}}
                 <div class="form-control">
                     <label class="label" for="field-help-text">
-                        <span class="label-text text-xs">Help Text</span>
+                        <span class="label-text text-xs">{{ __( 'Help Text' ) }}</span>
                     </label>
                     <input
                         type="text"
@@ -121,7 +121,7 @@
                 @if (\ArtisanPackUI\Forms\Config\FieldTypes::supportsDefaultValue($field->type))
                     <div class="form-control">
                         <label class="label" for="field-default">
-                            <span class="label-text text-xs">Default Value</span>
+                            <span class="label-text text-xs">{{ __( 'Default Value' ) }}</span>
                         </label>
                         <input
                             type="text"
@@ -136,7 +136,7 @@
                 {{-- Width --}}
                 <div class="form-control">
                     <label class="label" for="field-width">
-                        <span class="label-text text-xs">Width</span>
+                        <span class="label-text text-xs">{{ __( 'Width' ) }}</span>
                     </label>
                     <select
                         id="field-width"
@@ -163,7 +163,7 @@
                             {{ $field->is_required ? 'checked' : '' }}
                             wire:change="updateField({ is_required: $event.target.checked })"
                         />
-                        <span class="label-text">Required field</span>
+                        <span class="label-text">{{ __( 'Required field' ) }}</span>
                     </label>
                 </div>
 
@@ -173,7 +173,7 @@
                         @if (in_array('min', $validationOptions))
                             <div class="form-control">
                                 <label class="label" for="field-min">
-                                    <span class="label-text text-xs">Min {{ $field->type === 'number' ? 'Value' : 'Length' }}</span>
+                                    <span class="label-text text-xs">{{ __( $field->type === 'number' ? 'Min Value' : 'Min Length' ) }}</span>
                                 </label>
                                 <input
                                     type="number"
@@ -187,7 +187,7 @@
                         @if (in_array('max', $validationOptions))
                             <div class="form-control">
                                 <label class="label" for="field-max">
-                                    <span class="label-text text-xs">Max {{ $field->type === 'number' ? 'Value' : 'Length' }}</span>
+                                    <span class="label-text text-xs">{{ __( $field->type === 'number' ? 'Max Value' : 'Max Length' ) }}</span>
                                 </label>
                                 <input
                                     type="number"
@@ -205,7 +205,7 @@
                 @if (in_array('pattern', $validationOptions))
                     <div class="form-control">
                         <label class="label" for="field-pattern">
-                            <span class="label-text text-xs">Pattern (Regex)</span>
+                            <span class="label-text text-xs">{{ __( 'Pattern (Regex)' ) }}</span>
                         </label>
                         <input
                             type="text"
@@ -222,7 +222,7 @@
                 @if (in_array('step', $validationOptions))
                     <div class="form-control">
                         <label class="label" for="field-step">
-                            <span class="label-text text-xs">Step Increment</span>
+                            <span class="label-text text-xs">{{ __( 'Step Increment' ) }}</span>
                         </label>
                         <input
                             type="number"
@@ -234,7 +234,7 @@
                             wire:change="updateField({ validation_rules: { ...{{ json_encode((object) ($field->validation_rules ?? [])) }}, step: $event.target.value ? parseFloat($event.target.value) : null } })"
                         />
                         <label class="label">
-                            <span class="label-text-alt text-xs text-base-content/50">e.g., 0.01 for decimals, 1 for integers</span>
+                            <span class="label-text-alt text-xs text-base-content/50">{{ __( 'e.g., 0.01 for decimals, 1 for integers' ) }}</span>
                         </label>
                     </div>
                 @endif
@@ -243,7 +243,7 @@
                 @if (in_array('max_size', $validationOptions))
                     <div class="form-control">
                         <label class="label" for="field-max-size">
-                            <span class="label-text text-xs">Max File Size (KB)</span>
+                            <span class="label-text text-xs">{{ __( 'Max File Size (KB)' ) }}</span>
                         </label>
                         <input
                             type="number"
@@ -255,7 +255,7 @@
                             wire:change="updateField({ validation_rules: { ...{{ json_encode((object) ($field->validation_rules ?? [])) }}, max_size: $event.target.value ? parseInt($event.target.value) : null } })"
                         />
                         <label class="label">
-                            <span class="label-text-alt text-xs text-base-content/50">Default: 5120 KB (5 MB)</span>
+                            <span class="label-text-alt text-xs text-base-content/50">{{ __( 'Default: 5120 KB (5 MB)' ) }}</span>
                         </label>
                     </div>
                 @endif
@@ -264,7 +264,7 @@
                 @if (in_array('allowed_types', $validationOptions))
                     <div class="form-control">
                         <label class="label" for="field-allowed-types">
-                            <span class="label-text text-xs">Allowed File Types</span>
+                            <span class="label-text text-xs">{{ __( 'Allowed File Types' ) }}</span>
                         </label>
                         <input
                             type="text"
@@ -275,7 +275,7 @@
                             wire:change="updateField({ validation_rules: { ...{{ json_encode((object) ($field->validation_rules ?? [])) }}, allowed_types: $event.target.value ? $event.target.value.split(',').map(t => t.trim()).filter(t => t) : null } })"
                         />
                         <label class="label">
-                            <span class="label-text-alt text-xs text-base-content/50">Comma-separated file extensions</span>
+                            <span class="label-text-alt text-xs text-base-content/50">{{ __( 'Comma-separated file extensions' ) }}</span>
                         </label>
                     </div>
                 @endif
@@ -286,7 +286,7 @@
                         @if (in_array('min_date', $validationOptions))
                             <div class="form-control">
                                 <label class="label" for="field-min-date">
-                                    <span class="label-text text-xs">Min Date</span>
+                                    <span class="label-text text-xs">{{ __( 'Min Date' ) }}</span>
                                 </label>
                                 <input
                                     type="date"
@@ -300,7 +300,7 @@
                         @if (in_array('max_date', $validationOptions))
                             <div class="form-control">
                                 <label class="label" for="field-max-date">
-                                    <span class="label-text text-xs">Max Date</span>
+                                    <span class="label-text text-xs">{{ __( 'Max Date' ) }}</span>
                                 </label>
                                 <input
                                     type="date"
@@ -327,7 +327,7 @@
                 {{-- Field name --}}
                 <div class="form-control">
                     <label class="label" for="field-name">
-                        <span class="label-text text-xs">Field Name (for submissions)</span>
+                        <span class="label-text text-xs">{{ __( 'Field Name (for submissions)' ) }}</span>
                     </label>
                     <input
                         type="text"
@@ -337,14 +337,14 @@
                         wire:change="updateField({ name: $event.target.value })"
                     />
                     <label class="label">
-                        <span class="label-text-alt text-xs text-base-content/50">Use snake_case, no spaces</span>
+                        <span class="label-text-alt text-xs text-base-content/50">{{ __( 'Use snake_case, no spaces' ) }}</span>
                     </label>
                 </div>
 
                 {{-- CSS Classes --}}
                 <div class="form-control">
                     <label class="label" for="field-css">
-                        <span class="label-text text-xs">CSS Classes</span>
+                        <span class="label-text text-xs">{{ __( 'CSS Classes' ) }}</span>
                     </label>
                     <input
                         type="text"
@@ -357,13 +357,13 @@
 
                 {{-- Conditional Logic --}}
                 @if(!\ArtisanPackUI\Forms\Config\FieldTypes::isLayoutField($field->type))
-                    <div class="divider text-xs text-base-content/50">Conditional Logic</div>
+                    <div class="divider text-xs text-base-content/50">{{ __( 'Conditional Logic' ) }}</div>
                     @include('forms::livewire.form-builder.condition-builder')
                 @else
                     <div class="rounded-lg bg-base-300 p-3 text-xs">
                         <div class="flex items-center gap-2 text-base-content/60">
                             <x-artisanpack-icon name="o-information-circle" class="h-4 w-4" />
-                            <span>Layout fields do not support conditional logic</span>
+                            <span>{{ __( 'Layout fields do not support conditional logic' ) }}</span>
                         </div>
                     </div>
                 @endif
@@ -373,9 +373,9 @@
         {{-- No field selected --}}
         <div class="flex h-64 flex-col items-center justify-center text-center">
             <x-artisanpack-icon name="o-cursor-arrow-rays" class="mb-4 h-12 w-12 text-base-content/30" />
-            <p class="mb-2 text-base-content/60">No field selected</p>
+            <p class="mb-2 text-base-content/60">{{ __( 'No field selected' ) }}</p>
             <p class="text-sm text-base-content/40">
-                Click a field in the canvas to edit its settings
+                {{ __( 'Click a field in the canvas to edit its settings' ) }}
             </p>
         </div>
     @endif

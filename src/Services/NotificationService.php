@@ -334,13 +334,13 @@ class NotificationService
     public function getAvailablePlaceholders( Form $form ): array
     {
         $placeholders = [
-            '{form_name}'         => 'Form name',
-            '{submission_number}' => 'Unique submission ID',
-            '{submission_date}'   => 'Date of submission',
-            '{submission_time}'   => 'Time of submission',
-            '{all_fields}'        => 'All field values as list',
-            '{page_url}'          => 'URL where form was submitted',
-            '{ip_address}'        => 'Submitter\'s IP address',
+            '{form_name}'         => __( 'Form name' ),
+            '{submission_number}' => __( 'Unique submission ID' ),
+            '{submission_date}'   => __( 'Date of submission' ),
+            '{submission_time}'   => __( 'Time of submission' ),
+            '{all_fields}'        => __( 'All field values as list' ),
+            '{page_url}'          => __( 'URL where form was submitted' ),
+            '{ip_address}'        => __( "Submitter's IP address" ),
         ];
 
         // Add field-specific placeholders
@@ -437,7 +437,7 @@ class NotificationService
         }
 
         if ( empty( $rows ) ) {
-            return '<p>No data submitted.</p>';
+            return '<p>' . e( __( 'No data submitted.' ) ) . '</p>';
         }
 
         return '<table style="width: 100%; border-collapse: collapse; margin: 16px 0;">' . implode( '', $rows ) . '</table>';
@@ -507,10 +507,10 @@ class NotificationService
         switch ( $type ) {
             case FormNotification::TYPE_ADMIN:
                 return array_merge( $defaults, [
-                    'name'       => 'Admin Notification',
+                    'name'       => __( 'Admin Notification' ),
                     'to_email'   => config( 'mail.from.address', '' ),
-                    'subject'    => 'New Submission: {form_name}',
-                    'message'    => "A new form submission has been received.\n\n{all_fields}",
+                    'subject'    => __( 'New Submission: {form_name}' ),
+                    'message'    => __( "A new form submission has been received.\n\n{all_fields}" ),
                     'from_name'  => config( 'mail.from.name', config( 'app.name' ) ),
                     'from_email' => config( 'mail.from.address', '' ),
                 ] );
@@ -520,10 +520,10 @@ class NotificationService
                 $emailField = $form->fields()->where( 'type', 'email' )->first();
 
                 return array_merge( $defaults, [
-                    'name'       => 'Autoresponder',
+                    'name'       => __( 'Autoresponder' ),
                     'to_field'   => $emailField?->name,
-                    'subject'    => 'Thank you for contacting us',
-                    'message'    => "Thank you for your submission to {form_name}.\n\nWe have received your information and will be in touch soon.\n\nSubmission Reference: {submission_number}",
+                    'subject'    => __( 'Thank you for contacting us' ),
+                    'message'    => __( "Thank you for your submission to {form_name}.\n\nWe have received your information and will be in touch soon.\n\nSubmission Reference: {submission_number}" ),
                     'from_name'  => config( 'mail.from.name', config( 'app.name' ) ),
                     'from_email' => config( 'mail.from.address', '' ),
                 ] );
@@ -531,8 +531,8 @@ class NotificationService
             case FormNotification::TYPE_CUSTOM:
             default:
                 return array_merge( $defaults, [
-                    'name'       => 'Custom Notification',
-                    'subject'    => 'Form Submission: {form_name}',
+                    'name'       => __( 'Custom Notification' ),
+                    'subject'    => __( 'Form Submission: {form_name}' ),
                     'message'    => '{all_fields}',
                     'from_name'  => config( 'mail.from.name', config( 'app.name' ) ),
                     'from_email' => config( 'mail.from.address', '' ),

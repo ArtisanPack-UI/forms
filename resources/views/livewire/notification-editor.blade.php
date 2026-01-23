@@ -4,11 +4,11 @@
         <x-artisanpack-card class="p-4">
             <div class="mb-4 flex items-center justify-between">
                 <h3 class="text-sm font-semibold uppercase tracking-wide opacity-70">
-                    Notifications
+                    {{ __( 'Notifications' ) }}
                 </h3>
                 <x-artisanpack-dropdown>
                     <x-slot:trigger>
-                        <x-artisanpack-button color="primary" class="btn-xs" icon="o-plus" label="Add" />
+                        <x-artisanpack-button color="primary" class="btn-xs" icon="o-plus" :label="__( 'Add' )" />
                     </x-slot:trigger>
                     <x-artisanpack-menu class="w-56">
                         @foreach ($this->notificationTypes as $type => $config)
@@ -71,7 +71,7 @@
                                             class="badge-xs"
                                         />
                                         @if (!$notification->is_active)
-                                            <x-artisanpack-badge value="Inactive" color="ghost" class="badge-xs" />
+                                            <x-artisanpack-badge :value="__( 'Inactive' )" color="ghost" class="badge-xs" />
                                         @endif
                                     </div>
                                 </div>
@@ -83,7 +83,7 @@
                                         :icon="$notification->is_active ? 'o-eye' : 'o-eye-slash'"
                                         color="ghost"
                                         class="btn-xs"
-                                        :title="$notification->is_active ? 'Deactivate' : 'Activate'"
+                                        :title="$notification->is_active ? __( 'Deactivate' ) : __( 'Activate' )"
                                     />
                                 </div>
                             </button>
@@ -93,8 +93,8 @@
             @else
                 <div class="py-8 text-center opacity-50">
                     <x-artisanpack-icon name="o-bell-slash" class="mx-auto mb-3 h-10 w-10" />
-                    <p class="text-sm">No notifications yet</p>
-                    <p class="text-xs">Add a notification to get started</p>
+                    <p class="text-sm">{{ __( 'No notifications yet' ) }}</p>
+                    <p class="text-xs">{{ __( 'Add a notification to get started' ) }}</p>
                 </div>
             @endif
         </x-artisanpack-card>
@@ -124,15 +124,15 @@
                             icon="o-document-duplicate"
                             color="ghost"
                             class="btn-sm"
-                            title="Duplicate"
+                            :title="__( 'Duplicate' )"
                         />
                         <x-artisanpack-button
                             wire:click="deleteNotification({{ $notification->id }})"
-                            wire:confirm="Are you sure you want to delete this notification?"
+                            :wire:confirm="__( 'Are you sure you want to delete this notification?' )"
                             icon="o-trash"
                             color="ghost"
                             class="btn-sm text-error"
-                            title="Delete"
+                            :title="__( 'Delete' )"
                         />
                     </div>
                 </div>
@@ -142,33 +142,33 @@
                     {{-- Tab Buttons --}}
                     <div class="tabs tabs-boxed bg-base-300">
                         <button type="button" @click="activeTab = 'basic'" :class="activeTab === 'basic' ? 'tab-active' : ''" class="tab">
-                            Basic
+                            {{ __( 'Basic' ) }}
                         </button>
                         <button type="button" @click="activeTab = 'recipients'" :class="activeTab === 'recipients' ? 'tab-active' : ''" class="tab">
-                            Recipients
+                            {{ __( 'Recipients' ) }}
                         </button>
                         <button type="button" @click="activeTab = 'sender'" :class="activeTab === 'sender' ? 'tab-active' : ''" class="tab">
-                            Sender
+                            {{ __( 'Sender' ) }}
                         </button>
                         <button type="button" @click="activeTab = 'content'" :class="activeTab === 'content' ? 'tab-active' : ''" class="tab">
-                            Content
+                            {{ __( 'Content' ) }}
                         </button>
                         <button type="button" @click="activeTab = 'conditions'" :class="activeTab === 'conditions' ? 'tab-active' : ''" class="tab">
-                            Conditions
+                            {{ __( 'Conditions' ) }}
                         </button>
                     </div>
 
                     {{-- Basic Tab --}}
                     <div x-show="activeTab === 'basic'" x-cloak class="space-y-4">
                         <x-artisanpack-input
-                            label="Notification Name"
-                            hint="Internal use only"
+                            :label="__( 'Notification Name' )"
+                            :hint="__( 'Internal use only' )"
                             :value="$notification->name"
                             wire:change="updateNotification({ name: $event.target.value })"
                         />
 
                         <x-artisanpack-select
-                            label="Type"
+                            :label="__( 'Type' )"
                             :options="collect($this->notificationTypes)->map(fn($c, $t) => ['value' => $t, 'label' => $c['label']])->values()->toArray()"
                             option-value="value"
                             option-label="label"
@@ -177,8 +177,8 @@
                         />
 
                         <x-artisanpack-toggle
-                            label="Active"
-                            hint="Enable or disable this notification"
+                            :label="__( 'Active' )"
+                            :hint="__( 'Enable or disable this notification' )"
                             :checked="$notification->is_active"
                             wire:change="updateNotification({ is_active: $event.target.checked })"
                         />
@@ -187,8 +187,8 @@
                     {{-- Recipients Tab --}}
                     <div x-show="activeTab === 'recipients'" x-cloak class="space-y-4">
                         <x-artisanpack-input
-                            label="To Email(s)"
-                            hint="Comma-separated"
+                            :label="__( 'To Email(s)' )"
+                            :hint="__( 'Comma-separated' )"
                             :value="$notification->to_email"
                             placeholder="admin@example.com, team@example.com"
                             wire:change="updateNotification({ to_email: $event.target.value })"
@@ -196,9 +196,9 @@
 
                         @if ($this->emailFields->isNotEmpty())
                             <x-artisanpack-select
-                                label="Or send to email field"
-                                hint="Dynamic recipient - Email will be sent to the address entered in this field"
-                                placeholder="-- Select an email field --"
+                                :label="__( 'Or send to email field' )"
+                                :hint="__( 'Dynamic recipient - Email will be sent to the address entered in this field' )"
+                                :placeholder="__( '-- Select an email field --' )"
                                 :options="$this->emailFields->map(fn($f) => ['value' => $f->name, 'label' => $f->label . ' (' . $f->name . ')'])->toArray()"
                                 option-value="value"
                                 option-label="label"
@@ -207,29 +207,29 @@
                             />
                         @endif
 
-                        <div class="divider text-xs opacity-50">Additional Recipients</div>
+                        <div class="divider text-xs opacity-50">{{ __( 'Additional Recipients' ) }}</div>
 
                         <x-artisanpack-input
-                            label="CC"
-                            hint="Comma-separated"
+                            :label="__( 'CC' )"
+                            :hint="__( 'Comma-separated' )"
                             :value="$notification->cc_emails"
                             placeholder="manager@example.com"
                             wire:change="updateNotification({ cc_emails: $event.target.value })"
                         />
 
                         <x-artisanpack-input
-                            label="BCC"
-                            hint="Comma-separated"
+                            :label="__( 'BCC' )"
+                            :hint="__( 'Comma-separated' )"
                             :value="$notification->bcc_emails"
                             placeholder="archive@example.com"
                             wire:change="updateNotification({ bcc_emails: $event.target.value })"
                         />
 
-                        <div class="divider text-xs opacity-50">Reply-To</div>
+                        <div class="divider text-xs opacity-50">{{ __( 'Reply-To' ) }}</div>
 
                         <x-artisanpack-input
                             type="email"
-                            label="Reply-To Email"
+                            :label="__( 'Reply-To Email' )"
                             :value="$notification->reply_to_email"
                             placeholder="support@example.com"
                             wire:change="updateNotification({ reply_to_email: $event.target.value })"
@@ -237,8 +237,8 @@
 
                         @if ($this->emailFields->isNotEmpty())
                             <x-artisanpack-select
-                                label="Or use email field as Reply-To"
-                                placeholder="-- Select an email field --"
+                                :label="__( 'Or use email field as Reply-To' )"
+                                :placeholder="__( '-- Select an email field --' )"
                                 :options="$this->emailFields->map(fn($f) => ['value' => $f->name, 'label' => $f->label . ' (' . $f->name . ')'])->toArray()"
                                 option-value="value"
                                 option-label="label"
@@ -251,8 +251,8 @@
                     {{-- Sender Tab --}}
                     <div x-show="activeTab === 'sender'" x-cloak class="space-y-4">
                         <x-artisanpack-input
-                            label="From Name"
-                            hint="Defaults to app name if empty"
+                            :label="__( 'From Name' )"
+                            :hint="__( 'Defaults to app name if empty' )"
                             :value="$notification->from_name"
                             :placeholder="config('app.name')"
                             wire:change="updateNotification({ from_name: $event.target.value })"
@@ -260,8 +260,8 @@
 
                         <x-artisanpack-input
                             type="email"
-                            label="From Email"
-                            hint="Defaults to mail config if empty"
+                            :label="__( 'From Email' )"
+                            :hint="__( 'Defaults to mail config if empty' )"
                             :value="$notification->from_email"
                             :placeholder="config('mail.from.address')"
                             wire:change="updateNotification({ from_email: $event.target.value })"
@@ -271,22 +271,22 @@
                     {{-- Content Tab --}}
                     <div x-show="activeTab === 'content'" x-cloak class="space-y-4">
                         <x-artisanpack-input
-                            label="Subject Line"
+                            :label="__( 'Subject Line' )"
                             :value="$notification->subject"
-                            placeholder="New Submission: {form_name}"
+                            :placeholder="__( 'New Submission: {form_name}' )"
                             wire:change="updateNotification({ subject: $event.target.value })"
                         />
 
                         <x-artisanpack-textarea
-                            label="Message"
+                            :label="__( 'Message' )"
                             rows="8"
                             class="font-mono text-sm"
-                            placeholder="Enter your message..."
+                            :placeholder="__( 'Enter your message...' )"
                             wire:change="updateNotification({ message: $event.target.value })"
                         >{{ $notification->message }}</x-artisanpack-textarea>
 
                         {{-- Available Placeholders --}}
-                        <x-artisanpack-collapse title="Available Placeholders">
+                        <x-artisanpack-collapse :title="__( 'Available Placeholders' )">
                             <x-slot:icon>
                                 <x-artisanpack-icon name="o-code-bracket" class="h-4 w-4" />
                             </x-slot:icon>
@@ -301,8 +301,8 @@
                         </x-artisanpack-collapse>
 
                         <x-artisanpack-checkbox
-                            label="Include submission data"
-                            hint="Append a table of all submitted field values"
+                            :label="__( 'Include submission data' )"
+                            :hint="__( 'Append a table of all submitted field values' )"
                             :checked="$notification->include_submission_data"
                             wire:change="updateNotification({ include_submission_data: $event.target.checked })"
                         />
@@ -318,9 +318,9 @@
             {{-- No notification selected --}}
             <x-artisanpack-card class="flex h-96 flex-col items-center justify-center">
                 <x-artisanpack-icon name="o-bell" class="mb-4 h-16 w-16 opacity-20" />
-                <p class="mb-2 text-lg opacity-60">No notification selected</p>
+                <p class="mb-2 text-lg opacity-60">{{ __( 'No notification selected' ) }}</p>
                 <p class="text-sm opacity-40">
-                    Select a notification from the list or add a new one
+                    {{ __( 'Select a notification from the list or add a new one' ) }}
                 </p>
             </x-artisanpack-card>
         @endif

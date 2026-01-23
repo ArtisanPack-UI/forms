@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-01-23
+
+### First Stable Release
+
+This is the first stable release of ArtisanPack UI Forms, a comprehensive form builder and management package for Laravel applications built on Livewire 3.
+
+### Changed
+
+- Promoted from beta to stable release
+- All features from beta releases are now production-ready
+
+---
+
+## [1.0.0-beta2] - 2026-01-09
+
+### Added
+
+#### Internationalization
+
+- **Full Translation Support**: All user-facing strings throughout the package now use Laravel's `__()` translation function
+- **Translatable Field Types**: Field type labels, categories, and descriptions are now translatable
+- **Translatable Form Builder**: All form builder UI elements including tabs, buttons, and labels support translations
+- **Translatable Form Renderer**: Multi-step form navigation, validation messages, and accessibility announcements are translatable
+- **Translatable Components**: Submissions list, notification editor, and all Livewire components support internationalization
+
+### Fixed
+
+- **Translation Conflict Resolution**: Fixed `htmlspecialchars()` error caused by `__('Validation')` conflicting with Laravel's `validation.php` language file on case-insensitive filesystems (macOS). Changed to `__('Validation Settings')` to avoid the collision
+- **Multi-Step Form Announcements**: Fixed JavaScript `replace()` to `replaceAll()` for step change announcements, ensuring all placeholder occurrences are replaced in accessibility announcements
+- **Export Service Tests**: Updated test expectations to use stable '1'/'0' values for boolean fields instead of localized 'Yes'/'No' strings
+
+### Changed
+
+- **Code Quality Improvements**: Applied Code Rabbit suggestions for improved code consistency and maintainability
+
 ## [1.0.0-beta1] - 2026-01-08
 
 ### First Beta Release

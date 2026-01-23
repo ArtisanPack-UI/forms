@@ -1,6 +1,6 @@
 @extends('forms::layouts.app')
 
-@section('title', 'Create Form')
+@section('title', __( 'Create Form' ))
 
 @section('header')
     <div class="flex items-center gap-4">
@@ -10,7 +10,7 @@
             color="ghost"
             class="btn-sm"
         />
-        <h1 class="text-2xl font-semibold">Create New Form</h1>
+        <h1 class="text-2xl font-semibold">{{ __( 'Create New Form' ) }}</h1>
     </div>
 @endsection
 
@@ -20,41 +20,41 @@
             <div class="space-y-6">
                 {{-- Form Name --}}
                 <x-artisanpack-input
-                    label="Form Name"
+                    :label="__( 'Form Name' )"
                     name="name"
                     :value="old('name')"
                     required
                     autofocus
-                    placeholder="Contact Form"
+                    :placeholder="__( 'Contact Form' )"
                 />
 
                 {{-- Slug --}}
                 <x-artisanpack-input
-                    label="Slug"
+                    :label="__( 'Slug' )"
                     name="slug"
                     :value="old('slug')"
                     placeholder="contact-form"
-                    hint="Leave blank to auto-generate from the name."
+                    :hint="__( 'Leave blank to auto-generate from the name.' )"
                 />
 
                 {{-- Description --}}
                 <x-artisanpack-textarea
-                    label="Description"
+                    :label="__( 'Description' )"
                     name="description"
                     rows="3"
-                    placeholder="A brief description of this form..."
+                    :placeholder="__( 'A brief description of this form...' )"
                 >{{ old('description') }}</x-artisanpack-textarea>
             </div>
 
             <x-slot:actions>
                 <x-artisanpack-button
                     link="{{ route('forms.index') }}"
-                    label="Cancel"
+                    :label="__( 'Cancel' )"
                     color="ghost"
                 />
                 <x-artisanpack-button
                     type="submit"
-                    label="Create Form"
+                    :label="__( 'Create Form' )"
                     color="primary"
                     icon="o-plus"
                 />
