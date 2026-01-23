@@ -19,7 +19,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span>{{ $form->success_message ?? 'Thank you! Your submission has been received.' }}</span>
+            <span>{{ $form->success_message ?? __( 'Thank you! Your submission has been received.' ) }}</span>
         </div>
 
         @if($form->allow_multiple_submissions ?? false)
@@ -29,7 +29,7 @@
                     wire:click="resetForm"
                     color="ghost"
                 >
-                    Submit Another Response
+                    {{ __( 'Submit Another Response' ) }}
                 </x-artisanpack-button>
             </div>
         @endif
@@ -56,22 +56,22 @@
 
             {{-- Multi-step Progress Indicator --}}
             @if($form->is_multi_step)
-                <div class="mb-8" role="navigation" aria-label="Form progress">
+                <div class="mb-8" role="navigation" aria-label="{{ __( 'Form progress' ) }}">
                     {{-- Progress Bar --}}
                     <div class="mb-4">
                         <div class="flex justify-between text-sm mb-1">
                             <span class="text-base-content/70">
-                                Step {{ $currentStepIndex + 1 }} of {{ $this->totalSteps }}
+                                {{ __( 'Step :current of :total', ['current' => $currentStepIndex + 1, 'total' => $this->totalSteps] ) }}
                             </span>
                             <span class="text-base-content/70">
-                                {{ $this->progressPercentage }}% complete
+                                {{ __( ':percentage% complete', ['percentage' => $this->progressPercentage] ) }}
                             </span>
                         </div>
                         <progress
                             class="progress progress-primary w-full"
                             value="{{ $this->progressPercentage }}"
                             max="100"
-                            aria-label="Form progress: {{ $this->progressPercentage }}% complete"
+                            aria-label="{{ __( 'Form progress: :percentage% complete', ['percentage' => $this->progressPercentage] ) }}"
                         ></progress>
                     </div>
 
@@ -107,7 +107,7 @@
 
             {{-- Honeypot Field (spam protection) --}}
             <div class="hidden" aria-hidden="true" style="position: absolute; left: -9999px;">
-                <label for="website_url">Leave this field empty</label>
+                <label for="website_url">{{ __( 'Leave this field empty' ) }}</label>
                 <input
                     type="text"
                     name="website_url"
@@ -126,7 +126,7 @@
                         class="step-content"
                         x-ref="stepContent"
                         role="region"
-                        aria-label="Step {{ $currentStepIndex + 1 }}: {{ $this->currentStep->title }}"
+                        aria-label="{{ __( 'Step :step: :title', ['step' => $currentStepIndex + 1, 'title' => $this->currentStep->title] ) }}"
                     >
                         @if($this->currentStep->title && !$form->show_title)
                             <h3 class="text-xl font-semibold mb-2">{{ $this->currentStep->title }}</h3>
@@ -178,7 +178,7 @@
                                     wire:loading.attr="disabled"
                                 >
                                     <x-artisanpack-icon name="o-arrow-left" class="h-4 w-4 mr-1" />
-                                    {{ $this->currentStep->prev_button_text ?? 'Previous' }}
+                                    {{ $this->currentStep->prev_button_text ?? __( 'Previous' ) }}
                                 </x-artisanpack-button>
                             @endif
                         </div>
@@ -193,11 +193,11 @@
                                     wire:target="submit"
                                 >
                                     <span wire:loading.remove wire:target="submit">
-                                        {{ $form->submit_button_text ?? 'Submit' }}
+                                        {{ $form->submit_button_text ?? __( 'Submit' ) }}
                                     </span>
                                     <span wire:loading wire:target="submit" class="flex items-center gap-2">
                                         <span class="loading loading-spinner loading-sm"></span>
-                                        Submitting...
+                                        {{ __( 'Submitting...' ) }}
                                     </span>
                                 </x-artisanpack-button>
                             @else
@@ -209,12 +209,12 @@
                                     wire:target="nextStep"
                                 >
                                     <span wire:loading.remove wire:target="nextStep">
-                                        {{ $this->currentStep->next_button_text ?? 'Next' }}
+                                        {{ $this->currentStep->next_button_text ?? __( 'Next' ) }}
                                         <x-artisanpack-icon name="o-arrow-right" class="h-4 w-4 ml-1 inline" />
                                     </span>
                                     <span wire:loading wire:target="nextStep" class="flex items-center gap-2">
                                         <span class="loading loading-spinner loading-sm"></span>
-                                        Validating...
+                                        {{ __( 'Validating...' ) }}
                                     </span>
                                 </x-artisanpack-button>
                             @endif
@@ -223,9 +223,9 @@
 
                     {{-- Keyboard navigation hint --}}
                     <div class="mt-4 text-center text-xs text-base-content/40">
-                        Press <kbd class="kbd kbd-xs">Enter</kbd> to continue
+                        {!! __( 'Press :enter to continue', ['enter' => '<kbd class="kbd kbd-xs">Enter</kbd>'] ) !!}
                         @if(!$this->isFirstStep)
-                            or <kbd class="kbd kbd-xs">Escape</kbd> to go back
+                            {!! __( 'or :escape to go back', ['escape' => '<kbd class="kbd kbd-xs">Escape</kbd>'] ) !!}
                         @endif
                     </div>
                 @endif
@@ -268,11 +268,11 @@
                         wire:loading.attr="disabled"
                     >
                         <span wire:loading.remove wire:target="submit">
-                            {{ $form->submit_button_text ?? 'Submit' }}
+                            {{ $form->submit_button_text ?? __( 'Submit' ) }}
                         </span>
                         <span wire:loading wire:target="submit" class="flex items-center gap-2">
                             <span class="loading loading-spinner loading-sm"></span>
-                            Submitting...
+                            {{ __( 'Submitting...' ) }}
                         </span>
                     </x-artisanpack-button>
                 </div>
@@ -290,7 +290,10 @@
         isMultiStep: @js($form->is_multi_step),
         currentStepIndex: @js($currentStepIndex),
         totalSteps: @js($this->totalSteps),
-        formId: @js($form->id)
+        formId: @js($form->id),
+        translations: {
+            stepAnnouncement: @js(__( 'Now on step :current of :total' ))
+        }
     };
 </script>
 
@@ -304,6 +307,7 @@
             isMultiStep: false,
             currentStepIndex: 0,
             totalSteps: 1,
+            translations: {},
 
             init() {
                 // Load config from window object using form ID from $wire
@@ -315,6 +319,7 @@
                 this.isMultiStep = config.isMultiStep || false;
                 this.currentStepIndex = config.currentStepIndex || 0;
                 this.totalSteps = config.totalSteps || 1;
+                this.translations = config.translations || {};
 
                 // Initialize hidden fields from server state
                 this.hiddenFields = this.$wire.get('hiddenFields') || {};
@@ -380,7 +385,8 @@
                 const announcer = this.$refs.announcer;
                 if (announcer) {
                     const stepNum = this.currentStepIndex + 1;
-                    announcer.textContent = `Now on step ${stepNum} of ${this.totalSteps}`;
+                    const template = this.translations.stepAnnouncement || 'Now on step :current of :total';
+                    announcer.textContent = template.replaceAll(':current', stepNum).replaceAll(':total', this.totalSteps);
                 }
             },
 

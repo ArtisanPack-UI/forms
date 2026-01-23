@@ -23,13 +23,13 @@
             @if ($isDirty)
                 <span class="badge badge-warning badge-sm gap-1">
                     <span class="loading loading-spinner loading-xs" wire:loading wire:target="saveForm"></span>
-                    <span wire:loading.remove wire:target="saveForm">Unsaved changes</span>
-                    <span wire:loading wire:target="saveForm">Saving...</span>
+                    <span wire:loading.remove wire:target="saveForm">{{ __( 'Unsaved changes' ) }}</span>
+                    <span wire:loading wire:target="saveForm">{{ __( 'Saving...' ) }}</span>
                 </span>
             @elseif ($lastSavedAt)
                 <span class="badge badge-success badge-sm gap-1">
                     <x-artisanpack-icon name="o-check" class="h-3 w-3" />
-                    Saved at {{ $lastSavedAt }}
+                    {{ __( 'Saved at :time', ['time' => $lastSavedAt] ) }}
                 </span>
             @endif
         </div>
@@ -41,10 +41,10 @@
             wire:loading.attr="disabled"
             :disabled="!$wire.isDirty"
         >
-            <span wire:loading.remove wire:target="saveForm">Save Changes</span>
+            <span wire:loading.remove wire:target="saveForm">{{ __( 'Save Changes' ) }}</span>
             <span wire:loading wire:target="saveForm">
                 <span class="loading loading-spinner loading-xs"></span>
-                Saving...
+                {{ __( 'Saving...' ) }}
             </span>
         </button>
     </div>
@@ -54,17 +54,17 @@
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <label class="label cursor-pointer gap-2">
-                    <span class="label-text font-medium">Multi-Step Form</span>
+                    <span class="label-text font-medium">{{ __( 'Multi-Step Form' ) }}</span>
                     <input
                         type="checkbox"
                         class="toggle toggle-primary toggle-sm"
                         {{ $form->is_multi_step ? 'checked' : '' }}
                         wire:change="{{ $form->is_multi_step ? 'disableMultiStep' : 'enableMultiStep' }}"
-                        wire:confirm="{{ $form->is_multi_step ? 'Disable multi-step mode? Steps will be removed but fields will be preserved.' : '' }}"
+                        wire:confirm="{{ $form->is_multi_step ? __( 'Disable multi-step mode? Steps will be removed but fields will be preserved.' ) : '' }}"
                     />
                 </label>
                 @if (!$form->is_multi_step)
-                    <span class="text-xs text-base-content/50">Enable to create wizard-style forms with multiple steps</span>
+                    <span class="text-xs text-base-content/50">{{ __( 'Enable to create wizard-style forms with multiple steps' ) }}</span>
                 @endif
             </div>
         </div>
@@ -101,12 +101,12 @@
         aria-live="polite"
         aria-atomic="true"
         x-data="{ message: '' }"
-        @field-added.window="message = 'Field added to form'"
-        @field-deleted.window="message = 'Field removed from form'"
-        @field-duplicated.window="message = 'Field duplicated'"
-        @step-added.window="message = 'Step added to form'"
-        @step-deleted.window="message = 'Step removed from form'"
-        @form-saved.window="message = 'Form saved successfully'"
+        @field-added.window="message = @js(__( 'Field added to form' ))"
+        @field-deleted.window="message = @js(__( 'Field removed from form' ))"
+        @field-duplicated.window="message = @js(__( 'Field duplicated' ))"
+        @step-added.window="message = @js(__( 'Step added to form' ))"
+        @step-deleted.window="message = @js(__( 'Step removed from form' ))"
+        @form-saved.window="message = @js(__( 'Form saved successfully' ))"
         x-text="message"
     ></div>
 </div>

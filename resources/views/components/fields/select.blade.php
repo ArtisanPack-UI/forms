@@ -7,7 +7,7 @@
 
 <x-artisanpack-select
     :label="$field->label"
-    :placeholder="$field->placeholder ?? 'Select an option...'"
+    :placeholder="$field->placeholder ?? __( 'Select an option...' )"
     :hint="$field->help_text"
     :error="$error"
     :required="$field->is_required"

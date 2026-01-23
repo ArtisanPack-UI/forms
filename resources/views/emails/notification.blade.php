@@ -164,7 +164,7 @@
                                 {{ $submission->form->name }}
                             </h1>
                             <p style="margin: 8px 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">
-                                New Submission &middot; {{ $submission->created_at->format('F j, Y \a\t g:i A') }}
+                                {{ __( 'New Submission' ) }} &middot; {{ $submission->created_at->format('F j, Y \a\t g:i A') }}
                             </p>
                         </td>
                     </tr>
@@ -183,7 +183,7 @@
                             @if($notification->include_submission_data)
                                 <div class="submission-data" style="margin: 24px 0;">
                                     <h2 style="margin: 0 0 16px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; font-size: 18px; font-weight: 600; color: #1f2937;">
-                                        Submission Details
+                                        {{ __( 'Submission Details' ) }}
                                     </h2>
                                     {!! $submissionDataTable !!}
                                 </div>
@@ -191,7 +191,7 @@
 
                             <!-- Submission Reference -->
                             <p style="margin: 24px 0 0; font-size: 14px; color: #6b7280;">
-                                <strong>Reference:</strong> {{ $submission->submission_number }}
+                                <strong>{{ __( 'Reference' ) }}:</strong> {{ $submission->submission_number }}
                             </p>
                         </td>
                     </tr>
@@ -200,7 +200,7 @@
                     <tr>
                         <td class="email-footer" style="background-color: #f9fafb; padding: 24px; border-top: 1px solid #e5e7eb;">
                             <p style="margin: 0; font-size: 12px; color: #6b7280; text-align: center;">
-                                This email was sent from {{ config('app.name') }}
+                                {{ __( 'This email was sent from :name', ['name' => config('app.name')] ) }}
                             </p>
 
                             @if($submission->page_url || ($showIpAddress && $submission->ip_address))
@@ -212,7 +212,7 @@
                                             $isSafeUrl = preg_match('/^https?:\/\//i', $pageUrl);
                                         @endphp
                                         <p style="margin: 4px 0; font-size: 12px; color: #6b7280; text-align: center;">
-                                            <strong>Page URL:</strong>
+                                            <strong>{{ __( 'Page URL' ) }}:</strong>
                                             @if($isSafeUrl)
                                                 <a href="{{ e($pageUrl) }}" style="color: #3b82f6; text-decoration: underline;">{{ e($pageUrl) }}</a>
                                             @else
@@ -222,7 +222,7 @@
                                     @endif
                                     @if($showIpAddress && $submission->ip_address)
                                         <p style="margin: 4px 0; font-size: 12px; color: #6b7280; text-align: center;">
-                                            <strong>IP Address:</strong> {{ $submission->ip_address }}
+                                            <strong>{{ __( 'IP Address' ) }}:</strong> {{ $submission->ip_address }}
                                         </p>
                                     @endif
                                 </div>

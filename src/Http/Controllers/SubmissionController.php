@@ -161,7 +161,7 @@ class SubmissionController extends Controller
         $this->authorize( 'view', $submission );
 
         if ( ! Storage::disk( $upload->disk )->exists( $upload->path ) ) {
-            abort( 404, 'File not found.' );
+            abort( 404, __( 'File not found.' ) );
         }
 
         return Storage::disk( $upload->disk )->download( $upload->path, $upload->original_name );

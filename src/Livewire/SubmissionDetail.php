@@ -187,7 +187,7 @@ class SubmissionDetail extends Component
             $formSlug = $submission->form->slug;
             $submission->delete();
 
-            session()->flash( 'success', 'Submission deleted successfully.' );
+            session()->flash( 'success', __( 'Submission deleted successfully.' ) );
 
             $this->redirect( route( 'forms.submissions.index', $formSlug ) );
         }

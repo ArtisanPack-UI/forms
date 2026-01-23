@@ -32,257 +32,184 @@ namespace ArtisanPackUI\Forms\Config;
 class FieldTypes
 {
     /**
-     * Field type categories for organizing the palette.
+     * Field type category keys for organizing the palette.
      *
      * @since 1.0.0
      *
-     * @var array<string, array{label: string, fields: array<string>}>
+     * @var array<string, array<string>>
      */
-    public const CATEGORIES = [
-        'basic' => [
-            'label'  => 'Basic Fields',
-            'fields' => ['text', 'email', 'phone', 'number', 'url', 'textarea', 'hidden'],
-        ],
-        'choice' => [
-            'label'  => 'Choice Fields',
-            'fields' => ['select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple'],
-        ],
-        'advanced' => [
-            'label'  => 'Advanced Fields',
-            'fields' => ['file', 'date', 'time'],
-        ],
-        'layout' => [
-            'label'  => 'Layout Elements',
-            'fields' => ['heading', 'paragraph', 'divider', 'html'],
-        ],
+    public const CATEGORY_FIELDS = [
+        'basic'    => ['text', 'email', 'phone', 'number', 'url', 'textarea', 'hidden'],
+        'choice'   => ['select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple'],
+        'advanced' => ['file', 'date', 'time'],
+        'layout'   => ['heading', 'paragraph', 'divider', 'html'],
     ];
 
     /**
-     * Field type definitions with metadata.
+     * Gets field type categories for organizing the palette.
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, array{label: string, fields: array<string>}> The field categories.
+     */
+    public static function categories(): array
+    {
+        return [
+            'basic' => [
+                'label'  => __( 'Basic Fields' ),
+                'fields' => self::CATEGORY_FIELDS['basic'],
+            ],
+            'choice' => [
+                'label'  => __( 'Choice Fields' ),
+                'fields' => self::CATEGORY_FIELDS['choice'],
+            ],
+            'advanced' => [
+                'label'  => __( 'Advanced Fields' ),
+                'fields' => self::CATEGORY_FIELDS['advanced'],
+            ],
+            'layout' => [
+                'label'  => __( 'Layout Elements' ),
+                'fields' => self::CATEGORY_FIELDS['layout'],
+            ],
+        ];
+    }
+
+    /**
+     * Field type keys for metadata.
      *
      * @since 1.0.0
      *
      * @var array<string, array{
-     *     label: string,
      *     icon: string,
      *     category: string,
      *     has_options: bool,
      *     supports_placeholder: bool,
      *     supports_default_value: bool,
-     *     validation_options: array<string>,
-     *     defaults: array<string, mixed>
+     *     validation_options: array<string>
      * }>
      */
-    public const TYPES = [
+    public const TYPE_METADATA = [
         'text' => [
-            'label'                  => 'Text Input',
             'icon'                   => 'o-document-text',
             'category'               => 'basic',
             'has_options'            => false,
             'supports_placeholder'   => true,
             'supports_default_value' => true,
             'validation_options'     => ['min', 'max', 'pattern'],
-            'defaults'               => [
-                'label'       => 'Text Field',
-                'placeholder' => '',
-            ],
         ],
         'email' => [
-            'label'                  => 'Email',
             'icon'                   => 'o-envelope',
             'category'               => 'basic',
             'has_options'            => false,
             'supports_placeholder'   => true,
             'supports_default_value' => true,
             'validation_options'     => ['min', 'max'],
-            'defaults'               => [
-                'label'       => 'Email Address',
-                'placeholder' => 'you@example.com',
-            ],
         ],
         'number' => [
-            'label'                  => 'Number',
             'icon'                   => 'o-hashtag',
             'category'               => 'basic',
             'has_options'            => false,
             'supports_placeholder'   => true,
             'supports_default_value' => true,
             'validation_options'     => ['min', 'max', 'step'],
-            'defaults'               => [
-                'label'       => 'Number',
-                'placeholder' => '',
-            ],
         ],
         'url' => [
-            'label'                  => 'URL',
             'icon'                   => 'o-link',
             'category'               => 'basic',
             'has_options'            => false,
             'supports_placeholder'   => true,
             'supports_default_value' => true,
             'validation_options'     => ['min', 'max'],
-            'defaults'               => [
-                'label'       => 'Website URL',
-                'placeholder' => 'https://example.com',
-            ],
         ],
         'textarea' => [
-            'label'                  => 'Text Area',
             'icon'                   => 'o-bars-3-bottom-left',
             'category'               => 'basic',
             'has_options'            => false,
             'supports_placeholder'   => true,
             'supports_default_value' => true,
             'validation_options'     => ['min', 'max'],
-            'defaults'               => [
-                'label'        => 'Message',
-                'placeholder'  => '',
-                'field_config' => ['rows' => 4],
-            ],
         ],
         'hidden' => [
-            'label'                  => 'Hidden Field',
             'icon'                   => 'o-eye-slash',
             'category'               => 'basic',
             'has_options'            => false,
             'supports_placeholder'   => false,
             'supports_default_value' => true,
             'validation_options'     => [],
-            'defaults'               => [
-                'label' => 'Hidden Field',
-            ],
         ],
         'select' => [
-            'label'                  => 'Dropdown Select',
             'icon'                   => 'o-chevron-down',
             'category'               => 'choice',
             'has_options'            => true,
             'supports_placeholder'   => true,
             'supports_default_value' => true,
             'validation_options'     => [],
-            'defaults'               => [
-                'label'        => 'Select an Option',
-                'placeholder'  => 'Choose...',
-                'field_config' => [
-                    'options' => [],
-                ],
-            ],
         ],
         'radio' => [
-            'label'                  => 'Radio Buttons',
             'icon'                   => 'o-stop-circle',
             'category'               => 'choice',
             'has_options'            => true,
             'supports_placeholder'   => false,
             'supports_default_value' => true,
             'validation_options'     => [],
-            'defaults'               => [
-                'label'        => 'Choose One',
-                'field_config' => [
-                    'options' => [],
-                ],
-            ],
         ],
         'checkbox' => [
-            'label'                  => 'Single Checkbox',
             'icon'                   => 'o-check-circle',
             'category'               => 'choice',
             'has_options'            => false,
             'supports_placeholder'   => false,
             'supports_default_value' => true,
             'validation_options'     => [],
-            'defaults'               => [
-                'label' => 'I agree to the terms',
-            ],
         ],
         'checkbox_group' => [
-            'label'                  => 'Checkbox Group',
             'icon'                   => 'o-list-bullet',
             'category'               => 'choice',
             'has_options'            => true,
             'supports_placeholder'   => false,
             'supports_default_value' => false,
             'validation_options'     => ['min', 'max'],
-            'defaults'               => [
-                'label'        => 'Select Options',
-                'field_config' => [
-                    'options' => [],
-                ],
-            ],
         ],
         'select_multiple' => [
-            'label'                  => 'Multi-Select',
             'icon'                   => 'o-queue-list',
             'category'               => 'choice',
             'has_options'            => true,
             'supports_placeholder'   => false,
             'supports_default_value' => false,
             'validation_options'     => ['min', 'max'],
-            'defaults'               => [
-                'label'        => 'Select Multiple Options',
-                'field_config' => [
-                    'options' => [],
-                ],
-            ],
         ],
         'file' => [
-            'label'                  => 'File Upload',
             'icon'                   => 'o-paper-clip',
             'category'               => 'advanced',
             'has_options'            => false,
             'supports_placeholder'   => false,
             'supports_default_value' => false,
             'validation_options'     => ['max_size', 'allowed_types'],
-            'defaults'               => [
-                'label'        => 'Upload File',
-                'field_config' => [
-                    'max_size'      => 5120,
-                    'allowed_types' => ['pdf', 'doc', 'docx', 'jpg', 'png'],
-                ],
-            ],
         ],
         'date' => [
-            'label'                  => 'Date Picker',
             'icon'                   => 'o-calendar',
             'category'               => 'advanced',
             'has_options'            => false,
             'supports_placeholder'   => false,
             'supports_default_value' => true,
             'validation_options'     => ['min_date', 'max_date'],
-            'defaults'               => [
-                'label' => 'Select Date',
-            ],
         ],
         'phone' => [
-            'label'                  => 'Phone Number',
             'icon'                   => 'o-phone',
             'category'               => 'basic',
             'has_options'            => false,
             'supports_placeholder'   => true,
             'supports_default_value' => true,
             'validation_options'     => ['pattern'],
-            'defaults'               => [
-                'label'       => 'Phone Number',
-                'placeholder' => '(123) 456-7890',
-            ],
         ],
         'time' => [
-            'label'                  => 'Time Picker',
             'icon'                   => 'o-clock',
             'category'               => 'advanced',
             'has_options'            => false,
             'supports_placeholder'   => false,
             'supports_default_value' => true,
             'validation_options'     => ['min_time', 'max_time'],
-            'defaults'               => [
-                'label'        => 'Select Time',
-                'field_config' => [
-                    'step' => 60,
-                ],
-            ],
         ],
         'heading' => [
-            'label'                  => 'Heading',
             'icon'                   => 'o-h1',
             'category'               => 'layout',
             'has_options'            => false,
@@ -290,15 +217,8 @@ class FieldTypes
             'supports_default_value' => false,
             'is_layout'              => true,
             'validation_options'     => [],
-            'defaults'               => [
-                'label'        => 'Section Heading',
-                'field_config' => [
-                    'level' => 'h3',
-                ],
-            ],
         ],
         'paragraph' => [
-            'label'                  => 'Paragraph Text',
             'icon'                   => 'o-document-text',
             'category'               => 'layout',
             'has_options'            => false,
@@ -306,13 +226,8 @@ class FieldTypes
             'supports_default_value' => false,
             'is_layout'              => true,
             'validation_options'     => [],
-            'defaults'               => [
-                'label'     => 'Information',
-                'help_text' => 'Add descriptive text here.',
-            ],
         ],
         'divider' => [
-            'label'                  => 'Divider',
             'icon'                   => 'o-minus',
             'category'               => 'layout',
             'has_options'            => false,
@@ -320,16 +235,8 @@ class FieldTypes
             'supports_default_value' => false,
             'is_layout'              => true,
             'validation_options'     => [],
-            'defaults'               => [
-                'label'        => 'Divider',
-                'field_config' => [
-                    'style'   => 'solid',
-                    'spacing' => 'normal',
-                ],
-            ],
         ],
         'html' => [
-            'label'                  => 'Custom HTML',
             'icon'                   => 'o-code-bracket',
             'category'               => 'layout',
             'has_options'            => false,
@@ -337,40 +244,216 @@ class FieldTypes
             'supports_default_value' => false,
             'is_layout'              => true,
             'validation_options'     => [],
-            'defaults'               => [
-                'label'        => 'Custom Content',
-                'field_config' => [
-                    'content' => '',
-                ],
-            ],
         ],
     ];
 
     /**
-     * Width options for field layout.
+     * Gets field type definitions with translated labels.
      *
      * @since 1.0.0
      *
-     * @var array<string, array{label: string, class: string}>
+     * @return array<string, array<string, mixed>> The field type definitions.
      */
-    public const WIDTHS = [
-        'full' => [
-            'label' => 'Full Width',
-            'class' => 'w-full',
-        ],
-        'half' => [
-            'label' => 'Half Width',
-            'class' => 'w-1/2',
-        ],
-        'third' => [
-            'label' => 'One Third',
-            'class' => 'w-1/3',
-        ],
-        'two-thirds' => [
-            'label' => 'Two Thirds',
-            'class' => 'w-2/3',
-        ],
+    public static function types(): array
+    {
+        return [
+            'text' => array_merge( self::TYPE_METADATA['text'], [
+                'label'    => __( 'Text Input' ),
+                'defaults' => [
+                    'label'       => __( 'Text Field' ),
+                    'placeholder' => '',
+                ],
+            ] ),
+            'email' => array_merge( self::TYPE_METADATA['email'], [
+                'label'    => __( 'Email' ),
+                'defaults' => [
+                    'label'       => __( 'Email Address' ),
+                    'placeholder' => __( 'you@example.com' ),
+                ],
+            ] ),
+            'number' => array_merge( self::TYPE_METADATA['number'], [
+                'label'    => __( 'Number' ),
+                'defaults' => [
+                    'label'       => __( 'Number' ),
+                    'placeholder' => '',
+                ],
+            ] ),
+            'url' => array_merge( self::TYPE_METADATA['url'], [
+                'label'    => __( 'URL' ),
+                'defaults' => [
+                    'label'       => __( 'Website URL' ),
+                    'placeholder' => 'https://example.com',
+                ],
+            ] ),
+            'textarea' => array_merge( self::TYPE_METADATA['textarea'], [
+                'label'    => __( 'Text Area' ),
+                'defaults' => [
+                    'label'        => __( 'Message' ),
+                    'placeholder'  => '',
+                    'field_config' => ['rows' => 4],
+                ],
+            ] ),
+            'hidden' => array_merge( self::TYPE_METADATA['hidden'], [
+                'label'    => __( 'Hidden Field' ),
+                'defaults' => [
+                    'label' => __( 'Hidden Field' ),
+                ],
+            ] ),
+            'select' => array_merge( self::TYPE_METADATA['select'], [
+                'label'    => __( 'Dropdown Select' ),
+                'defaults' => [
+                    'label'        => __( 'Select an Option' ),
+                    'placeholder'  => __( 'Choose...' ),
+                    'field_config' => [
+                        'options' => [],
+                    ],
+                ],
+            ] ),
+            'radio' => array_merge( self::TYPE_METADATA['radio'], [
+                'label'    => __( 'Radio Buttons' ),
+                'defaults' => [
+                    'label'        => __( 'Choose One' ),
+                    'field_config' => [
+                        'options' => [],
+                    ],
+                ],
+            ] ),
+            'checkbox' => array_merge( self::TYPE_METADATA['checkbox'], [
+                'label'    => __( 'Single Checkbox' ),
+                'defaults' => [
+                    'label' => __( 'I agree to the terms' ),
+                ],
+            ] ),
+            'checkbox_group' => array_merge( self::TYPE_METADATA['checkbox_group'], [
+                'label'    => __( 'Checkbox Group' ),
+                'defaults' => [
+                    'label'        => __( 'Select Options' ),
+                    'field_config' => [
+                        'options' => [],
+                    ],
+                ],
+            ] ),
+            'select_multiple' => array_merge( self::TYPE_METADATA['select_multiple'], [
+                'label'    => __( 'Multi-Select' ),
+                'defaults' => [
+                    'label'        => __( 'Select Multiple Options' ),
+                    'field_config' => [
+                        'options' => [],
+                    ],
+                ],
+            ] ),
+            'file' => array_merge( self::TYPE_METADATA['file'], [
+                'label'    => __( 'File Upload' ),
+                'defaults' => [
+                    'label'        => __( 'Upload File' ),
+                    'field_config' => [
+                        'max_size'      => 5120,
+                        'allowed_types' => ['pdf', 'doc', 'docx', 'jpg', 'png'],
+                    ],
+                ],
+            ] ),
+            'date' => array_merge( self::TYPE_METADATA['date'], [
+                'label'    => __( 'Date Picker' ),
+                'defaults' => [
+                    'label' => __( 'Select Date' ),
+                ],
+            ] ),
+            'phone' => array_merge( self::TYPE_METADATA['phone'], [
+                'label'    => __( 'Phone Number' ),
+                'defaults' => [
+                    'label'       => __( 'Phone Number' ),
+                    'placeholder' => '(123) 456-7890',
+                ],
+            ] ),
+            'time' => array_merge( self::TYPE_METADATA['time'], [
+                'label'    => __( 'Time Picker' ),
+                'defaults' => [
+                    'label'        => __( 'Select Time' ),
+                    'field_config' => [
+                        'step' => 60,
+                    ],
+                ],
+            ] ),
+            'heading' => array_merge( self::TYPE_METADATA['heading'], [
+                'label'    => __( 'Heading' ),
+                'defaults' => [
+                    'label'        => __( 'Section Heading' ),
+                    'field_config' => [
+                        'level' => 'h3',
+                    ],
+                ],
+            ] ),
+            'paragraph' => array_merge( self::TYPE_METADATA['paragraph'], [
+                'label'    => __( 'Paragraph Text' ),
+                'defaults' => [
+                    'label'     => __( 'Information' ),
+                    'help_text' => __( 'Add descriptive text here.' ),
+                ],
+            ] ),
+            'divider' => array_merge( self::TYPE_METADATA['divider'], [
+                'label'    => __( 'Divider' ),
+                'defaults' => [
+                    'label'        => __( 'Divider' ),
+                    'field_config' => [
+                        'style'   => 'solid',
+                        'spacing' => 'normal',
+                    ],
+                ],
+            ] ),
+            'html' => array_merge( self::TYPE_METADATA['html'], [
+                'label'    => __( 'Custom HTML' ),
+                'defaults' => [
+                    'label'        => __( 'Custom Content' ),
+                    'field_config' => [
+                        'content' => '',
+                    ],
+                ],
+            ] ),
+        ];
+    }
+
+    /**
+     * Width option CSS classes.
+     *
+     * @since 1.0.0
+     *
+     * @var array<string, string>
+     */
+    public const WIDTH_CLASSES = [
+        'full'       => 'w-full',
+        'half'       => 'w-1/2',
+        'third'      => 'w-1/3',
+        'two-thirds' => 'w-2/3',
     ];
+
+    /**
+     * Gets width options for field layout with translated labels.
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, array{label: string, class: string}> The width options.
+     */
+    public static function widths(): array
+    {
+        return [
+            'full' => [
+                'label' => __( 'Full Width' ),
+                'class' => self::WIDTH_CLASSES['full'],
+            ],
+            'half' => [
+                'label' => __( 'Half Width' ),
+                'class' => self::WIDTH_CLASSES['half'],
+            ],
+            'third' => [
+                'label' => __( 'One Third' ),
+                'class' => self::WIDTH_CLASSES['third'],
+            ],
+            'two-thirds' => [
+                'label' => __( 'Two Thirds' ),
+                'class' => self::WIDTH_CLASSES['two-thirds'],
+            ],
+        ];
+    }
 
     /**
      * Gets all field categories with their field types.
@@ -381,7 +464,7 @@ class FieldTypes
      */
     public static function getCategories(): array
     {
-        return self::CATEGORIES;
+        return self::categories();
     }
 
     /**
@@ -396,7 +479,7 @@ class FieldTypes
      */
     public static function getTypes(): array
     {
-        $types = self::TYPES;
+        $types = self::types();
 
         // Apply filter hook for extensibility
         if ( function_exists( 'applyFilters' ) ) {
@@ -418,7 +501,7 @@ class FieldTypes
      */
     public static function getCategoriesFiltered(): array
     {
-        $categories = self::CATEGORIES;
+        $categories = self::categories();
 
         // Apply filter hook for extensibility
         if ( function_exists( 'applyFilters' ) ) {
@@ -501,7 +584,7 @@ class FieldTypes
      */
     public static function getWidths(): array
     {
-        return self::WIDTHS;
+        return self::widths();
     }
 
     /**

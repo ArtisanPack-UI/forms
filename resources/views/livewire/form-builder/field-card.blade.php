@@ -14,8 +14,8 @@
         <button
             type="button"
             class="drag-handle mt-1 cursor-grab text-base-content/40 hover:text-base-content/60 active:cursor-grabbing"
-            title="Drag to reorder"
-            aria-label="Drag to reorder field"
+            title="{{ __( 'Drag to reorder' ) }}"
+            aria-label="{{ __( 'Drag to reorder field' ) }}"
         >
             <x-artisanpack-icon name="o-bars-3" class="h-4 w-4" />
         </button>
@@ -35,7 +35,7 @@
                 <div class="flex items-center gap-2">
                     <span class="truncate font-medium">{{ $field->label }}</span>
                     @if ($field->is_required)
-                        <span class="text-error" title="Required">*</span>
+                        <span class="text-error" title="{{ __( 'Required' ) }}">*</span>
                     @endif
                 </div>
                 <div class="flex items-center gap-2 text-xs text-base-content/60">
@@ -56,18 +56,18 @@
                 type="button"
                 wire:click="duplicateField('{{ $field->uuid }}')"
                 class="btn btn-ghost btn-xs"
-                title="Duplicate field"
-                aria-label="Duplicate {{ $field->label }}"
+                title="{{ __( 'Duplicate field' ) }}"
+                aria-label="{{ __( 'Duplicate :label', ['label' => $field->label] ) }}"
             >
                 <x-artisanpack-icon name="o-document-duplicate" class="h-4 w-4" />
             </button>
             <button
                 type="button"
                 wire:click="deleteField('{{ $field->uuid }}')"
-                wire:confirm="Are you sure you want to delete this field?"
+                wire:confirm="{{ __( 'Are you sure you want to delete this field?' ) }}"
                 class="btn btn-ghost btn-xs text-error hover:bg-error/10"
-                title="Delete field"
-                aria-label="Delete {{ $field->label }}"
+                title="{{ __( 'Delete field' ) }}"
+                aria-label="{{ __( 'Delete :label', ['label' => $field->label] ) }}"
             >
                 <x-artisanpack-icon name="o-trash" class="h-4 w-4" />
             </button>
@@ -78,7 +78,7 @@
     @if ($field->has_conditional_logic)
         <div class="mt-2 flex items-center gap-1 text-xs text-warning">
             <x-artisanpack-icon name="o-adjustments-horizontal" class="h-3 w-3" />
-            <span>Has conditional logic</span>
+            <span>{{ __( 'Has conditional logic' ) }}</span>
         </div>
     @endif
 </div>

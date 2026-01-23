@@ -63,7 +63,7 @@ class ExportService
             $handle = fopen( 'php://output', 'w' );
 
             if ( false === $handle ) {
-                throw new RuntimeException( 'Failed to open output stream for CSV export.' );
+                throw new RuntimeException( __( 'Failed to open output stream for CSV export.' ) );
             }
 
             // Write headers
@@ -95,10 +95,12 @@ class ExportService
      */
     public function buildHeaders( Form $form ): array
     {
+        $localizeHeaders = config( 'artisanpack.forms.export.localize_headers', false );
+
         $headers = [
-            'Submission ID',
-            'Submission Number',
-            'Submitted At',
+            $localizeHeaders ? __( 'Submission ID' ) : 'Submission ID',
+            $localizeHeaders ? __( 'Submission Number' ) : 'Submission Number',
+            $localizeHeaders ? __( 'Submitted At' ) : 'Submitted At',
         ];
 
         // Add field headers
@@ -112,16 +114,16 @@ class ExportService
         }
 
         // Add metadata headers
-        $headers[] = 'Page URL';
+        $headers[] = $localizeHeaders ? __( 'Page URL' ) : 'Page URL';
 
         // Only include IP Address header if explicitly enabled in config
         if ( config( 'artisanpack.forms.privacy.include_ip_address', false ) ) {
-            $headers[] = 'IP Address';
+            $headers[] = $localizeHeaders ? __( 'IP Address' ) : 'IP Address';
         }
 
-        $headers[] = 'Is Read';
-        $headers[] = 'Is Spam';
-        $headers[] = 'Is Starred';
+        $headers[] = $localizeHeaders ? __( 'Is Read' ) : 'Is Read';
+        $headers[] = $localizeHeaders ? __( 'Is Spam' ) : 'Is Spam';
+        $headers[] = $localizeHeaders ? __( 'Is Starred' ) : 'Is Starred';
 
         // Apply filter hook for extensibility
         if ( function_exists( 'applyFilters' ) ) {
@@ -195,9 +197,19 @@ class ExportService
             $row[] = $submission->ip_address ?? '';
         }
 
-        $row[] = $submission->is_read ? 'Yes' : 'No';
-        $row[] = $submission->is_spam ? 'Yes' : 'No';
-        $row[] = $submission->is_starred ? 'Yes' : 'No';
+        // Use stable boolean values (1/0) by default for machine parsing
+        // Use localized Yes/No only when explicitly enabled
+        $localizeBooleans = config( 'artisanpack.forms.export.localize_booleans', false );
+
+        if ( $localizeBooleans ) {
+            $row[] = $submission->is_read ? __( 'Yes' ) : __( 'No' );
+            $row[] = $submission->is_spam ? __( 'Yes' ) : __( 'No' );
+            $row[] = $submission->is_starred ? __( 'Yes' ) : __( 'No' );
+        } else {
+            $row[] = $submission->is_read ? '1' : '0';
+            $row[] = $submission->is_spam ? '1' : '0';
+            $row[] = $submission->is_starred ? '1' : '0';
+        }
 
         // Apply filter hook for extensibility
         if ( function_exists( 'applyFilters' ) ) {
