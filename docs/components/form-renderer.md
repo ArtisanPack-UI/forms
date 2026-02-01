@@ -348,6 +348,6 @@ class CustomFormRenderer extends FormRenderer
 
 ## Next Steps
 
-- [Form Renderer Usage](../usage/form-renderer.md) - Usage guide
-- [FormsList](./forms-list.md) - Forms listing component
-- [Submissions](../usage/submissions.md) - Submission handling
+- [Form Renderer Usage](Usage-Form-Renderer) - Usage guide
+- [FormsList](Forms-List) - Forms listing component
+- [Submissions](Usage-Submissions) - Submission handling

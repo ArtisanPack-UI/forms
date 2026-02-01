@@ -150,6 +150,6 @@ php artisan storage:link
 
 ## Next Steps
 
-- [Requirements](./requirements.md) - Check system requirements
-- [Configuration](./configuration.md) - Customize package settings
-- [Quick Start Guide](../getting-started.md) - Create your first form
+- [Requirements](Requirements) - Check system requirements
+- [Configuration](Configuration) - Customize package settings
+- [Quick Start Guide](Getting-Started) - Create your first form

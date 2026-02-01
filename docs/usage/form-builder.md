@@ -255,6 +255,6 @@ $newForm = $formService->duplicate($originalForm);
 
 ## Next Steps
 
-- [Form Renderer](./form-renderer.md) - Display forms on your site
-- [Multi-Step Forms](./multi-step-forms.md) - Create multi-step forms
-- [Conditional Logic](./conditional-logic.md) - Add conditional field visibility
+- [Form Renderer](Form-Renderer) - Display forms on your site
+- [Multi-Step Forms](Multi-Step-Forms) - Create multi-step forms
+- [Conditional Logic](Conditional-Logic) - Add conditional field visibility

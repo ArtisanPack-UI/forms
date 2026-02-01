@@ -297,6 +297,6 @@ addFilter('forms.webhook_payload', function ($payload, $form, $submission) {
 
 ## Next Steps
 
-- [Spam Protection](./spam-protection.md) - Protect forms from abuse
-- [Events](../api/events.md) - Event-driven integrations
-- [Configuration](../installation/configuration.md) - All configuration options
+- [Spam Protection](Spam-Protection) - Protect forms from abuse
+- [Events](Api-Events) - Event-driven integrations
+- [Configuration](Installation-Configuration) - All configuration options

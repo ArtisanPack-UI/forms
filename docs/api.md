@@ -8,12 +8,12 @@ Technical reference documentation for ArtisanPack UI Forms classes, services, an
 
 ## API Topics
 
-- [API Overview](./api/api.md) - Introduction to the package API
-- [Models](./api/models.md) - Eloquent model reference
-- [Services](./api/services.md) - Service class documentation
-- [Events](./api/events.md) - Event classes and listeners
-- [Jobs](./api/jobs.md) - Queue job classes
-- [Policies](./api/policies.md) - Authorization policies
+- [API Overview](Api-Api) - Introduction to the package API
+- [Models](Api-Models) - Eloquent model reference
+- [Services](Api-Services) - Service class documentation
+- [Events](Api-Events) - Event classes and listeners
+- [Jobs](Api-Jobs) - Queue job classes
+- [Policies](Api-Policies) - Authorization policies
 
 ## Quick Reference
 
@@ -42,4 +42,4 @@ Technical reference documentation for ArtisanPack UI Forms classes, services, an
 | `ExportService` | Data export |
 | `IntegrationService` | Third-party integrations |
 
-For detailed API documentation, see [API Overview](./api/api.md).
+For detailed API documentation, see [API Overview](Api-Api).

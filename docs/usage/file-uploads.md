@@ -292,6 +292,6 @@ $upload->disk; // Should match configured disk
 
 ## Next Steps
 
-- [Multi-Step Forms](./multi-step-forms.md) - Create multi-step forms
-- [Notifications](./notifications.md) - Include uploads in notifications
-- [Submissions](./submissions.md) - Managing submission data
+- [Multi-Step Forms](Multi-Step-Forms) - Create multi-step forms
+- [Notifications](Notifications) - Include uploads in notifications
+- [Submissions](Submissions) - Managing submission data

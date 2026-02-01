@@ -236,6 +236,6 @@ The form renderer follows WCAG guidelines:
 
 ## Next Steps
 
-- [Submissions](./submissions.md) - View and manage submissions
-- [Notifications](./notifications.md) - Configure email notifications
-- [Multi-Step Forms](./multi-step-forms.md) - Multi-step form display
+- [Submissions](Submissions) - View and manage submissions
+- [Notifications](Notifications) - Configure email notifications
+- [Multi-Step Forms](Multi-Step-Forms) - Multi-step form display

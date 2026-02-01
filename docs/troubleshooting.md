@@ -386,7 +386,7 @@ php artisan tinker
 
 If you can't resolve an issue:
 
-1. Check the [FAQ](./faq.md)
+1. Check the [FAQ](Faq)
 2. Search existing issues on GitLab
 3. Create a detailed bug report with:
    - Laravel and package versions
@@ -394,4 +394,4 @@ If you can't resolve an issue:
    - Error messages
    - Relevant configuration
 
-Contact: [support@artisanpackui.dev](mailto:support@artisanpackui.dev)
+Contact: [support@artisanpackui.dev](Mailto:Support@Artisanpackui.Dev)

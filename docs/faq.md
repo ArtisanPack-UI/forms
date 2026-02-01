@@ -289,6 +289,6 @@ Livewire::component('custom-form-renderer', CustomFormRenderer::class);
 
 ## Next Steps
 
-- [Troubleshooting](./troubleshooting.md) - Common issues
-- [Installation](./installation/installation.md) - Getting started
-- [Configuration](./installation/configuration.md) - All settings
+- [Troubleshooting](Troubleshooting) - Common issues
+- [Installation](Installation-Installation) - Getting started
+- [Configuration](Installation-Configuration) - All settings

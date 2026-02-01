@@ -8,11 +8,11 @@ Advanced configuration and integration options for ArtisanPack UI Forms.
 
 ## Advanced Topics
 
-- [Advanced Overview](./advanced/advanced.md) - Introduction to advanced features
-- [Webhooks](./advanced/webhooks.md) - Send data to external services
-- [Spam Protection](./advanced/spam-protection.md) - Protect forms from spam
-- [Customization](./advanced/customization.md) - Extend and customize the package
-- [Artisan Commands](./advanced/artisan-commands.md) - CLI commands
+- [Advanced Overview](Advanced-Advanced) - Introduction to advanced features
+- [Webhooks](Advanced-Webhooks) - Send data to external services
+- [Spam Protection](Advanced-Spam-Protection) - Protect forms from spam
+- [Customization](Advanced-Customization) - Extend and customize the package
+- [Artisan Commands](Advanced-Artisan-Commands) - CLI commands
 
 ## Quick Reference
 
@@ -41,4 +41,4 @@ FORMS_WEBHOOK_SECRET=your-secret-key
 php artisan forms:prune-submissions --days=365
 ```
 
-For detailed documentation, see [Advanced Overview](./advanced/advanced.md).
+For detailed documentation, see [Advanced Overview](Advanced-Advanced).

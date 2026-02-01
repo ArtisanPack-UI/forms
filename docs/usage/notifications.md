@@ -262,6 +262,6 @@ $notificationService->sendTest($notification, 'test@example.com');
 
 ## Next Steps
 
-- [File Uploads](./file-uploads.md) - Handle uploaded files
-- [Webhooks](../advanced/webhooks.md) - Send data to external services
-- [Submissions](./submissions.md) - Manage submissions
+- [File Uploads](File-Uploads) - Handle uploaded files
+- [Webhooks](Advanced-Webhooks) - Send data to external services
+- [Submissions](Submissions) - Manage submissions

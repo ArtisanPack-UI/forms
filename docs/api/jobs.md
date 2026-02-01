@@ -281,6 +281,6 @@ command=php /var/www/html/artisan queue:work --queue=notifications,webhooks
 
 ## Next Steps
 
-- [Events](./events.md) - Event documentation
-- [Webhooks](../advanced/webhooks.md) - Webhook configuration
-- [Notifications](../usage/notifications.md) - Email notifications
+- [Events](Events) - Event documentation
+- [Webhooks](Advanced-Webhooks) - Webhook configuration
+- [Notifications](Usage-Notifications) - Email notifications

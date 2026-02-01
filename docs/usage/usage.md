@@ -183,7 +183,7 @@ The package supports 20+ field types:
 
 ## Next Steps
 
-- [Form Builder](./form-builder.md) - Create forms with the drag-and-drop builder
-- [Form Renderer](./form-renderer.md) - Display forms on your site
-- [Submissions](./submissions.md) - Manage form submissions
-- [Notifications](./notifications.md) - Configure email notifications
+- [Form Builder](Form-Builder) - Create forms with the drag-and-drop builder
+- [Form Renderer](Form-Renderer) - Display forms on your site
+- [Submissions](Submissions) - Manage form submissions
+- [Notifications](Notifications) - Configure email notifications

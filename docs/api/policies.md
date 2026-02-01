@@ -308,6 +308,6 @@ test('admin can update any form', function () {
 
 ## Next Steps
 
-- [Configuration](../installation/configuration.md) - Authorization settings
-- [Models](./models.md) - Model documentation
-- [Services](./services.md) - Service documentation
+- [Configuration](Installation-Configuration) - Authorization settings
+- [Models](Models) - Model documentation
+- [Services](Services) - Service documentation

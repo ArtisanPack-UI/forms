@@ -122,7 +122,7 @@ class SendSlackNotification
 
 ## Next Steps
 
-- [Installation Details](./installation/installation.md) - Complete installation guide
-- [Form Builder](./usage/form-builder.md) - Learn about the form builder interface
-- [Configuration](./installation/configuration.md) - Customize package behavior
-- [Notifications](./usage/notifications.md) - Set up email notifications
+- [Installation Details](Installation-Installation) - Complete installation guide
+- [Form Builder](Usage-Form-Builder) - Learn about the form builder interface
+- [Configuration](Installation-Configuration) - Customize package behavior
+- [Notifications](Usage-Notifications) - Set up email notifications

@@ -227,6 +227,6 @@ class CustomFormBuilder extends FormBuilder
 
 ## Next Steps
 
-- [FormRenderer](./form-renderer.md) - Display forms
-- [Form Builder Usage](../usage/form-builder.md) - Form builder guide
-- [Multi-Step Forms](../usage/multi-step-forms.md) - Multi-step configuration
+- [FormRenderer](Form-Renderer) - Display forms
+- [Form Builder Usage](Usage-Form-Builder) - Form builder guide
+- [Multi-Step Forms](Usage-Multi-Step-Forms) - Multi-step configuration

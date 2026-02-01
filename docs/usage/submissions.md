@@ -250,6 +250,6 @@ $allMeta = $submission->metadata; // JSON decoded array
 
 ## Next Steps
 
-- [Notifications](./notifications.md) - Email notifications for submissions
-- [File Uploads](./file-uploads.md) - Handling uploaded files
-- [API Reference](../api/api.md) - Detailed model and service documentation
+- [Notifications](Notifications) - Email notifications for submissions
+- [File Uploads](File-Uploads) - Handling uploaded files
+- [API Reference](Api-Api) - Detailed model and service documentation

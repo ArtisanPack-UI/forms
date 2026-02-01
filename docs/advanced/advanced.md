@@ -8,10 +8,10 @@ This section covers advanced features, integrations, and customization options.
 
 ## Topics
 
-- [Webhooks](./webhooks.md) - Send form data to external services
-- [Spam Protection](./spam-protection.md) - Protect forms from spam and abuse
-- [Customization](./customization.md) - Extend and customize the package
-- [Artisan Commands](./artisan-commands.md) - Command-line tools
+- [Webhooks](Webhooks) - Send form data to external services
+- [Spam Protection](Spam-Protection) - Protect forms from spam and abuse
+- [Customization](Customization) - Extend and customize the package
+- [Artisan Commands](Artisan-Commands) - Command-line tools
 
 ## Advanced Features
 
@@ -173,6 +173,6 @@ Event::listen(FormSubmitted::class, function ($event) {
 
 ## Next Steps
 
-- [Webhooks](./webhooks.md) - Detailed webhook documentation
-- [Spam Protection](./spam-protection.md) - Anti-spam configuration
-- [Customization](./customization.md) - Customization options
+- [Webhooks](Webhooks) - Detailed webhook documentation
+- [Spam Protection](Spam-Protection) - Anti-spam configuration
+- [Customization](Customization) - Customization options

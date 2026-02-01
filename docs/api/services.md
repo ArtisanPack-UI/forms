@@ -492,6 +492,6 @@ public function processSubmission(FormSubmission $submission): void
 
 ## Next Steps
 
-- [Events](./events.md) - Event documentation
-- [Jobs](./jobs.md) - Queue job documentation
-- [Models](./models.md) - Model documentation
+- [Events](Events) - Event documentation
+- [Jobs](Jobs) - Queue job documentation
+- [Models](Models) - Model documentation

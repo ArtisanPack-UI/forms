@@ -8,14 +8,14 @@ Learn how to use ArtisanPack UI Forms to create, display, and manage forms in yo
 
 ## Usage Topics
 
-- [Usage Overview](./usage/usage.md) - Introduction to using the package
-- [Form Builder](./usage/form-builder.md) - Create forms with the drag-and-drop builder
-- [Form Renderer](./usage/form-renderer.md) - Display forms on your site
-- [Submissions](./usage/submissions.md) - Manage form submissions
-- [Email Notifications](./usage/notifications.md) - Configure email notifications
-- [File Uploads](./usage/file-uploads.md) - Handle file attachments
-- [Multi-Step Forms](./usage/multi-step-forms.md) - Create multi-step forms
-- [Conditional Logic](./usage/conditional-logic.md) - Show/hide fields dynamically
+- [Usage Overview](Usage-Usage) - Introduction to using the package
+- [Form Builder](Usage-Form-Builder) - Create forms with the drag-and-drop builder
+- [Form Renderer](Usage-Form-Renderer) - Display forms on your site
+- [Submissions](Usage-Submissions) - Manage form submissions
+- [Email Notifications](Usage-Notifications) - Configure email notifications
+- [File Uploads](Usage-File-Uploads) - Handle file attachments
+- [Multi-Step Forms](Usage-Multi-Step-Forms) - Create multi-step forms
+- [Conditional Logic](Usage-Conditional-Logic) - Show/hide fields dynamically
 
 ## Quick Reference
 
@@ -37,4 +37,4 @@ Navigate to `/admin/forms` (or your configured prefix) to:
 - View and export submissions
 - Configure notifications
 
-For detailed usage guides, start with the [Usage Overview](./usage/usage.md).
+For detailed usage guides, start with the [Usage Overview](Usage-Usage).

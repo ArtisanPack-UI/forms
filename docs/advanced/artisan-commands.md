@@ -243,6 +243,6 @@ protected $commands = [
 
 ## Next Steps
 
-- [Configuration](../installation/configuration.md) - Configuration options
-- [Submissions](../usage/submissions.md) - Managing submissions
-- [Advanced Overview](./advanced.md) - Advanced features
+- [Configuration](Installation-Configuration) - Configuration options
+- [Submissions](Usage-Submissions) - Managing submissions
+- [Advanced Overview](Advanced) - Advanced features

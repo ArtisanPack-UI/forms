@@ -8,13 +8,13 @@ Pre-built Livewire components for form management and display.
 
 ## Component Topics
 
-- [Components Overview](./components/components.md) - Introduction to components
-- [FormBuilder](./components/form-builder.md) - Drag-and-drop form builder
-- [FormRenderer](./components/form-renderer.md) - Form display component
-- [FormsList](./components/forms-list.md) - Form listing component
-- [SubmissionsList](./components/submissions-list.md) - Submission listing
-- [SubmissionDetail](./components/submission-detail.md) - Submission detail view
-- [NotificationEditor](./components/notification-editor.md) - Notification configuration
+- [Components Overview](Components-Components) - Introduction to components
+- [FormBuilder](Components-Form-Builder) - Drag-and-drop form builder
+- [FormRenderer](Components-Form-Renderer) - Form display component
+- [FormsList](Components-Forms-List) - Form listing component
+- [SubmissionsList](Components-Submissions-List) - Submission listing
+- [SubmissionDetail](Components-Submission-Detail) - Submission detail view
+- [NotificationEditor](Components-Notification-Editor) - Notification configuration
 
 ## Quick Reference
 
@@ -40,4 +40,4 @@ Pre-built Livewire components for form management and display.
 <livewire:forms::form-renderer slug="contact" />
 ```
 
-For detailed component documentation, see [Components Overview](./components/components.md).
+For detailed component documentation, see [Components Overview](Components-Components).

@@ -266,6 +266,6 @@ Configure the form-uploads filesystem disk:
 
 ## Next Steps
 
-- [Installation Overview](./installation.md) - Complete installation
-- [Quick Start Guide](../getting-started.md) - Create your first form
-- [Form Builder](../usage/form-builder.md) - Learn the form builder
+- [Installation Overview](Installation) - Complete installation
+- [Quick Start Guide](Getting-Started) - Create your first form
+- [Form Builder](Usage-Form-Builder) - Learn the form builder

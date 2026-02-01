@@ -126,6 +126,6 @@ resources/views/livewire/
 
 ## Next Steps
 
-- [FormBuilder](./form-builder.md) - Form builder component
-- [FormRenderer](./form-renderer.md) - Form display component
-- [FormsList](./forms-list.md) - Form listing component
+- [FormBuilder](Form-Builder) - Form builder component
+- [FormRenderer](Form-Renderer) - Form display component
+- [FormsList](Forms-List) - Form listing component

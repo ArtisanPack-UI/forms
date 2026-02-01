@@ -199,6 +199,6 @@ Edit `resources/views/vendor/forms/livewire/submission-detail.blade.php`.
 
 ## Next Steps
 
-- [SubmissionsList](./submissions-list.md) - Submissions listing
-- [Submissions Usage](../usage/submissions.md) - Working with submissions
-- [File Uploads](../usage/file-uploads.md) - File handling
+- [SubmissionsList](Submissions-List) - Submissions listing
+- [Submissions Usage](Usage-Submissions) - Working with submissions
+- [File Uploads](Usage-File-Uploads) - File handling

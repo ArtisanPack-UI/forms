@@ -362,6 +362,6 @@ Route::middleware(['web', 'auth'])
 
 ## Next Steps
 
-- [API Reference](../api/api.md) - Detailed class documentation
-- [Filter Hooks](../api/events.md) - Event handling
-- [Configuration](../installation/configuration.md) - All settings
+- [API Reference](Api-Api) - Detailed class documentation
+- [Filter Hooks](Api-Events) - Event handling
+- [Configuration](Installation-Configuration) - All settings

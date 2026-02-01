@@ -174,6 +174,6 @@ doAction('forms.submitted', $form, $submission);
 
 ## Next Steps
 
-- [Models](./models.md) - Eloquent model documentation
-- [Services](./services.md) - Service class documentation
-- [Events](./events.md) - Event documentation
+- [Models](Models) - Eloquent model documentation
+- [Services](Services) - Service class documentation
+- [Events](Events) - Event documentation

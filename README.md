@@ -70,13 +70,13 @@ php artisan migrate
 
 ## 📖 Documentation
 
-Comprehensive documentation is available in our [Documentation Wiki](https://gitlab.com/jacob-martella-web-design/artisanpack-ui/forms/-/wikis/home):
+Comprehensive documentation is available in our [Documentation Wiki](https://github.com/ArtisanPack-UI/forms/wiki):
 
-- **[Installation Guide](https://gitlab.com/jacob-martella-web-design/artisanpack-ui/forms/-/wikis/installation/installation)** - Detailed setup instructions
-- **[Configuration](https://gitlab.com/jacob-martella-web-design/artisanpack-ui/forms/-/wikis/installation/configuration)** - All configuration options
-- **[Form Builder](https://gitlab.com/jacob-martella-web-design/artisanpack-ui/forms/-/wikis/usage/form-builder)** - Creating forms
-- **[Form Renderer](https://gitlab.com/jacob-martella-web-design/artisanpack-ui/forms/-/wikis/usage/form-renderer)** - Displaying forms
-- **[API Reference](https://gitlab.com/jacob-martella-web-design/artisanpack-ui/forms/-/wikis/api)** - Models, services, and events
+- **[Installation Guide](https://github.com/ArtisanPack-UI/forms/wiki/Installation-Installation)** - Detailed setup instructions
+- **[Configuration](https://github.com/ArtisanPack-UI/forms/wiki/Installation-Configuration)** - All configuration options
+- **[Form Builder](https://github.com/ArtisanPack-UI/forms/wiki/Usage-Form-Builder)** - Creating forms
+- **[Form Renderer](https://github.com/ArtisanPack-UI/forms/wiki/Usage-Form-Renderer)** - Displaying forms
+- **[API Reference](https://github.com/ArtisanPack-UI/forms/wiki/Api)** - Models, services, and events
 
 ## ⚙️ Configuration
 
@@ -157,10 +157,10 @@ php artisan forms:prune-submissions --days=90
 
 This package integrates with the ArtisanPack UI ecosystem:
 
-- [artisanpack-ui/livewire-ui-components](https://gitlab.com/jacob-martella-web-design/artisanpack-ui/livewire-ui-components) - UI components
-- [artisanpack-ui/security](https://gitlab.com/jacob-martella-web-design/artisanpack-ui/security) - Input sanitization and security
-- [artisanpack-ui/accessibility](https://gitlab.com/jacob-martella-web-design/artisanpack-ui/accessibility) - Accessibility utilities
-- [artisanpack-ui/hooks](https://gitlab.com/jacob-martella-web-design/artisanpack-ui/hooks) - WordPress-style hooks for extensibility
+- [artisanpack-ui/livewire-ui-components](https://github.com/ArtisanPack-UI/livewire-ui-components) - UI components
+- [artisanpack-ui/security](https://github.com/ArtisanPack-UI/security) - Input sanitization and security
+- [artisanpack-ui/accessibility](https://github.com/ArtisanPack-UI/accessibility) - Accessibility utilities
+- [artisanpack-ui/hooks](https://github.com/ArtisanPack-UI/hooks) - WordPress-style hooks for extensibility
 
 ## 🎯 Events
 

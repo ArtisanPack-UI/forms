@@ -326,6 +326,6 @@ FormField::create(['form_id' => $form->id, 'step_id' => $step3->id, 'type' => 'c
 
 ## Next Steps
 
-- [Conditional Logic](./conditional-logic.md) - Dynamic field visibility
-- [Form Renderer](./form-renderer.md) - Displaying forms
-- [Submissions](./submissions.md) - Managing submissions
+- [Conditional Logic](Conditional-Logic) - Dynamic field visibility
+- [Form Renderer](Form-Renderer) - Displaying forms
+- [Submissions](Submissions) - Managing submissions

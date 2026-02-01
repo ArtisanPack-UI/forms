@@ -273,5 +273,5 @@ Edit `resources/views/vendor/forms/livewire/notification-editor.blade.php`.
 
 ## Next Steps
 
-- [Notifications Usage](../usage/notifications.md) - Email notification guide
-- [FormBuilder](./form-builder.md) - Form builder component
+- [Notifications Usage](Usage-Notifications) - Email notification guide
+- [FormBuilder](Form-Builder) - Form builder component

@@ -9,50 +9,50 @@ Welcome to the documentation for the ArtisanPack UI Forms package. This package 
 ## Table of Contents
 
 - **Getting Started**
-  - [Quick Start Guide](./getting-started.md)
+  - [Quick Start Guide](Getting-Started)
 
 - **Installation**
-  - [Installation Overview](./installation/installation.md)
-  - [Requirements](./installation/requirements.md)
-  - [Configuration](./installation/configuration.md)
+  - [Installation Overview](Installation-Installation)
+  - [Requirements](Installation-Requirements)
+  - [Configuration](Installation-Configuration)
 
 - **Usage**
-  - [Usage Overview](./usage/usage.md)
-  - [Form Builder](./usage/form-builder.md)
-  - [Form Renderer](./usage/form-renderer.md)
-  - [Submissions](./usage/submissions.md)
-  - [Email Notifications](./usage/notifications.md)
-  - [File Uploads](./usage/file-uploads.md)
-  - [Multi-Step Forms](./usage/multi-step-forms.md)
-  - [Conditional Logic](./usage/conditional-logic.md)
+  - [Usage Overview](Usage-Usage)
+  - [Form Builder](Usage-Form-Builder)
+  - [Form Renderer](Usage-Form-Renderer)
+  - [Submissions](Usage-Submissions)
+  - [Email Notifications](Usage-Notifications)
+  - [File Uploads](Usage-File-Uploads)
+  - [Multi-Step Forms](Usage-Multi-Step-Forms)
+  - [Conditional Logic](Usage-Conditional-Logic)
 
 - **Livewire Components**
-  - [Components Overview](./components/components.md)
-  - [FormBuilder Component](./components/form-builder.md)
-  - [FormRenderer Component](./components/form-renderer.md)
-  - [FormsList Component](./components/forms-list.md)
-  - [SubmissionsList Component](./components/submissions-list.md)
-  - [SubmissionDetail Component](./components/submission-detail.md)
-  - [NotificationEditor Component](./components/notification-editor.md)
+  - [Components Overview](Components-Components)
+  - [FormBuilder Component](Components-Form-Builder)
+  - [FormRenderer Component](Components-Form-Renderer)
+  - [FormsList Component](Components-Forms-List)
+  - [SubmissionsList Component](Components-Submissions-List)
+  - [SubmissionDetail Component](Components-Submission-Detail)
+  - [NotificationEditor Component](Components-Notification-Editor)
 
 - **API Reference**
-  - [API Overview](./api/api.md)
-  - [Models](./api/models.md)
-  - [Services](./api/services.md)
-  - [Events](./api/events.md)
-  - [Jobs](./api/jobs.md)
-  - [Policies](./api/policies.md)
+  - [API Overview](Api-Api)
+  - [Models](Api-Models)
+  - [Services](Api-Services)
+  - [Events](Api-Events)
+  - [Jobs](Api-Jobs)
+  - [Policies](Api-Policies)
 
 - **Advanced Topics**
-  - [Advanced Overview](./advanced/advanced.md)
-  - [Webhooks](./advanced/webhooks.md)
-  - [Spam Protection](./advanced/spam-protection.md)
-  - [Customization](./advanced/customization.md)
-  - [Artisan Commands](./advanced/artisan-commands.md)
+  - [Advanced Overview](Advanced-Advanced)
+  - [Webhooks](Advanced-Webhooks)
+  - [Spam Protection](Advanced-Spam-Protection)
+  - [Customization](Advanced-Customization)
+  - [Artisan Commands](Advanced-Artisan-Commands)
 
 - **Help**
-  - [FAQ](./faq.md)
-  - [Troubleshooting](./troubleshooting.md)
+  - [FAQ](Faq)
+  - [Troubleshooting](Troubleshooting)
 
 ## Features
 
@@ -76,7 +76,7 @@ Welcome to the documentation for the ArtisanPack UI Forms package. This package 
 
 ## Support
 
-For support, please contact [support@artisanpackui.dev](mailto:support@artisanpackui.dev) or visit our [GitLab repository](https://gitlab.com/jacob-martella-web-design/artisanpack-ui/forms).
+For support, please contact [support@artisanpackui.dev](Mailto:Support@Artisanpackui.Dev) or visit our [GitLab repository](https://gitlab.com/jacob-martella-web-design/artisanpack-ui/forms).
 
 ## License
 

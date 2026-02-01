@@ -287,6 +287,6 @@ test('form submission dispatches event', function () {
 
 ## Next Steps
 
-- [Jobs](./jobs.md) - Queue job documentation
-- [Services](./services.md) - Service documentation
-- [Webhooks](../advanced/webhooks.md) - Webhook configuration
+- [Jobs](Jobs) - Queue job documentation
+- [Services](Services) - Service documentation
+- [Webhooks](Advanced-Webhooks) - Webhook configuration

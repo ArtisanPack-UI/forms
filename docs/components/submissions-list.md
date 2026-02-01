@@ -211,5 +211,5 @@ Edit `resources/views/vendor/forms/livewire/submissions-list.blade.php`.
 
 ## Next Steps
 
-- [SubmissionDetail](./submission-detail.md) - Submission detail view
-- [Submissions Usage](../usage/submissions.md) - Working with submissions
+- [SubmissionDetail](Submission-Detail) - Submission detail view
+- [Submissions Usage](Usage-Submissions) - Working with submissions

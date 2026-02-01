@@ -310,6 +310,6 @@ $isVisible = $conditionService->evaluateConditions($conditions, $data);
 
 ## Next Steps
 
-- [Multi-Step Forms](./multi-step-forms.md) - Conditional steps
-- [Form Builder](./form-builder.md) - Creating forms
-- [Notifications](./notifications.md) - Conditional notifications
+- [Multi-Step Forms](Multi-Step-Forms) - Conditional steps
+- [Form Builder](Form-Builder) - Creating forms
+- [Notifications](Notifications) - Conditional notifications

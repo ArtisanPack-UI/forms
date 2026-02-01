@@ -8,9 +8,9 @@ This section covers everything you need to get ArtisanPack UI Forms installed an
 
 ## Installation Topics
 
-- [Installation Overview](./installation/installation.md) - Step-by-step installation guide
-- [Requirements](./installation/requirements.md) - System requirements and dependencies
-- [Configuration](./installation/configuration.md) - Configuration options and customization
+- [Installation Overview](Installation-Installation) - Step-by-step installation guide
+- [Requirements](Installation-Requirements) - System requirements and dependencies
+- [Configuration](Installation-Configuration) - Configuration options and customization
 
 ## Quick Install
 
@@ -25,4 +25,4 @@ php artisan vendor:publish --provider="ArtisanPackUI\Forms\FormsServiceProvider"
 php artisan migrate
 ```
 
-For detailed installation instructions, see the [Installation Overview](./installation/installation.md).
+For detailed installation instructions, see the [Installation Overview](Installation-Installation).

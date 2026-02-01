@@ -94,5 +94,5 @@ composer show livewire/livewire
 
 ## Next Steps
 
-- [Installation Overview](./installation.md) - Install the package
-- [Configuration](./configuration.md) - Configure package settings
+- [Installation Overview](Installation) - Install the package
+- [Configuration](Configuration) - Configure package settings

@@ -286,6 +286,6 @@ For testing or trusted environments:
 
 ## Next Steps
 
-- [Webhooks](./webhooks.md) - External integrations
-- [Customization](./customization.md) - Extend protection
-- [Configuration](../installation/configuration.md) - All settings
+- [Webhooks](Webhooks) - External integrations
+- [Customization](Customization) - Extend protection
+- [Configuration](Installation-Configuration) - All settings

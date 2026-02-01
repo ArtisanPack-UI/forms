@@ -341,5 +341,5 @@ $replyTo = $notification->getReplyToEmail($submission);
 
 ## Next Steps
 
-- [Services](./services.md) - Service class documentation
-- [Events](./events.md) - Event documentation
+- [Services](Services) - Service class documentation
+- [Events](Events) - Event documentation

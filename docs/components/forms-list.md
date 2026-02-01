@@ -188,5 +188,5 @@ class CustomFormsList extends FormsList
 
 ## Next Steps
 
-- [FormBuilder](./form-builder.md) - Form builder component
-- [SubmissionsList](./submissions-list.md) - Submissions listing
+- [FormBuilder](Form-Builder) - Form builder component
+- [SubmissionsList](Submissions-List) - Submissions listing
