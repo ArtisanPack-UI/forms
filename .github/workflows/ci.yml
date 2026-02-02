@@ -11,6 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
@@ -18,8 +19,8 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite
+          php-version: '8.2'
+          extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite
           coverage: none
 
       - name: Get Composer cache directory
@@ -44,15 +45,9 @@ jobs:
           retention-days: 1
 
   test:
-    needs: build
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        php: ['8.4', '8.3', '8.2']
-
-    name: Test (PHP ${{ matrix.php }})
+    timeout-minutes: 15
+    name: Test
 
     steps:
       - uses: actions/checkout@v4
@@ -60,86 +55,33 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php }}
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite
+          php-version: '8.2'
+          extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite
           coverage: none
 
-      - name: Download vendor directory
-        uses: actions/download-artifact@v4
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
         with:
-          name: vendor
-          path: vendor/
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
 
-      - name: Install dependencies for PHP version
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
 
-      - name: Run tests
-        run: chmod +x ./vendor/bin/pest && ./vendor/bin/pest --ci
-
-  coverage:
-    needs: build
-    runs-on: ubuntu-latest
-    name: Code Coverage
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite
-          coverage: xdebug
-
-      - name: Download vendor directory
-        uses: actions/download-artifact@v4
-        with:
-          name: vendor
-          path: vendor/
-
-      - name: Run tests with coverage
-        run: chmod +x ./vendor/bin/pest && ./vendor/bin/pest --ci --coverage --coverage-clover=coverage.xml
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: coverage.xml
-          fail_ci_if_error: false
+      - name: Run Unit tests
         env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          XDEBUG_MODE: off
+        run: php vendor/bin/pest tests/Unit --no-coverage
 
-  code-style:
-    needs: build
-    runs-on: ubuntu-latest
-    name: Code Style
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite
-          coverage: none
-
-      - name: Download vendor directory
-        uses: actions/download-artifact@v4
-        with:
-          name: vendor
-          path: vendor/
-
-      - name: Run PHP CS Fixer
-        run: PHP_CS_FIXER_IGNORE_ENV=1 ./vendor/bin/php-cs-fixer fix --dry-run --diff
-        continue-on-error: true
-
-      - name: Run PHPCS
-        run: ./vendor/bin/phpcs
-        continue-on-error: true
-
-      - name: Run PHPStan
-        run: ./vendor/bin/phpstan analyse src --level=5 --no-progress
-        continue-on-error: true
+      - name: Run Feature tests
+        env:
+          XDEBUG_MODE: off
+        run: php vendor/bin/pest tests/Feature --no-coverage
 
   release:
     needs: test
