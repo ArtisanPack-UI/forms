@@ -118,6 +118,23 @@ class FormFieldFactory extends Factory
     }
 
     /**
+     * Indicate that the field is a multi-select field.
+     */
+    public function selectMultiple(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => 'select_multiple',
+            'field_config' => [
+                'options' => [
+                    ['value' => 'option1', 'label' => 'Option 1'],
+                    ['value' => 'option2', 'label' => 'Option 2'],
+                    ['value' => 'option3', 'label' => 'Option 3'],
+                ],
+            ],
+        ]);
+    }
+
+    /**
      * Indicate that the field is a file upload field.
      */
     public function file(): static

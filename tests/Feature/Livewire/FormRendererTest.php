@@ -87,6 +87,14 @@ describe( 'FormRenderer Component', function (): void {
             Livewire::test( FormRenderer::class, ['form' => $form] )
                 ->assertSee( 'Choose Option' );
         } );
+
+        it( 'renders a multi-select field', function (): void {
+            $form = Form::factory()->create();
+            FormField::factory()->for( $form )->selectMultiple()->create( ['label' => 'Choose Multiple'] );
+
+            Livewire::test( FormRenderer::class, ['form' => $form] )
+                ->assertSee( 'Choose Multiple' );
+        } );
     } );
 
     describe( 'validation', function (): void {
@@ -507,34 +515,34 @@ describe( 'FormRenderer Conditional Logic', function (): void {
             ->call( 'submit' );
 
         // Should not have validation error for hidden_required since it's hidden
-        $component->assertHasNoErrors( ['formData.hidden_required']);
-    });
-});
+        $component->assertHasNoErrors( ['formData.hidden_required'] );
+    } );
+} );
 
 describe( 'FormRenderer Default Values', function (): void {
     it( 'initializes fields with default values', function (): void {
         $form = Form::factory()->create();
-        FormField::factory()->for( $form)->create( [
+        FormField::factory()->for( $form )->create( [
             'name'          => 'country',
             'type'          => 'text',
             'default_value' => 'United States',
-        ]);
+        ] );
 
-        $component = Livewire::test( FormRenderer::class, ['form' => $form]);
+        $component = Livewire::test( FormRenderer::class, ['form' => $form] );
 
-        expect( $component->get( 'formData.country'))->toBe( 'United States');
-    });
+        expect( $component->get( 'formData.country' ) )->toBe( 'United States' );
+    } );
 
     it( 'initializes array fields as empty arrays', function (): void {
         $form = Form::factory()->create();
-        FormField::factory()->for( $form)->create( [
+        FormField::factory()->for( $form )->create( [
             'name'          => 'interests',
             'type'          => 'checkbox_group',
             'default_value' => null,
-        ]);
+        ] );
 
-        $component = Livewire::test( FormRenderer::class, ['form' => $form]);
+        $component = Livewire::test( FormRenderer::class, ['form' => $form] );
 
-        expect( $component->get( 'formData.interests'))->toBe( []);
+        expect( $component->get( 'formData.interests' ) )->toBe( []);
     });
 });
