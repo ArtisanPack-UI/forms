@@ -1,0 +1,9 @@
+name: Auto-assign milestone
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  auto-milestone:
+    uses: ArtisanPack-UI/.github/.github/workflows/auto-milestone.yml@main
