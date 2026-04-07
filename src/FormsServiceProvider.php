@@ -139,6 +139,7 @@ class FormsServiceProvider extends ServiceProvider
         $this->publishViews();
         $this->publishTypeDefinitions();
         $this->publishReactComponents();
+        $this->publishVueComponents();
     }
 
     /**
@@ -374,8 +375,29 @@ class FormsServiceProvider extends ServiceProvider
     {
         if ( $this->app->runningInConsole() ) {
             $this->publishes( [
-                __DIR__ . '/../resources/js/react' => resource_path( 'js/vendor/artisanpack-forms' ),
+                __DIR__ . '/../resources/js/react'  => resource_path( 'js/vendor/artisanpack-forms/react' ),
+                __DIR__ . '/../resources/js/shared' => resource_path( 'js/vendor/artisanpack-forms/shared' ),
             ], 'forms-react' );
+        }
+    }
+
+    /**
+     * Publishes the Vue form renderer components.
+     *
+     * Vue components are published to resources/js/vendor/artisanpack-forms
+     * for use in Vue-based frontend applications.
+     *
+     * @since 1.1.0
+     *
+     * @return void
+     */
+    protected function publishVueComponents(): void
+    {
+        if ( $this->app->runningInConsole() ) {
+            $this->publishes( [
+                __DIR__ . '/../resources/js/vue'    => resource_path( 'js/vendor/artisanpack-forms/vue' ),
+                __DIR__ . '/../resources/js/shared' => resource_path( 'js/vendor/artisanpack-forms/shared' ),
+            ], 'forms-vue' );
         }
     }
 }

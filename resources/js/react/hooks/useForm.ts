@@ -19,8 +19,8 @@ import type {
 	FormStep,
 	SubmitFormResponse,
 } from '../../types/artisanpack-forms';
-import { getHiddenFields } from '../utils/conditionalLogic';
-import { validateFields } from '../utils/validation';
+import { getHiddenFields } from '../../shared/conditionalLogic';
+import { validateFields } from '../../shared/validation';
 
 /** Configuration options for the useForm hook. */
 export interface UseFormOptions {
