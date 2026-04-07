@@ -46,6 +46,12 @@ export function validateField(
 
 				return errors;
 			}
+		} else if ( field.type === 'checkbox' ) {
+			if ( value !== true ) {
+				errors.push( `${field.label ?? field.name} is required.` );
+
+				return errors;
+			}
 		} else if ( field.type === 'checkbox_group' || field.type === 'select_multiple' ) {
 			if ( !Array.isArray( value ) || value.length === 0 ) {
 				errors.push( `${field.label ?? field.name} is required.` );
@@ -219,6 +225,9 @@ function normalizeTime( time: string ): string {
 	return parts.map( ( p ) => p.padStart( 2, '0' ) ).join( ':' );
 }
 
+/** Matches valid time strings: HH:MM or HH:MM:SS with valid ranges. */
+const TIME_FORMAT_REGEX = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+
 /**
  * Validates time min/max constraints.
  */
@@ -227,13 +236,19 @@ function validateTimeRules(
 	rules: ValidationRules,
 	errors: string[],
 ): void {
+	if ( !TIME_FORMAT_REGEX.test( value ) ) {
+		errors.push( 'Please enter a valid time.' );
+
+		return;
+	}
+
 	const normalized = normalizeTime( value );
 
-	if ( rules.min_time && normalized < normalizeTime( rules.min_time ) ) {
+	if ( rules.min_time && TIME_FORMAT_REGEX.test( rules.min_time ) && normalized < normalizeTime( rules.min_time ) ) {
 		errors.push( `Time must be on or after ${rules.min_time}.` );
 	}
 
-	if ( rules.max_time && normalized > normalizeTime( rules.max_time ) ) {
+	if ( rules.max_time && TIME_FORMAT_REGEX.test( rules.max_time ) && normalized > normalizeTime( rules.max_time ) ) {
 		errors.push( `Time must be on or before ${rules.max_time}.` );
 	}
 }

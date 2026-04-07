@@ -80,6 +80,26 @@ function isChecked( value: unknown ): boolean {
 }
 
 /**
+ * Checks if a value is safe for numeric comparison.
+ * Rejects null, undefined, booleans, arrays, and empty strings.
+ */
+function isNumericComparable( value: unknown ): boolean {
+	if ( value === null || value === undefined ) {
+		return false;
+	}
+
+	if ( typeof value === 'boolean' || Array.isArray( value ) ) {
+		return false;
+	}
+
+	if ( typeof value === 'string' && value.trim() === '' ) {
+		return false;
+	}
+
+	return !isNaN( Number( value ) );
+}
+
+/**
  * Compares two values for equality, handling booleans, numbers, and strings.
  */
 function compareEquals( fieldValue: unknown, ruleValue: unknown ): boolean {
@@ -91,11 +111,8 @@ function compareEquals( fieldValue: unknown, ruleValue: unknown ): boolean {
 		return fieldValue === Boolean( ruleValue );
 	}
 
-	const fieldNum = Number( fieldValue );
-	const ruleNum = Number( ruleValue );
-
-	if ( !isNaN( fieldNum ) && !isNaN( ruleNum ) && fieldValue !== '' && ruleValue !== '' ) {
-		return fieldNum === ruleNum;
+	if ( isNumericComparable( fieldValue ) && isNumericComparable( ruleValue ) ) {
+		return Number( fieldValue ) === Number( ruleValue );
 	}
 
 	return String( fieldValue ?? '' ) === String( ruleValue ?? '' );
@@ -138,56 +155,44 @@ function compareEndsWith( fieldValue: unknown, ruleValue: unknown ): boolean {
  * Compares numeric values with greater than.
  */
 function compareGreaterThan( fieldValue: unknown, ruleValue: unknown ): boolean {
-	const a = Number( fieldValue );
-	const b = Number( ruleValue );
-
-	if ( isNaN( a ) || isNaN( b ) ) {
+	if ( !isNumericComparable( fieldValue ) || !isNumericComparable( ruleValue ) ) {
 		return false;
 	}
 
-	return a > b;
+	return Number( fieldValue ) > Number( ruleValue );
 }
 
 /**
  * Compares numeric values with less than.
  */
 function compareLessThan( fieldValue: unknown, ruleValue: unknown ): boolean {
-	const a = Number( fieldValue );
-	const b = Number( ruleValue );
-
-	if ( isNaN( a ) || isNaN( b ) ) {
+	if ( !isNumericComparable( fieldValue ) || !isNumericComparable( ruleValue ) ) {
 		return false;
 	}
 
-	return a < b;
+	return Number( fieldValue ) < Number( ruleValue );
 }
 
 /**
  * Compares numeric values with greater than or equal.
  */
 function compareGreaterOrEqual( fieldValue: unknown, ruleValue: unknown ): boolean {
-	const a = Number( fieldValue );
-	const b = Number( ruleValue );
-
-	if ( isNaN( a ) || isNaN( b ) ) {
+	if ( !isNumericComparable( fieldValue ) || !isNumericComparable( ruleValue ) ) {
 		return false;
 	}
 
-	return a >= b;
+	return Number( fieldValue ) >= Number( ruleValue );
 }
 
 /**
  * Compares numeric values with less than or equal.
  */
 function compareLessOrEqual( fieldValue: unknown, ruleValue: unknown ): boolean {
-	const a = Number( fieldValue );
-	const b = Number( ruleValue );
-
-	if ( isNaN( a ) || isNaN( b ) ) {
+	if ( !isNumericComparable( fieldValue ) || !isNumericComparable( ruleValue ) ) {
 		return false;
 	}
 
-	return a <= b;
+	return Number( fieldValue ) <= Number( ruleValue );
 }
 
 /**

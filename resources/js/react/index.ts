@@ -38,7 +38,6 @@ export {
 	CheckboxField,
 	CheckboxGroupField,
 	SelectMultipleField,
-	ToggleField,
 } from './components/fields/ChoiceField';
 
 export {

@@ -149,6 +149,7 @@ export function TextareaField( { field, value, error, onChange, displayConfig }:
 			onChange={( e ) => onChange( e.target.value )}
 			minLength={field.validation_rules?.min}
 			maxLength={field.validation_rules?.max}
+			inline={displayConfig.label_position === 'beside'}
 		/>
 	);
 }
@@ -156,7 +157,7 @@ export function TextareaField( { field, value, error, onChange, displayConfig }:
 /**
  * Renders a hidden input field.
  */
-export function HiddenField( { field, value }: FieldComponentProps ) {
+export function HiddenField( { field, value }: Pick<FieldComponentProps, 'field' | 'value'> ) {
 	return (
 		<input
 			type="hidden"

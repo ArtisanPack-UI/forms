@@ -131,8 +131,12 @@ export function CheckboxGroupField( { field, value, error, onChange, displayConf
 		onChange( updated );
 	};
 
+	const hintId = field.help_text && !error ? `${field.name}-hint` : undefined;
+	const errorId = error ? `${field.name}-error` : undefined;
+	const describedBy = [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
+
 	return (
-		<fieldset className="fieldset">
+		<fieldset className="fieldset" aria-describedby={describedBy}>
 			{field.label && (
 				<legend className={`fieldset-legend ${displayConfig.label_position === 'hidden' ? 'sr-only' : ''}`}>
 					{field.label}
@@ -152,10 +156,10 @@ export function CheckboxGroupField( { field, value, error, onChange, displayConf
 				) )}
 			</div>
 			{field.help_text && !error && (
-				<p className="fieldset-label">{field.help_text}</p>
+				<p id={hintId} className="fieldset-label">{field.help_text}</p>
 			)}
 			{error && (
-				<p className="fieldset-label text-error" role="alert">{error}</p>
+				<p id={errorId} className="fieldset-label text-error" role="alert">{error}</p>
 			)}
 		</fieldset>
 	);
@@ -167,6 +171,10 @@ export function CheckboxGroupField( { field, value, error, onChange, displayConf
 export function SelectMultipleField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
 	const options = mapOptions( field );
 	const selectedValues = Array.isArray( value ) ? value.map( String ) : [];
+	const legendId = field.label ? `${field.name}-label` : undefined;
+	const hintId = field.help_text && !error ? `${field.name}-hint` : undefined;
+	const errorId = error ? `${field.name}-error` : undefined;
+	const describedBy = [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
 
 	const handleChange = ( e: React.ChangeEvent<HTMLSelectElement> ) => {
 		const selected = Array.from( e.target.selectedOptions, ( opt ) => opt.value );
@@ -176,7 +184,10 @@ export function SelectMultipleField( { field, value, error, onChange, displayCon
 	return (
 		<fieldset className="fieldset">
 			{field.label && (
-				<legend className={`fieldset-legend ${displayConfig.label_position === 'hidden' ? 'sr-only' : ''}`}>
+				<legend
+					id={legendId}
+					className={`fieldset-legend ${displayConfig.label_position === 'hidden' ? 'sr-only' : ''}`}
+				>
 					{field.label}
 					{field.is_required && <span className="text-error ml-1">*</span>}
 				</legend>
@@ -189,6 +200,8 @@ export function SelectMultipleField( { field, value, error, onChange, displayCon
 				required={field.is_required}
 				className={`select select-bordered w-full min-h-32 ${field.css_classes ?? ''} ${error ? 'select-error' : ''}`}
 				aria-invalid={error ? true : undefined}
+				aria-labelledby={legendId}
+				aria-describedby={describedBy}
 			>
 				{options.map( ( option ) => (
 					<option key={option.value} value={option.value}>
@@ -197,10 +210,10 @@ export function SelectMultipleField( { field, value, error, onChange, displayCon
 				) )}
 			</select>
 			{field.help_text && !error && (
-				<p className="fieldset-label">{field.help_text}</p>
+				<p id={hintId} className="fieldset-label">{field.help_text}</p>
 			)}
 			{error && (
-				<p className="fieldset-label text-error" role="alert">{error}</p>
+				<p id={errorId} className="fieldset-label text-error" role="alert">{error}</p>
 			)}
 		</fieldset>
 	);
