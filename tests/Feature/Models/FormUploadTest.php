@@ -95,9 +95,9 @@ describe( 'FormUpload Model', function (): void {
         } );
 
         it( 'handles null mime type', function (): void {
-            $upload = FormUpload::factory()->create( ['mime_type' => null]);
+            $upload = FormUpload::factory()->create( ['mime_type' => null] );
 
-            expect( $upload->is_image)->toBeFalse();
-        });
-    });
+            expect( $upload->is_image )->toBeFalse();
+        } );
+    } );
 });

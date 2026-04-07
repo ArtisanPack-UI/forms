@@ -186,16 +186,16 @@ describe( 'FormService', function (): void {
         it( 'finds form by id', function (): void {
             $form = Form::factory()->create();
 
-            $found = $this->service->getById( $form->id);
+            $found = $this->service->getById( $form->id );
 
-            expect( $found)->toBeInstanceOf( Form::class)
-                ->and( $found->id)->toBe( $form->id);
-        });
+            expect( $found )->toBeInstanceOf( Form::class )
+                ->and( $found->id )->toBe( $form->id );
+        } );
 
         it( 'returns null for non-existent id', function (): void {
-            $found = $this->service->getById( 99999);
+            $found = $this->service->getById( 99999 );
 
-            expect( $found)->toBeNull();
-        });
+            expect( $found )->toBeNull();
+        } );
     });
 });

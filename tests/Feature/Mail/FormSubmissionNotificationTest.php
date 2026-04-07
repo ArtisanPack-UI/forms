@@ -211,14 +211,14 @@ describe( 'FormSubmissionNotification Mailable', function (): void {
                 'subject'                 => 'Test Subject',
                 'message'                 => 'Test message content',
                 'include_submission_data' => true,
-            ]);
-            $submission = FormSubmission::factory()->for( $form)->create();
+            ] );
+            $submission = FormSubmission::factory()->for( $form )->create();
 
-            $mailable = new FormSubmissionNotification( $notification, $submission);
+            $mailable = new FormSubmissionNotification( $notification, $submission );
             $rendered = $mailable->render();
 
-            expect( $rendered)->toContain( 'Test Form')
-                ->and( $rendered)->toContain( 'Test message content');
-        });
+            expect( $rendered )->toContain( 'Test Form' )
+                ->and( $rendered )->toContain( 'Test message content' );
+        } );
     });
 });

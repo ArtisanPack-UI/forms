@@ -249,18 +249,18 @@ describe( 'SubmissionDetail Livewire Component', function (): void {
 
         it( 'displays empty value placeholder', function (): void {
             $form       = Form::factory()->create();
-            $submission = FormSubmission::factory()->for( $form)->create();
+            $submission = FormSubmission::factory()->for( $form )->create();
 
             FormSubmissionValue::factory()->create( [
                 'submission_id' => $submission->id,
                 'field_label'   => 'Optional Field',
                 'value'         => null,
                 'value_array'   => null,
-            ]);
+            ] );
 
-            Livewire::test( SubmissionDetail::class, ['submission' => $submission])
-                ->assertSee( 'Optional Field')
-                ->assertSee( 'No response');
-        });
-    });
+            Livewire::test( SubmissionDetail::class, ['submission' => $submission] )
+                ->assertSee( 'Optional Field' )
+                ->assertSee( 'No response' );
+        } );
+    } );
 });

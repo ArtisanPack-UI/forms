@@ -153,10 +153,10 @@ describe( 'SendFormNotification Job', function (): void {
                 } );
 
             $notification = FormNotification::factory()->create();
-            $submission   = FormSubmission::factory()->for( $notification->form)->create();
+            $submission   = FormSubmission::factory()->for( $notification->form )->create();
 
-            $job = new SendFormNotification( $notification, $submission);
-            $job->failed( new Exception( 'Permanent failure'));
-        });
+            $job = new SendFormNotification( $notification, $submission );
+            $job->failed( new Exception( 'Permanent failure' ) );
+        } );
     });
 });

@@ -187,10 +187,10 @@ describe( 'ConditionalLogic Config', function (): void {
                 ],
             ];
 
-            $result = ConditionalLogic::validate( $logic);
+            $result = ConditionalLogic::validate( $logic );
 
-            expect( $result['valid'])->toBeFalse()
-                ->and( $result['errors'][0])->toContain( 'Value is required');
-        });
-    });
+            expect( $result['valid'] )->toBeFalse()
+                ->and( $result['errors'][0] )->toContain( 'Value is required' );
+        } );
+    } );
 });

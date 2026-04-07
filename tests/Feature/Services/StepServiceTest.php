@@ -238,20 +238,20 @@ describe( 'StepService', function (): void {
             // Use a fresh form without any existing steps
             $form = Form::factory()->create( ['is_multi_step' => true] );
 
-            FormStep::factory()->for( $form )->create( ['sort_order' => 1, 'title' => 'First']);
-            FormStep::factory()->for( $form)->create( ['sort_order' => 2, 'title' => 'Middle']);
-            FormStep::factory()->for( $form)->create( ['sort_order' => 3, 'title' => 'Last']);
+            FormStep::factory()->for( $form )->create( ['sort_order' => 1, 'title' => 'First'] );
+            FormStep::factory()->for( $form )->create( ['sort_order' => 2, 'title' => 'Middle'] );
+            FormStep::factory()->for( $form )->create( ['sort_order' => 3, 'title' => 'Last'] );
 
-            $result = $this->service->getLastStep( $form);
+            $result = $this->service->getLastStep( $form );
 
-            expect( $result->sort_order)->toBe( 3)
-                ->and( $result->title)->toBe( 'Last');
-        });
+            expect( $result->sort_order )->toBe( 3 )
+                ->and( $result->title )->toBe( 'Last' );
+        } );
 
         it( 'returns null if no steps exist', function (): void {
-            $result = $this->service->getLastStep( $this->form);
+            $result = $this->service->getLastStep( $this->form );
 
-            expect( $result)->toBeNull();
+            expect( $result )->toBeNull();
         });
     });
 });

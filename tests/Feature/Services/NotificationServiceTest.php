@@ -325,27 +325,27 @@ describe( 'NotificationService', function (): void {
                 'cc_emails' => 'cc1@example.com, cc2@example.com',
             ] );
 
-            $emails = $this->service->getCcEmails( $notification);
+            $emails = $this->service->getCcEmails( $notification );
 
-            expect( $emails)->toBe( ['cc1@example.com', 'cc2@example.com']);
-        });
+            expect( $emails )->toBe( ['cc1@example.com', 'cc2@example.com'] );
+        } );
 
         it( 'returns empty array when no CC emails', function (): void {
             $notification = FormNotification::factory()->create( [
                 'cc_emails' => null,
-            ]);
+            ] );
 
-            expect( $this->service->getCcEmails( $notification))->toBe( []);
-        });
+            expect( $this->service->getCcEmails( $notification ) )->toBe( [] );
+        } );
 
         it( 'gets BCC emails as array', function (): void {
             $notification = FormNotification::factory()->create( [
                 'bcc_emails' => 'bcc@example.com',
-            ]);
+            ] );
 
-            $emails = $this->service->getBccEmails( $notification);
+            $emails = $this->service->getBccEmails( $notification );
 
-            expect( $emails)->toBe( ['bcc@example.com']);
+            expect( $emails )->toBe( ['bcc@example.com'] );
         });
     });
 });

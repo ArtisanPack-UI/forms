@@ -270,20 +270,20 @@ describe( 'FieldTypes Config', function (): void {
     } );
 
     it( 'identifies fields with options', function (): void {
-        expect( FieldTypes::hasOptions( 'select'))->toBeTrue()
-            ->and( FieldTypes::hasOptions( 'radio'))->toBeTrue()
-            ->and( FieldTypes::hasOptions( 'checkbox_group'))->toBeTrue()
-            ->and( FieldTypes::hasOptions( 'text'))->toBeFalse()
-            ->and( FieldTypes::hasOptions( 'email'))->toBeFalse();
-    });
+        expect( FieldTypes::hasOptions( 'select' ) )->toBeTrue()
+            ->and( FieldTypes::hasOptions( 'radio' ) )->toBeTrue()
+            ->and( FieldTypes::hasOptions( 'checkbox_group' ) )->toBeTrue()
+            ->and( FieldTypes::hasOptions( 'text' ) )->toBeFalse()
+            ->and( FieldTypes::hasOptions( 'email' ) )->toBeFalse();
+    } );
 
     it( 'returns validation options for field types', function (): void {
-        expect( FieldTypes::getValidationOptions( 'text'))->toContain( 'min', 'max', 'pattern')
-            ->and( FieldTypes::getValidationOptions( 'file'))->toContain( 'max_size', 'allowed_types');
-    });
+        expect( FieldTypes::getValidationOptions( 'text' ) )->toContain( 'min', 'max', 'pattern' )
+            ->and( FieldTypes::getValidationOptions( 'file' ) )->toContain( 'max_size', 'allowed_types' );
+    } );
 
     it( 'validates field type existence', function (): void {
-        expect( FieldTypes::typeExists( 'text'))->toBeTrue()
+        expect( FieldTypes::typeExists( 'text' ) )->toBeTrue()
             ->and( FieldTypes::typeExists( 'invalid'))->toBeFalse();
     });
 });
