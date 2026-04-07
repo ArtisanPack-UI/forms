@@ -69,8 +69,12 @@ class FormApiController extends Controller
 
         $query = Form::query();
 
-        if ( $request->has( 'status' ) ) {
-            $query->where( 'is_active', 'active' === $request->input( 'status' ) );
+        $status = $request->input( 'status' );
+
+        if ( 'active' === $status ) {
+            $query->where( 'is_active', true );
+        } elseif ( 'inactive' === $status ) {
+            $query->where( 'is_active', false );
         }
 
         $perPage = config( 'artisanpack.forms.api.per_page', 15 );
@@ -135,7 +139,7 @@ class FormApiController extends Controller
         $updatedForm = $this->formService->update( $form, $request->validated() );
 
         if ( null === $updatedForm ) {
-            abort( 404, __( 'Form not found after update.' ) );
+            abort( 500, __( 'Form could not be refreshed after update.' ) );
         }
 
         return new FormResource( $updatedForm );

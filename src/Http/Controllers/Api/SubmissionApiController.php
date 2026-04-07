@@ -207,32 +207,36 @@ class SubmissionApiController extends Controller
         // Record the attempt for rate limiting (before spam check so bots still count)
         $this->submissionService->recordAttempt( $ipAddress, $form->id );
 
-        // Check for spam
-        if ( config( 'artisanpack.forms.spam_protection.honeypot.enabled', true ) ) {
-            if ( $this->submissionService->isSpam( $honeypotValue, $formLoadedAt ? (int) $formLoadedAt : null, $form->id, $ipAddress ) ) {
-                // Silent success for bots — mirrors real response shape
-                $response = [
-                    'message'       => $form->success_message ?? __( 'Form submitted successfully.' ),
-                    'submission_id' => null,
-                ];
+        // Check for spam (honeypot only when enabled, time check always)
+        $honeypotEnabled = config( 'artisanpack.forms.spam_protection.honeypot.enabled', true );
+        $isSpam          = $this->submissionService->isSpam(
+            $honeypotEnabled ? $honeypotValue : null,
+            $formLoadedAt ? (int) $formLoadedAt : null,
+            $form->id,
+            $ipAddress,
+        );
 
-                if ( $form->redirect_url ) {
-                    $response['redirect_url'] = $form->redirect_url;
-                }
+        if ( $isSpam ) {
+            // Silent success for bots — mirrors real response shape
+            $response = [
+                'message'       => $form->success_message ?? __( 'Form submitted successfully.' ),
+                'submission_id' => null,
+            ];
 
-                return response()->json( $response, 201 );
+            if ( $form->redirect_url ) {
+                $response['redirect_url'] = $form->redirect_url;
             }
+
+            return response()->json( $response, 201 );
         }
 
         try {
-            $metadata   = $this->submissionService->getRequestMetadata( $request );
-            $formData   = $request->input( 'data', [] );
-            $files      = $request->allFiles();
+            $metadata = $this->submissionService->getRequestMetadata( $request );
 
             $submission = $this->submissionService->create(
                 $form,
-                $formData,
-                $files['files'] ?? [],
+                $request->sanitizedData(),
+                $request->sanitizedFiles(),
                 $metadata,
             );
 

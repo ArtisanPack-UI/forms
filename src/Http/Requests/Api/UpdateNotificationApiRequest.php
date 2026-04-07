@@ -48,7 +48,7 @@ class UpdateNotificationApiRequest extends FormRequest
      *
      * @since 1.1.0
      *
-     * @return array<string, array<int, string>> The validation rules.
+     * @return array<string, array<int, Closure|string>> The validation rules.
      */
     public function rules(): array
     {
@@ -63,8 +63,8 @@ class UpdateNotificationApiRequest extends FormRequest
             'name'                    => ['nullable', 'string', 'max:255'],
             'to_email'                => ['nullable', 'email', 'max:255'],
             'to_field'                => ['nullable', 'string', 'max:255'],
-            'cc_emails'               => ['nullable', 'string', 'max:1000', $this->commaSeparatedEmailRule()],
-            'bcc_emails'              => ['nullable', 'string', 'max:1000', $this->commaSeparatedEmailRule()],
+            'cc_emails'               => ['bail', 'nullable', 'string', 'max:1000', $this->commaSeparatedEmailRule()],
+            'bcc_emails'              => ['bail', 'nullable', 'string', 'max:1000', $this->commaSeparatedEmailRule()],
             'reply_to_email'          => ['nullable', 'email', 'max:255'],
             'reply_to_field'          => ['nullable', 'string', 'max:255'],
             'from_name'               => ['nullable', 'string', 'max:255'],
@@ -87,7 +87,7 @@ class UpdateNotificationApiRequest extends FormRequest
     private function commaSeparatedEmailRule(): Closure
     {
         return function ( string $attribute, mixed $value, Closure $fail ): void {
-            if ( null === $value || '' === $value ) {
+            if ( null === $value || '' === $value || ! is_string( $value ) ) {
                 return;
             }
 

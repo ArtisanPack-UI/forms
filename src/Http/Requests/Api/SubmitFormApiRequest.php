@@ -105,4 +105,81 @@ class SubmitFormApiRequest extends FormRequest
 
         return $rules;
     }
+
+    /**
+     * Gets the sanitized form data with hidden fields removed.
+     *
+     * @since 1.1.0
+     *
+     * @return array<string, mixed> The sanitized form data.
+     */
+    public function sanitizedData(): array
+    {
+        $form = $this->route( 'form' );
+
+        if ( ! $form instanceof Form ) {
+            return [];
+        }
+
+        $data = $this->input( 'data', [] );
+
+        if ( ! is_array( $data ) ) {
+            return [];
+        }
+
+        $conditionalLogicService = app( ConditionalLogicService::class );
+        $hiddenFields            = $conditionalLogicService->getHiddenFields(
+            $form->fields,
+            $data,
+        );
+
+        // Strip hidden field values from the data
+        foreach ( $hiddenFields as $fieldName => $isHidden ) {
+            if ( $isHidden ) {
+                unset( $data[ $fieldName ] );
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Gets the sanitized files with hidden fields removed.
+     *
+     * @since 1.1.0
+     *
+     * @return array<string, mixed> The sanitized files.
+     */
+    public function sanitizedFiles(): array
+    {
+        $form = $this->route( 'form' );
+
+        if ( ! $form instanceof Form ) {
+            return [];
+        }
+
+        $files = $this->allFiles();
+        $files = $files['files'] ?? [];
+
+        $data = $this->input( 'data', [] );
+
+        if ( ! is_array( $data ) ) {
+            $data = [];
+        }
+
+        $conditionalLogicService = app( ConditionalLogicService::class );
+        $hiddenFields            = $conditionalLogicService->getHiddenFields(
+            $form->fields,
+            $data,
+        );
+
+        // Strip hidden field files
+        foreach ( $hiddenFields as $fieldName => $isHidden ) {
+            if ( $isHidden ) {
+                unset( $files[ $fieldName ] );
+            }
+        }
+
+        return $files;
+    }
 }
