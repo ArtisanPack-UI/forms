@@ -53,7 +53,7 @@ export function SelectField( { field, value, error, onChange, displayConfig }: F
 	return (
 		<Select
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
 			name={field.name}
 			value={String( value ?? '' )}
 			placeholder={field.placeholder ?? 'Select an option...'}
@@ -79,7 +79,7 @@ export function RadioField( { field, value, error, onChange, displayConfig }: Fi
 	return (
 		<Radio
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
 			name={field.name}
 			value={String( value ?? '' )}
 			hint={field.help_text ?? undefined}
@@ -103,7 +103,7 @@ export function CheckboxField( { field, value, error, onChange, displayConfig }:
 	return (
 		<Checkbox
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
 			name={field.name}
 			checked={checked}
 			hint={field.help_text ?? undefined}
@@ -228,7 +228,7 @@ export function ToggleField( { field, value, error, onChange, displayConfig }: F
 	return (
 		<Toggle
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
 			name={field.name}
 			checked={checked}
 			hint={field.help_text ?? undefined}

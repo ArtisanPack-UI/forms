@@ -24,7 +24,7 @@ export function FileField( { field, error, onFileChange, displayConfig }: FieldC
 	return (
 		<FileInput
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
 			name={field.name}
 			accept={allowedTypes}
 			hint={field.help_text ?? undefined}
@@ -60,7 +60,7 @@ export function DateField( { field, value, error, onChange, displayConfig }: Fie
 	return (
 		<DatePicker
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
 			name={field.name}
 			value={String( value ?? '' )}
 			hint={field.help_text ?? undefined}
