@@ -14,6 +14,7 @@ import { Button } from '@artisanpack-ui/vue/form';
 import type { SubmitFormResponse } from '../../types/artisanpack-forms';
 import { useForm } from '../composables/useForm';
 import FieldRenderer from './fields/FieldRenderer.vue';
+import HoneypotField from './HoneypotField.vue';
 import MultiStepForm from './MultiStepForm.vue';
 
 const props = withDefaults( defineProps<{
@@ -150,21 +151,11 @@ function handleFormSubmit( e: Event ): void {
 					/>
 				</template>
 
-				<!-- Honeypot -->
-				<div
+				<HoneypotField
 					v-if="form.config.honeypot.enabled"
-					style="position: absolute; left: -9999px; opacity: 0; height: 0; overflow: hidden"
-					aria-hidden="true"
-				>
-					<label :for="`ap-hp-${form.slug}`">Leave this field empty</label>
-					<input
-						type="text"
-						:id="`ap-hp-${form.slug}`"
-						:name="form.config.honeypot.field_name"
-						tabindex="-1"
-						autocomplete="off"
-					/>
-				</div>
+					:slug="form.slug"
+					:field-name="form.config.honeypot.field_name"
+				/>
 			</div>
 		</MultiStepForm>
 
@@ -183,21 +174,11 @@ function handleFormSubmit( e: Event ): void {
 					/>
 				</template>
 
-				<!-- Honeypot -->
-				<div
+				<HoneypotField
 					v-if="form.config.honeypot.enabled"
-					style="position: absolute; left: -9999px; opacity: 0; height: 0; overflow: hidden"
-					aria-hidden="true"
-				>
-					<label :for="`ap-hp-${form.slug}`">Leave this field empty</label>
-					<input
-						type="text"
-						:id="`ap-hp-${form.slug}`"
-						:name="form.config.honeypot.field_name"
-						tabindex="-1"
-						autocomplete="off"
-					/>
-				</div>
+					:slug="form.slug"
+					:field-name="form.config.honeypot.field_name"
+				/>
 			</div>
 			<div>
 				<Button type="submit" color="primary" :disabled="isSubmitting">

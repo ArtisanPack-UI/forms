@@ -64,8 +64,9 @@ const stepNumbers = computed( () =>
 					v-if="allowStepNavigation"
 					type="button"
 					class="cursor-pointer hover:opacity-80"
+					:disabled="isSubmitting"
 					:aria-label="`Go to step ${i + 1}`"
-					@click="emit( 'goToStep', i )"
+					@click="!isSubmitting && emit( 'goToStep', i )"
 				>
 					{{ i + 1 }}
 				</button>
@@ -96,6 +97,7 @@ const stepNumbers = computed( () =>
 				<Button
 					v-if="currentStep > 0"
 					type="button"
+					:disabled="isSubmitting"
 					@click="emit( 'prevStep' )"
 				>
 					{{ currentStepData.prev_button_text || 'Previous' }}
@@ -115,6 +117,7 @@ const stepNumbers = computed( () =>
 					v-else
 					type="button"
 					color="primary"
+					:disabled="isSubmitting"
 					@click="emit( 'nextStep' )"
 				>
 					{{ currentStepData.next_button_text || 'Next' }}

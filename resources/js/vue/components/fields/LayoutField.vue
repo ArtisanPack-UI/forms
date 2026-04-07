@@ -16,11 +16,15 @@ const props = defineProps<{
 }>();
 
 const headingLevel = computed( () => {
-	const level = props.field.field_config && 'level' in props.field.field_config
-		? Number( props.field.field_config.level )
-		: 2;
+	if ( props.field.field_config && 'level' in props.field.field_config ) {
+		const parsed = Number( props.field.field_config.level );
 
-	return Math.min( Math.max( level, 1 ), 6 );
+		if ( Number.isFinite( parsed ) ) {
+			return Math.min( Math.max( parsed, 1 ), 6 );
+		}
+	}
+
+	return 2;
 } );
 
 const headingTag = computed( () => `h${headingLevel.value}` );

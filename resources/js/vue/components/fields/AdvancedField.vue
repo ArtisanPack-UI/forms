@@ -41,7 +41,7 @@ const allowedTypes = computed( () =>
 
 function handleFilesSelected( fileList: FileList | null ): void {
 	if ( !fileList || fileList.length === 0 ) {
-		emit( 'fileChange', [] as unknown as File[] );
+		emit( 'fileChange', [] as File[] );
 
 		return;
 	}

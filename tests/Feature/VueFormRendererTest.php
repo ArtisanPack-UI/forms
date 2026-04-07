@@ -148,7 +148,9 @@ describe( 'Vue Form Renderer', function (): void {
         } );
 
         it( 'uses Vue reactivity primitives', function (): void {
-            expect( $this->content )->toContain( 'import { computed, onMounted, ref' )
+            expect( $this->content )->toContain( 'computed' )
+                ->and( $this->content )->toContain( 'onMounted' )
+                ->and( $this->content )->toContain( 'ref' )
                 ->and( $this->content )->toContain( "from 'vue'" );
         } );
 
@@ -233,10 +235,10 @@ describe( 'Vue Form Renderer', function (): void {
                 ->and( $this->content )->toContain( 'is_multi_step' );
         } );
 
-        it( 'renders honeypot field', function (): void {
-            expect( $this->content )->toContain( 'honeypot' )
-                ->and( $this->content )->toContain( 'aria-hidden' )
-                ->and( $this->content )->toContain( 'Leave this field empty' );
+        it( 'renders honeypot field via HoneypotField component', function (): void {
+            expect( $this->content )->toContain( 'HoneypotField' )
+                ->and( $this->content )->toContain( 'honeypot.enabled' )
+                ->and( $this->content )->toContain( 'honeypot.field_name' );
         } );
 
         it( 'wraps content in a form element', function (): void {
