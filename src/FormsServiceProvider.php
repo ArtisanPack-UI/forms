@@ -137,6 +137,7 @@ class FormsServiceProvider extends ServiceProvider
         $this->loadApiRoutes();
         $this->registerLivewireComponents();
         $this->publishViews();
+        $this->publishTypeDefinitions();
     }
 
     /**
@@ -335,7 +336,26 @@ class FormsServiceProvider extends ServiceProvider
         if ( $this->app->runningInConsole() ) {
             $this->publishes( [
                 __DIR__ . '/../resources/views' => resource_path( 'views/vendor/forms' ),
-            ], 'artisanpack-forms-views');
+            ], 'artisanpack-forms-views' );
+        }
+    }
+
+    /**
+     * Publishes the TypeScript type definitions.
+     *
+     * Type definitions are published to resources/types for use in
+     * React, Vue, or other TypeScript-based frontend frameworks.
+     *
+     * @since 1.1.0
+     *
+     * @return void
+     */
+    protected function publishTypeDefinitions(): void
+    {
+        if ( $this->app->runningInConsole() ) {
+            $this->publishes( [
+                __DIR__ . '/../resources/types/artisanpack-forms.d.ts' => resource_path( 'types/artisanpack-forms.d.ts' ),
+            ], 'forms-types' );
         }
     }
 }
