@@ -43,13 +43,13 @@ describe( 'React Form Renderer', function (): void {
         } );
 
         it( 'has the conditional logic utility', function (): void {
-            $path = __DIR__ . '/../../resources/js/react/utils/conditionalLogic.ts';
+            $path = __DIR__ . '/../../resources/js/shared/conditionalLogic.ts';
 
             expect( file_exists( $path ) )->toBeTrue();
         } );
 
         it( 'has the validation utility', function (): void {
-            $path = __DIR__ . '/../../resources/js/react/utils/validation.ts';
+            $path = __DIR__ . '/../../resources/js/shared/validation.ts';
 
             expect( file_exists( $path ) )->toBeTrue();
         } );
@@ -152,7 +152,7 @@ describe( 'React Form Renderer', function (): void {
     describe( 'conditional logic engine content', function (): void {
         beforeEach( function (): void {
             $this->content = file_get_contents(
-                __DIR__ . '/../../resources/js/react/utils/conditionalLogic.ts',
+                __DIR__ . '/../../resources/js/shared/conditionalLogic.ts',
             );
         } );
 
@@ -215,7 +215,7 @@ describe( 'React Form Renderer', function (): void {
     describe( 'validation engine content', function (): void {
         beforeEach( function (): void {
             $this->content = file_get_contents(
-                __DIR__ . '/../../resources/js/react/utils/validation.ts',
+                __DIR__ . '/../../resources/js/shared/validation.ts',
             );
         } );
 

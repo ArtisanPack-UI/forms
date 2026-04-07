@@ -64,9 +64,9 @@ export {
 	evaluateFieldVisibility,
 	evaluateRule,
 	getHiddenFields,
-} from './utils/conditionalLogic';
+} from '../shared/conditionalLogic';
 
 export {
 	validateField,
 	validateFields,
-} from './utils/validation';
+} from '../shared/validation';
