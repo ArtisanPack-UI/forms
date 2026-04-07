@@ -134,6 +134,7 @@ class FormsServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom( __DIR__ . '/../database/migrations' );
         $this->loadViewsFrom( __DIR__ . '/../resources/views', 'forms' );
         $this->loadRoutesFrom( __DIR__ . '/../routes/web.php' );
+        $this->loadApiRoutes();
         $this->registerLivewireComponents();
         $this->publishViews();
     }
@@ -301,6 +302,22 @@ class FormsServiceProvider extends ServiceProvider
             Livewire::component( 'notification-editor', NotificationEditor::class );
             Livewire::component( 'submissions-list', SubmissionsList::class );
             Livewire::component( 'submission-detail', SubmissionDetail::class );
+        }
+    }
+
+    /**
+     * Loads the API routes if the API is enabled.
+     *
+     * Only loads routes when the API is enabled in configuration.
+     *
+     * @since 1.1.0
+     *
+     * @return void
+     */
+    protected function loadApiRoutes(): void
+    {
+        if ( config( 'artisanpack.forms.api.enabled', true ) ) {
+            $this->loadRoutesFrom( __DIR__ . '/../routes/api.php' );
         }
     }
 

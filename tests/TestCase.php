@@ -84,6 +84,9 @@ abstract class TestCase extends BaseTestCase
             'foreign_key_constraints' => true,
         ] );
 
+        // Override API middleware for testing (Sanctum not available in package tests)
+        $app['config']->set( 'artisanpack.forms.api.middleware', ['api', 'auth'] );
+
         // Setup filesystem
         $app['config']->set( 'filesystems.default', 'local' );
         $app['config']->set( 'filesystems.disks.local', [

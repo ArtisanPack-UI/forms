@@ -33,6 +33,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | API Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure the REST API for the Forms package. The API provides
+    | versioned endpoints for managing forms, fields, steps, submissions,
+    | and notifications programmatically.
+    |
+    */
+
+    'api' => [
+        'enabled'    => env( 'FORMS_API_ENABLED', true ),
+        'prefix'     => env( 'FORMS_API_PREFIX', 'api/v1/forms' ),
+        'middleware' => ['api', 'auth:sanctum'],
+        'per_page'   => 15,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Form Uploads Storage Configuration
     |--------------------------------------------------------------------------
     |
