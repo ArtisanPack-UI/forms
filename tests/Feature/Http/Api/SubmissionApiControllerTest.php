@@ -162,8 +162,8 @@ describe( 'SubmissionApiController', function (): void {
                 '_form_loaded_at' => time() - 10,
             ] );
 
-            // Should not be 401 - it's a public endpoint
-            expect( $response->status() )->not->toBe( 401 );
+            $response->assertCreated()
+                ->assertJsonStructure( ['message', 'submission_id'] );
         } );
 
         it( 'returns rate limit response', function (): void {

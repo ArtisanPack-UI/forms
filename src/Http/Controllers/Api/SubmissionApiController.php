@@ -188,16 +188,6 @@ class SubmissionApiController extends Controller
         $formLoadedAt  = $request->input( '_form_loaded_at' );
         $ipAddress     = $request->ip() ?? 'unknown';
 
-        // Check for spam
-        if ( config( 'artisanpack.forms.spam_protection.honeypot.enabled', true ) ) {
-            if ( $this->submissionService->isSpam( $honeypotValue, $formLoadedAt ? (int) $formLoadedAt : null, $form->id, $ipAddress ) ) {
-                // Silent success for bots
-                return response()->json( [
-                    'message' => $form->success_message ?? __( 'Form submitted successfully.' ),
-                ] );
-            }
-        }
-
         // Check rate limiting
         if ( config( 'artisanpack.forms.spam_protection.rate_limit.enabled', true ) ) {
             if ( $this->submissionService->isRateLimited( $ipAddress, $form->id ) ) {
@@ -207,8 +197,18 @@ class SubmissionApiController extends Controller
             }
         }
 
-        // Record the attempt for rate limiting
+        // Record the attempt for rate limiting (before spam check so bots still count)
         $this->submissionService->recordAttempt( $ipAddress, $form->id );
+
+        // Check for spam
+        if ( config( 'artisanpack.forms.spam_protection.honeypot.enabled', true ) ) {
+            if ( $this->submissionService->isSpam( $honeypotValue, $formLoadedAt ? (int) $formLoadedAt : null, $form->id, $ipAddress ) ) {
+                // Silent success for bots
+                return response()->json( [
+                    'message' => $form->success_message ?? __( 'Form submitted successfully.' ),
+                ] );
+            }
+        }
 
         try {
             $metadata   = $this->submissionService->getRequestMetadata( $request );

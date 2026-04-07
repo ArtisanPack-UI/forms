@@ -89,8 +89,13 @@ Route::prefix( config( 'artisanpack.forms.api.prefix', 'api/v1/forms' ) )
 |
 */
 
+$publicMiddleware = collect( config( 'artisanpack.forms.api.middleware', ['api'] ) )
+    ->reject( fn ( string $m ) => str_starts_with( $m, 'auth' ) )
+    ->values()
+    ->all();
+
 Route::prefix( config( 'artisanpack.forms.api.prefix', 'api/v1/forms' ) )
-    ->middleware( ['api'] )
+    ->middleware( $publicMiddleware )
     ->name( 'api.forms.' )
     ->group( function (): void {
         // Public form rendering

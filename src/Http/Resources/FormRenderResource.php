@@ -42,8 +42,6 @@ class FormRenderResource extends JsonResource
      */
     public function toArray( Request $request ): array
     {
-        $this->resource->load( ['fields', 'steps.fields'] );
-
         return [
             'id'                    => $this->id,
             'name'                  => $this->name,

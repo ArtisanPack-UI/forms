@@ -54,6 +54,7 @@ class UpdateFieldApiRequest extends FormRequest
         $formId = $this->route( 'form' )?->id;
 
         return [
+            'name'              => ['nullable', 'string', 'max:100'],
             'type'              => ['nullable', 'string', 'max:50'],
             'step_id'           => ['nullable', 'integer', Rule::exists( 'form_steps', 'id' )->where( 'form_id', $formId )],
             'label'             => ['nullable', 'string', 'max:255'],

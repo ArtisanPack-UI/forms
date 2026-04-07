@@ -168,6 +168,8 @@ class FormApiController extends Controller
             abort( 404, __( 'Form not found.' ) );
         }
 
+        $form->load( ['fields', 'steps.fields'] );
+
         return new FormRenderResource( $form );
     }
 }

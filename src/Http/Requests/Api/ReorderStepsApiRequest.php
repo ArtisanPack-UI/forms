@@ -18,6 +18,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Reorder steps API request class.
@@ -46,13 +47,15 @@ class ReorderStepsApiRequest extends FormRequest
      *
      * @since 1.1.0
      *
-     * @return array<string, array<int, string>> The validation rules.
+     * @return array<string, array<int, mixed>> The validation rules.
      */
     public function rules(): array
     {
+        $formId = $this->route( 'form' )?->id;
+
         return [
             'ordered_ids'   => ['required', 'array', 'min:1'],
-            'ordered_ids.*' => ['required', 'integer'],
+            'ordered_ids.*' => ['required', 'integer', 'distinct', Rule::exists( 'form_steps', 'id' )->where( 'form_id', $formId )],
         ];
     }
 }

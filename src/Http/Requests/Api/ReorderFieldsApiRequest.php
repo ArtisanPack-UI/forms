@@ -53,10 +53,25 @@ class ReorderFieldsApiRequest extends FormRequest
     {
         $formId = $this->route( 'form' )?->id;
 
+        $stepId = $this->input( 'step_id' );
+
         return [
             'ordered_uuids'   => ['required', 'array', 'min:1'],
-            'ordered_uuids.*' => ['required', 'string'],
-            'step_id'         => ['nullable', 'integer', Rule::exists( 'form_steps', 'id' )->where( 'form_id', $formId )],
+            'ordered_uuids.*' => [
+                'required',
+                'uuid',
+                'distinct',
+                Rule::exists( 'form_fields', 'uuid' )->where( function ( $query ) use ( $formId, $stepId ): void {
+                    $query->where( 'form_id', $formId );
+
+                    if ( null !== $stepId ) {
+                        $query->where( 'step_id', $stepId );
+                    } else {
+                        $query->whereNull( 'step_id' );
+                    }
+                } ),
+            ],
+            'step_id' => ['nullable', 'integer', Rule::exists( 'form_steps', 'id' )->where( 'form_id', $formId )],
         ];
     }
 }

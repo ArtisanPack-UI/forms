@@ -59,7 +59,7 @@ class StoreNotificationApiRequest extends FormRequest
 
         return [
             'type'                    => ['required', 'string', "in:{$types}"],
-            'name'                    => ['nullable', 'string', 'max:255'],
+            'name'                    => ['required', 'string', 'max:255'],
             'to_email'                => ['nullable', 'email', 'max:255'],
             'to_field'                => ['nullable', 'string', 'max:255'],
             'cc_emails'               => ['nullable', 'string', 'max:1000'],

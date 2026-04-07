@@ -20,7 +20,6 @@ namespace ArtisanPackUI\Forms\Http\Requests\Api;
 
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Services\ConditionalLogicService;
-use ArtisanPackUI\Forms\Services\SubmissionService;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -70,7 +69,6 @@ class SubmitFormApiRequest extends FormRequest
         $form->load( 'fields' );
 
         $conditionalLogicService = app( ConditionalLogicService::class );
-        $submissionService       = app( SubmissionService::class );
 
         $hiddenFields = $conditionalLogicService->getHiddenFields(
             $form->fields,
@@ -84,7 +82,7 @@ class SubmitFormApiRequest extends FormRequest
                 continue;
             }
 
-            if ( in_array( $field->type, ['heading', 'paragraph', 'divider', 'html'] ) ) {
+            if ( $field->isLayoutField() ) {
                 continue;
             }
 
