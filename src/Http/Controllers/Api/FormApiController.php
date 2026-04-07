@@ -80,7 +80,7 @@ class FormApiController extends Controller
         $perPage = config( 'artisanpack.forms.api.per_page', 15 );
 
         return new PaginatedResourceCollection(
-            $query->orderBy( 'created_at', 'desc' )->paginate( $perPage ),
+            $query->orderBy( 'created_at', 'desc' )->paginate( $perPage )->withQueryString(),
             FormResource::class,
         );
     }
