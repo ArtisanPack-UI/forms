@@ -23,6 +23,7 @@ use ArtisanPackUI\Forms\Http\Requests\Api\BulkSubmissionApiRequest;
 use ArtisanPackUI\Forms\Http\Requests\Api\SubmitFormApiRequest;
 use ArtisanPackUI\Forms\Http\Requests\Api\UpdateSubmissionApiRequest;
 use ArtisanPackUI\Forms\Http\Resources\FormSubmissionResource;
+use ArtisanPackUI\Forms\Http\Resources\PaginatedResourceCollection;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Models\FormUpload;
@@ -32,7 +33,6 @@ use Exception;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -71,9 +71,9 @@ class SubmissionApiController extends Controller
      * @param Request $request The incoming request.
      * @param Form    $form    The form to list submissions for.
      *
-     * @return AnonymousResourceCollection The paginated submissions collection.
+     * @return PaginatedResourceCollection The paginated submissions collection.
      */
-    public function index( Request $request, Form $form ): AnonymousResourceCollection
+    public function index( Request $request, Form $form ): PaginatedResourceCollection
     {
         $this->authorize( 'viewSubmissions', $form );
 
@@ -94,8 +94,9 @@ class SubmissionApiController extends Controller
 
         $perPage = config( 'artisanpack.forms.api.per_page', 15 );
 
-        return FormSubmissionResource::collection(
-            $query->orderBy( 'created_at', 'desc' )->paginate( $perPage ),
+        return new PaginatedResourceCollection(
+            $query->orderBy( 'created_at', 'desc' )->paginate( $perPage )->withQueryString(),
+            FormSubmissionResource::class,
         );
     }
 

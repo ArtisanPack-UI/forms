@@ -17,6 +17,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Http\Resources;
 
+use ArtisanPackUI\Forms\Config\FieldTypes;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -59,6 +60,7 @@ class FormFieldResource extends JsonResource
             'width'             => $this->width,
             'css_classes'       => $this->css_classes,
             'sort_order'        => $this->sort_order,
+            'options'           => $this->when( FieldTypes::hasOptions( $this->type ) && ! empty( $this->options ), $this->options ),
             'created_at'        => $this->created_at?->toIso8601String(),
             'updated_at'        => $this->updated_at?->toIso8601String(),
         ];
