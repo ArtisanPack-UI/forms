@@ -25,6 +25,26 @@ function mapOptions( field: FieldComponentProps['field'] ): FieldOption[] {
 }
 
 /**
+ * Normalizes a value to a boolean for checkbox/toggle fields.
+ * Handles string representations from API responses correctly.
+ */
+function isChecked( value: unknown ): boolean {
+	if ( typeof value === 'boolean' ) {
+		return value;
+	}
+
+	if ( typeof value === 'number' ) {
+		return value === 1;
+	}
+
+	if ( typeof value === 'string' ) {
+		return ['true', '1', 'yes', 'on'].includes( value.toLowerCase() );
+	}
+
+	return false;
+}
+
+/**
  * Renders a select dropdown field.
  */
 export function SelectField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
@@ -33,6 +53,7 @@ export function SelectField( { field, value, error, onChange, displayConfig }: F
 	return (
 		<Select
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
 			name={field.name}
 			value={String( value ?? '' )}
 			placeholder={field.placeholder ?? 'Select an option...'}
@@ -58,6 +79,7 @@ export function RadioField( { field, value, error, onChange, displayConfig }: Fi
 	return (
 		<Radio
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
 			name={field.name}
 			value={String( value ?? '' )}
 			hint={field.help_text ?? undefined}
@@ -76,11 +98,12 @@ export function RadioField( { field, value, error, onChange, displayConfig }: Fi
  * Renders a single checkbox field.
  */
 export function CheckboxField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
-	const checked = Boolean( value );
+	const checked = isChecked( value );
 
 	return (
 		<Checkbox
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
 			name={field.name}
 			checked={checked}
 			hint={field.help_text ?? undefined}
@@ -110,8 +133,8 @@ export function CheckboxGroupField( { field, value, error, onChange, displayConf
 
 	return (
 		<fieldset className="fieldset">
-			{displayConfig.label_position !== 'hidden' && field.label && (
-				<legend className="fieldset-legend">
+			{field.label && (
+				<legend className={`fieldset-legend ${displayConfig.label_position === 'hidden' ? 'sr-only' : ''}`}>
 					{field.label}
 					{field.is_required && <span className="text-error ml-1">*</span>}
 				</legend>
@@ -152,8 +175,8 @@ export function SelectMultipleField( { field, value, error, onChange, displayCon
 
 	return (
 		<fieldset className="fieldset">
-			{displayConfig.label_position !== 'hidden' && field.label && (
-				<legend className="fieldset-legend">
+			{field.label && (
+				<legend className={`fieldset-legend ${displayConfig.label_position === 'hidden' ? 'sr-only' : ''}`}>
 					{field.label}
 					{field.is_required && <span className="text-error ml-1">*</span>}
 				</legend>
@@ -187,11 +210,12 @@ export function SelectMultipleField( { field, value, error, onChange, displayCon
  * Renders a toggle switch field (alias for checkbox with toggle styling).
  */
 export function ToggleField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
-	const checked = Boolean( value );
+	const checked = isChecked( value );
 
 	return (
 		<Toggle
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
 			name={field.name}
 			checked={checked}
 			hint={field.help_text ?? undefined}

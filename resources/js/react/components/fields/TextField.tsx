@@ -21,6 +21,7 @@ export function TextField( { field, value, error, onChange, displayConfig }: Fie
 	return (
 		<Input
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
 			name={field.name}
 			type="text"
 			value={String( value ?? '' )}
@@ -45,6 +46,7 @@ export function EmailField( { field, value, error, onChange, displayConfig }: Fi
 	return (
 		<Input
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
 			name={field.name}
 			type="email"
 			value={String( value ?? '' )}
@@ -66,6 +68,7 @@ export function PhoneField( { field, value, error, onChange, displayConfig }: Fi
 	return (
 		<Input
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
 			name={field.name}
 			type="tel"
 			value={String( value ?? '' )}
@@ -88,6 +91,7 @@ export function NumberField( { field, value, error, onChange, displayConfig }: F
 	return (
 		<Input
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
 			name={field.name}
 			type="number"
 			value={String( value ?? '' )}
@@ -112,6 +116,7 @@ export function UrlField( { field, value, error, onChange, displayConfig }: Fiel
 	return (
 		<Input
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
 			name={field.name}
 			type="url"
 			value={String( value ?? '' )}
@@ -133,6 +138,7 @@ export function TextareaField( { field, value, error, onChange, displayConfig }:
 	return (
 		<Textarea
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
 			name={field.name}
 			value={String( value ?? '' )}
 			placeholder={field.placeholder ?? undefined}
@@ -156,6 +162,7 @@ export function HiddenField( { field, value }: FieldComponentProps ) {
 			type="hidden"
 			name={field.name}
 			value={String( value ?? '' )}
+			readOnly
 		/>
 	);
 }
@@ -167,6 +174,7 @@ export function TimeField( { field, value, error, onChange, displayConfig }: Fie
 	return (
 		<Input
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
 			name={field.name}
 			type="time"
 			value={String( value ?? '' )}

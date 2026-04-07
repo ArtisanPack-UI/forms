@@ -24,6 +24,7 @@ export function FileField( { field, error, onFileChange, displayConfig }: FieldC
 	return (
 		<FileInput
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
 			name={field.name}
 			accept={allowedTypes}
 			hint={field.help_text ?? undefined}
@@ -32,12 +33,20 @@ export function FileField( { field, error, onFileChange, displayConfig }: FieldC
 			className={field.css_classes ?? undefined}
 			withDragDrop
 			onFilesSelected={( fileList ) => {
-				if ( fileList && fileList.length > 0 && onFileChange ) {
-					if ( fileList.length === 1 ) {
-						onFileChange( fileList[0] );
-					} else {
-						onFileChange( Array.from( fileList ) );
-					}
+				if ( !onFileChange ) {
+					return;
+				}
+
+				if ( !fileList || fileList.length === 0 ) {
+					onFileChange( [] );
+
+					return;
+				}
+
+				if ( fileList.length === 1 ) {
+					onFileChange( fileList[0] );
+				} else {
+					onFileChange( Array.from( fileList ) );
 				}
 			}}
 		/>
@@ -51,6 +60,7 @@ export function DateField( { field, value, error, onChange, displayConfig }: Fie
 	return (
 		<DatePicker
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
+			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? undefined ) : undefined}
 			name={field.name}
 			value={String( value ?? '' )}
 			hint={field.help_text ?? undefined}

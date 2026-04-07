@@ -260,7 +260,7 @@ export function compareValues(
 		case 'not_includes':
 			return !compareIncludes( fieldValue, ruleValue );
 		default:
-			return true;
+			return false;
 	}
 }
 

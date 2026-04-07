@@ -449,6 +449,22 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 				setErrors( serverErrors );
 
+				// Navigate to the first step with server errors (multi-step forms)
+				if ( form.is_multi_step && sortedSteps.length > 0 ) {
+					const errorFieldNames = new Set( Object.keys( serverErrors ) );
+
+					for ( let i = 0; i < sortedSteps.length; i++ ) {
+						const stepFields = allFields.filter(
+							( f ) => f.step_id === sortedSteps[i].id,
+						);
+
+						if ( stepFields.some( ( f ) => errorFieldNames.has( f.name ) ) ) {
+							setCurrentStep( i );
+							break;
+						}
+					}
+				}
+
 				return;
 			}
 

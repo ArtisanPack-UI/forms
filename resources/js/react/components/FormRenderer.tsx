@@ -221,8 +221,13 @@ export function FormRenderer( {
 	// Form-level errors
 	const formErrors = errors._form;
 
+	const handleFormSubmit = ( e: React.FormEvent ) => {
+		e.preventDefault();
+		submit();
+	};
+
 	return (
-		<div className={className}>
+		<form className={className} onSubmit={handleFormSubmit} noValidate>
 			{/* Form description */}
 			{form.description && (
 				<p className="mb-4 opacity-70">{form.description}</p>
@@ -261,9 +266,8 @@ export function FormRenderer( {
 					{renderedFields}
 					<div>
 						<Button
-							type="button"
+							type="submit"
 							color="primary"
-							onClick={submit}
 							disabled={isSubmitting}
 						>
 							{isSubmitting ? 'Submitting...' : form.submit_button_text}
@@ -271,6 +275,6 @@ export function FormRenderer( {
 					</div>
 				</div>
 			)}
-		</div>
+		</form>
 	);
 }

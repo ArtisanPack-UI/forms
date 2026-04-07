@@ -15,6 +15,9 @@ import type { FormField, ValidationRules } from '../../types/artisanpack-forms';
 /** Layout field types that do not collect data. */
 const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );
 
+/** Field types where min/max rules apply to string length (not numeric value). */
+const TEXT_LENGTH_FIELDS = new Set( ['text', 'email', 'phone', 'url', 'textarea', 'hidden'] );
+
 /**
  * Validates a single field value against its field definition.
  *
@@ -56,8 +59,8 @@ export function validateField(
 		}
 	}
 
-	// Skip further validation if value is empty and not required
-	if ( value === null || value === undefined || String( value ).trim() === '' ) {
+	// Skip further validation if value is empty and not required (except file fields)
+	if ( field.type !== 'file' && ( value === null || value === undefined || String( value ).trim() === '' ) ) {
 		return errors;
 	}
 
@@ -80,8 +83,8 @@ export function validateField(
 		}
 	}
 
-	// Min/max length for text fields
-	if ( typeof value === 'string' ) {
+	// Min/max length for text-like fields only (not number, date, time, etc.)
+	if ( typeof value === 'string' && TEXT_LENGTH_FIELDS.has( field.type ) ) {
 		if ( rules.min !== undefined && value.length < rules.min ) {
 			errors.push( `Must be at least ${rules.min} characters.` );
 		}
@@ -89,7 +92,10 @@ export function validateField(
 		if ( rules.max !== undefined && value.length > rules.max ) {
 			errors.push( `Must be no more than ${rules.max} characters.` );
 		}
+	}
 
+	// Pattern validation for string values
+	if ( typeof value === 'string' ) {
 		if ( rules.pattern ) {
 			try {
 				const regex = new RegExp( rules.pattern );
