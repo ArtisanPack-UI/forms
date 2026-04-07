@@ -22,12 +22,12 @@ use ArtisanPackUI\Forms\Http\Requests\Api\StoreFormApiRequest;
 use ArtisanPackUI\Forms\Http\Requests\Api\UpdateFormApiRequest;
 use ArtisanPackUI\Forms\Http\Resources\FormRenderResource;
 use ArtisanPackUI\Forms\Http\Resources\FormResource;
+use ArtisanPackUI\Forms\Http\Resources\PaginatedResourceCollection;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Services\FormService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Routing\Controller;
 
 /**
@@ -61,9 +61,9 @@ class FormApiController extends Controller
      *
      * @param Request $request The incoming request.
      *
-     * @return AnonymousResourceCollection The paginated form collection.
+     * @return PaginatedResourceCollection The paginated form collection.
      */
-    public function index( Request $request ): AnonymousResourceCollection
+    public function index( Request $request ): PaginatedResourceCollection
     {
         $this->authorize( 'viewAny', Form::class );
 
@@ -79,8 +79,9 @@ class FormApiController extends Controller
 
         $perPage = config( 'artisanpack.forms.api.per_page', 15 );
 
-        return FormResource::collection(
+        return new PaginatedResourceCollection(
             $query->orderBy( 'created_at', 'desc' )->paginate( $perPage ),
+            FormResource::class,
         );
     }
 

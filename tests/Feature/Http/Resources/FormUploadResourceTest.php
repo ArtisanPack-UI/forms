@@ -60,6 +60,8 @@ describe( 'FormUploadResource', function (): void {
 
         $resource = ( new FormUploadResource( $upload ) )->toArray( Request::create( '/' ) );
 
-        expect( $resource )->toHaveKey( 'url' );
+        $expectedUrl = Storage::disk( $upload->disk )->url( $upload->path );
+
+        expect( $resource['url'] )->toBe( $expectedUrl );
     } );
 } );

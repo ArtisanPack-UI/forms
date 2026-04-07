@@ -10,6 +10,12 @@ use Illuminate\Http\Request;
 
 describe( 'FormRenderResource', function (): void {
 
+    beforeEach( function (): void {
+        config()->set( 'artisanpack.forms.spam_protection.honeypot.enabled', true );
+        config()->set( 'artisanpack.forms.spam_protection.honeypot.field_name', 'website_url' );
+        config()->set( 'artisanpack.forms.display', [] );
+    } );
+
     it( 'transforms a form into a render definition', function (): void {
         $form = Form::factory()->create( [
             'name'                  => 'Contact Form',

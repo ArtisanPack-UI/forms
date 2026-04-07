@@ -90,7 +90,9 @@ describe( 'FormResource', function (): void {
 
         $resource = ( new FormResource( $form ) )->toArray( Request::create( '/' ) );
 
-        expect( $resource['created_at'] )->toMatch( '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/' )
-            ->and( $resource['updated_at'] )->toMatch( '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/' );
+        $iso8601Pattern = '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/';
+
+        expect( $resource['created_at'] )->toMatch( $iso8601Pattern )
+            ->and( $resource['updated_at'] )->toMatch( $iso8601Pattern );
     } );
 } );
