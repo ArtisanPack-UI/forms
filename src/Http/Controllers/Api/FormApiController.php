@@ -87,13 +87,15 @@ class FormApiController extends Controller
      *
      * @param StoreFormApiRequest $request The validated request.
      *
-     * @return FormResource The created form resource.
+     * @return JsonResponse The created form resource with 201 status.
      */
-    public function store( StoreFormApiRequest $request ): FormResource
+    public function store( StoreFormApiRequest $request ): JsonResponse
     {
         $form = $this->formService->create( $request->validated() );
 
-        return new FormResource( $form );
+        return ( new FormResource( $form ) )
+            ->response()
+            ->setStatusCode( 201 );
     }
 
     /**

@@ -63,42 +63,8 @@ class StoreNotificationApiRequest extends FormRequest
             'name'                    => ['required', 'string', 'max:255'],
             'to_email'                => ['nullable', 'email', 'max:255'],
             'to_field'                => ['nullable', 'string', 'max:255'],
-            'cc_emails'               => [
-                'nullable',
-                'string',
-                'max:1000',
-                function ( string $attribute, mixed $value, Closure $fail ): void {
-                    if ( empty( $value ) ) {
-                        return;
-                    }
-
-                    foreach ( explode( ',', $value ) as $email ) {
-                        $email = trim( $email );
-
-                        if ( '' !== $email && ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
-                            $fail( __( 'The :attribute contains an invalid email address: :email', ['attribute' => $attribute, 'email' => $email] ) );
-                        }
-                    }
-                },
-            ],
-            'bcc_emails' => [
-                'nullable',
-                'string',
-                'max:1000',
-                function ( string $attribute, mixed $value, Closure $fail ): void {
-                    if ( empty( $value ) ) {
-                        return;
-                    }
-
-                    foreach ( explode( ',', $value ) as $email ) {
-                        $email = trim( $email );
-
-                        if ( '' !== $email && ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
-                            $fail( __( 'The :attribute contains an invalid email address: :email', ['attribute' => $attribute, 'email' => $email] ) );
-                        }
-                    }
-                },
-            ],
+            'cc_emails'               => ['nullable', 'string', 'max:1000', $this->commaSeparatedEmailRule()],
+            'bcc_emails'              => ['nullable', 'string', 'max:1000', $this->commaSeparatedEmailRule()],
             'reply_to_email'          => ['nullable', 'email', 'max:255'],
             'reply_to_field'          => ['nullable', 'string', 'max:255'],
             'from_name'               => ['nullable', 'string', 'max:255'],
@@ -109,5 +75,29 @@ class StoreNotificationApiRequest extends FormRequest
             'include_submission_data' => ['nullable', 'boolean'],
             'is_active'               => ['nullable', 'boolean'],
         ];
+    }
+
+    /**
+     * Returns a closure that validates a comma-separated list of email addresses.
+     *
+     * @since 1.1.0
+     *
+     * @return Closure The validation closure.
+     */
+    private function commaSeparatedEmailRule(): Closure
+    {
+        return function ( string $attribute, mixed $value, Closure $fail ): void {
+            if ( null === $value || '' === $value ) {
+                return;
+            }
+
+            foreach ( explode( ',', $value ) as $email ) {
+                $email = trim( $email );
+
+                if ( '' !== $email && ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
+                    $fail( __( 'The :attribute contains an invalid email address: :email', ['attribute' => $attribute, 'email' => $email] ) );
+                }
+            }
+        };
     }
 }

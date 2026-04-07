@@ -82,7 +82,8 @@ class SubmitFormApiRequest extends FormRequest
         );
 
         $rules = [
-            'data' => ['present', 'array'],
+            'data'  => ['present', 'array'],
+            'files' => ['sometimes', 'array'],
         ];
 
         foreach ( $form->fields as $field ) {

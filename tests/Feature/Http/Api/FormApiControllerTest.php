@@ -63,7 +63,7 @@ describe( 'FormApiController', function (): void {
                     'description' => 'A contact form',
                 ] );
 
-            $response->assertSuccessful()
+            $response->assertCreated()
                 ->assertJsonPath( 'data.name', 'Contact Form' )
                 ->assertJsonPath( 'data.slug', 'contact-form' );
 

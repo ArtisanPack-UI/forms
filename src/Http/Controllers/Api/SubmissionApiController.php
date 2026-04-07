@@ -143,7 +143,13 @@ class SubmissionApiController extends Controller
 
         $submission->update( $request->validated() );
 
-        return new FormSubmissionResource( $submission->fresh( ['values', 'uploads'] ) );
+        $freshSubmission = $submission->fresh( ['values', 'uploads'] );
+
+        if ( null === $freshSubmission ) {
+            abort( 404, __( 'Submission not found after update.' ) );
+        }
+
+        return new FormSubmissionResource( $freshSubmission );
     }
 
     /**
