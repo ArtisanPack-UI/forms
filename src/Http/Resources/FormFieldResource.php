@@ -55,7 +55,9 @@ class FormFieldResource extends JsonResource
             'is_required'       => $this->is_required,
             'validation_rules'  => $this->validation_rules,
             'field_config'      => $this->field_config,
-            'default_value'     => $this->default_value,
+            'default_value'     => 'html' === $this->type && null !== $this->default_value
+                ? kses( $this->default_value )
+                : $this->default_value,
             'conditional_logic' => $this->conditional_logic,
             'width'             => $this->width,
             'css_classes'       => $this->css_classes,
