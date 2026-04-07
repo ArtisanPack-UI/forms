@@ -121,6 +121,8 @@ class SubmitFormApiRequest extends FormRequest
             return [];
         }
 
+        $form->loadMissing( 'fields' );
+
         $data = $this->input( 'data', [] );
 
         if ( ! is_array( $data ) ) {
@@ -157,6 +159,8 @@ class SubmitFormApiRequest extends FormRequest
         if ( ! $form instanceof Form ) {
             return [];
         }
+
+        $form->loadMissing( 'fields' );
 
         $files = $this->allFiles();
         $files = $files['files'] ?? [];

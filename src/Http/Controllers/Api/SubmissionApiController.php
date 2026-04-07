@@ -296,42 +296,23 @@ class SubmissionApiController extends Controller
      */
     public function bulk( BulkSubmissionApiRequest $request, Form $form ): JsonResponse
     {
+        $this->authorize( 'viewSubmissions', $form );
+
         $action = $request->validated( 'action' );
         $ids    = $request->validated( 'ids' );
 
-        $submissions = FormSubmission::where( 'form_id', $form->id )
-            ->whereIn( 'id', $ids )
-            ->get();
+        $query = FormSubmission::where( 'form_id', $form->id )
+            ->whereIn( 'id', $ids );
 
-        $affected = DB::transaction( function () use ( $submissions, $action ): int {
-            $count = 0;
-
-            foreach ( $submissions as $submission ) {
-                switch ( $action ) {
-                    case 'delete':
-                        $submission->delete();
-                        $count++;
-                        break;
-                    case 'mark_read':
-                        $submission->update( ['is_read' => true] );
-                        $count++;
-                        break;
-                    case 'mark_unread':
-                        $submission->update( ['is_read' => false] );
-                        $count++;
-                        break;
-                    case 'mark_spam':
-                        $submission->update( ['is_spam' => true] );
-                        $count++;
-                        break;
-                    case 'mark_not_spam':
-                        $submission->update( ['is_spam' => false] );
-                        $count++;
-                        break;
-                }
-            }
-
-            return $count;
+        $affected = DB::transaction( function () use ( $query, $action ): int {
+            return match ( $action ) {
+                'delete'        => $query->delete(),
+                'mark_read'     => $query->update( ['is_read' => true] ),
+                'mark_unread'   => $query->update( ['is_read' => false] ),
+                'mark_spam'     => $query->update( ['is_spam' => true] ),
+                'mark_not_spam' => $query->update( ['is_spam' => false] ),
+                default         => 0,
+            };
         } );
 
         return response()->json( [
