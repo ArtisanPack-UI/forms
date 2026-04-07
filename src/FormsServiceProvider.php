@@ -138,6 +138,7 @@ class FormsServiceProvider extends ServiceProvider
         $this->registerLivewireComponents();
         $this->publishViews();
         $this->publishTypeDefinitions();
+        $this->publishReactComponents();
     }
 
     /**
@@ -356,6 +357,25 @@ class FormsServiceProvider extends ServiceProvider
             $this->publishes( [
                 __DIR__ . '/../resources/types/artisanpack-forms.d.ts' => resource_path( 'types/artisanpack-forms.d.ts' ),
             ], 'forms-types' );
+        }
+    }
+
+    /**
+     * Publishes the React form renderer components.
+     *
+     * React components are published to resources/js/vendor/artisanpack-forms
+     * for use in React-based frontend applications.
+     *
+     * @since 1.1.0
+     *
+     * @return void
+     */
+    protected function publishReactComponents(): void
+    {
+        if ( $this->app->runningInConsole() ) {
+            $this->publishes( [
+                __DIR__ . '/../resources/js/react' => resource_path( 'js/vendor/artisanpack-forms' ),
+            ], 'forms-react' );
         }
     }
 }
