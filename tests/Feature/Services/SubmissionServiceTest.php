@@ -394,30 +394,30 @@ describe( 'SubmissionService', function (): void {
                 $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter( 'forms.submission_data', function ( array $data, Form $form): array {
+            addFilter( 'forms.submission_data', function ( array $data, Form $form ): array {
                 $data['injected_field'] = 'hook_value';
 
                 return $data;
-            });
+            } );
 
             $form = Form::factory()->create();
-            FormField::factory()->for( $form)->create( ['name' => 'name', 'type' => 'text']);
-            FormField::factory()->for( $form)->create( ['name' => 'injected_field', 'type' => 'text']);
+            FormField::factory()->for( $form )->create( ['name' => 'name', 'type' => 'text'] );
+            FormField::factory()->for( $form )->create( ['name' => 'injected_field', 'type' => 'text'] );
 
-            $submission = $this->service->create( $form, ['name' => 'John']);
+            $submission = $this->service->create( $form, ['name' => 'John'] );
 
-            expect( $submission->getValue( 'injected_field'))->toBe( 'hook_value');
-        });
-    });
-});
+            expect( $submission->getValue( 'injected_field' ) )->toBe( 'hook_value' );
+        } );
+    } );
+} );
 
 afterEach( function (): void {
     // Clean up rate limiter
-    RateLimiter::clear( 'form-submission:1:192.168.1.1');
-    RateLimiter::clear( 'form-submission:1:192.168.1.2');
-    RateLimiter::clear( 'form-submission:2:192.168.1.1');
+    RateLimiter::clear( 'form-submission:1:192.168.1.1' );
+    RateLimiter::clear( 'form-submission:1:192.168.1.2' );
+    RateLimiter::clear( 'form-submission:2:192.168.1.1' );
 
-    if ( function_exists( 'removeAllFilters')) {
+    if ( function_exists( 'removeAllFilters' )) {
         removeAllFilters( 'forms.submission_data');
     }
 });

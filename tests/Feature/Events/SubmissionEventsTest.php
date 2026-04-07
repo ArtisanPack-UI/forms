@@ -100,8 +100,8 @@ describe( 'Submission Events', function (): void {
             $submissionId = $submission->id;
             $submission->delete();
 
-            expect( $hookFired)->toBeTrue()
-                ->and( $receivedSubmissionId)->toBe( $submissionId);
+            expect( $hookFired )->toBeTrue()
+                ->and( $receivedSubmissionId )->toBe( $submissionId );
         });
     });
 });

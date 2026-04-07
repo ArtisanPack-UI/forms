@@ -93,8 +93,8 @@ describe( 'Form Events', function (): void {
             $formId = $form->id;
             $form->delete();
 
-            expect( $hookFired)->toBeTrue()
-                ->and( $receivedFormId)->toBe( $formId);
+            expect( $hookFired )->toBeTrue()
+                ->and( $receivedFormId )->toBe( $formId );
         });
     });
 });

@@ -124,10 +124,10 @@ describe( 'Privacy Settings', function (): void {
                 'HTTP_REFERER' => 'https://example.com/previous-page',
             ] );
 
-            $metadata = $this->service->getRequestMetadata( $request);
+            $metadata = $this->service->getRequestMetadata( $request );
 
-            expect( $metadata['page_url'])->toContain( '/contact');
-            expect( $metadata['referrer_url'])->toBe( 'https://example.com/previous-page');
-        });
-    });
+            expect( $metadata['page_url'] )->toContain( '/contact' );
+            expect( $metadata['referrer_url'] )->toBe( 'https://example.com/previous-page' );
+        } );
+    } );
 });

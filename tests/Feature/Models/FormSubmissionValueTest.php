@@ -129,10 +129,10 @@ describe( 'FormSubmissionValue Model', function (): void {
             $textValue = FormSubmissionValue::factory()->create( [
                 'field_type' => 'text',
                 'upload_id'  => null,
-            ]);
+            ] );
 
-            expect( $fileValue->is_file)->toBeTrue()
-                ->and( $textValue->is_file)->toBeFalse();
-        });
-    });
+            expect( $fileValue->is_file )->toBeTrue()
+                ->and( $textValue->is_file )->toBeFalse();
+        } );
+    } );
 });

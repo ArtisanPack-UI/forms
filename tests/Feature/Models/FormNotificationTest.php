@@ -191,17 +191,17 @@ describe( 'FormNotification Model', function (): void {
         } );
 
         it( 'parses subject with placeholders', function (): void {
-            $form         = Form::factory()->create( ['name' => 'Support Form']);
-            $notification = FormNotification::factory()->for( $form)->create( [
+            $form         = Form::factory()->create( ['name' => 'Support Form'] );
+            $notification = FormNotification::factory()->for( $form )->create( [
                 'subject' => 'New submission from {form_name}: {submission_number}',
-            ]);
-            $submission = FormSubmission::factory()->for( $form)->create( [
+            ] );
+            $submission = FormSubmission::factory()->for( $form )->create( [
                 'submission_number' => 'FORM-2-2025-00005',
-            ]);
+            ] );
 
-            $parsed = $notification->parseSubject( $submission);
+            $parsed = $notification->parseSubject( $submission );
 
-            expect( $parsed)->toBe( 'New submission from Support Form: FORM-2-2025-00005');
-        });
+            expect( $parsed )->toBe( 'New submission from Support Form: FORM-2-2025-00005' );
+        } );
     });
 });

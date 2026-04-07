@@ -77,9 +77,9 @@ describe( 'Security Logging', function (): void {
 
             Log::shouldReceive( 'warning' )->never();
 
-            $result = $this->service->isRateLimited( '192.168.1.200', $form->id);
+            $result = $this->service->isRateLimited( '192.168.1.200', $form->id );
 
-            expect( $result)->toBeFalse();
-        });
-    });
+            expect( $result )->toBeFalse();
+        } );
+    } );
 });

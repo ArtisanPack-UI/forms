@@ -188,17 +188,17 @@ describe( 'FormsList Livewire Component', function (): void {
         } );
 
         it( 'persists sort in URL', function (): void {
-            $component = Livewire::test( FormsList::class)
-                ->call( 'sort', 'name');
+            $component = Livewire::test( FormsList::class )
+                ->call( 'sort', 'name' );
 
-            expect( $component->get( 'sortBy'))->toBe( 'name');
-        });
+            expect( $component->get( 'sortBy' ) )->toBe( 'name' );
+        } );
 
         it( 'persists status filter in URL', function (): void {
-            $component = Livewire::test( FormsList::class)
-                ->set( 'statusFilter', 'active');
+            $component = Livewire::test( FormsList::class )
+                ->set( 'statusFilter', 'active' );
 
-            expect( $component->get( 'statusFilter'))->toBe( 'active');
+            expect( $component->get( 'statusFilter' ) )->toBe( 'active' );
         });
     });
 });

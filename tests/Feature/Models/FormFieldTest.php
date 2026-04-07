@@ -184,14 +184,14 @@ describe( 'FormField Model', function (): void {
                     'min_time' => '09:00',
                     'max_time' => '17:00',
                 ],
-            ]);
+            ] );
 
             $rules = $field->buildValidationRules();
 
-            expect( $rules)->toContain( 'required')
-                ->and( $rules)->toContain( 'date_format:H:i')
-                ->and( $rules)->toContain( 'after_or_equal:09:00')
-                ->and( $rules)->toContain( 'before_or_equal:17:00');
-        });
+            expect( $rules )->toContain( 'required' )
+                ->and( $rules )->toContain( 'date_format:H:i' )
+                ->and( $rules )->toContain( 'after_or_equal:09:00' )
+                ->and( $rules )->toContain( 'before_or_equal:17:00' );
+        } );
     });
 });

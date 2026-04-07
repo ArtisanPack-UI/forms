@@ -405,31 +405,31 @@ describe( 'SubmissionsList Livewire Component', function (): void {
 
     describe( 'URL persistence', function (): void {
         it( 'persists search in URL', function (): void {
-            $component = Livewire::test( SubmissionsList::class)
-                ->set( 'search', 'test query');
+            $component = Livewire::test( SubmissionsList::class )
+                ->set( 'search', 'test query' );
 
-            expect( $component->get( 'search'))->toBe( 'test query');
-        });
+            expect( $component->get( 'search' ) )->toBe( 'test query' );
+        } );
 
         it( 'persists status in URL', function (): void {
-            $component = Livewire::test( SubmissionsList::class)
-                ->set( 'status', 'unread');
+            $component = Livewire::test( SubmissionsList::class )
+                ->set( 'status', 'unread' );
 
-            expect( $component->get( 'status'))->toBe( 'unread');
-        });
+            expect( $component->get( 'status' ) )->toBe( 'unread' );
+        } );
 
         it( 'persists date range in URL', function (): void {
-            $component = Livewire::test( SubmissionsList::class)
-                ->set( 'dateRange', 'week');
+            $component = Livewire::test( SubmissionsList::class )
+                ->set( 'dateRange', 'week' );
 
-            expect( $component->get( 'dateRange'))->toBe( 'week');
-        });
+            expect( $component->get( 'dateRange' ) )->toBe( 'week' );
+        } );
 
         it( 'persists sort in URL', function (): void {
-            $component = Livewire::test( SubmissionsList::class)
-                ->call( 'sort', 'submission_number');
+            $component = Livewire::test( SubmissionsList::class )
+                ->call( 'sort', 'submission_number' );
 
-            expect( $component->get( 'sortBy'))->toBe( 'submission_number');
+            expect( $component->get( 'sortBy' ))->toBe( 'submission_number');
         });
     });
 });

@@ -190,15 +190,15 @@ describe( 'Filter Hooks', function (): void {
 
             expect( $tabs )->toHaveCount( 1 )
                 ->and( $tabs[0]['id'] )->toBe( 'mailchimp' )
-                ->and( $tabs[0]['label'])->toBe( 'Mailchimp');
-        });
+                ->and( $tabs[0]['label'] )->toBe( 'Mailchimp' );
+        } );
 
         it( 'returns empty array when no tabs registered', function (): void {
-            $service = app( IntegrationService::class);
+            $service = app( IntegrationService::class );
             $tabs    = $service->getSettingsTabs();
 
-            expect( $tabs)->toBeArray()
-                ->and( $tabs)->toBeEmpty();
+            expect( $tabs )->toBeArray()
+                ->and( $tabs )->toBeEmpty();
         });
     });
 });
