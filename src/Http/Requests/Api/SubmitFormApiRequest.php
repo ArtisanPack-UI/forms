@@ -68,14 +68,22 @@ class SubmitFormApiRequest extends FormRequest
 
         $form->load( 'fields' );
 
+        $data = $this->input( 'data', [] );
+
+        if ( ! is_array( $data ) ) {
+            $data = [];
+        }
+
         $conditionalLogicService = app( ConditionalLogicService::class );
 
         $hiddenFields = $conditionalLogicService->getHiddenFields(
             $form->fields,
-            $this->input( 'data', [] ),
+            $data,
         );
 
-        $rules = [];
+        $rules = [
+            'data' => ['present', 'array'],
+        ];
 
         foreach ( $form->fields as $field ) {
             if ( isset( $hiddenFields[ $field->name ] ) && $hiddenFields[ $field->name ] ) {
@@ -89,7 +97,8 @@ class SubmitFormApiRequest extends FormRequest
             $fieldRules = $field->buildValidationRules();
 
             if ( ! empty( $fieldRules ) ) {
-                $rules[ "data.{$field->name}" ] = $fieldRules;
+                $prefix                              = 'file' === $field->type ? 'files' : 'data';
+                $rules[ "{$prefix}.{$field->name}" ] = $fieldRules;
             }
         }
 

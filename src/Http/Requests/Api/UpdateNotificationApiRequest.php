@@ -18,6 +18,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Http\Requests\Api;
 
 use ArtisanPackUI\Forms\Models\FormNotification;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -62,8 +63,42 @@ class UpdateNotificationApiRequest extends FormRequest
             'name'                    => ['nullable', 'string', 'max:255'],
             'to_email'                => ['nullable', 'email', 'max:255'],
             'to_field'                => ['nullable', 'string', 'max:255'],
-            'cc_emails'               => ['nullable', 'string', 'max:1000'],
-            'bcc_emails'              => ['nullable', 'string', 'max:1000'],
+            'cc_emails'               => [
+                'nullable',
+                'string',
+                'max:1000',
+                function ( string $attribute, mixed $value, Closure $fail ): void {
+                    if ( empty( $value ) ) {
+                        return;
+                    }
+
+                    foreach ( explode( ',', $value ) as $email ) {
+                        $email = trim( $email );
+
+                        if ( '' !== $email && ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
+                            $fail( __( 'The :attribute contains an invalid email address: :email', ['attribute' => $attribute, 'email' => $email] ) );
+                        }
+                    }
+                },
+            ],
+            'bcc_emails' => [
+                'nullable',
+                'string',
+                'max:1000',
+                function ( string $attribute, mixed $value, Closure $fail ): void {
+                    if ( empty( $value ) ) {
+                        return;
+                    }
+
+                    foreach ( explode( ',', $value ) as $email ) {
+                        $email = trim( $email );
+
+                        if ( '' !== $email && ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
+                            $fail( __( 'The :attribute contains an invalid email address: :email', ['attribute' => $attribute, 'email' => $email] ) );
+                        }
+                    }
+                },
+            ],
             'reply_to_email'          => ['nullable', 'email', 'max:255'],
             'reply_to_field'          => ['nullable', 'string', 'max:255'],
             'from_name'               => ['nullable', 'string', 'max:255'],

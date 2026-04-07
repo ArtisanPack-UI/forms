@@ -130,9 +130,13 @@ class FormApiController extends Controller
      */
     public function update( UpdateFormApiRequest $request, Form $form ): FormResource
     {
-        $form = $this->formService->update( $form, $request->validated() );
+        $updatedForm = $this->formService->update( $form, $request->validated() );
 
-        return new FormResource( $form );
+        if ( null === $updatedForm ) {
+            abort( 404, __( 'Form not found after update.' ) );
+        }
+
+        return new FormResource( $updatedForm );
     }
 
     /**
@@ -148,7 +152,11 @@ class FormApiController extends Controller
     {
         $this->authorize( 'delete', $form );
 
-        $this->formService->delete( $form );
+        if ( ! $this->formService->delete( $form ) ) {
+            return response()->json( [
+                'message' => __( 'Failed to delete form.' ),
+            ], 500 );
+        }
 
         return response()->json( null, 204 );
     }

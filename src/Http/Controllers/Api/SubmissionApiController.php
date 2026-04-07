@@ -34,6 +34,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -203,10 +204,17 @@ class SubmissionApiController extends Controller
         // Check for spam
         if ( config( 'artisanpack.forms.spam_protection.honeypot.enabled', true ) ) {
             if ( $this->submissionService->isSpam( $honeypotValue, $formLoadedAt ? (int) $formLoadedAt : null, $form->id, $ipAddress ) ) {
-                // Silent success for bots
-                return response()->json( [
-                    'message' => $form->success_message ?? __( 'Form submitted successfully.' ),
-                ] );
+                // Silent success for bots — mirrors real response shape
+                $response = [
+                    'message'       => $form->success_message ?? __( 'Form submitted successfully.' ),
+                    'submission_id' => null,
+                ];
+
+                if ( $form->redirect_url ) {
+                    $response['redirect_url'] = $form->redirect_url;
+                }
+
+                return response()->json( $response, 201 );
             }
         }
 
@@ -285,32 +293,36 @@ class SubmissionApiController extends Controller
             ->whereIn( 'id', $ids )
             ->get();
 
-        $affected = 0;
+        $affected = DB::transaction( function () use ( $submissions, $action ): int {
+            $count = 0;
 
-        foreach ( $submissions as $submission ) {
-            switch ( $action ) {
-                case 'delete':
-                    $submission->delete();
-                    $affected++;
-                    break;
-                case 'mark_read':
-                    $submission->update( ['is_read' => true] );
-                    $affected++;
-                    break;
-                case 'mark_unread':
-                    $submission->update( ['is_read' => false] );
-                    $affected++;
-                    break;
-                case 'mark_spam':
-                    $submission->update( ['is_spam' => true] );
-                    $affected++;
-                    break;
-                case 'mark_not_spam':
-                    $submission->update( ['is_spam' => false] );
-                    $affected++;
-                    break;
+            foreach ( $submissions as $submission ) {
+                switch ( $action ) {
+                    case 'delete':
+                        $submission->delete();
+                        $count++;
+                        break;
+                    case 'mark_read':
+                        $submission->update( ['is_read' => true] );
+                        $count++;
+                        break;
+                    case 'mark_unread':
+                        $submission->update( ['is_read' => false] );
+                        $count++;
+                        break;
+                    case 'mark_spam':
+                        $submission->update( ['is_spam' => true] );
+                        $count++;
+                        break;
+                    case 'mark_not_spam':
+                        $submission->update( ['is_spam' => false] );
+                        $count++;
+                        break;
+                }
             }
-        }
+
+            return $count;
+        } );
 
         return response()->json( [
             'message'  => __( ':count submissions updated.', ['count' => $affected] ),
