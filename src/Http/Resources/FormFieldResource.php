@@ -59,6 +59,7 @@ class FormFieldResource extends JsonResource
             'width'             => $this->width,
             'css_classes'       => $this->css_classes,
             'sort_order'        => $this->sort_order,
+            'options'           => $this->when( ! empty( $this->options ), $this->options ),
             'created_at'        => $this->created_at?->toIso8601String(),
             'updated_at'        => $this->updated_at?->toIso8601String(),
         ];

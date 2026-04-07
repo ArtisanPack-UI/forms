@@ -50,6 +50,7 @@ class FormUploadResource extends JsonResource
             'size'          => $this->size,
             'human_size'    => $this->human_size,
             'is_image'      => $this->is_image,
+            'url'           => $this->url,
             'created_at'    => $this->created_at?->toIso8601String(),
             'updated_at'    => $this->updated_at?->toIso8601String(),
         ];
