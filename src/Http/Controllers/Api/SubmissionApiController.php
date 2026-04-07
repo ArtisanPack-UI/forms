@@ -305,8 +305,25 @@ class SubmissionApiController extends Controller
             ->whereIn( 'id', $ids );
 
         $affected = DB::transaction( function () use ( $query, $action ): int {
+            if ( 'delete' === $action ) {
+                // Load models and delete individually to trigger model events and file cleanup
+                $submissions = $query->with( 'uploads' )->get();
+                $count       = 0;
+
+                foreach ( $submissions as $submission ) {
+                    // Delete uploads first (cleans up files from disk)
+                    foreach ( $submission->uploads as $upload ) {
+                        $upload->delete();
+                    }
+
+                    $submission->delete();
+                    $count++;
+                }
+
+                return $count;
+            }
+
             return match ( $action ) {
-                'delete'        => $query->delete(),
                 'mark_read'     => $query->update( ['is_read' => true] ),
                 'mark_unread'   => $query->update( ['is_read' => false] ),
                 'mark_spam'     => $query->update( ['is_spam' => true] ),
@@ -334,6 +351,13 @@ class SubmissionApiController extends Controller
     public function downloadUpload( FormSubmission $submission, FormUpload $upload ): StreamedResponse
     {
         if ( $upload->submission_id !== $submission->id ) {
+            abort( 404 );
+        }
+
+        // Ensure the submission belongs to a valid form
+        $submission->loadMissing( 'form' );
+
+        if ( null === $submission->form ) {
             abort( 404 );
         }
 
