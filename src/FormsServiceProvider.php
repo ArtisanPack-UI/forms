@@ -18,6 +18,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms;
 
+use ArtisanPackUI\Forms\Console\Commands\InstallFrontend;
 use ArtisanPackUI\Forms\Console\Commands\PruneFormSubmissions;
 use ArtisanPackUI\Forms\Events\FormSubmitted;
 use ArtisanPackUI\Forms\Listeners\SendWebhookOnSubmission;
@@ -233,6 +234,7 @@ class FormsServiceProvider extends ServiceProvider
     {
         if ( $this->app->runningInConsole() ) {
             $this->commands( [
+                InstallFrontend::class,
                 PruneFormSubmissions::class,
             ] );
         }
