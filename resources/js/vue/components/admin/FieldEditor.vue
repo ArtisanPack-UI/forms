@@ -120,12 +120,13 @@ function updateField( data: UpdateFieldRequest ): void {
 	}, 500 );
 }
 
-// Flush pending updates when the field changes
+let deleteInProgress = false;
+
+// Flush pending updates when the field changes and reset delete flag
 watch( () => props.field.id, () => {
 	flushPendingUpdates();
+	deleteInProgress = false;
 } );
-
-let deleteInProgress = false;
 
 onUnmounted( () => {
 	if ( !deleteInProgress ) {
@@ -408,7 +409,7 @@ const isPatternField = computed( () => {
 							:model-value="validationRules.allowed_types?.join( ', ' ) ?? ''"
 							@update:model-value="updateValidation( {
 								allowed_types: ($event as string)
-									? ($event as string).split( ',' ).map( ( s: string ) => s.trim() )
+									? ($event as string).split( ',' ).map( ( s: string ) => s.trim() ).filter( Boolean )
 									: undefined,
 							} )"
 						/>
