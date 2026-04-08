@@ -25,6 +25,53 @@ import type {
 import { useApi } from '../../hooks/useApi';
 import type { UseApiOptions } from '../../hooks/useApi';
 
+/**
+ * Hook that returns a debounced version of the given value.
+ *
+ * @since 1.1.0
+ *
+ * @param value   The value to debounce.
+ * @param delayMs Delay in milliseconds.
+ *
+ * @return The debounced value.
+ */
+function useDebouncedValue<T>( value: T, delayMs: number ): T {
+	const [debounced, setDebounced] = useState( value );
+
+	useEffect( () => {
+		const timer = setTimeout( () => setDebounced( value ), delayMs );
+		return () => clearTimeout( timer );
+	}, [value, delayMs] );
+
+	return debounced;
+}
+
+/**
+ * Renders submission count with optional unread badge.
+ *
+ * @since 1.1.0
+ *
+ * @param props       Component props.
+ * @param props.form  The form whose submission counts to display.
+ *
+ * @return The rendered submission count element.
+ */
+function SubmissionCount( { form }: { form: Form } ): React.ReactElement {
+	return (
+		<>
+			{form.total_submissions_count ?? 0}
+			{( form.unread_submissions_count ?? 0 ) > 0 && (
+				<Badge
+					color="info"
+					size="sm"
+					className="ml-1"
+					value={`${form.unread_submissions_count} new`}
+				/>
+			)}
+		</>
+	);
+}
+
 /** Props for the FormsList component. */
 export interface FormsListProps extends UseApiOptions {
 	/** Callback when a form is selected for editing. */
@@ -70,6 +117,7 @@ export function FormsList( {
 
 	// Filters and sorting
 	const [search, setSearch] = useState( '' );
+	const debouncedSearch = useDebouncedValue( search, 300 );
 	const [statusFilter, setStatusFilter] = useState<FormStatusFilter>( 'all' );
 	const [sortBy, setSortBy] = useState<SortColumn>( 'created_at' );
 	const [sortDirection, setSortDirection] = useState<SortDirection>( 'desc' );
@@ -91,8 +139,8 @@ export function FormsList( {
 				sort_direction: sortDirection,
 			};
 
-			if ( search ) {
-				params.search = search;
+			if ( debouncedSearch ) {
+				params.search = debouncedSearch;
 			}
 
 			if ( statusFilter !== 'all' ) {
@@ -107,7 +155,7 @@ export function FormsList( {
 		} finally {
 			setIsLoading( false );
 		}
-	}, [get, currentPage, search, sortBy, sortDirection, statusFilter] );
+	}, [get, currentPage, debouncedSearch, sortBy, sortDirection, statusFilter] );
 
 	useEffect( () => {
 		fetchForms();
@@ -196,6 +244,14 @@ export function FormsList( {
 		return sortDirection === 'asc' ? ' \u2191' : ' \u2193';
 	}, [sortBy, sortDirection] );
 
+	const getAriaSortValue = useCallback( ( column: SortColumn ): 'ascending' | 'descending' | 'none' => {
+		if ( sortBy !== column ) {
+			return 'none';
+		}
+
+		return sortDirection === 'asc' ? 'ascending' : 'descending';
+	}, [sortBy, sortDirection] );
+
 	const formsList = useMemo( () => forms?.data ?? [], [forms] );
 
 	return (
@@ -263,7 +319,7 @@ export function FormsList( {
 					<table className="table table-zebra">
 						<thead>
 							<tr>
-								<th>
+								<th aria-sort={getAriaSortValue( 'name' )}>
 									<Button
 										color="ghost"
 										size="sm"
@@ -274,7 +330,7 @@ export function FormsList( {
 								</th>
 								<th>Status</th>
 								<th>Submissions</th>
-								<th>
+								<th aria-sort={getAriaSortValue( 'created_at' )}>
 									<Button
 										color="ghost"
 										size="sm"
@@ -318,32 +374,16 @@ export function FormsList( {
 												size="sm"
 												onClick={() => onViewSubmissions( form )}
 											>
-												{form.total_submissions_count ?? 0}
-												{( form.unread_submissions_count ?? 0 ) > 0 && (
-													<Badge
-														color="info"
-														size="sm"
-														className="ml-1"
-														value={`${form.unread_submissions_count} new`}
-													/>
-												)}
+												<SubmissionCount form={form} />
 											</Button>
 										) : (
 											<span>
-												{form.total_submissions_count ?? 0}
-												{( form.unread_submissions_count ?? 0 ) > 0 && (
-													<Badge
-														color="info"
-														size="sm"
-														className="ml-1"
-														value={`${form.unread_submissions_count} new`}
-													/>
-												)}
+												<SubmissionCount form={form} />
 											</span>
 										)}
 									</td>
 									<td>
-										{new Date( form.created_at ).toLocaleDateString()}
+										{new Intl.DateTimeFormat( 'en-US', { year: 'numeric', month: 'short', day: 'numeric' } ).format( new Date( form.created_at ) )}
 									</td>
 									<td>
 										<div className="flex items-center gap-1">

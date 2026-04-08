@@ -13,16 +13,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Badge, Button, Card, Loading, Textarea } from '@artisanpack-ui/react';
 
-/** Check whether a URL uses a safe protocol (http or https). */
-function isSafeUrl( url: string ): boolean {
-	try {
-		const parsed = new URL( url );
-		return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-	} catch {
-		return false;
-	}
-}
-
 import type {
 	Form,
 	FormSubmission,
@@ -32,6 +22,16 @@ import type {
 } from '../../../types/artisanpack-forms';
 import { useApi } from '../../hooks/useApi';
 import type { UseApiOptions } from '../../hooks/useApi';
+
+/** Check whether a URL uses a safe protocol (http or https). */
+function isSafeUrl( url: string ): boolean {
+	try {
+		const parsed = new URL( url );
+		return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+	} catch {
+		return false;
+	}
+}
 
 /** Props for the SubmissionDetail component. */
 export interface SubmissionDetailProps extends UseApiOptions {
@@ -81,6 +81,7 @@ export function SubmissionDetail( {
 	const [error, setError] = useState<string | null>( null );
 	const [adminNotes, setAdminNotes] = useState( '' );
 	const [isSavingNotes, setIsSavingNotes] = useState( false );
+	const [isUpdating, setIsUpdating] = useState( false );
 
 	// Load submission
 	const loadSubmission = useCallback( async () => {
@@ -131,28 +132,40 @@ export function SubmissionDetail( {
 	}, [put, form.slug, submissionId] );
 
 	const toggleStar = useCallback( async () => {
-		if ( !submission ) {
+		if ( !submission || isUpdating ) {
 			return;
 		}
-
-		await updateSubmission( { is_starred: !submission.is_starred } );
-	}, [submission, updateSubmission] );
+		setIsUpdating( true );
+		try {
+			await updateSubmission( { is_starred: !submission.is_starred } );
+		} finally {
+			setIsUpdating( false );
+		}
+	}, [submission, updateSubmission, isUpdating] );
 
 	const toggleSpam = useCallback( async () => {
-		if ( !submission ) {
+		if ( !submission || isUpdating ) {
 			return;
 		}
-
-		await updateSubmission( { is_spam: !submission.is_spam } );
-	}, [submission, updateSubmission] );
+		setIsUpdating( true );
+		try {
+			await updateSubmission( { is_spam: !submission.is_spam } );
+		} finally {
+			setIsUpdating( false );
+		}
+	}, [submission, updateSubmission, isUpdating] );
 
 	const toggleRead = useCallback( async () => {
-		if ( !submission ) {
+		if ( !submission || isUpdating ) {
 			return;
 		}
-
-		await updateSubmission( { is_read: !submission.is_read } );
-	}, [submission, updateSubmission] );
+		setIsUpdating( true );
+		try {
+			await updateSubmission( { is_read: !submission.is_read } );
+		} finally {
+			setIsUpdating( false );
+		}
+	}, [submission, updateSubmission, isUpdating] );
 
 	const saveNotes = useCallback( async () => {
 		setIsSavingNotes( true );
@@ -285,19 +298,21 @@ export function SubmissionDetail( {
 					size="sm"
 					className={submission.is_starred ? 'text-yellow-500' : ''}
 					onClick={toggleStar}
+					disabled={isUpdating}
 				>
 					{submission.is_starred ? '\u2605 Starred' : '\u2606 Star'}
 				</Button>
-				<Button color="ghost" size="sm" onClick={toggleRead}>
+				<Button color="ghost" size="sm" onClick={toggleRead} disabled={isUpdating}>
 					{submission.is_read ? 'Mark Unread' : 'Mark Read'}
 				</Button>
-				<Button color="ghost" size="sm" onClick={toggleSpam}>
+				<Button color="ghost" size="sm" onClick={toggleSpam} disabled={isUpdating}>
 					{submission.is_spam ? 'Not Spam' : 'Mark Spam'}
 				</Button>
 				<Button
 					color="error"
 					size="sm"
 					onClick={deleteSubmission}
+					disabled={isUpdating}
 				>
 					Delete
 				</Button>

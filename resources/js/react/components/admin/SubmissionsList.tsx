@@ -130,12 +130,6 @@ export function SubmissionsList( {
 		fetchSubmissions();
 	}, [fetchSubmissions] );
 
-	// Reset page on filter change
-	useEffect( () => {
-		setCurrentPage( 1 );
-		setSelected( new Set() );
-	}, [search, statusFilter, dateRange] );
-
 	const submissionsList = useMemo( () => submissions?.data ?? [], [submissions] );
 
 	// Derive selectAll from selected state
@@ -327,18 +321,26 @@ export function SubmissionsList( {
 					className="w-64"
 					placeholder="Search submissions..."
 					value={search}
-					onChange={( e ) => setSearch( e.target.value )}
+					onChange={( e ) => {
+						setSearch( e.target.value );
+						setCurrentPage( 1 );
+						setSelected( new Set() );
+					}}
 				/>
 
 				{/* Status filter buttons */}
-				<div className="tabs tabs-bordered" role="group">
+				<div className="tabs tabs-bordered" role="group" aria-label="Submission status filter">
 					{( ['all', 'unread', 'read', 'starred', 'spam'] as SubmissionStatusFilter[] ).map( ( status ) => (
 						<button
 							key={status}
 							type="button"
 							aria-pressed={statusFilter === status}
 							className={`tab ${statusFilter === status ? 'tab-active' : ''}`}
-							onClick={() => setStatusFilter( status )}
+							onClick={() => {
+									setStatusFilter( status );
+									setCurrentPage( 1 );
+									setSelected( new Set() );
+								}}
 						>
 							{status.charAt( 0 ).toUpperCase() + status.slice( 1 )}
 						</button>
@@ -348,7 +350,11 @@ export function SubmissionsList( {
 				<Select
 					size="sm"
 					value={dateRange}
-					onChange={( e ) => setDateRange( e.target.value as SubmissionDateRange )}
+					onChange={( e ) => {
+						setDateRange( e.target.value as SubmissionDateRange );
+						setCurrentPage( 1 );
+						setSelected( new Set() );
+					}}
 					options={[
 						{ value: 'all', label: 'All Time' },
 						{ value: 'today', label: 'Today' },

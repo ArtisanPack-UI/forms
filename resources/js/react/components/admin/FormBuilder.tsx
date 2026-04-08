@@ -122,8 +122,17 @@ export function FormBuilder( {
 			const data = formSettingsRef.current;
 
 			if ( Object.keys( data ).length > 0 ) {
+				const savedKeys = Object.keys( data );
 				await put( `/${form.slug}`, data );
-				setFormSettings( {} );
+				setFormSettings( ( prev ) => {
+					const next = { ...prev };
+					for ( const key of savedKeys ) {
+						if ( prev[key as keyof UpdateFormRequest] === data[key as keyof UpdateFormRequest] ) {
+							delete next[key as keyof UpdateFormRequest];
+						}
+					}
+					return next;
+				} );
 			}
 		},
 		debounceMs: 2000,
@@ -418,18 +427,27 @@ export function FormBuilder( {
 			return;
 		}
 
+		// Optimistic update
+		const previousStep = steps.find( ( s ) => s.id === stepId );
+		setSteps( ( prev ) => prev.map( ( s ) =>
+			s.id === stepId ? { ...s, ...data } as FormStep : s,
+		) );
+
 		try {
-			const response = await put<{ data: FormStep }>(
+			await put<{ data: FormStep }>(
 				`/${form.slug}/steps/${stepId}`,
 				data,
 			);
-			setSteps( ( prev ) => prev.map( ( s ) =>
-				s.id === stepId ? response.data : s,
-			) );
 		} catch ( err ) {
+			// Rollback on failure
+			if ( previousStep ) {
+				setSteps( ( prev ) => prev.map( ( s ) =>
+					s.id === stepId ? previousStep : s,
+				) );
+			}
 			setError( err instanceof Error ? err.message : 'Failed to update step.' );
 		}
-	}, [put, form] );
+	}, [put, form, steps] );
 
 	const deleteStep = useCallback( async ( stepId: number ) => {
 		if ( !form || steps.length <= 1 ) {

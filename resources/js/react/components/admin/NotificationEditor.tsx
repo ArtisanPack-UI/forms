@@ -98,6 +98,7 @@ export function NotificationEditor( {
 			);
 			setNotifications( response.data );
 		} catch ( err ) {
+			setNotifications( [] );
 			setError( err instanceof Error ? err.message : 'Failed to load notifications.' );
 		} finally {
 			setIsLoading( false );
@@ -107,6 +108,13 @@ export function NotificationEditor( {
 	useEffect( () => {
 		loadNotifications();
 	}, [loadNotifications] );
+
+	// Reset editor state when form changes
+	useEffect( () => {
+		setSelectedId( null );
+		setValidationErrors( {} );
+		setError( null );
+	}, [form.slug] );
 
 	const selectedNotification = useMemo(
 		() => notifications.find( ( n ) => n.id === selectedId ) ?? null,
@@ -153,7 +161,8 @@ export function NotificationEditor( {
 			setSelectedId( response.data.id );
 		} catch ( err ) {
 			if ( err instanceof ApiValidationError ) {
-				setValidationErrors( ( prev ) => ( { ...prev, [0]: err.errors } ) );
+				const messages = Object.values( err.errors ).flat();
+				setError( messages.join( ' ' ) );
 			} else {
 				setError( err instanceof Error ? err.message : 'Failed to add notification.' );
 			}
@@ -189,12 +198,12 @@ export function NotificationEditor( {
 				}
 			} catch ( err ) {
 				if ( requestCounterRef.current.get( id ) === requestId ) {
-					// Revert on error
-					await loadNotifications();
-
 					if ( err instanceof ApiValidationError ) {
+						// Don't reload — keep optimistic state, just show errors
 						setValidationErrors( ( prev ) => ( { ...prev, [id]: err.errors } ) );
 					} else {
+						// Revert to server state on non-validation errors
+						await loadNotifications();
 						setError( err instanceof Error ? err.message : 'Failed to update notification.' );
 					}
 				}
