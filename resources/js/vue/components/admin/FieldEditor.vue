@@ -90,6 +90,8 @@ const hasOptions    = computed( () => OPTION_FIELD_TYPES.has( props.field.type )
 const updateTimer = ref<ReturnType<typeof setTimeout> | null>( null );
 const pendingUpdates = ref<UpdateFieldRequest>( {} );
 
+let snapshotFieldId = props.field.id;
+
 function flushPendingUpdates(): void {
 	if ( updateTimer.value ) {
 		clearTimeout( updateTimer.value );
@@ -97,20 +99,22 @@ function flushPendingUpdates(): void {
 	}
 
 	if ( Object.keys( pendingUpdates.value ).length > 0 ) {
-		emit( 'change', props.field.id, pendingUpdates.value );
+		emit( 'change', snapshotFieldId, pendingUpdates.value );
 		pendingUpdates.value = {};
 	}
 }
 
 function updateField( data: UpdateFieldRequest ): void {
+	snapshotFieldId      = props.field.id;
 	pendingUpdates.value = { ...pendingUpdates.value, ...data };
 
 	if ( updateTimer.value ) {
 		clearTimeout( updateTimer.value );
 	}
 
+	const fieldId = snapshotFieldId;
 	updateTimer.value = setTimeout( () => {
-		emit( 'change', props.field.id, pendingUpdates.value );
+		emit( 'change', fieldId, pendingUpdates.value );
 		pendingUpdates.value = {};
 		updateTimer.value    = null;
 	}, 500 );
@@ -132,6 +136,13 @@ onUnmounted( () => {
 const options = computed( (): FieldOption[] => {
 	if ( !hasOptions.value ) {
 		return [];
+	}
+
+	// Check pending updates first so rapid edits compose correctly
+	const pending = pendingUpdates.value.field_config as { options?: FieldOption[] } | undefined;
+
+	if ( pending?.options ) {
+		return pending.options;
 	}
 
 	return ( props.field.field_config as { options?: FieldOption[] } )?.options

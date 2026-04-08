@@ -116,16 +116,21 @@ export function useApi( options: UseApiOptions ): UseApiReturn {
 			headers['Content-Type'] = 'application/json';
 		}
 
-		const token = csrfToken ?? getMetaCsrfToken();
+		// Send only one CSRF header with clear precedence
+		if ( csrfToken ) {
+			headers['X-CSRF-TOKEN'] = csrfToken;
+		} else {
+			const xsrfToken = getXsrfToken();
 
-		if ( token ) {
-			headers['X-CSRF-TOKEN'] = token;
-		}
+			if ( xsrfToken ) {
+				headers['X-XSRF-TOKEN'] = xsrfToken;
+			} else {
+				const metaToken = getMetaCsrfToken();
 
-		const xsrfToken = getXsrfToken();
-
-		if ( xsrfToken ) {
-			headers['X-XSRF-TOKEN'] = xsrfToken;
+				if ( metaToken ) {
+					headers['X-CSRF-TOKEN'] = metaToken;
+				}
+			}
 		}
 
 		if ( authorization ) {
