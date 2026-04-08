@@ -84,8 +84,12 @@ export function useAutoSave( options: UseAutoSaveOptions ): UseAutoSaveReturn {
 
 		try {
 			await onSaveRef.current();
-			setIsDirty( false );
 			setLastSavedAt( new Date() );
+
+			// Only clear dirty if no pending retry is queued
+			if ( !pendingSaveRef.current ) {
+				setIsDirty( false );
+			}
 		} catch ( err ) {
 			const message = err instanceof Error ? err.message : 'Save failed.';
 			setSaveError( message );
@@ -95,7 +99,10 @@ export function useAutoSave( options: UseAutoSaveOptions ): UseAutoSaveReturn {
 
 			if ( pendingSaveRef.current ) {
 				pendingSaveRef.current = false;
-				setTimeout( () => performSave(), 0 );
+				timerRef.current = setTimeout( () => {
+					timerRef.current = null;
+					performSave();
+				}, 0 );
 			}
 		}
 	}, [] );

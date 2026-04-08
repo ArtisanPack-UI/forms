@@ -73,11 +73,12 @@ export function NotificationEditor( {
 	baseUrl,
 	csrfToken,
 	authorization,
+	credentials,
 	form,
 	fields,
 	className,
 }: NotificationEditorProps ): React.ReactElement {
-	const { get, post, put, del } = useApi( { baseUrl, csrfToken, authorization } );
+	const { get, post, put, del } = useApi( { baseUrl, csrfToken, authorization, credentials } );
 	const messageRef = useRef<HTMLTextAreaElement>( null );
 	const requestCounterRef = useRef( 0 );
 

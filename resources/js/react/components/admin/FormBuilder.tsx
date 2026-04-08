@@ -74,12 +74,13 @@ export function FormBuilder( {
 	baseUrl,
 	csrfToken,
 	authorization,
+	credentials,
 	formSlug,
 	onBack,
 	onViewSubmissions,
 	className,
 }: FormBuilderProps ): React.ReactElement {
-	const { get, post, put, del } = useApi( { baseUrl, csrfToken, authorization } );
+	const { get, post, put, del } = useApi( { baseUrl, csrfToken, authorization, credentials } );
 
 	// Core state
 	const [form, setForm] = useState<Form | null>( null );

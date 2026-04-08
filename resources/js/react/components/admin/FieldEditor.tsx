@@ -26,6 +26,17 @@ import type {
 
 import { ConditionalLogicEditor } from './ConditionalLogicEditor';
 
+/** Safely parse a numeric input value, returning undefined for empty or NaN. */
+function parseNumericInput( value: string ): number | undefined {
+	if ( !value ) {
+		return undefined;
+	}
+
+	const num = Number( value );
+
+	return Number.isNaN( num ) ? undefined : num;
+}
+
 /** Field types that support an options list. */
 const OPTION_FIELD_TYPES: Set<FieldType> = new Set( [
 	'select',
@@ -463,7 +474,7 @@ function GeneralTabContent( {
 						min={0}
 						value={validationRules.max_size ?? ''}
 						onChange={( e ) => updateValidation( {
-							max_size: e.target.value ? Number( e.target.value ) : undefined,
+							max_size: parseNumericInput( e.target.value ),
 						} )}
 					/>
 					<Input
@@ -508,7 +519,7 @@ function ValidationTabContent( {
 						min={0}
 						value={validationRules.min ?? ''}
 						onChange={( e ) => updateValidation( {
-							min: e.target.value ? Number( e.target.value ) : undefined,
+							min: parseNumericInput( e.target.value ),
 						} )}
 					/>
 					<Input
@@ -517,7 +528,7 @@ function ValidationTabContent( {
 						min={0}
 						value={validationRules.max ?? ''}
 						onChange={( e ) => updateValidation( {
-							max: e.target.value ? Number( e.target.value ) : undefined,
+							max: parseNumericInput( e.target.value ),
 						} )}
 					/>
 				</>
@@ -531,7 +542,7 @@ function ValidationTabContent( {
 						type="number"
 						value={validationRules.min ?? ''}
 						onChange={( e ) => updateValidation( {
-							min: e.target.value ? Number( e.target.value ) : undefined,
+							min: parseNumericInput( e.target.value ),
 						} )}
 					/>
 					<Input
@@ -539,7 +550,7 @@ function ValidationTabContent( {
 						type="number"
 						value={validationRules.max ?? ''}
 						onChange={( e ) => updateValidation( {
-							max: e.target.value ? Number( e.target.value ) : undefined,
+							max: parseNumericInput( e.target.value ),
 						} )}
 					/>
 					<Input
@@ -548,7 +559,7 @@ function ValidationTabContent( {
 						min={0}
 						value={validationRules.step ?? ''}
 						onChange={( e ) => updateValidation( {
-							step: e.target.value ? Number( e.target.value ) : undefined,
+							step: parseNumericInput( e.target.value ),
 						} )}
 					/>
 				</>

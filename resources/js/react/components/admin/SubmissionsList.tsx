@@ -57,12 +57,13 @@ export function SubmissionsList( {
 	baseUrl,
 	csrfToken,
 	authorization,
+	credentials,
 	form,
 	onViewSubmission,
 	onBack,
 	className,
 }: SubmissionsListProps ): React.ReactElement {
-	const { get, post, put, del, download } = useApi( { baseUrl, csrfToken, authorization } );
+	const { get, post, put, del, download } = useApi( { baseUrl, csrfToken, authorization, credentials } );
 
 	const [submissions, setSubmissions] = useState<PaginatedResponse<FormSubmission> | null>( null );
 	const [isLoading, setIsLoading] = useState( true );

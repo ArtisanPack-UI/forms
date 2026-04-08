@@ -56,12 +56,13 @@ export function FormsList( {
 	baseUrl,
 	csrfToken,
 	authorization,
+	credentials,
 	onEditForm,
 	onCreateForm,
 	onViewSubmissions,
 	className,
 }: FormsListProps ): React.ReactElement {
-	const { get, post, put, del } = useApi( { baseUrl, csrfToken, authorization } );
+	const { get, post, put, del } = useApi( { baseUrl, csrfToken, authorization, credentials } );
 
 	const [forms, setForms] = useState<PaginatedResponse<Form> | null>( null );
 	const [isLoading, setIsLoading] = useState( true );

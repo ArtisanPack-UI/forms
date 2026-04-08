@@ -56,6 +56,7 @@ export function SubmissionDetail( {
 	baseUrl,
 	csrfToken,
 	authorization,
+	credentials,
 	form,
 	submissionId,
 	onBack,
@@ -63,7 +64,7 @@ export function SubmissionDetail( {
 	submissionIds,
 	className,
 }: SubmissionDetailProps ): React.ReactElement {
-	const { get, put, del, download } = useApi( { baseUrl, csrfToken, authorization } );
+	const { get, put, del, download } = useApi( { baseUrl, csrfToken, authorization, credentials } );
 
 	const [submission, setSubmission] = useState<FormSubmission | null>( null );
 	const [isLoading, setIsLoading] = useState( true );
@@ -169,13 +170,13 @@ export function SubmissionDetail( {
 	const downloadFile = useCallback( async ( upload: FormUpload ) => {
 		try {
 			await download(
-				`/${form.slug}/submissions/${submissionId}/uploads/${upload.id}/download`,
+				`/submissions/${submissionId}/uploads/${upload.id}/download`,
 				upload.original_name,
 			);
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : 'Failed to download file.' );
 		}
-	}, [download, form.slug, submissionId] );
+	}, [download, submissionId] );
 
 	// -----------------------------------------------------------------------
 	// Navigation
@@ -250,7 +251,7 @@ export function SubmissionDetail( {
 								&larr; Prev
 							</Button>
 							<Button size="sm" className="join-item" disabled>
-								{currentIndex + 1} of {submissionIds.length}
+								{currentIndex === -1 ? '\u2014' : String( currentIndex + 1 )} of {submissionIds.length}
 							</Button>
 							<Button size="sm" className="join-item" disabled={!hasNext} onClick={goToNext}>
 								Next &rarr;
