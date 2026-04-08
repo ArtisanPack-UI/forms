@@ -106,10 +106,19 @@ export function FormBuilder( {
 	const formSettingsRef = useRef( formSettings );
 	formSettingsRef.current = formSettings;
 
-	// Clear staged autosave data when switching forms
+	// Reset form state when switching forms
 	useEffect( () => {
 		setFormSettings( {} );
 		formSettingsRef.current = {};
+		setForm( null );
+		setFields( [] );
+		setSteps( [] );
+		setSelectedFieldId( null );
+		setActiveStepId( null );
+		setActivePanel( 'palette' );
+		setShowPreview( false );
+		setError( null );
+		setValidationErrors( {} );
 	}, [formSlug] );
 
 	// Auto-save
@@ -838,12 +847,16 @@ export function FormBuilder( {
 								.map( ( step ) => (
 									<div key={step.id} className="flex items-center gap-2">
 										<Input
+											id={`step-title-${step.id}`}
+											label="Step title"
 											value={step.title ?? ''}
 											onChange={( e ) => updateStep( step.id, { title: e.target.value } )}
 											placeholder="Step title"
 											className="flex-1"
 										/>
 										<Input
+											id={`step-desc-${step.id}`}
+											label="Step description"
 											value={step.description ?? ''}
 											onChange={( e ) => updateStep( step.id, { description: e.target.value || null } )}
 											placeholder="Step description (optional)"
