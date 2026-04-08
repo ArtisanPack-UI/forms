@@ -89,7 +89,13 @@ class InstallFrontend extends Command
 			$params['--force'] = true;
 		}
 
-		$this->call( 'vendor:publish', $params );
+		$status = $this->call( 'vendor:publish', $params );
+
+		if ( 0 !== $status ) {
+			$this->components->error( "Failed to publish {$stack} form components (exit code: {$status})." );
+
+			return self::FAILURE;
+		}
 
 		$this->components->info( "ArtisanPack Forms {$stack} components installed successfully." );
 
