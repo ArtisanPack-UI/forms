@@ -145,8 +145,8 @@ export function SubmissionsList( {
 
 	const submissionsList = useMemo( () => submissions?.data ?? [], [submissions] );
 
-	// Derive selectAll from selected state
-	const selectAll = selected.size > 0 && selected.size === submissionsList.length;
+	// Derive selectAll by checking every visible row is in the selected set
+	const selectAll = submissionsList.length > 0 && submissionsList.every( ( s ) => selected.has( s.id ) );
 
 	// -----------------------------------------------------------------------
 	// Selection
@@ -627,7 +627,7 @@ export function SubmissionsList( {
 					<Pagination
 						currentPage={submissions.meta.current_page}
 						totalPages={submissions.meta.last_page}
-						onChange={( page ) => setCurrentPage( page )}
+						onChange={( page ) => { setCurrentPage( page ); setSelected( new Set() ); }}
 					/>
 				</div>
 			)}

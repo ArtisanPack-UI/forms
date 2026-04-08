@@ -881,7 +881,7 @@ export function FormBuilder( {
 											</label>
 										)}
 										{['text', 'email', 'phone', 'number', 'url', 'date', 'time'].includes( field.type ) && (
-											<input type={field.type} className="input input-bordered" placeholder={field.placeholder ?? ''} disabled />
+											<input type={'phone' === field.type ? 'tel' : field.type} className="input input-bordered" placeholder={field.placeholder ?? ''} disabled />
 										)}
 										{'textarea' === field.type && (
 											<textarea className="textarea textarea-bordered" placeholder={field.placeholder ?? ''} disabled rows={3} />
