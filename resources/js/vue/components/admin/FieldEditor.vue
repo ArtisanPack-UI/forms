@@ -87,32 +87,32 @@ const hasOptions    = computed( () => OPTION_FIELD_TYPES.has( props.field.type )
 // or unmount.
 // ---------------------------------------------------------------------------
 
-let updateTimer: ReturnType<typeof setTimeout> | null = null;
-let pendingUpdates: UpdateFieldRequest               = {};
+const updateTimer = ref<ReturnType<typeof setTimeout> | null>( null );
+const pendingUpdates = ref<UpdateFieldRequest>( {} );
 
 function flushPendingUpdates(): void {
-	if ( updateTimer ) {
-		clearTimeout( updateTimer );
-		updateTimer = null;
+	if ( updateTimer.value ) {
+		clearTimeout( updateTimer.value );
+		updateTimer.value = null;
 	}
 
-	if ( Object.keys( pendingUpdates ).length > 0 ) {
-		emit( 'change', props.field.id, pendingUpdates );
-		pendingUpdates = {};
+	if ( Object.keys( pendingUpdates.value ).length > 0 ) {
+		emit( 'change', props.field.id, pendingUpdates.value );
+		pendingUpdates.value = {};
 	}
 }
 
 function updateField( data: UpdateFieldRequest ): void {
-	pendingUpdates = { ...pendingUpdates, ...data };
+	pendingUpdates.value = { ...pendingUpdates.value, ...data };
 
-	if ( updateTimer ) {
-		clearTimeout( updateTimer );
+	if ( updateTimer.value ) {
+		clearTimeout( updateTimer.value );
 	}
 
-	updateTimer = setTimeout( () => {
-		emit( 'change', props.field.id, pendingUpdates );
-		pendingUpdates = {};
-		updateTimer    = null;
+	updateTimer.value = setTimeout( () => {
+		emit( 'change', props.field.id, pendingUpdates.value );
+		pendingUpdates.value = {};
+		updateTimer.value    = null;
 	}, 500 );
 }
 
@@ -144,19 +144,19 @@ function handleAddOption(): void {
 		...options.value,
 		{ label: `Option ${options.value.length + 1}`, value: `option_${options.value.length + 1}` },
 	];
-	updateField( { field_config: { options: newOptions } } );
+	updateField( { field_config: { ...( props.field.field_config ?? {} ), options: newOptions } } );
 }
 
 function handleUpdateOption( index: number, key: 'label' | 'value', value: string ): void {
 	const newOptions = options.value.map( ( opt, i ) =>
 		i === index ? { ...opt, [key]: value } : opt,
 	);
-	updateField( { field_config: { options: newOptions } } );
+	updateField( { field_config: { ...( props.field.field_config ?? {} ), options: newOptions } } );
 }
 
 function handleRemoveOption( index: number ): void {
 	const newOptions = options.value.filter( ( _, i ) => i !== index );
-	updateField( { field_config: { options: newOptions } } );
+	updateField( { field_config: { ...( props.field.field_config ?? {} ), options: newOptions } } );
 }
 
 // ---------------------------------------------------------------------------

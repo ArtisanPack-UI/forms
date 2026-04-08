@@ -186,7 +186,7 @@ export function useApi( options: UseApiOptions ): UseApiReturn {
 		try {
 			const response = await fetch( url, {
 				method: 'GET',
-				headers: buildHeaders(),
+				headers: buildHeaders( false ),
 				credentials,
 				signal: controller.signal,
 			} );

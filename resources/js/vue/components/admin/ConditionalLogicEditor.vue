@@ -92,7 +92,7 @@ const availableFields = computed( () =>
 );
 
 const defaultLogic = computed( (): GenericConditionalLogic => ( {
-	action: availableActions.value[0].value,
+	action: availableActions.value.length > 0 ? availableActions.value[0].value : '',
 	logic: 'all' as ConditionalLogicType,
 	rules: [],
 } ) );

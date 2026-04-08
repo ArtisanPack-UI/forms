@@ -63,7 +63,9 @@ const isLoading   = ref( true );
 const error       = ref<string | null>( null );
 
 // Filters
+const searchInput   = ref( '' );
 const search        = ref( '' );
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
 const statusFilter  = ref<SubmissionStatusFilter>( 'all' );
 const dateRange     = ref<SubmissionDateRange>( 'all' );
 const sortBy        = ref<SortColumn>( 'created_at' );
@@ -362,9 +364,17 @@ function getAriaSortValue( column: SortColumn ): 'ascending' | 'descending' | 'n
 // ---------------------------------------------------------------------------
 
 function handleSearchInput( e: Event ): void {
-	search.value      = ( e.target as HTMLInputElement ).value;
-	currentPage.value = 1;
-	selected.value    = new Set();
+	searchInput.value = ( e.target as HTMLInputElement ).value;
+
+	if ( searchTimer ) {
+		clearTimeout( searchTimer );
+	}
+
+	searchTimer = setTimeout( () => {
+		search.value      = searchInput.value;
+		currentPage.value = 1;
+		selected.value    = new Set();
+	}, 300 );
 }
 
 function handleStatusChange( status: SubmissionStatusFilter ): void {
@@ -373,8 +383,8 @@ function handleStatusChange( status: SubmissionStatusFilter ): void {
 	selected.value     = new Set();
 }
 
-function handleDateRangeChange( e: Event ): void {
-	dateRange.value   = ( e.target as HTMLSelectElement ).value as SubmissionDateRange;
+function handleDateRangeChange( value: SubmissionDateRange ): void {
+	dateRange.value   = value;
 	currentPage.value = 1;
 	selected.value    = new Set();
 }
@@ -426,7 +436,7 @@ function isRowDisabled( submissionId: number ): boolean {
 				size="sm"
 				class="w-64"
 				placeholder="Search submissions..."
-				:model-value="search"
+				:model-value="searchInput"
 				@input="handleSearchInput"
 			/>
 
@@ -450,7 +460,7 @@ function isRowDisabled( submissionId: number ): boolean {
 				:options="dateRangeOptions"
 				option-value="value"
 				option-label="label"
-				@change="handleDateRangeChange"
+				@update:model-value="handleDateRangeChange"
 			/>
 		</div>
 

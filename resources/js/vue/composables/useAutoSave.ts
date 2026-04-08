@@ -60,6 +60,7 @@ export function useAutoSave( options: UseAutoSaveOptions ): UseAutoSaveReturn {
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	let isSavingInternal = false;
 	let pendingSave = false;
+	let isUnmounted = false;
 
 	/**
 	 * We store the onSave callback so the latest closure is always called.
@@ -90,7 +91,7 @@ export function useAutoSave( options: UseAutoSaveOptions ): UseAutoSaveReturn {
 			isSavingInternal = false;
 			isSaving.value = false;
 
-			if ( pendingSave ) {
+			if ( pendingSave && !isUnmounted ) {
 				pendingSave = false;
 				timer = setTimeout( () => {
 					timer = null;
@@ -143,6 +144,8 @@ export function useAutoSave( options: UseAutoSaveOptions ): UseAutoSaveReturn {
 	}
 
 	onUnmounted( () => {
+		isUnmounted = true;
+
 		if ( timer ) {
 			clearTimeout( timer );
 		}

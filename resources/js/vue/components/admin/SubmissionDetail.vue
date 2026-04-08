@@ -85,17 +85,29 @@ async function loadSubmission(): Promise<void> {
 	submission.value = null;
 	adminNotes.value = '';
 
+	const currentId = props.submissionId;
+
 	try {
 		const response = await get<{ data: FormSubmission }>(
-			`/${props.form.slug}/submissions/${props.submissionId}`,
+			`/${props.form.slug}/submissions/${currentId}`,
 		);
+
+		if ( props.submissionId !== currentId ) {
+			return;
+		}
+
 		submission.value = response.data;
 		adminNotes.value = response.data.admin_notes ?? '';
 
 		// Auto-mark as read after successful fetch
 		if ( !response.data.is_read ) {
 			try {
-				await put( `/${props.form.slug}/submissions/${props.submissionId}`, { is_read: true } );
+				await put( `/${props.form.slug}/submissions/${currentId}`, { is_read: true } );
+
+				if ( props.submissionId !== currentId ) {
+					return;
+				}
+
 				if ( submission.value ) {
 					submission.value = { ...submission.value, is_read: true };
 				}
@@ -104,6 +116,10 @@ async function loadSubmission(): Promise<void> {
 			}
 		}
 	} catch ( err ) {
+		if ( props.submissionId !== currentId ) {
+			return;
+		}
+
 		error.value      = err instanceof Error ? err.message : 'Failed to load submission.';
 		submission.value = null;
 		adminNotes.value = '';

@@ -64,6 +64,7 @@ const { get, post, put, del } = useApi( {
 
 // Core state
 const form = ref<Form | null>( null );
+const persistedSlug = ref<string>( '' );
 const fields = ref<FormField[]>( [] );
 const steps = ref<FormStep[]>( [] );
 const isLoading = ref( true );
@@ -84,6 +85,7 @@ const formSettings = ref<UpdateFormRequest>( {} );
 
 // Reset form state when switching forms
 watch( () => props.formSlug, () => {
+	clearDirty();
 	formSettings.value = {};
 	form.value = null;
 	fields.value = [];
@@ -97,7 +99,7 @@ watch( () => props.formSlug, () => {
 } );
 
 // Auto-save
-const { isDirty, isSaving, lastSavedAt, saveError, markDirty, saveNow } = useAutoSave( {
+const { isDirty, isSaving, lastSavedAt, saveError, markDirty, saveNow, clearDirty } = useAutoSave( {
 	onSave: async () => {
 		if ( !form.value ) {
 			return;
@@ -107,7 +109,12 @@ const { isDirty, isSaving, lastSavedAt, saveError, markDirty, saveNow } = useAut
 
 		if ( Object.keys( data ).length > 0 ) {
 			const savedKeys = Object.keys( data );
-			await put( `/${form.value.slug}`, data );
+			await put( `/${persistedSlug.value}`, data );
+
+			if ( data.slug ) {
+				persistedSlug.value = data.slug as string;
+			}
+
 			const prev = formSettings.value;
 			const next = { ...prev };
 
@@ -132,6 +139,7 @@ async function loadForm(): Promise<void> {
 		const response = await get<{ data: Form }>( `/${props.formSlug}` );
 		const formData = response.data;
 		form.value = formData;
+		persistedSlug.value = formData.slug;
 		fields.value = formData.fields ?? [];
 		steps.value = formData.steps ?? [];
 
@@ -205,7 +213,7 @@ async function addField( type: FieldType ): Promise<void> {
 		};
 
 		const response = await post<{ data: FormField }>(
-			`/${form.value.slug}/fields`,
+			`/${persistedSlug.value}/fields`,
 			request,
 		);
 
@@ -232,14 +240,27 @@ async function updateField( fieldId: number, data: UpdateFieldRequest ): Promise
 		return;
 	}
 
-	// Optimistic update
-	fields.value = fields.value.map( ( f ) =>
-		f.id === fieldId ? { ...f, ...data } as FormField : f,
-	);
+	// Optimistic update (deep-merge nested config objects)
+	fields.value = fields.value.map( ( f ) => {
+		if ( f.id !== fieldId ) {
+			return f;
+		}
+		const merged = { ...f, ...data };
+		if ( data.field_config && f.field_config ) {
+			merged.field_config = { ...f.field_config, ...data.field_config };
+		}
+		if ( data.validation_rules && f.validation_rules ) {
+			merged.validation_rules = { ...f.validation_rules, ...data.validation_rules };
+		}
+		if ( data.conditional_logic && f.conditional_logic ) {
+			merged.conditional_logic = { ...f.conditional_logic, ...data.conditional_logic };
+		}
+		return merged as FormField;
+	} );
 
 	try {
 		const response = await put<{ data: FormField }>(
-			`/${form.value.slug}/fields/${fieldId}`,
+			`/${persistedSlug.value}/fields/${fieldId}`,
 			data,
 		);
 		fields.value = fields.value.map( ( f ) =>
@@ -266,7 +287,7 @@ async function deleteField( fieldId: number ): Promise<void> {
 	}
 
 	try {
-		await del( `/${form.value.slug}/fields/${fieldId}` );
+		await del( `/${persistedSlug.value}/fields/${fieldId}` );
 		fields.value = fields.value.filter( ( f ) => f.id !== fieldId );
 
 		if ( selectedFieldId.value === fieldId ) {
@@ -307,7 +328,7 @@ async function duplicateField( fieldId: number ): Promise<void> {
 		};
 
 		const response = await post<{ data: FormField }>(
-			`/${form.value.slug}/fields`,
+			`/${persistedSlug.value}/fields`,
 			request,
 		);
 
@@ -353,7 +374,7 @@ async function handleDragEnd(): Promise<void> {
 	// Persist to API
 	try {
 		const orderedUuids = updatedFields.map( ( f ) => f.uuid );
-		await post( `/${form.value.slug}/fields/reorder`, {
+		await post( `/${persistedSlug.value}/fields/reorder`, {
 			ordered_uuids: orderedUuids,
 			step_id: form.value.is_multi_step ? activeStepId.value : null,
 		} );
@@ -397,7 +418,7 @@ async function addStep(): Promise<void> {
 		};
 
 		const response = await post<{ data: FormStep }>(
-			`/${form.value.slug}/steps`,
+			`/${persistedSlug.value}/steps`,
 			request,
 		);
 
@@ -421,7 +442,7 @@ async function updateStep( stepId: number, data: Partial<FormStep> ): Promise<vo
 
 	try {
 		await put<{ data: FormStep }>(
-			`/${form.value.slug}/steps/${stepId}`,
+			`/${persistedSlug.value}/steps/${stepId}`,
 			data,
 		);
 	} catch ( err ) {
@@ -446,7 +467,7 @@ async function deleteStep( stepId: number ): Promise<void> {
 	}
 
 	try {
-		await del( `/${form.value.slug}/steps/${stepId}` );
+		await del( `/${persistedSlug.value}/steps/${stepId}` );
 		steps.value = steps.value.filter( ( s ) => s.id !== stepId );
 		fields.value = fields.value.map( ( f ) =>
 			f.step_id === stepId ? { ...f, step_id: null } : f,
@@ -485,7 +506,7 @@ async function reorderSteps( stepId: number, direction: 'up' | 'down' ): Promise
 	steps.value = updated;
 
 	try {
-		await post( `/${form.value.slug}/steps/reorder`, {
+		await post( `/${persistedSlug.value}/steps/reorder`, {
 			ordered_ids: updated.map( ( s ) => s.id ),
 		} );
 	} catch ( err ) {
@@ -501,13 +522,13 @@ async function enableMultiStep(): Promise<void> {
 	}
 
 	try {
-		await put( `/${form.value.slug}`, { is_multi_step: true } );
+		await put( `/${persistedSlug.value}`, { is_multi_step: true } );
 		form.value = { ...form.value, is_multi_step: true };
 
 		// Create first step if none exist
 		if ( steps.value.length === 0 ) {
 			const request = { title: 'Step 1', sort_order: 0 };
-			const response = await post<{ data: FormStep }>( `/${form.value.slug}/steps`, request );
+			const response = await post<{ data: FormStep }>( `/${persistedSlug.value}/steps`, request );
 			steps.value = [...steps.value, response.data];
 			activeStepId.value = response.data.id;
 		}
@@ -522,7 +543,7 @@ async function disableMultiStep(): Promise<void> {
 	}
 
 	try {
-		await put( `/${form.value.slug}`, { is_multi_step: false } );
+		await put( `/${persistedSlug.value}`, { is_multi_step: false } );
 		form.value = { ...form.value, is_multi_step: false };
 		activeStepId.value = null;
 	} catch ( err ) {
