@@ -35,8 +35,16 @@ Welcome to the documentation for the ArtisanPack UI Forms package. This package 
   - [SubmissionDetail Component](Components-Submission-Detail)
   - [NotificationEditor Component](Components-Notification-Editor)
 
+- **Frontend Components**
+  - [Frontend Overview](Frontend-Frontend)
+  - [React Components](Frontend-React)
+  - [Vue Components](Frontend-Vue)
+  - [TypeScript Types](Frontend-Typescript-Types)
+
 - **API Reference**
   - [API Overview](Api-Api)
+  - [REST API](Api-Rest-Api)
+  - [API Resources](Api-Resources)
   - [Models](Api-Models)
   - [Services](Api-Services)
   - [Events](Api-Events)
@@ -66,6 +74,9 @@ Welcome to the documentation for the ArtisanPack UI Forms package. This package 
 - **Webhook Integrations**: Send form data to external services
 - **Submission Management**: View, export, and manage form submissions
 - **Accessibility**: WCAG-compliant form rendering
+- **REST API**: Full RESTful API with Sanctum authentication for headless integrations
+- **React & Vue Components**: Frontend form renderers and admin components for React and Vue 3
+- **TypeScript Support**: Comprehensive type definitions for all models and API types
 
 ## Quick Example
 

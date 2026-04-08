@@ -176,3 +176,5 @@ Event::listen(FormSubmitted::class, function ($event) {
 - [Webhooks](Webhooks) - Detailed webhook documentation
 - [Spam Protection](Spam-Protection) - Anti-spam configuration
 - [Customization](Customization) - Customization options
+- [Frontend Components](Frontend-Frontend) - React and Vue form renderers
+- [REST API](Api-Rest-Api) - RESTful HTTP endpoints

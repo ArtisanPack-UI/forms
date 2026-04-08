@@ -3,15 +3,14 @@ name: CI
 on:
   push:
     branches: [main]
-    tags:
-      - 'v*'
   pull_request:
     branches: [main]
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    name: Lint
 
     steps:
       - uses: actions/checkout@v4
@@ -37,17 +36,22 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
-      - name: Upload vendor directory
-        uses: actions/upload-artifact@v4
-        with:
-          name: vendor
-          path: vendor/
-          retention-days: 1
+      - name: Run PHP-CS-Fixer
+        run: ./vendor/bin/php-cs-fixer fix --dry-run --diff
+
+      - name: Run PHPCS
+        continue-on-error: true
+        run: ./vendor/bin/phpcs src/ routes/ tests/
 
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    name: Test
+    name: Test (PHP ${{ matrix.php }})
+
+    strategy:
+      fail-fast: true
+      matrix:
+        php: ['8.2', '8.3', '8.4']
 
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +59,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          php-version: ${{ matrix.php }}
           extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite
           coverage: none
 
@@ -67,57 +71,18 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
+          key: ${{ runner.os }}-php${{ matrix.php }}-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: ${{ runner.os }}-php${{ matrix.php }}-composer-
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: composer update --no-interaction --prefer-dist
 
       - name: Run Unit tests
         env:
           XDEBUG_MODE: off
-        run: php vendor/bin/pest tests/Unit --no-coverage
+        run: vendor/bin/pest tests/Unit --no-coverage
 
       - name: Run Feature tests
         env:
           XDEBUG_MODE: off
-        run: php vendor/bin/pest tests/Feature --no-coverage
-
-  release:
-    needs: test
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    name: Create Release
-
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Extract release notes from CHANGELOG
-        id: changelog
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "Extracting notes for version $VERSION"
-
-          if [ -f "CHANGELOG.md" ]; then
-            # Extract section for this version
-            NOTES=$(sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | sed '1d;$d' | sed '/^$/d')
-            if [ -z "$NOTES" ]; then
-              NOTES="Release $VERSION. See CHANGELOG.md for details."
-            fi
-          else
-            NOTES="Release $VERSION"
-          fi
-
-          # Save to file for multi-line support
-          echo "$NOTES" > release_notes.txt
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          body_path: release_notes.txt
-          generate_release_notes: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: vendor/bin/pest tests/Feature --no-coverage

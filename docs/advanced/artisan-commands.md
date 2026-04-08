@@ -10,7 +10,51 @@ Command-line tools for managing forms.
 
 | Command | Description |
 |---------|-------------|
+| `forms:install-frontend` | Publish React or Vue frontend components |
 | `forms:prune-submissions` | Delete old form submissions |
+
+## forms:install-frontend
+
+Publishes React or Vue form components, shared utilities, and TypeScript type definitions to your project.
+
+### Usage
+
+```bash
+# Interactive - prompts for stack choice
+php artisan forms:install-frontend
+
+# Specify stack directly
+php artisan forms:install-frontend --stack=react
+php artisan forms:install-frontend --stack=vue
+
+# Overwrite existing files
+php artisan forms:install-frontend --stack=react --force
+```
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `--stack=<react\|vue>` | Frontend stack to install |
+| `--force` | Overwrite existing files |
+
+### What Gets Published
+
+Files are published to `resources/js/vendor/artisanpack-forms/`:
+
+| Directory | Contents |
+|-----------|----------|
+| `react/` or `vue/` | Framework-specific components, hooks/composables, and admin components |
+| `shared/` | Framework-agnostic validation and conditional logic modules |
+| `types/` | TypeScript type definitions (`artisanpack-forms.d.ts`) |
+
+### After Installation
+
+1. Import components in your frontend code
+2. Ensure your API routes are configured (API is enabled by default)
+3. Set up Sanctum authentication for admin components
+
+See the [Frontend Components](Frontend-Frontend) documentation for usage details.
 
 ## forms:prune-submissions
 
