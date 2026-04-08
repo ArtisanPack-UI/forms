@@ -199,6 +199,6 @@ describe( 'FormsList Livewire Component', function (): void {
                 ->set( 'statusFilter', 'active' );
 
             expect( $component->get( 'statusFilter' ) )->toBe( 'active' );
-        });
-    });
-});
+        } );
+    } );
+} );

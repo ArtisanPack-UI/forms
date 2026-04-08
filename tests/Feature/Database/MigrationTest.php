@@ -472,6 +472,6 @@ describe( 'Forms package configuration', function (): void {
         expect( $config['spam_protection'] )->not->toBeNull();
         expect( $config['notifications'] )->not->toBeNull();
         expect( $config['display'] )->not->toBeNull();
-    });
+    } );
 
-});
+} );

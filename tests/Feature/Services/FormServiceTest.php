@@ -197,5 +197,5 @@ describe( 'FormService', function (): void {
 
             expect( $found )->toBeNull();
         } );
-    });
-});
+    } );
+} );

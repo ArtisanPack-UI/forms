@@ -334,6 +334,6 @@ describe( 'FormBuilder Enable/Disable Multi-Step', function (): void {
         $form->refresh();
         $step = $form->steps()->first();
 
-        $component->assertSet( 'activeStepId', $step->id);
-    });
-});
+        $component->assertSet( 'activeStepId', $step->id );
+    } );
+} );

@@ -264,5 +264,5 @@ describe( 'NotificationEditor Livewire Component', function (): void {
                 ->assertSee( 'My Notification' )
                 ->assertSee( 'Test Subject' );
         } );
-    });
-});
+    } );
+} );

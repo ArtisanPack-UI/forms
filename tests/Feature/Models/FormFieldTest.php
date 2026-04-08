@@ -193,5 +193,5 @@ describe( 'FormField Model', function (): void {
                 ->and( $rules )->toContain( 'after_or_equal:09:00' )
                 ->and( $rules )->toContain( 'before_or_equal:17:00' );
         } );
-    });
-});
+    } );
+} );

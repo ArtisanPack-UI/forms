@@ -228,6 +228,6 @@ afterEach( function (): void {
 
     if ( function_exists( 'removeAllFilters' ) ) {
         removeAllFilters( 'forms.export_headers' );
-        removeAllFilters( 'forms.export_data');
+        removeAllFilters( 'forms.export_data' );
     }
 });

@@ -159,5 +159,5 @@ describe( 'Form Model', function (): void {
 
             expect( $form->getRouteKeyName() )->toBe( 'slug' );
         } );
-    });
-});
+    } );
+} );

@@ -130,4 +130,4 @@ describe( 'Privacy Settings', function (): void {
             expect( $metadata['referrer_url'] )->toBe( 'https://example.com/previous-page' );
         } );
     } );
-});
+} );

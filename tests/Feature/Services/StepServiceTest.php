@@ -252,6 +252,6 @@ describe( 'StepService', function (): void {
             $result = $this->service->getLastStep( $this->form );
 
             expect( $result )->toBeNull();
-        });
-    });
-});
+        } );
+    } );
+} );

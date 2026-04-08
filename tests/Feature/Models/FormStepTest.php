@@ -83,4 +83,4 @@ describe( 'FormStep Model', function (): void {
                 ->and( $step2->getNextStep() )->toBeNull();
         } );
     } );
-});
+} );

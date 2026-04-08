@@ -135,4 +135,4 @@ describe( 'FormSubmissionValue Model', function (): void {
                 ->and( $textValue->is_file )->toBeFalse();
         } );
     } );
-});
+} );

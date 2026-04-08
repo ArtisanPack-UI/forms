@@ -199,6 +199,6 @@ describe( 'Filter Hooks', function (): void {
 
             expect( $tabs )->toBeArray()
                 ->and( $tabs )->toBeEmpty();
-        });
+        } );
     });
 });

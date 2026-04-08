@@ -203,5 +203,5 @@ describe( 'FormNotification Model', function (): void {
 
             expect( $parsed )->toBe( 'New submission from Support Form: FORM-2-2025-00005' );
         } );
-    });
-});
+    } );
+} );

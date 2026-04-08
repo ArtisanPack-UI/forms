@@ -100,4 +100,4 @@ describe( 'FormUpload Model', function (): void {
             expect( $upload->is_image )->toBeFalse();
         } );
     } );
-});
+} );

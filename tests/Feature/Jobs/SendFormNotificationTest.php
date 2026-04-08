@@ -158,5 +158,5 @@ describe( 'SendFormNotification Job', function (): void {
             $job = new SendFormNotification( $notification, $submission );
             $job->failed( new Exception( 'Permanent failure' ) );
         } );
-    });
+    } );
 });

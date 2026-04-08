@@ -193,4 +193,4 @@ describe( 'ConditionalLogic Config', function (): void {
                 ->and( $result['errors'][0] )->toContain( 'Value is required' );
         } );
     } );
-});
+} );

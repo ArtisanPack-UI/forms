@@ -208,5 +208,5 @@ describe( 'FormController', function (): void {
 
             expect( Form::find( $formId ) )->toBeNull();
         } );
-    });
-});
+    } );
+} );

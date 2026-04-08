@@ -429,7 +429,7 @@ describe( 'SubmissionsList Livewire Component', function (): void {
             $component = Livewire::test( SubmissionsList::class )
                 ->call( 'sort', 'submission_number' );
 
-            expect( $component->get( 'sortBy' ))->toBe( 'submission_number');
-        });
-    });
+            expect( $component->get( 'sortBy' ) )->toBe( 'submission_number' );
+        } );
+    } );
 });

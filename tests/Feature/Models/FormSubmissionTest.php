@@ -209,4 +209,4 @@ describe( 'FormSubmission Model', function (): void {
             expect( $submission->getEmailValue() )->toBe( 'contact@example.com' );
         } );
     } );
-});
+} );

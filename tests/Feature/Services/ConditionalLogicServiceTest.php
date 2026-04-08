@@ -324,5 +324,5 @@ describe( 'ConditionalLogicService', function (): void {
 
             expect( $cleaned['rules'] )->toBeEmpty();
         } );
-    });
-});
+    } );
+} );

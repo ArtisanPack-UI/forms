@@ -543,6 +543,6 @@ describe( 'FormRenderer Default Values', function (): void {
 
         $component = Livewire::test( FormRenderer::class, ['form' => $form] );
 
-        expect( $component->get( 'formData.interests' ) )->toBe( []);
-    });
-});
+        expect( $component->get( 'formData.interests' ) )->toBe( [] );
+    } );
+} );

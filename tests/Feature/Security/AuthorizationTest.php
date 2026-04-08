@@ -187,4 +187,4 @@ describe( 'Authorization Policies', function (): void {
                 ->assertForbidden();
         } );
     } );
-});
+} );

@@ -346,6 +346,6 @@ describe( 'NotificationService', function (): void {
             $emails = $this->service->getBccEmails( $notification );
 
             expect( $emails )->toBe( ['bcc@example.com'] );
-        });
-    });
-});
+        } );
+    } );
+} );

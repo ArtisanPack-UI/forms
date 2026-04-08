@@ -263,4 +263,4 @@ describe( 'SubmissionDetail Livewire Component', function (): void {
                 ->assertSee( 'No response' );
         } );
     } );
-});
+} );
