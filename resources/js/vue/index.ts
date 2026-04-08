@@ -25,6 +25,24 @@ export { default as LayoutField } from './components/fields/LayoutField.vue';
 export { useForm } from './composables/useForm';
 export type { UseFormOptions } from './composables/useForm';
 
+export { useApi, ApiError, ApiValidationError } from './composables/useApi';
+export type { UseApiOptions, UseApiReturn } from './composables/useApi';
+
+export { useAutoSave } from './composables/useAutoSave';
+export type { UseAutoSaveOptions, UseAutoSaveReturn } from './composables/useAutoSave';
+
+// Admin components
+export {
+	FormsList,
+	FormBuilder,
+	FieldEditor,
+	FieldPalette,
+	ConditionalLogicEditor,
+	NotificationEditor,
+	SubmissionsList,
+	SubmissionDetail,
+} from './components/admin';
+
 // Shared utilities (re-exported for convenience)
 export {
 	compareValues,
