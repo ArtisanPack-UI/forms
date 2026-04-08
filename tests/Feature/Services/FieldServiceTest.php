@@ -286,4 +286,4 @@ describe( 'FieldTypes Config', function (): void {
         expect( FieldTypes::typeExists( 'text' ) )->toBeTrue()
             ->and( FieldTypes::typeExists( 'invalid' ) )->toBeFalse();
     } );
-});
+} );

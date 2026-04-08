@@ -432,4 +432,4 @@ describe( 'SubmissionsList Livewire Component', function (): void {
             expect( $component->get( 'sortBy' ) )->toBe( 'submission_number' );
         } );
     } );
-});
+} );

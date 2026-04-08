@@ -420,4 +420,4 @@ afterEach( function (): void {
     if ( function_exists( 'removeAllFilters' ) ) {
         removeAllFilters( 'forms.submission_data' );
     }
-});
+} );

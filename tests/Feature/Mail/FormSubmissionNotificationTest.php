@@ -221,4 +221,4 @@ describe( 'FormSubmissionNotification Mailable', function (): void {
                 ->and( $rendered )->toContain( 'Test message content' );
         } );
     } );
-});
+} );
