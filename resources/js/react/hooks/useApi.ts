@@ -49,6 +49,8 @@ export interface UseApiOptions {
 	csrfToken?: string;
 	/** Optional authorization header value (e.g. "Bearer token"). */
 	authorization?: string;
+	/** Fetch credentials mode. Defaults to 'include' for cross-origin Sanctum support. */
+	credentials?: RequestCredentials;
 }
 
 /** Return type of the useApi hook. */
@@ -94,7 +96,7 @@ function getXsrfToken(): string | null {
  * ```
  */
 export function useApi( options: UseApiOptions ): UseApiReturn {
-	const { baseUrl, csrfToken, authorization } = options;
+	const { baseUrl, csrfToken, authorization, credentials = 'include' } = options;
 	const abortControllers = useRef<Map<string, AbortController>>( new Map() );
 
 	const buildHeaders = useCallback(
@@ -185,16 +187,18 @@ export function useApi( options: UseApiOptions ): UseApiReturn {
 				const response = await fetch( url, {
 					method: 'GET',
 					headers: buildHeaders(),
-					credentials: 'same-origin',
+					credentials,
 					signal: controller.signal,
 				} );
 
 				return handleResponse<T>( response );
 			} finally {
-				abortControllers.current.delete( key );
+				if ( abortControllers.current.get( key ) === controller ) {
+					abortControllers.current.delete( key );
+				}
 			}
 		},
-		[buildUrl, buildHeaders, handleResponse],
+		[buildUrl, buildHeaders, handleResponse, credentials],
 	);
 
 	const post = useCallback(
@@ -202,13 +206,13 @@ export function useApi( options: UseApiOptions ): UseApiReturn {
 			const response = await fetch( buildUrl( path ), {
 				method: 'POST',
 				headers: buildHeaders(),
-				credentials: 'same-origin',
+				credentials,
 				body: body !== undefined ? JSON.stringify( body ) : undefined,
 			} );
 
 			return handleResponse<T>( response );
 		},
-		[buildUrl, buildHeaders, handleResponse],
+		[buildUrl, buildHeaders, handleResponse, credentials],
 	);
 
 	const put = useCallback(
@@ -216,13 +220,13 @@ export function useApi( options: UseApiOptions ): UseApiReturn {
 			const response = await fetch( buildUrl( path ), {
 				method: 'PUT',
 				headers: buildHeaders(),
-				credentials: 'same-origin',
+				credentials,
 				body: body !== undefined ? JSON.stringify( body ) : undefined,
 			} );
 
 			return handleResponse<T>( response );
 		},
-		[buildUrl, buildHeaders, handleResponse],
+		[buildUrl, buildHeaders, handleResponse, credentials],
 	);
 
 	const del = useCallback(
@@ -230,12 +234,12 @@ export function useApi( options: UseApiOptions ): UseApiReturn {
 			const response = await fetch( buildUrl( path ), {
 				method: 'DELETE',
 				headers: buildHeaders(),
-				credentials: 'same-origin',
+				credentials,
 			} );
 
 			return handleResponse<T>( response );
 		},
-		[buildUrl, buildHeaders, handleResponse],
+		[buildUrl, buildHeaders, handleResponse, credentials],
 	);
 
 	const download = useCallback(
@@ -243,7 +247,7 @@ export function useApi( options: UseApiOptions ): UseApiReturn {
 			const response = await fetch( buildUrl( path ), {
 				method: 'GET',
 				headers: buildHeaders( false ),
-				credentials: 'same-origin',
+				credentials,
 			} );
 
 			if ( !response.ok ) {
@@ -260,7 +264,7 @@ export function useApi( options: UseApiOptions ): UseApiReturn {
 			document.body.removeChild( a );
 			URL.revokeObjectURL( url );
 		},
-		[buildUrl, buildHeaders],
+		[buildUrl, buildHeaders, credentials],
 	);
 
 	return useMemo(

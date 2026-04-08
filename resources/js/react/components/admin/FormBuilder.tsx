@@ -160,8 +160,15 @@ export function FormBuilder( {
 
 	// Get fields for the active step (or all fields for single-step)
 	const currentFields = useMemo( () => {
-		if ( !form?.is_multi_step || activeStepId === null ) {
+		if ( !form?.is_multi_step ) {
 			return [...fields].sort( ( a, b ) => a.sort_order - b.sort_order );
+		}
+
+		if ( null === activeStepId ) {
+			// Show unassigned fields
+			return fields
+				.filter( ( f ) => null === f.step_id )
+				.sort( ( a, b ) => a.sort_order - b.sort_order );
 		}
 
 		return fields
@@ -705,6 +712,18 @@ export function FormBuilder( {
 										</span>
 									</button>
 								) )}
+								{fields.some( ( f ) => null === f.step_id ) && (
+									<button
+										type="button"
+										className={`tab ${null === activeStepId ? 'tab-active' : ''}`}
+										onClick={() => setActiveStepId( null )}
+									>
+										Unassigned
+										<span className="ml-1 badge badge-sm badge-warning">
+											{fields.filter( ( f ) => null === f.step_id ).length}
+										</span>
+									</button>
+								)}
 							</div>
 							<Button
 								size="sm"
@@ -752,87 +771,150 @@ export function FormBuilder( {
 						</div>
 					)}
 
-					{/* Field canvas */}
-					<div
-						className="flex-1 p-4 min-h-48"
-						onDrop={handleCanvasDrop}
-						onDragOver={handleCanvasDragOver}
-					>
-						{currentFields.length === 0 && (
-							<div className="flex items-center justify-center h-full border-2 border-dashed border-base-300 rounded-lg p-8">
-								<p className="text-base-content/50">Drag fields here or click a field type to add it.</p>
+					{/* Preview mode */}
+					{showPreview && (
+						<div className="flex-1 p-6 overflow-y-auto bg-base-100">
+							<div className="max-w-2xl mx-auto space-y-4">
+								<h2 className="text-xl font-bold">{form.name}</h2>
+								{form.description && <p className="text-base-content/70">{form.description}</p>}
+								{currentFields.map( ( field ) => (
+									<div key={field.id} className="form-control">
+										{field.label && 'hidden' !== field.type && (
+											<label className="label">
+												<span className="label-text">
+													{field.label}
+													{field.is_required && <span className="text-error ml-1">*</span>}
+												</span>
+											</label>
+										)}
+										{['text', 'email', 'phone', 'number', 'url', 'date', 'time'].includes( field.type ) && (
+											<input type={field.type} className="input input-bordered" placeholder={field.placeholder ?? ''} disabled />
+										)}
+										{'textarea' === field.type && (
+											<textarea className="textarea textarea-bordered" placeholder={field.placeholder ?? ''} disabled rows={3} />
+										)}
+										{'select' === field.type && (
+											<select className="select select-bordered" disabled>
+												<option>{field.placeholder ?? 'Select...'}</option>
+											</select>
+										)}
+										{'checkbox' === field.type && (
+											<label className="label cursor-pointer justify-start gap-2">
+												<input type="checkbox" className="checkbox" disabled />
+												<span className="label-text">{field.label}</span>
+											</label>
+										)}
+										{'file' === field.type && (
+											<input type="file" className="file-input file-input-bordered" disabled />
+										)}
+										{'heading' === field.type && (
+											<h3 className="text-lg font-bold">{field.default_value ?? field.label}</h3>
+										)}
+										{'paragraph' === field.type && (
+											<p className="text-base-content/70">{field.default_value ?? ''}</p>
+										)}
+										{'divider' === field.type && <div className="divider" />}
+										{field.help_text && <label className="label"><span className="label-text-alt">{field.help_text}</span></label>}
+									</div>
+								) )}
+								<button className="btn btn-primary" disabled>{form.submit_button_text}</button>
 							</div>
-						)}
+						</div>
+					)}
 
-						<div className="space-y-2">
-							{currentFields.map( ( field, index ) => (
-								<div
-									key={field.id}
-									className={`card card-compact bg-base-100 shadow-sm border cursor-pointer transition-all ${
-										selectedFieldId === field.id ? 'ring-2 ring-primary border-primary' : 'border-base-300 hover:border-base-content/30'
-									} ${
-										dragState?.overIndex === index && dragState.draggedIndex !== index
-											? 'border-t-2 border-t-primary'
-											: ''
-									} ${
-										'full' === field.width ? 'w-full' : 'half' === field.width ? 'w-1/2' : 'third' === field.width ? 'w-1/3' : 'two-thirds' === field.width ? 'w-2/3' : 'w-full'
-									}`}
-									draggable
-									onDragStart={() => handleDragStart( index )}
-									onDragOver={( e ) => {
-										e.preventDefault();
-										handleDragOver( index );
-									}}
-									onDragEnd={handleDragEnd}
-									onClick={() => {
-										setSelectedFieldId( field.id );
-										setActivePanel( 'editor' );
-									}}
-								>
-									<div className="card-body flex-row items-center gap-3">
-										<div className="cursor-grab text-base-content/40 hover:text-base-content/70" title="Drag to reorder">
-											&#x2630;
-										</div>
-										<div className="flex flex-col flex-1 min-w-0">
-											<Badge color="ghost" value={field.type} className="badge-sm" />
-											<span className="font-medium truncate">
-												{field.label || field.name}
-												{field.is_required && <span className="text-error ml-0.5">*</span>}
-											</span>
-										</div>
-										<div className="flex items-center gap-1">
-											<Button
-												size="xs"
-												color="ghost"
-												onClick={( e ) => {
-													e.stopPropagation();
-													duplicateField( field.id );
-												}}
-												title="Duplicate"
-											>
-												&#x2398;
-											</Button>
-											<Button
-												size="xs"
-												color="ghost"
-												className="text-error"
-												onClick={( e ) => {
-													e.stopPropagation();
+					{/* Field canvas */}
+					{!showPreview && (
+						<div
+							className="flex-1 p-4 min-h-48"
+							onDrop={handleCanvasDrop}
+							onDragOver={handleCanvasDragOver}
+						>
+							{0 === currentFields.length && (
+								<div className="flex items-center justify-center h-full border-2 border-dashed border-base-300 rounded-lg p-8">
+									<p className="text-base-content/50">Drag fields here or click a field type to add it.</p>
+								</div>
+							)}
 
-													if ( window.confirm( 'Delete this field?' ) ) {
-														deleteField( field.id );
-													}
-												}}
-												title="Delete"
-											>
-												&times;
-											</Button>
+							<div className="space-y-2">
+								{currentFields.map( ( field, index ) => (
+									<div
+										key={field.id}
+										className={`card card-compact bg-base-100 shadow-sm border cursor-pointer transition-all ${
+											selectedFieldId === field.id ? 'ring-2 ring-primary border-primary' : 'border-base-300 hover:border-base-content/30'
+										} ${
+											dragState?.overIndex === index && dragState.draggedIndex !== index
+												? 'border-t-2 border-t-primary'
+												: ''
+										} ${
+											'full' === field.width ? 'w-full' : 'half' === field.width ? 'w-1/2' : 'third' === field.width ? 'w-1/3' : 'two-thirds' === field.width ? 'w-2/3' : 'w-full'
+										}`}
+										tabIndex={0}
+										role="button"
+										aria-label={`Edit ${field.label || field.name} field`}
+										draggable
+										onDragStart={() => handleDragStart( index )}
+										onDragOver={( e ) => {
+											e.preventDefault();
+											handleDragOver( index );
+										}}
+										onDragEnd={handleDragEnd}
+										onClick={() => {
+											setSelectedFieldId( field.id );
+											setActivePanel( 'editor' );
+										}}
+										onKeyDown={( e ) => {
+											if ( 'Enter' === e.key || ' ' === e.key ) {
+												e.preventDefault();
+												setSelectedFieldId( field.id );
+												setActivePanel( 'editor' );
+											}
+										}}
+									>
+										<div className="card-body flex-row items-center gap-3">
+											<div className="cursor-grab text-base-content/40 hover:text-base-content/70" title="Drag to reorder">
+												&#x2630;
+											</div>
+											<div className="flex flex-col flex-1 min-w-0">
+												<Badge color="ghost" value={field.type} className="badge-sm" />
+												<span className="font-medium truncate">
+													{field.label || field.name}
+													{field.is_required && <span className="text-error ml-0.5">*</span>}
+												</span>
+											</div>
+											<div className="flex items-center gap-1">
+												<Button
+													size="xs"
+													color="ghost"
+													onClick={( e ) => {
+														e.stopPropagation();
+														duplicateField( field.id );
+													}}
+													title="Duplicate"
+												>
+													&#x2398;
+												</Button>
+												<Button
+													size="xs"
+													color="ghost"
+													className="text-error"
+													onClick={( e ) => {
+														e.stopPropagation();
+
+														if ( window.confirm( 'Delete this field?' ) ) {
+															deleteField( field.id );
+														}
+													}}
+													title="Delete"
+												>
+													&times;
+												</Button>
+											</div>
 										</div>
 									</div>
-								</div>
-							) )}
+								) )}
+							</div>
 						</div>
-					</div>
+					)}
 				</div>
 
 				{/* Right sidebar (field editor) */}

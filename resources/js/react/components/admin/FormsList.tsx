@@ -144,6 +144,9 @@ export function FormsList( {
 		}
 	}, [del, fetchForms] );
 
+	// TODO: Backend duplicate endpoint would copy fields/steps/notifications.
+	// Currently only copies form-level settings. A full duplicate API endpoint
+	// should be added to the package for complete form cloning.
 	const handleDuplicate = useCallback( async ( form: Form ) => {
 		setDuplicatingId( form.id );
 

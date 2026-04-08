@@ -183,16 +183,16 @@ export function SubmissionDetail( {
 
 	const currentIndex = submissionIds?.indexOf( submissionId ) ?? -1;
 	const hasPrev = currentIndex > 0;
-	const hasNext = submissionIds ? currentIndex < submissionIds.length - 1 : false;
+	const hasNext = currentIndex !== -1 && submissionIds ? currentIndex < submissionIds.length - 1 : false;
 
 	const goToPrev = useCallback( () => {
-		if ( hasPrev && submissionIds ) {
+		if ( hasPrev && submissionIds && currentIndex > 0 ) {
 			onNavigate?.( submissionIds[currentIndex - 1] );
 		}
 	}, [hasPrev, submissionIds, currentIndex, onNavigate] );
 
 	const goToNext = useCallback( () => {
-		if ( hasNext && submissionIds ) {
+		if ( hasNext && submissionIds && currentIndex !== -1 ) {
 			onNavigate?.( submissionIds[currentIndex + 1] );
 		}
 	}, [hasNext, submissionIds, currentIndex, onNavigate] );

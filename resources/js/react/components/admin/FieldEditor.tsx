@@ -11,12 +11,11 @@
  * @since      1.1.0
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button, Checkbox, Input, Select, Tabs, Textarea } from '@artisanpack-ui/react';
 
 import type {
-	ConditionalLogic,
 	FieldOption,
 	FieldType,
 	FieldWidth,
@@ -24,6 +23,8 @@ import type {
 	UpdateFieldRequest,
 	ValidationRules,
 } from '../../../types/artisanpack-forms';
+
+import { ConditionalLogicEditor } from './ConditionalLogicEditor';
 
 /** Field types that support an options list. */
 const OPTION_FIELD_TYPES: Set<FieldType> = new Set( [
@@ -96,12 +97,37 @@ export function FieldEditor( {
 	const isLayoutField = LAYOUT_FIELD_TYPES.has( field.type );
 	const hasOptions = OPTION_FIELD_TYPES.has( field.type );
 
+	const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>( null );
+	const pendingUpdatesRef = useRef<UpdateFieldRequest>( {} );
+
 	const updateField = useCallback(
 		( data: UpdateFieldRequest ) => {
-			onChange( field.id, data );
+			pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...data };
+
+			if ( updateTimerRef.current ) {
+				clearTimeout( updateTimerRef.current );
+			}
+
+			updateTimerRef.current = setTimeout( () => {
+				onChange( field.id, pendingUpdatesRef.current );
+				pendingUpdatesRef.current = {};
+			}, 500 );
 		},
 		[field.id, onChange],
 	);
+
+	useEffect( () => {
+		return () => {
+			if ( updateTimerRef.current ) {
+				clearTimeout( updateTimerRef.current );
+
+				if ( Object.keys( pendingUpdatesRef.current ).length > 0 ) {
+					onChange( field.id, pendingUpdatesRef.current );
+					pendingUpdatesRef.current = {};
+				}
+			}
+		};
+	}, [field.id, onChange] );
 
 	// Options editor for choice fields
 	const options = useMemo( (): FieldOption[] => {
@@ -109,7 +135,7 @@ export function FieldEditor( {
 			return [];
 		}
 
-		return field.options ?? ( field.field_config as { options?: FieldOption[] } )?.options ?? [];
+		return ( field.field_config as { options?: FieldOption[] } )?.options ?? field.options ?? [];
 	}, [field, hasOptions] );
 
 	const handleAddOption = useCallback( () => {
@@ -190,11 +216,11 @@ export function FieldEditor( {
 				name: 'conditional',
 				label: 'Conditional',
 				content: (
-					<ConditionalLogicPanel
-						conditionalLogic={field.conditional_logic}
-						allFields={allFields}
-						currentFieldId={field.id}
+					<ConditionalLogicEditor
+						value={field.conditional_logic}
 						onChange={( logic ) => updateField( { conditional_logic: logic } )}
+						fields={allFields}
+						excludeFieldId={field.id}
 					/>
 				),
 			} );
@@ -578,193 +604,3 @@ function ValidationTabContent( {
 	);
 }
 
-// ---------------------------------------------------------------------------
-// ConditionalLogicPanel (inline sub-component)
-// ---------------------------------------------------------------------------
-
-interface ConditionalLogicPanelProps {
-	conditionalLogic: ConditionalLogic | null;
-	allFields: FormField[];
-	currentFieldId: number;
-	onChange: ( logic: ConditionalLogic | null ) => void;
-}
-
-const OPERATORS = [
-	{ value: 'equals', label: 'Equals' },
-	{ value: 'not_equals', label: 'Does not equal' },
-	{ value: 'contains', label: 'Contains' },
-	{ value: 'not_contains', label: 'Does not contain' },
-	{ value: 'starts_with', label: 'Starts with' },
-	{ value: 'ends_with', label: 'Ends with' },
-	{ value: 'is_empty', label: 'Is empty' },
-	{ value: 'is_not_empty', label: 'Is not empty' },
-	{ value: 'greater_than', label: 'Greater than' },
-	{ value: 'less_than', label: 'Less than' },
-	{ value: 'checked', label: 'Is checked' },
-	{ value: 'unchecked', label: 'Is unchecked' },
-];
-
-const ACTION_OPTIONS = [
-	{ value: 'show', label: 'Show' },
-	{ value: 'hide', label: 'Hide' },
-];
-
-const LOGIC_OPTIONS = [
-	{ value: 'all', label: 'all' },
-	{ value: 'any', label: 'any' },
-];
-
-const NO_VALUE_OPERATORS = new Set( ['is_empty', 'is_not_empty', 'checked', 'unchecked'] );
-
-function ConditionalLogicPanel( {
-	conditionalLogic,
-	allFields,
-	currentFieldId,
-	onChange,
-}: ConditionalLogicPanelProps ): React.ReactElement {
-	const availableFields = useMemo(
-		() => allFields.filter( ( f ) =>
-			f.id !== currentFieldId &&
-			!LAYOUT_FIELD_TYPES.has( f.type ),
-		),
-		[allFields, currentFieldId],
-	);
-
-	const fieldOptions = useMemo(
-		() => availableFields.map( ( f ) => ( {
-			value: f.uuid,
-			label: f.label || f.name,
-		} ) ),
-		[availableFields],
-	);
-
-	const logic = conditionalLogic ?? {
-		action: 'show' as const,
-		logic: 'all' as const,
-		rules: [],
-	};
-
-	const handleAddRule = () => {
-		const firstField = availableFields[0];
-
-		if ( !firstField ) {
-			return;
-		}
-
-		const newRules = [
-			...logic.rules,
-			{ field: firstField.uuid, operator: 'equals' as const, value: '' },
-		];
-		onChange( { ...logic, rules: newRules } );
-	};
-
-	const handleUpdateRule = ( index: number, updates: Record<string, unknown> ) => {
-		const newRules = logic.rules.map( ( rule, i ) =>
-			i === index ? { ...rule, ...updates } : rule,
-		);
-		onChange( { ...logic, rules: newRules } );
-	};
-
-	const handleRemoveRule = ( index: number ) => {
-		const newRules = logic.rules.filter( ( _, i ) => i !== index );
-
-		if ( newRules.length === 0 ) {
-			onChange( null );
-		} else {
-			onChange( { ...logic, rules: newRules } );
-		}
-	};
-
-	return (
-		<div className="space-y-4 p-4">
-			{logic.rules.length > 0 && (
-				<>
-					<div className="flex flex-wrap items-center gap-2 text-sm">
-						<Select
-							value={logic.action}
-							options={ACTION_OPTIONS}
-							optionValue="value"
-							optionLabel="label"
-							onChange={( e ) => onChange( { ...logic, action: e.target.value as 'show' | 'hide' } )}
-						/>
-						<span>this field when</span>
-						<Select
-							value={logic.logic}
-							options={LOGIC_OPTIONS}
-							optionValue="value"
-							optionLabel="label"
-							onChange={( e ) => onChange( { ...logic, logic: e.target.value as 'all' | 'any' } )}
-						/>
-						<span>of the following rules match:</span>
-					</div>
-
-					<div className="space-y-2">
-						{logic.rules.map( ( rule, index ) => (
-							<div key={index} className="flex flex-wrap items-center gap-2">
-								<Select
-									className="flex-1 min-w-32"
-									value={rule.field}
-									options={fieldOptions}
-									optionValue="value"
-									optionLabel="label"
-									onChange={( e ) => handleUpdateRule( index, { field: e.target.value } )}
-								/>
-								<Select
-									className="flex-1 min-w-32"
-									value={rule.operator}
-									options={OPERATORS}
-									optionValue="value"
-									optionLabel="label"
-									onChange={( e ) => handleUpdateRule( index, { operator: e.target.value } )}
-								/>
-								{!NO_VALUE_OPERATORS.has( rule.operator ) && (
-									<Input
-										className="flex-1 min-w-32"
-										value={String( rule.value ?? '' )}
-										onChange={( e ) => handleUpdateRule( index, { value: e.target.value } )}
-										placeholder="Value"
-									/>
-								)}
-								<Button
-									color="ghost"
-									size="sm"
-									className="btn-circle"
-									onClick={() => handleRemoveRule( index )}
-									title="Remove rule"
-								>
-									&times;
-								</Button>
-							</div>
-						) )}
-					</div>
-				</>
-			)}
-
-			<div className="flex gap-2">
-				<Button
-					color="ghost"
-					size="sm"
-					onClick={handleAddRule}
-					disabled={availableFields.length === 0}
-				>
-					Add Rule
-				</Button>
-				{logic.rules.length > 0 && (
-					<Button
-						color="ghost"
-						size="sm"
-						onClick={() => onChange( null )}
-					>
-						Clear All Rules
-					</Button>
-				)}
-			</div>
-
-			{availableFields.length === 0 && (
-				<p className="text-sm text-base-content/60">
-					Add more fields to the form to use conditional logic.
-				</p>
-			)}
-		</div>
-	);
-}

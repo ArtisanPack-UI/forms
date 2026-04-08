@@ -79,6 +79,7 @@ export function NotificationEditor( {
 }: NotificationEditorProps ): React.ReactElement {
 	const { get, post, put, del } = useApi( { baseUrl, csrfToken, authorization } );
 	const messageRef = useRef<HTMLTextAreaElement>( null );
+	const requestCounterRef = useRef( 0 );
 
 	const [notifications, setNotifications] = useState<FormNotification[]>( [] );
 	const [selectedId, setSelectedId] = useState<number | null>( null );
@@ -164,23 +165,31 @@ export function NotificationEditor( {
 				n.id === id ? { ...n, ...data } as FormNotification : n,
 			) );
 
+			const requestId = ++requestCounterRef.current;
+
 			try {
 				const response = await put<{ data: FormNotification }>(
 					`/${form.slug}/notifications/${id}`,
 					data,
 				);
-				setNotifications( ( prev ) => prev.map( ( n ) =>
-					n.id === id ? response.data : n,
-				) );
-				setValidationErrors( {} );
-			} catch ( err ) {
-				// Revert on error
-				await loadNotifications();
 
-				if ( err instanceof ApiValidationError ) {
-					setValidationErrors( err.errors );
-				} else {
-					setError( err instanceof Error ? err.message : 'Failed to update notification.' );
+				// Only apply if this is still the latest request
+				if ( requestId === requestCounterRef.current ) {
+					setNotifications( ( prev ) => prev.map( ( n ) =>
+						n.id === id ? response.data : n,
+					) );
+					setValidationErrors( {} );
+				}
+			} catch ( err ) {
+				if ( requestId === requestCounterRef.current ) {
+					// Revert on error
+					await loadNotifications();
+
+					if ( err instanceof ApiValidationError ) {
+						setValidationErrors( err.errors );
+					} else {
+						setError( err instanceof Error ? err.message : 'Failed to update notification.' );
+					}
 				}
 			}
 		},
@@ -270,10 +279,19 @@ export function NotificationEditor( {
 					{notifications.map( ( notification ) => (
 						<div
 							key={notification.id}
+							tabIndex={0}
+							role="button"
+							aria-selected={selectedId === notification.id}
 							className={`card card-bordered cursor-pointer p-3 transition-colors hover:bg-base-200 ${
 								selectedId === notification.id ? 'bg-primary/10 border-primary' : ''
 							} ${!notification.is_active ? 'opacity-50' : ''}`}
 							onClick={() => setSelectedId( notification.id )}
+							onKeyDown={( e ) => {
+								if ( e.key === 'Enter' || e.key === ' ' ) {
+									e.preventDefault();
+									setSelectedId( notification.id );
+								}
+							}}
 						>
 							<div className="flex items-center justify-between gap-2">
 								<div className="min-w-0">

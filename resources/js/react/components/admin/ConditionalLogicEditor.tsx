@@ -15,13 +15,18 @@ import React, { useCallback, useMemo } from 'react';
 import { Button, Input, Select } from '@artisanpack-ui/react';
 
 import type {
-	ConditionalAction,
-	ConditionalLogic,
 	ConditionalLogicRule,
 	ConditionalLogicType,
 	ConditionalOperator,
 	FormField,
 } from '../../../types/artisanpack-forms';
+
+/** Generic conditional logic shape that accepts any action string. */
+export interface GenericConditionalLogic {
+	action: string;
+	logic: ConditionalLogicType;
+	rules: ConditionalLogicRule[];
+}
 
 /** Operator definitions with metadata. */
 const OPERATOR_DEFINITIONS: Array<{
@@ -55,9 +60,9 @@ const LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'divider', 'html'] );
 /** Props for the ConditionalLogicEditor component. */
 export interface ConditionalLogicEditorProps {
 	/** Current conditional logic configuration, or null. */
-	value: ConditionalLogic | null;
+	value: GenericConditionalLogic | null;
 	/** Callback when the logic changes. Pass null to clear. */
-	onChange: ( logic: ConditionalLogic | null ) => void;
+	onChange: ( logic: GenericConditionalLogic | null ) => void;
 	/** All fields available as condition targets. */
 	fields: FormField[];
 	/** ID of the current field (excluded from targets). */
@@ -106,16 +111,16 @@ export function ConditionalLogicEditor( {
 	);
 
 	const defaultLogic = useMemo( () => ( {
-		action: availableActions[0].value as ConditionalAction,
+		action: availableActions[0].value,
 		logic: 'all' as ConditionalLogicType,
 		rules: [],
 	} ), [availableActions] );
 
-	const logic: ConditionalLogic = value ?? defaultLogic;
+	const logic: GenericConditionalLogic = value ?? defaultLogic;
 
 	const handleActionChange = useCallback(
 		( action: string ) => {
-			onChange( { ...logic, action: action as ConditionalAction } );
+			onChange( { ...logic, action } );
 		},
 		[logic, onChange],
 	);

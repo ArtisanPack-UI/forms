@@ -69,6 +69,7 @@ export function useAutoSave( options: UseAutoSaveOptions ): UseAutoSaveReturn {
 
 	const timerRef = useRef<ReturnType<typeof setTimeout> | null>( null );
 	const isSavingRef = useRef( false );
+	const pendingSaveRef = useRef( false );
 	const onSaveRef = useRef( onSave );
 	onSaveRef.current = onSave;
 
@@ -91,6 +92,11 @@ export function useAutoSave( options: UseAutoSaveOptions ): UseAutoSaveReturn {
 		} finally {
 			isSavingRef.current = false;
 			setIsSaving( false );
+
+			if ( pendingSaveRef.current ) {
+				pendingSaveRef.current = false;
+				setTimeout( () => performSave(), 0 );
+			}
 		}
 	}, [] );
 
@@ -99,6 +105,12 @@ export function useAutoSave( options: UseAutoSaveOptions ): UseAutoSaveReturn {
 		setSaveError( null );
 
 		if ( !enabled ) {
+			return;
+		}
+
+		if ( isSavingRef.current ) {
+			pendingSaveRef.current = true;
+
 			return;
 		}
 
