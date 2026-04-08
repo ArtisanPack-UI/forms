@@ -125,8 +125,12 @@ watch( () => props.field.id, () => {
 	flushPendingUpdates();
 } );
 
+let deleteInProgress = false;
+
 onUnmounted( () => {
-	flushPendingUpdates();
+	if ( !deleteInProgress ) {
+		flushPendingUpdates();
+	}
 } );
 
 // ---------------------------------------------------------------------------
@@ -151,9 +155,21 @@ const options = computed( (): FieldOption[] => {
 } );
 
 function handleAddOption(): void {
+	// Compute unique suffix to avoid collisions after deletions
+	let maxSuffix = 0;
+
+	for ( const opt of options.value ) {
+		const match = opt.value.match( /^option_(\d+)$/ );
+
+		if ( match ) {
+			maxSuffix = Math.max( maxSuffix, Number( match[1] ) );
+		}
+	}
+
+	const nextSuffix = maxSuffix + 1;
 	const newOptions = [
 		...options.value,
-		{ label: `Option ${options.value.length + 1}`, value: `option_${options.value.length + 1}` },
+		{ label: `Option ${nextSuffix}`, value: `option_${nextSuffix}` },
 	];
 	updateField( { field_config: { ...( props.field.field_config ?? {} ), options: newOptions } } );
 }
@@ -179,7 +195,9 @@ const validationRules = computed(
 );
 
 function updateValidation( rules: Partial<ValidationRules> ): void {
-	updateField( { validation_rules: { ...validationRules.value, ...rules } } );
+	const buffered = pendingUpdates.value.validation_rules as ValidationRules | undefined;
+	const base = buffered ?? validationRules.value;
+	updateField( { validation_rules: { ...base, ...rules } } );
 }
 
 // ---------------------------------------------------------------------------
@@ -361,6 +379,7 @@ const isPatternField = computed( () => {
 								size="sm"
 								class="btn-circle"
 								title="Remove option"
+								aria-label="Remove option"
 								@click="handleRemoveOption( index )"
 							>
 								&times;
@@ -501,7 +520,7 @@ const isPatternField = computed( () => {
 			<Button
 				color="ghost"
 				size="sm"
-				@click="emit( 'duplicate', field.id )"
+				@click="() => { flushPendingUpdates(); emit( 'duplicate', field.id ); }"
 			>
 				Duplicate
 			</Button>
@@ -510,6 +529,9 @@ const isPatternField = computed( () => {
 				size="sm"
 				@click="() => {
 					if ( window.confirm( 'Are you sure you want to delete this field?' ) ) {
+						deleteInProgress = true;
+						pendingUpdates.value = {};
+						if ( updateTimer.value ) { clearTimeout( updateTimer.value ); updateTimer.value = null; }
 						emit( 'delete', field.id );
 					}
 				}"
