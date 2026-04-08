@@ -106,6 +106,12 @@ export function FormBuilder( {
 	const formSettingsRef = useRef( formSettings );
 	formSettingsRef.current = formSettings;
 
+	// Clear staged autosave data when switching forms
+	useEffect( () => {
+		setFormSettings( {} );
+		formSettingsRef.current = {};
+	}, [formSlug] );
+
 	// Auto-save
 	const { isDirty, isSaving, lastSavedAt, saveError, markDirty, saveNow } = useAutoSave( {
 		onSave: async () => {

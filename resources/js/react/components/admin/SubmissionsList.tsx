@@ -119,6 +119,7 @@ export function SubmissionsList( {
 			);
 			setSubmissions( data );
 		} catch ( err ) {
+			setSubmissions( null );
 			setError( err instanceof Error ? err.message : 'Failed to load submissions.' );
 		} finally {
 			setIsLoading( false );
@@ -329,14 +330,13 @@ export function SubmissionsList( {
 					onChange={( e ) => setSearch( e.target.value )}
 				/>
 
-				{/* Status filter tabs */}
-				<div className="tabs tabs-bordered" role="tablist">
+				{/* Status filter buttons */}
+				<div className="tabs tabs-bordered" role="group">
 					{( ['all', 'unread', 'read', 'starred', 'spam'] as SubmissionStatusFilter[] ).map( ( status ) => (
 						<button
 							key={status}
 							type="button"
-							role="tab"
-							aria-selected={statusFilter === status}
+							aria-pressed={statusFilter === status}
 							className={`tab ${statusFilter === status ? 'tab-active' : ''}`}
 							onClick={() => setStatusFilter( status )}
 						>
@@ -481,13 +481,17 @@ export function SubmissionsList( {
 										</Button>
 									</td>
 									<td>
-										<button
-											type="button"
-											className="link link-primary"
-											onClick={() => onViewSubmission?.( submission )}
-										>
-											{submission.submission_number}
-										</button>
+										{onViewSubmission ? (
+											<button
+												type="button"
+												className="link link-primary"
+												onClick={() => onViewSubmission( submission )}
+											>
+												{submission.submission_number}
+											</button>
+										) : (
+											<span>{submission.submission_number}</span>
+										)}
 									</td>
 									<td>
 										{submission.is_spam && (
@@ -507,14 +511,16 @@ export function SubmissionsList( {
 									<td className="text-sm">{new Date( submission.created_at ).toLocaleString()}</td>
 									<td>
 										<div className="flex gap-1">
-											<Button
-												color="ghost"
-												size="xs"
-												onClick={() => onViewSubmission?.( submission )}
-												title="View"
-											>
-												View
-											</Button>
+											{onViewSubmission && (
+												<Button
+													color="ghost"
+													size="xs"
+													onClick={() => onViewSubmission( submission )}
+													title="View"
+												>
+													View
+												</Button>
+											)}
 											{submission.is_read ? (
 												<Button
 													color="ghost"

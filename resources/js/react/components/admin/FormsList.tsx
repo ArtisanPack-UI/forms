@@ -312,21 +312,35 @@ export function FormsList( {
 										/>
 									</td>
 									<td>
-										<Button
-											color="ghost"
-											size="sm"
-											onClick={() => onViewSubmissions?.( form )}
-										>
-											{form.total_submissions_count ?? 0}
-											{( form.unread_submissions_count ?? 0 ) > 0 && (
-												<Badge
-													color="info"
-													size="sm"
-													className="ml-1"
-													value={`${form.unread_submissions_count} new`}
-												/>
-											)}
-										</Button>
+										{onViewSubmissions ? (
+											<Button
+												color="ghost"
+												size="sm"
+												onClick={() => onViewSubmissions( form )}
+											>
+												{form.total_submissions_count ?? 0}
+												{( form.unread_submissions_count ?? 0 ) > 0 && (
+													<Badge
+														color="info"
+														size="sm"
+														className="ml-1"
+														value={`${form.unread_submissions_count} new`}
+													/>
+												)}
+											</Button>
+										) : (
+											<span>
+												{form.total_submissions_count ?? 0}
+												{( form.unread_submissions_count ?? 0 ) > 0 && (
+													<Badge
+														color="info"
+														size="sm"
+														className="ml-1"
+														value={`${form.unread_submissions_count} new`}
+													/>
+												)}
+											</span>
+										)}
 									</td>
 									<td>
 										{new Date( form.created_at ).toLocaleDateString()}

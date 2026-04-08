@@ -80,13 +80,13 @@ export function NotificationEditor( {
 }: NotificationEditorProps ): React.ReactElement {
 	const { get, post, put, del } = useApi( { baseUrl, csrfToken, authorization, credentials } );
 	const messageRef = useRef<HTMLTextAreaElement>( null );
-	const requestCounterRef = useRef( 0 );
+	const requestCounterRef = useRef<Map<number, number>>( new Map() );
 
 	const [notifications, setNotifications] = useState<FormNotification[]>( [] );
 	const [selectedId, setSelectedId] = useState<number | null>( null );
 	const [isLoading, setIsLoading] = useState( true );
 	const [error, setError] = useState<string | null>( null );
-	const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>( {} );
+	const [validationErrors, setValidationErrors] = useState<Record<number, Record<string, string[]>>>( {} );
 
 	// Load notifications
 	const loadNotifications = useCallback( async () => {
@@ -112,6 +112,8 @@ export function NotificationEditor( {
 		() => notifications.find( ( n ) => n.id === selectedId ) ?? null,
 		[notifications, selectedId],
 	);
+
+	const currentErrors = selectedId ? validationErrors[selectedId] ?? {} : {};
 
 	// Email fields for "to_field" and "reply_to_field" dropdowns
 	const emailFields = useMemo(
@@ -149,10 +151,9 @@ export function NotificationEditor( {
 
 			setNotifications( ( prev ) => [...prev, response.data] );
 			setSelectedId( response.data.id );
-			setValidationErrors( {} );
 		} catch ( err ) {
 			if ( err instanceof ApiValidationError ) {
-				setValidationErrors( err.errors );
+				setValidationErrors( ( prev ) => ( { ...prev, [0]: err.errors } ) );
 			} else {
 				setError( err instanceof Error ? err.message : 'Failed to add notification.' );
 			}
@@ -166,7 +167,8 @@ export function NotificationEditor( {
 				n.id === id ? { ...n, ...data } as FormNotification : n,
 			) );
 
-			const requestId = ++requestCounterRef.current;
+			const requestId = ( requestCounterRef.current.get( id ) ?? 0 ) + 1;
+			requestCounterRef.current.set( id, requestId );
 
 			try {
 				const response = await put<{ data: FormNotification }>(
@@ -175,19 +177,23 @@ export function NotificationEditor( {
 				);
 
 				// Only apply if this is still the latest request
-				if ( requestId === requestCounterRef.current ) {
+				if ( requestCounterRef.current.get( id ) === requestId ) {
 					setNotifications( ( prev ) => prev.map( ( n ) =>
 						n.id === id ? response.data : n,
 					) );
-					setValidationErrors( {} );
+					setValidationErrors( ( prev ) => {
+						const next = { ...prev };
+						delete next[id];
+						return next;
+					} );
 				}
 			} catch ( err ) {
-				if ( requestId === requestCounterRef.current ) {
+				if ( requestCounterRef.current.get( id ) === requestId ) {
 					// Revert on error
 					await loadNotifications();
 
 					if ( err instanceof ApiValidationError ) {
-						setValidationErrors( err.errors );
+						setValidationErrors( ( prev ) => ( { ...prev, [id]: err.errors } ) );
 					} else {
 						setError( err instanceof Error ? err.message : 'Failed to update notification.' );
 					}
@@ -282,12 +288,20 @@ export function NotificationEditor( {
 							key={notification.id}
 							tabIndex={0}
 							role="button"
-							aria-selected={selectedId === notification.id}
+							aria-pressed={selectedId === notification.id}
 							className={`card card-bordered cursor-pointer p-3 transition-colors hover:bg-base-200 ${
 								selectedId === notification.id ? 'bg-primary/10 border-primary' : ''
 							} ${!notification.is_active ? 'opacity-50' : ''}`}
-							onClick={() => setSelectedId( notification.id )}
+							onClick={( e ) => {
+								if ( ( e.target as HTMLElement ).closest( 'button, [role="button"]' ) !== e.currentTarget ) {
+									return;
+								}
+								setSelectedId( notification.id );
+							}}
 							onKeyDown={( e ) => {
+								if ( ( e.target as HTMLElement ).closest( 'button, [role="button"]' ) !== e.currentTarget ) {
+									return;
+								}
 								if ( e.key === 'Enter' || e.key === ' ' ) {
 									e.preventDefault();
 									setSelectedId( notification.id );
@@ -338,10 +352,10 @@ export function NotificationEditor( {
 				{selectedNotification && (
 					<div className="flex-1 space-y-6">
 						{/* Validation errors */}
-						{Object.keys( validationErrors ).length > 0 && (
+						{Object.keys( currentErrors ).length > 0 && (
 							<Alert color="warning">
 								<ul className="list-disc list-inside text-sm">
-									{Object.entries( validationErrors ).map( ( [key, messages] ) =>
+									{Object.entries( currentErrors ).map( ( [key, messages] ) =>
 										messages.map( ( msg, i ) => <li key={`${key}-${i}`}>{msg}</li> ),
 									)}
 								</ul>

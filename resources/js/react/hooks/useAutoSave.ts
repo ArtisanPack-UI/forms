@@ -141,6 +141,7 @@ export function useAutoSave( options: UseAutoSaveOptions ): UseAutoSaveReturn {
 
 	const clearDirty = useCallback( () => {
 		setIsDirty( false );
+		pendingSaveRef.current = false;
 
 		if ( timerRef.current ) {
 			clearTimeout( timerRef.current );

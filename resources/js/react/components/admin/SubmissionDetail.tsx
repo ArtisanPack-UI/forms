@@ -13,6 +13,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Badge, Button, Card, Loading, Textarea } from '@artisanpack-ui/react';
 
+/** Check whether a URL uses a safe protocol (http or https). */
+function isSafeUrl( url: string ): boolean {
+	try {
+		const parsed = new URL( url );
+		return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+	} catch {
+		return false;
+	}
+}
+
 import type {
 	Form,
 	FormSubmission,
@@ -245,7 +255,7 @@ export function SubmissionDetail( {
 					)}
 				</div>
 				<div>
-					{submissionIds && submissionIds.length > 1 && (
+					{onNavigate && submissionIds && submissionIds.length > 1 && (
 						<div className="join">
 							<Button size="sm" className="join-item" disabled={!hasPrev} onClick={goToPrev}>
 								&larr; Prev
@@ -391,9 +401,13 @@ export function SubmissionDetail( {
 							<>
 								<dt className="font-medium text-base-content/70">Page URL</dt>
 								<dd>
-									<a href={submission.page_url} target="_blank" rel="noopener noreferrer" className="link link-primary">
-										{submission.page_url}
-									</a>
+									{isSafeUrl( submission.page_url ) ? (
+										<a href={submission.page_url} target="_blank" rel="noopener noreferrer" className="link link-primary">
+											{submission.page_url}
+										</a>
+									) : (
+										<span>{submission.page_url}</span>
+									)}
 								</dd>
 							</>
 						)}
