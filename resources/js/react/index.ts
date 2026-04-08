@@ -58,6 +58,36 @@ export type { FieldComponentProps } from './components/fields/types';
 export { useForm } from './hooks/useForm';
 export type { UseFormOptions, UseFormReturn } from './hooks/useForm';
 
+export { useApi, ApiError, ApiValidationError } from './hooks/useApi';
+export type { UseApiOptions, UseApiReturn } from './hooks/useApi';
+
+export { useAutoSave } from './hooks/useAutoSave';
+export type { UseAutoSaveOptions, UseAutoSaveReturn } from './hooks/useAutoSave';
+
+// Admin components
+export {
+	FormsList,
+	FormBuilder,
+	FieldEditor,
+	FieldPalette,
+	FIELD_PALETTE,
+	ConditionalLogicEditor,
+	NotificationEditor,
+	SubmissionsList,
+	SubmissionDetail,
+} from './components/admin';
+
+export type {
+	FormsListProps,
+	FormBuilderProps,
+	FieldEditorProps,
+	FieldPaletteProps,
+	ConditionalLogicEditorProps,
+	NotificationEditorProps,
+	SubmissionsListProps,
+	SubmissionDetailProps,
+} from './components/admin';
+
 // Utilities
 export {
 	compareValues,
