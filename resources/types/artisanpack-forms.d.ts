@@ -617,3 +617,79 @@ export interface OperatorMetadata {
     value_type: 'text' | 'number' | 'list' | 'none';
     supports_types: FieldType[];
 }
+
+// ---------------------------------------------------------------------------
+// Admin Component Types
+// ---------------------------------------------------------------------------
+
+/**
+ * Field palette entry for the form builder sidebar.
+ */
+export interface FieldPaletteItem {
+    type: FieldType;
+    label: string;
+    icon: string;
+    category: FieldTypeCategory;
+}
+
+/**
+ * Field palette grouped by category.
+ */
+export interface FieldPaletteGroup {
+    label: string;
+    fields: FieldPaletteItem[];
+}
+
+/**
+ * Status filter for submissions list.
+ */
+export type SubmissionStatusFilter = 'all' | 'unread' | 'read' | 'spam' | 'starred';
+
+/**
+ * Date range filter for submissions list.
+ */
+export type SubmissionDateRange = 'all' | 'today' | 'week' | 'month' | 'year';
+
+/**
+ * Sort direction.
+ */
+export type SortDirection = 'asc' | 'desc';
+
+/**
+ * Form list status filter.
+ */
+export type FormStatusFilter = 'all' | 'active' | 'inactive';
+
+/**
+ * Submission status counts for the submissions list filter bar.
+ */
+export interface SubmissionStatusCounts {
+    all: number;
+    unread: number;
+    read: number;
+    spam: number;
+    starred: number;
+}
+
+/**
+ * Notification type metadata for the notification editor.
+ */
+export interface NotificationTypeInfo {
+    type: NotificationType;
+    label: string;
+    description: string;
+}
+
+/**
+ * Conditional action for notifications (send/skip instead of show/hide).
+ */
+export type NotificationConditionalAction = 'send' | 'skip';
+
+/**
+ * Conditional logic for notifications.
+ */
+export interface NotificationConditionalLogic {
+    action: NotificationConditionalAction;
+    logic: ConditionalLogicType;
+    rules: ConditionalLogicRule[];
+}
