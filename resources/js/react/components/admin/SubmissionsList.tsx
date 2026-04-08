@@ -83,6 +83,19 @@ export function SubmissionsList( {
 	// Action states
 	const [isBulkProcessing, setIsBulkProcessing] = useState( false );
 	const [isExporting, setIsExporting] = useState( false );
+	const [pendingRowIds, setPendingRowIds] = useState<Set<number>>( new Set() );
+
+	const addPendingRow = useCallback( ( id: number ) => {
+		setPendingRowIds( ( prev ) => new Set( prev ).add( id ) );
+	}, [] );
+
+	const removePendingRow = useCallback( ( id: number ) => {
+		setPendingRowIds( ( prev ) => {
+			const next = new Set( prev );
+			next.delete( id );
+			return next;
+		} );
+	}, [] );
 
 	const fetchSubmissions = useCallback( async () => {
 		setIsLoading( true );
@@ -166,24 +179,31 @@ export function SubmissionsList( {
 	// -----------------------------------------------------------------------
 
 	const markAsRead = useCallback( async ( id: number ) => {
+		addPendingRow( id );
 		try {
 			await put( `/${form.slug}/submissions/${id}`, { is_read: true } );
 			await fetchSubmissions();
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : 'Failed to update submission.' );
+		} finally {
+			removePendingRow( id );
 		}
-	}, [put, form.slug, fetchSubmissions] );
+	}, [put, form.slug, fetchSubmissions, addPendingRow, removePendingRow] );
 
 	const markAsUnread = useCallback( async ( id: number ) => {
+		addPendingRow( id );
 		try {
 			await put( `/${form.slug}/submissions/${id}`, { is_read: false } );
 			await fetchSubmissions();
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : 'Failed to update submission.' );
+		} finally {
+			removePendingRow( id );
 		}
-	}, [put, form.slug, fetchSubmissions] );
+	}, [put, form.slug, fetchSubmissions, addPendingRow, removePendingRow] );
 
 	const toggleStar = useCallback( async ( submission: FormSubmission ) => {
+		addPendingRow( submission.id );
 		try {
 			await put( `/${form.slug}/submissions/${submission.id}`, {
 				is_starred: !submission.is_starred,
@@ -191,10 +211,13 @@ export function SubmissionsList( {
 			await fetchSubmissions();
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : 'Failed to update submission.' );
+		} finally {
+			removePendingRow( submission.id );
 		}
-	}, [put, form.slug, fetchSubmissions] );
+	}, [put, form.slug, fetchSubmissions, addPendingRow, removePendingRow] );
 
 	const toggleSpam = useCallback( async ( submission: FormSubmission ) => {
+		addPendingRow( submission.id );
 		try {
 			await put( `/${form.slug}/submissions/${submission.id}`, {
 				is_spam: !submission.is_spam,
@@ -202,21 +225,26 @@ export function SubmissionsList( {
 			await fetchSubmissions();
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : 'Failed to update submission.' );
+		} finally {
+			removePendingRow( submission.id );
 		}
-	}, [put, form.slug, fetchSubmissions] );
+	}, [put, form.slug, fetchSubmissions, addPendingRow, removePendingRow] );
 
 	const deleteSubmission = useCallback( async ( id: number ) => {
 		if ( !window.confirm( 'Are you sure you want to delete this submission?' ) ) {
 			return;
 		}
 
+		addPendingRow( id );
 		try {
 			await del( `/${form.slug}/submissions/${id}` );
 			await fetchSubmissions();
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : 'Failed to delete submission.' );
+		} finally {
+			removePendingRow( id );
 		}
-	}, [del, form.slug, fetchSubmissions] );
+	}, [del, form.slug, fetchSubmissions, addPendingRow, removePendingRow] );
 
 	// -----------------------------------------------------------------------
 	// Bulk actions
@@ -289,6 +317,14 @@ export function SubmissionsList( {
 		}
 
 		return sortDirection === 'asc' ? ' \u2191' : ' \u2193';
+	}, [sortBy, sortDirection] );
+
+	const getAriaSortValue = useCallback( ( column: SortColumn ): 'ascending' | 'descending' | 'none' => {
+		if ( sortBy !== column ) {
+			return 'none';
+		}
+
+		return sortDirection === 'asc' ? 'ascending' : 'descending';
 	}, [sortBy, sortDirection] );
 
 	return (
@@ -445,14 +481,14 @@ export function SubmissionsList( {
 									/>
 								</th>
 								<th>Star</th>
-								<th>
+								<th aria-sort={getAriaSortValue( 'submission_number' )}>
 									<button type="button" className="link link-hover" onClick={() => handleSort( 'submission_number' )}>
 										#{sortIndicator( 'submission_number' )}
 									</button>
 								</th>
 								<th>Status</th>
 								<th>Summary</th>
-								<th>
+								<th aria-sort={getAriaSortValue( 'created_at' )}>
 									<button type="button" className="link link-hover" onClick={() => handleSort( 'created_at' )}>
 										Date{sortIndicator( 'created_at' )}
 									</button>
@@ -482,6 +518,7 @@ export function SubmissionsList( {
 											className={`btn-circle ${submission.is_starred ? 'text-yellow-500' : 'text-base-content/30'}`}
 											onClick={() => toggleStar( submission )}
 											aria-label={submission.is_starred ? 'Unstar' : 'Star'}
+											disabled={pendingRowIds.has( submission.id ) || isBulkProcessing}
 										>
 											{submission.is_starred ? '\u2605' : '\u2606'}
 										</Button>
@@ -523,6 +560,7 @@ export function SubmissionsList( {
 													size="xs"
 													onClick={() => onViewSubmission( submission )}
 													title="View"
+													disabled={pendingRowIds.has( submission.id ) || isBulkProcessing}
 												>
 													View
 												</Button>
@@ -533,6 +571,7 @@ export function SubmissionsList( {
 													size="xs"
 													onClick={() => markAsUnread( submission.id )}
 													title="Mark as unread"
+													disabled={pendingRowIds.has( submission.id ) || isBulkProcessing}
 												>
 													Unread
 												</Button>
@@ -542,6 +581,7 @@ export function SubmissionsList( {
 													size="xs"
 													onClick={() => markAsRead( submission.id )}
 													title="Mark as read"
+													disabled={pendingRowIds.has( submission.id ) || isBulkProcessing}
 												>
 													Read
 												</Button>
@@ -551,6 +591,7 @@ export function SubmissionsList( {
 												size="xs"
 												onClick={() => toggleSpam( submission )}
 												title={submission.is_spam ? 'Not spam' : 'Mark as spam'}
+												disabled={pendingRowIds.has( submission.id ) || isBulkProcessing}
 											>
 												{submission.is_spam ? 'Not Spam' : 'Spam'}
 											</Button>
@@ -560,6 +601,7 @@ export function SubmissionsList( {
 												className="text-error"
 												onClick={() => deleteSubmission( submission.id )}
 												title="Delete"
+												disabled={pendingRowIds.has( submission.id ) || isBulkProcessing}
 											>
 												Delete
 											</Button>

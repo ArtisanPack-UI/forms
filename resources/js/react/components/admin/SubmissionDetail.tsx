@@ -87,6 +87,8 @@ export function SubmissionDetail( {
 	const loadSubmission = useCallback( async () => {
 		setIsLoading( true );
 		setError( null );
+		setSubmission( null );
+		setAdminNotes( '' );
 
 		try {
 			const response = await get<{ data: FormSubmission }>(
@@ -106,6 +108,8 @@ export function SubmissionDetail( {
 			}
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : 'Failed to load submission.' );
+			setSubmission( null );
+			setAdminNotes( '' );
 		} finally {
 			setIsLoading( false );
 		}

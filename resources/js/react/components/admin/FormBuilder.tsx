@@ -474,6 +474,41 @@ export function FormBuilder( {
 		}
 	}, [del, form, steps, activeStepId] );
 
+	const reorderSteps = useCallback( async ( stepId: number, direction: 'up' | 'down' ) => {
+		if ( !form ) {
+			return;
+		}
+
+		const sorted = [...steps].sort( ( a, b ) => a.sort_order - b.sort_order );
+		const index = sorted.findIndex( ( s ) => s.id === stepId );
+
+		if ( -1 === index ) {
+			return;
+		}
+
+		const swapIndex = 'up' === direction ? index - 1 : index + 1;
+
+		if ( swapIndex < 0 || swapIndex >= sorted.length ) {
+			return;
+		}
+
+		// Swap sort_order values
+		const reordered = [...sorted];
+		[reordered[index], reordered[swapIndex]] = [reordered[swapIndex], reordered[index]];
+		const updated = reordered.map( ( s, i ) => ( { ...s, sort_order: i } ) );
+		setSteps( updated );
+
+		try {
+			await post( `/${form.slug}/steps/reorder`, {
+				ordered_ids: updated.map( ( s ) => s.id ),
+			} );
+		} catch ( err ) {
+			// Rollback
+			setSteps( sorted );
+			setError( err instanceof Error ? err.message : 'Failed to reorder steps.' );
+		}
+	}, [form, steps, post] );
+
 	const enableMultiStep = useCallback( async () => {
 		if ( !form ) {
 			return;
@@ -647,6 +682,14 @@ export function FormBuilder( {
 									onChange={( e ) => updateFormSetting( { name: e.target.value } )}
 								/>
 
+								<Input
+									id="form-slug"
+									label="Slug"
+									value={form.slug ?? ''}
+									onChange={( e ) => updateFormSetting( { slug: e.target.value } )}
+									hint="URL-friendly identifier for the form."
+								/>
+
 								<Textarea
 									id="form-description"
 									label="Description"
@@ -725,17 +768,42 @@ export function FormBuilder( {
 						<div className="flex items-center gap-1 border-b border-base-300 px-4 pt-2">
 							<div className="tabs tabs-bordered">
 								{sortedSteps.map( ( step, index ) => (
-									<button
-										key={step.id}
-										type="button"
-										className={`tab ${step.id === activeStepId ? 'tab-active' : ''}`}
-										onClick={() => setActiveStepId( step.id )}
-									>
-										<span>{step.title || `Step ${index + 1}`}</span>
-										<span className="ml-1 text-xs opacity-60">
-											({fields.filter( ( f ) => f.step_id === step.id ).length})
-										</span>
-									</button>
+									<div key={step.id} className="flex items-center">
+										<button
+											type="button"
+											className={`tab ${step.id === activeStepId ? 'tab-active' : ''}`}
+											onClick={() => setActiveStepId( step.id )}
+										>
+											<span>{step.title || `Step ${index + 1}`}</span>
+											<span className="ml-1 badge badge-sm badge-ghost">
+												{fields.filter( ( f ) => f.step_id === step.id ).length}
+											</span>
+										</button>
+										<div className="flex flex-col -ml-1">
+											{index > 0 && (
+												<button
+													type="button"
+													className="btn btn-ghost btn-xs px-0.5 py-0 h-auto min-h-0 text-xs"
+													onClick={() => reorderSteps( step.id, 'up' )}
+													title="Move step left"
+													aria-label={`Move ${step.title || `Step ${index + 1}`} left`}
+												>
+													&#8249;
+												</button>
+											)}
+											{index < sortedSteps.length - 1 && (
+												<button
+													type="button"
+													className="btn btn-ghost btn-xs px-0.5 py-0 h-auto min-h-0 text-xs"
+													onClick={() => reorderSteps( step.id, 'down' )}
+													title="Move step right"
+													aria-label={`Move ${step.title || `Step ${index + 1}`} right`}
+												>
+													&#8250;
+												</button>
+											)}
+										</div>
+									</div>
 								) )}
 								{fields.some( ( f ) => null === f.step_id ) && (
 									<button
@@ -888,6 +956,9 @@ export function FormBuilder( {
 											setActivePanel( 'editor' );
 										}}
 										onKeyDown={( e ) => {
+											if ( e.target !== e.currentTarget ) {
+												return;
+											}
 											if ( 'Enter' === e.key || ' ' === e.key ) {
 												e.preventDefault();
 												setSelectedFieldId( field.id );

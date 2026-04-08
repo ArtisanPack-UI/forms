@@ -336,6 +336,7 @@ export function NotificationEditor( {
 											toggleActive( notification.id );
 										}}
 										title={notification.is_active ? 'Disable' : 'Enable'}
+										aria-label={`${notification.is_active ? 'Disable' : 'Enable'} notification ${notification.name}`}
 									>
 										{notification.is_active ? 'On' : 'Off'}
 									</Button>
@@ -348,6 +349,7 @@ export function NotificationEditor( {
 											deleteNotification( notification.id );
 										}}
 										title="Delete"
+										aria-label={`Delete notification ${notification.name}`}
 									>
 										&times;
 									</Button>

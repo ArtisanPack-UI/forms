@@ -385,49 +385,56 @@ export function FormsList( {
 									<td>
 										{new Intl.DateTimeFormat( 'en-US', { year: 'numeric', month: 'short', day: 'numeric' } ).format( new Date( form.created_at ) )}
 									</td>
-									<td>
-										<div className="flex items-center gap-1">
-											<Button
-												color="ghost"
-												size="sm"
-												onClick={() => onEditForm?.( form )}
-												title="Edit"
-											>
-												Edit
-											</Button>
-											<Button
-												color="ghost"
-												size="sm"
-												onClick={() => handleDuplicate( form )}
-												disabled={duplicatingId === form.id}
-												title="Duplicate"
-											>
-												{duplicatingId === form.id ? 'Duplicating...' : 'Duplicate'}
-											</Button>
-											<Button
-												color="outline"
-												size="sm"
-												onClick={() => handleTogglePublish( form )}
-												disabled={togglingId === form.id}
-												title={form.is_active ? 'Unpublish' : 'Publish'}
-											>
-												{togglingId === form.id
-													? 'Updating...'
-													: form.is_active
-														? 'Unpublish'
-														: 'Publish'}
-											</Button>
-											<Button
-												color="error"
-												size="sm"
-												onClick={() => handleDelete( form )}
-												disabled={deletingId === form.id}
-												title="Delete"
-											>
-												{deletingId === form.id ? 'Deleting...' : 'Delete'}
-											</Button>
-										</div>
-									</td>
+									{( () => {
+										const isRowProcessing = duplicatingId === form.id || togglingId === form.id || deletingId === form.id;
+
+										return (
+											<td>
+												<div className="flex items-center gap-1">
+													<Button
+														color="ghost"
+														size="sm"
+														onClick={() => onEditForm?.( form )}
+														title="Edit"
+														disabled={isRowProcessing}
+													>
+														Edit
+													</Button>
+													<Button
+														color="ghost"
+														size="sm"
+														onClick={() => handleDuplicate( form )}
+														disabled={isRowProcessing}
+														title="Duplicate"
+													>
+														{duplicatingId === form.id ? 'Duplicating...' : 'Duplicate'}
+													</Button>
+													<Button
+														color="outline"
+														size="sm"
+														onClick={() => handleTogglePublish( form )}
+														disabled={isRowProcessing}
+														title={form.is_active ? 'Unpublish' : 'Publish'}
+													>
+														{togglingId === form.id
+															? 'Updating...'
+															: form.is_active
+																? 'Unpublish'
+																: 'Publish'}
+													</Button>
+													<Button
+														color="error"
+														size="sm"
+														onClick={() => handleDelete( form )}
+														disabled={isRowProcessing}
+														title="Delete"
+													>
+														{deletingId === form.id ? 'Deleting...' : 'Delete'}
+													</Button>
+												</div>
+											</td>
+										);
+									} )()}
 								</tr>
 							) )}
 						</tbody>
