@@ -179,12 +179,12 @@ describe( 'Authorization Policies', function (): void {
             config( ['artisanpack.forms.authorization.allow_admin_bypass' => false] );
 
             $owner = User::factory()->create();
-            $admin = User::factory()->create( ['is_admin' => true]);
-            $form  = Form::factory()->create( ['user_id' => $owner->id]);
+            $admin = User::factory()->create( ['is_admin' => true] );
+            $form  = Form::factory()->create( ['user_id' => $owner->id] );
 
-            $this->actingAs( $admin)
-                ->get( route( 'forms.edit', $form))
+            $this->actingAs( $admin )
+                ->get( route( 'forms.edit', $form ) )
                 ->assertForbidden();
-        });
-    });
-});
+        } );
+    } );
+} );

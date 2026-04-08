@@ -320,7 +320,7 @@ class FormPolicy
     {
         // Check for is_admin attribute if it exists
         if ( method_exists( $user, 'getAttribute' ) ) {
-            return (bool) $user->getAttribute( 'is_admin');
+            return (bool) $user->getAttribute( 'is_admin' );
         }
 
         return false;

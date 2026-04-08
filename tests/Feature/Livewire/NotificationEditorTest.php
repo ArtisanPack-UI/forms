@@ -247,22 +247,22 @@ describe( 'NotificationEditor Livewire Component', function (): void {
 
         it( 'renders notification list', function (): void {
             $form = Form::factory()->create();
-            FormNotification::factory()->for( $form )->create( ['name' => 'Test Notification']);
+            FormNotification::factory()->for( $form )->create( ['name' => 'Test Notification'] );
 
-            Livewire::test( NotificationEditor::class, ['form' => $form])
-                ->assertSee( 'Test Notification');
-        });
+            Livewire::test( NotificationEditor::class, ['form' => $form] )
+                ->assertSee( 'Test Notification' );
+        } );
 
         it( 'renders editor for selected notification', function (): void {
             $form = Form::factory()->create();
-            FormNotification::factory()->for( $form)->create( [
+            FormNotification::factory()->for( $form )->create( [
                 'name'    => 'My Notification',
                 'subject' => 'Test Subject',
-            ]);
+            ] );
 
-            Livewire::test( NotificationEditor::class, ['form' => $form])
-                ->assertSee( 'My Notification')
-                ->assertSee( 'Test Subject');
-        });
-    });
-});
+            Livewire::test( NotificationEditor::class, ['form' => $form] )
+                ->assertSee( 'My Notification' )
+                ->assertSee( 'Test Subject' );
+        } );
+    } );
+} );

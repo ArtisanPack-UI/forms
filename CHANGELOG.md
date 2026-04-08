@@ -5,6 +5,92 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-08
+
+### Added
+
+#### REST API
+
+- **Full REST API**: Complete set of RESTful endpoints for forms, fields, steps, submissions, and notifications under `api/v1/forms`
+- **Public Endpoints**: Unauthenticated endpoints for rendering forms (`GET /render`) and submitting responses (`POST /submit`) with honeypot and rate limiting
+- **Authenticated Endpoints**: Full CRUD for forms, fields, steps, submissions, and notifications secured with Laravel Sanctum
+- **Submission Management API**: Bulk actions (mark read/unread/spam, delete), CSV export, and file download endpoints
+- **Field & Step Reordering**: Dedicated reorder endpoints for drag-and-drop ordering via API
+- **Pagination**: Consistent paginated responses with configurable per-page via `artisanpack.forms.api.per_page`
+
+#### API Resources
+
+- **FormResource**: JSON transformation for form models with conditional relationship loading and submission counts
+- **FormRenderResource**: Public-facing form payload with honeypot and display configuration
+- **FormFieldResource**: Field serialization with validation rules, conditional logic, and options
+- **FormStepResource**: Step serialization with nested fields
+- **FormSubmissionResource**: Submission data with values and uploads
+- **FormSubmissionValueResource**: Individual field value serialization
+- **FormUploadResource**: File upload metadata with download URLs
+- **FormNotificationResource**: Notification configuration serialization
+- **PaginatedResourceCollection**: Consistent pagination wrapper with meta and links
+
+#### Form Request Validation (API)
+
+- **StoreFormApiRequest / UpdateFormApiRequest**: Form creation and update validation
+- **StoreFieldApiRequest / UpdateFieldApiRequest**: Field management validation
+- **StoreStepApiRequest / UpdateStepApiRequest**: Step management validation
+- **ReorderFieldsApiRequest / ReorderStepsApiRequest**: Reorder validation
+- **SubmitFormApiRequest**: Public form submission validation
+- **UpdateSubmissionApiRequest**: Submission metadata update validation
+- **BulkSubmissionApiRequest**: Bulk action validation
+- **StoreNotificationApiRequest / UpdateNotificationApiRequest**: Notification validation
+
+#### TypeScript Type Definitions
+
+- **Published Type Definitions**: Full TypeScript definitions for all form models, API request/response types, field types, conditional logic operators, and pagination structures via `artisanpack-forms.d.ts`
+
+#### React Components
+
+- **FormRenderer**: Full-featured React form renderer with API integration, multi-step support, conditional logic, client-side validation, honeypot protection, and customizable loading/error/success states
+- **MultiStepForm**: Multi-step form wrapper with progress bar and step navigation
+- **Field Components**: TextField, EmailField, PhoneField, NumberField, UrlField, TextareaField, SelectField, RadioField, CheckboxField, CheckboxGroupField, SelectMultipleField, FileField, DateField, TimeField, HiddenField, HeadingField, ParagraphField, DividerField, HtmlField
+- **useForm Hook**: Manages form state, validation, step navigation, file uploads, and submission
+- **useApi Hook**: Type-safe API client with error handling (ApiError, ApiValidationError)
+- **useAutoSave Hook**: Automatic form draft saving
+- **Admin Components**: FormsList, FormBuilder, FieldEditor, FieldPalette, ConditionalLogicEditor, NotificationEditor, SubmissionsList, SubmissionDetail
+
+#### Vue Components
+
+- **FormRenderer**: Vue 3 form renderer with Composition API, slots for loading/error/success customization, and full feature parity with React
+- **MultiStepForm**: Multi-step form wrapper with progress bar and step navigation
+- **HoneypotField**: Dedicated honeypot field component
+- **Field Components**: TextField, ChoiceField, AdvancedField, LayoutField, FieldRenderer
+- **useForm Composable**: Reactive form state management with step navigation and submission
+- **useApi Composable**: Type-safe API client with error handling
+- **useAutoSave Composable**: Automatic form draft saving
+- **Admin Components**: FormsList, FormBuilder, FieldEditor, FieldPalette, ConditionalLogicEditor, NotificationEditor, SubmissionsList, SubmissionDetail
+
+#### Shared Frontend Utilities
+
+- **Validation Module**: Client-side field validation for all 18+ field types with min/max, pattern, file size/type, and required checks
+- **Conditional Logic Module**: Client-side conditional logic evaluation with 19 operators, AND/OR logic, and show/hide actions
+
+#### Frontend Scaffolding Command
+
+- **`forms:install-frontend`**: Artisan command to publish React or Vue components, shared utilities, and TypeScript types to `resources/js/vendor/artisanpack-forms/` with `--stack` and `--force` options
+
+#### CI/CD
+
+- **GitHub Actions CI**: Lint job (PHP-CS-Fixer + PHPCS) and matrix test job (PHP 8.2, 8.3, 8.4)
+- **GitHub Actions Release**: Separate release workflow triggered by version tags with CHANGELOG extraction, GitHub Release creation, and Packagist update
+
+### Fixed
+
+- **Select Multiple Field**: Added missing `select_multiple` field view, factory state, and test
+- **Pagination Links**: Preserved query parameters in pagination links for API resources
+
+### Changed
+
+- **GitHub Migration**: Migrated repository from GitLab to GitHub with updated issue templates, PR templates, and CI workflows
+
+---
+
 ## [1.0.0] - 2026-01-23
 
 ### First Stable Release

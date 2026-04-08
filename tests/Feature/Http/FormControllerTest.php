@@ -200,13 +200,13 @@ describe( 'FormController', function (): void {
             $form   = Form::factory()->create();
             $formId = $form->id;
 
-            $response = $this->actingAs( $this->user)
-                ->delete( route( 'forms.destroy', $form));
+            $response = $this->actingAs( $this->user )
+                ->delete( route( 'forms.destroy', $form ) );
 
-            $response->assertRedirect( route( 'forms.index'))
-                ->assertSessionHas( 'success');
+            $response->assertRedirect( route( 'forms.index' ) )
+                ->assertSessionHas( 'success' );
 
-            expect( Form::find( $formId))->toBeNull();
-        });
-    });
-});
+            expect( Form::find( $formId ) )->toBeNull();
+        } );
+    } );
+} );

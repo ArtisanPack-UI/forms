@@ -159,13 +159,13 @@ describe( 'IntegrationService', function (): void {
 
             expect( $tabs )->toHaveCount( 2 )
                 ->and( $tabs[0]['id'] )->toBe( 'tab1' )
-                ->and( $tabs[1]['id'])->toBe( 'tab2');
-        });
-    });
-});
+                ->and( $tabs[1]['id'] )->toBe( 'tab2' );
+        } );
+    } );
+} );
 
 afterEach( function (): void {
-    if ( function_exists( 'removeAllFilters')) {
-        removeAllFilters( 'forms.settings_tabs');
+    if ( function_exists( 'removeAllFilters' ) ) {
+        removeAllFilters( 'forms.settings_tabs' );
     }
-});
+} );

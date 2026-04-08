@@ -150,14 +150,14 @@ describe( 'Form Model', function (): void {
             expect( $clone->name )->toBe( 'Original Form (Copy)' )
                 ->and( $clone->is_active )->toBeFalse()
                 ->and( $clone->fields )->toHaveCount( 1 )
-                ->and( $clone->notifications)->toHaveCount( 1)
-                ->and( $clone->fields->first()->uuid)->not->toBe( $form->fields->first()->uuid);
-        });
+                ->and( $clone->notifications )->toHaveCount( 1 )
+                ->and( $clone->fields->first()->uuid )->not->toBe( $form->fields->first()->uuid );
+        } );
 
         it( 'uses slug as route key name', function (): void {
             $form = new Form;
 
-            expect( $form->getRouteKeyName())->toBe( 'slug');
-        });
-    });
-});
+            expect( $form->getRouteKeyName() )->toBe( 'slug' );
+        } );
+    } );
+} );

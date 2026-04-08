@@ -9,6 +9,8 @@ Technical reference documentation for ArtisanPack UI Forms classes, services, an
 ## API Topics
 
 - [API Overview](Api-Api) - Introduction to the package API
+- [REST API](Api-Rest-Api) - RESTful HTTP endpoints
+- [API Resources](Api-Resources) - JSON resource transformations
 - [Models](Api-Models) - Eloquent model reference
 - [Services](Api-Services) - Service class documentation
 - [Events](Api-Events) - Event classes and listeners

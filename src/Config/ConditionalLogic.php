@@ -50,48 +50,6 @@ class ConditionalLogic
     public const LOGIC_TYPE_KEYS = ['all', 'any'];
 
     /**
-     * Gets available condition actions with translated labels.
-     *
-     * @since 1.0.0
-     *
-     * @return array<string, array{label: string, description: string}> The available actions.
-     */
-    public static function actions(): array
-    {
-        return [
-            'show' => [
-                'label'       => __( 'Show this field' ),
-                'description' => __( 'Field is visible when conditions are met' ),
-            ],
-            'hide' => [
-                'label'       => __( 'Hide this field' ),
-                'description' => __( 'Field is hidden when conditions are met' ),
-            ],
-        ];
-    }
-
-    /**
-     * Gets available logic types with translated labels.
-     *
-     * @since 1.0.0
-     *
-     * @return array<string, array{label: string, description: string}> The available logic types.
-     */
-    public static function logicTypes(): array
-    {
-        return [
-            'all' => [
-                'label'       => __( 'All conditions (AND)' ),
-                'description' => __( 'All conditions must be true' ),
-            ],
-            'any' => [
-                'label'       => __( 'Any condition (OR)' ),
-                'description' => __( 'At least one condition must be true' ),
-            ],
-        ];
-    }
-
-    /**
      * Operator metadata without translatable strings.
      *
      * @since 1.0.0
@@ -194,6 +152,48 @@ class ConditionalLogic
             'supports_types' => ['checkbox_group', 'select_multiple'],
         ],
     ];
+
+    /**
+     * Gets available condition actions with translated labels.
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, array{label: string, description: string}> The available actions.
+     */
+    public static function actions(): array
+    {
+        return [
+            'show' => [
+                'label'       => __( 'Show this field' ),
+                'description' => __( 'Field is visible when conditions are met' ),
+            ],
+            'hide' => [
+                'label'       => __( 'Hide this field' ),
+                'description' => __( 'Field is hidden when conditions are met' ),
+            ],
+        ];
+    }
+
+    /**
+     * Gets available logic types with translated labels.
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, array{label: string, description: string}> The available logic types.
+     */
+    public static function logicTypes(): array
+    {
+        return [
+            'all' => [
+                'label'       => __( 'All conditions (AND)' ),
+                'description' => __( 'All conditions must be true' ),
+            ],
+            'any' => [
+                'label'       => __( 'Any condition (OR)' ),
+                'description' => __( 'At least one condition must be true' ),
+            ],
+        ];
+    }
 
     /**
      * Gets available comparison operators with translated labels.

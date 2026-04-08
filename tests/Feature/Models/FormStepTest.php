@@ -77,10 +77,10 @@ describe( 'FormStep Model', function (): void {
         it( 'gets next step', function (): void {
             $form  = Form::factory()->multiStep()->create();
             $step1 = FormStep::factory()->for( $form )->create( ['sort_order' => 0] );
-            $step2 = FormStep::factory()->for( $form )->create( ['sort_order' => 1]);
+            $step2 = FormStep::factory()->for( $form )->create( ['sort_order' => 1] );
 
-            expect( $step1->getNextStep()->id)->toBe( $step2->id)
-                ->and( $step2->getNextStep())->toBeNull();
-        });
-    });
-});
+            expect( $step1->getNextStep()->id )->toBe( $step2->id )
+                ->and( $step2->getNextStep() )->toBeNull();
+        } );
+    } );
+} );

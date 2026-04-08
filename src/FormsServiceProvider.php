@@ -18,6 +18,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms;
 
+use ArtisanPackUI\Forms\Console\Commands\InstallFrontend;
 use ArtisanPackUI\Forms\Console\Commands\PruneFormSubmissions;
 use ArtisanPackUI\Forms\Events\FormSubmitted;
 use ArtisanPackUI\Forms\Listeners\SendWebhookOnSubmission;
@@ -134,8 +135,12 @@ class FormsServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom( __DIR__ . '/../database/migrations' );
         $this->loadViewsFrom( __DIR__ . '/../resources/views', 'forms' );
         $this->loadRoutesFrom( __DIR__ . '/../routes/web.php' );
+        $this->loadApiRoutes();
         $this->registerLivewireComponents();
         $this->publishViews();
+        $this->publishTypeDefinitions();
+        $this->publishReactComponents();
+        $this->publishVueComponents();
     }
 
     /**
@@ -229,6 +234,7 @@ class FormsServiceProvider extends ServiceProvider
     {
         if ( $this->app->runningInConsole() ) {
             $this->commands( [
+                InstallFrontend::class,
                 PruneFormSubmissions::class,
             ] );
         }
@@ -305,6 +311,22 @@ class FormsServiceProvider extends ServiceProvider
     }
 
     /**
+     * Loads the API routes if the API is enabled.
+     *
+     * Only loads routes when the API is enabled in configuration.
+     *
+     * @since 1.1.0
+     *
+     * @return void
+     */
+    protected function loadApiRoutes(): void
+    {
+        if ( config( 'artisanpack.forms.api.enabled', true ) ) {
+            $this->loadRoutesFrom( __DIR__ . '/../routes/api.php' );
+        }
+    }
+
+    /**
      * Publishes the package's views.
      *
      * Views are published to resources/views/vendor/forms for customization.
@@ -318,7 +340,68 @@ class FormsServiceProvider extends ServiceProvider
         if ( $this->app->runningInConsole() ) {
             $this->publishes( [
                 __DIR__ . '/../resources/views' => resource_path( 'views/vendor/forms' ),
-            ], 'artisanpack-forms-views');
+            ], 'artisanpack-forms-views' );
+        }
+    }
+
+    /**
+     * Publishes the TypeScript type definitions.
+     *
+     * Type definitions are published to resources/types for use in
+     * React, Vue, or other TypeScript-based frontend frameworks.
+     *
+     * @since 1.1.0
+     *
+     * @return void
+     */
+    protected function publishTypeDefinitions(): void
+    {
+        if ( $this->app->runningInConsole() ) {
+            $this->publishes( [
+                __DIR__ . '/../resources/types/artisanpack-forms.d.ts' => resource_path( 'types/artisanpack-forms.d.ts' ),
+            ], 'forms-types' );
+        }
+    }
+
+    /**
+     * Publishes the React form renderer components.
+     *
+     * React components are published to resources/js/vendor/artisanpack-forms
+     * for use in React-based frontend applications.
+     *
+     * @since 1.1.0
+     *
+     * @return void
+     */
+    protected function publishReactComponents(): void
+    {
+        if ( $this->app->runningInConsole() ) {
+            $this->publishes( [
+                __DIR__ . '/../resources/js/react'                     => resource_path( 'js/vendor/artisanpack-forms/react' ),
+                __DIR__ . '/../resources/js/shared'                    => resource_path( 'js/vendor/artisanpack-forms/shared' ),
+                __DIR__ . '/../resources/types/artisanpack-forms.d.ts' => resource_path( 'js/vendor/artisanpack-forms/types/artisanpack-forms.d.ts' ),
+            ], 'forms-react' );
+        }
+    }
+
+    /**
+     * Publishes the Vue form renderer components.
+     *
+     * Vue components are published to resources/js/vendor/artisanpack-forms
+     * for use in Vue-based frontend applications.
+     *
+     * @since 1.1.0
+     *
+     * @return void
+     */
+    protected function publishVueComponents(): void
+    {
+        if ( $this->app->runningInConsole() ) {
+            $this->publishes( [
+                __DIR__ . '/../resources/js/vue'                       => resource_path( 'js/vendor/artisanpack-forms/vue' ),
+                __DIR__ . '/../resources/js/shared'                    => resource_path( 'js/vendor/artisanpack-forms/shared' ),
+                __DIR__ . '/../resources/types/artisanpack-forms.d.ts' => resource_path( 'js/vendor/artisanpack-forms/types/artisanpack-forms.d.ts' ),
+            ], 'forms-vue' );
         }
     }
 }

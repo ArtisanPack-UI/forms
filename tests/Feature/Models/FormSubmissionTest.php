@@ -196,17 +196,17 @@ describe( 'FormSubmission Model', function (): void {
 
             expect( $submission->getValue( 'company' ) )->toBe( 'Acme Inc' )
                 ->and( $submission->getValue( 'missing' ) )->toBeNull();
-        });
+        } );
 
         it( 'gets email value', function (): void {
             $submission = FormSubmission::factory()->create();
-            FormSubmissionValue::factory()->for( $submission, 'submission')->create( [
+            FormSubmissionValue::factory()->for( $submission, 'submission' )->create( [
                 'field_name' => 'contact_email',
                 'field_type' => 'email',
                 'value'      => 'contact@example.com',
-            ]);
+            ] );
 
-            expect( $submission->getEmailValue())->toBe( 'contact@example.com');
-        });
-    });
-});
+            expect( $submission->getEmailValue() )->toBe( 'contact@example.com' );
+        } );
+    } );
+} );

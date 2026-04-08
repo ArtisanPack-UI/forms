@@ -197,6 +197,6 @@ class IntegrationService
             return [];
         }
 
-        return array_keys( array_filter( $integrations, fn ( $config ) => ! empty( $config )));
+        return array_keys( array_filter( $integrations, fn ( $config ) => ! empty( $config ) ));
     }
 }

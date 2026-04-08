@@ -307,11 +307,11 @@ describe( 'ConditionalLogicService', function (): void {
                 ],
             ];
 
-            $cleaned = $this->service->cleanupDeletedFieldReferences( $logic, $this->form->fields);
+            $cleaned = $this->service->cleanupDeletedFieldReferences( $logic, $this->form->fields );
 
-            expect( $cleaned['rules'])->toHaveCount( 1)
-                ->and( $cleaned['rules'][0]['field'])->toBe( 'existing_field');
-        });
+            expect( $cleaned['rules'] )->toHaveCount( 1 )
+                ->and( $cleaned['rules'][0]['field'] )->toBe( 'existing_field' );
+        } );
 
         it( 'handles empty rules array', function (): void {
             $logic = [
@@ -320,9 +320,9 @@ describe( 'ConditionalLogicService', function (): void {
                 'rules'  => [],
             ];
 
-            $cleaned = $this->service->cleanupDeletedFieldReferences( $logic, $this->form->fields);
+            $cleaned = $this->service->cleanupDeletedFieldReferences( $logic, $this->form->fields );
 
-            expect( $cleaned['rules'])->toBeEmpty();
-        });
-    });
-});
+            expect( $cleaned['rules'] )->toBeEmpty();
+        } );
+    } );
+} );

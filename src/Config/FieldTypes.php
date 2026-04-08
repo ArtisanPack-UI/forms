@@ -46,35 +46,6 @@ class FieldTypes
     ];
 
     /**
-     * Gets field type categories for organizing the palette.
-     *
-     * @since 1.0.0
-     *
-     * @return array<string, array{label: string, fields: array<string>}> The field categories.
-     */
-    public static function categories(): array
-    {
-        return [
-            'basic' => [
-                'label'  => __( 'Basic Fields' ),
-                'fields' => self::CATEGORY_FIELDS['basic'],
-            ],
-            'choice' => [
-                'label'  => __( 'Choice Fields' ),
-                'fields' => self::CATEGORY_FIELDS['choice'],
-            ],
-            'advanced' => [
-                'label'  => __( 'Advanced Fields' ),
-                'fields' => self::CATEGORY_FIELDS['advanced'],
-            ],
-            'layout' => [
-                'label'  => __( 'Layout Elements' ),
-                'fields' => self::CATEGORY_FIELDS['layout'],
-            ],
-        ];
-    }
-
-    /**
      * Field type keys for metadata.
      *
      * @since 1.0.0
@@ -248,6 +219,49 @@ class FieldTypes
     ];
 
     /**
+     * Width option CSS classes.
+     *
+     * @since 1.0.0
+     *
+     * @var array<string, string>
+     */
+    public const WIDTH_CLASSES = [
+        'full'       => 'w-full',
+        'half'       => 'w-1/2',
+        'third'      => 'w-1/3',
+        'two-thirds' => 'w-2/3',
+    ];
+
+    /**
+     * Gets field type categories for organizing the palette.
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, array{label: string, fields: array<string>}> The field categories.
+     */
+    public static function categories(): array
+    {
+        return [
+            'basic' => [
+                'label'  => __( 'Basic Fields' ),
+                'fields' => self::CATEGORY_FIELDS['basic'],
+            ],
+            'choice' => [
+                'label'  => __( 'Choice Fields' ),
+                'fields' => self::CATEGORY_FIELDS['choice'],
+            ],
+            'advanced' => [
+                'label'  => __( 'Advanced Fields' ),
+                'fields' => self::CATEGORY_FIELDS['advanced'],
+            ],
+            'layout' => [
+                'label'  => __( 'Layout Elements' ),
+                'fields' => self::CATEGORY_FIELDS['layout'],
+            ],
+        ];
+    }
+
+    /**
      * Gets field type definitions with translated labels.
      *
      * @since 1.0.0
@@ -411,20 +425,6 @@ class FieldTypes
             ] ),
         ];
     }
-
-    /**
-     * Width option CSS classes.
-     *
-     * @since 1.0.0
-     *
-     * @var array<string, string>
-     */
-    public const WIDTH_CLASSES = [
-        'full'       => 'w-full',
-        'half'       => 'w-1/2',
-        'third'      => 'w-1/3',
-        'two-thirds' => 'w-2/3',
-    ];
 
     /**
      * Gets width options for field layout with translated labels.

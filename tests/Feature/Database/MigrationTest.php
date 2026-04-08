@@ -459,19 +459,19 @@ describe( 'Forms package configuration', function (): void {
         $diskConfig = config( 'filesystems.disks.form-uploads' );
 
         expect( $diskConfig )->not->toBeNull();
-        expect( $diskConfig['driver'])->toBe( 'local');
-        expect( $diskConfig['visibility'])->toBe( 'private');
-    });
+        expect( $diskConfig['driver'] )->toBe( 'local' );
+        expect( $diskConfig['visibility'] )->toBe( 'private' );
+    } );
 
     it( 'loads package configuration under artisanpack.forms', function (): void {
-        $config = config( 'artisanpack.forms');
+        $config = config( 'artisanpack.forms' );
 
-        expect( $config)->not->toBeNull();
-        expect( $config['uploads'])->not->toBeNull();
-        expect( $config['submissions'])->not->toBeNull();
-        expect( $config['spam_protection'])->not->toBeNull();
-        expect( $config['notifications'])->not->toBeNull();
-        expect( $config['display'])->not->toBeNull();
-    });
+        expect( $config )->not->toBeNull();
+        expect( $config['uploads'] )->not->toBeNull();
+        expect( $config['submissions'] )->not->toBeNull();
+        expect( $config['spam_protection'] )->not->toBeNull();
+        expect( $config['notifications'] )->not->toBeNull();
+        expect( $config['display'] )->not->toBeNull();
+    } );
 
-});
+} );
