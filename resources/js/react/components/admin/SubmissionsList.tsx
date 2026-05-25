@@ -127,7 +127,7 @@ export function SubmissionsList( {
 			}
 
 			const data = await get<PaginatedResponse<FormSubmission>>(
-				`/${form.slug}/submissions`,
+				`/${form.id}/submissions`,
 				params,
 			);
 			setSubmissions( data );
@@ -137,7 +137,7 @@ export function SubmissionsList( {
 		} finally {
 			setIsLoading( false );
 		}
-	}, [get, form.slug, currentPage, search, sortBy, sortDirection, statusFilter, dateRange] );
+	}, [get, form.id, currentPage, search, sortBy, sortDirection, statusFilter, dateRange] );
 
 	useEffect( () => {
 		fetchSubmissions();
@@ -181,31 +181,31 @@ export function SubmissionsList( {
 	const markAsRead = useCallback( async ( id: number ) => {
 		addPendingRow( id );
 		try {
-			await put( `/${form.slug}/submissions/${id}`, { is_read: true } );
+			await put( `/${form.id}/submissions/${id}`, { is_read: true } );
 			await fetchSubmissions();
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : 'Failed to update submission.' );
 		} finally {
 			removePendingRow( id );
 		}
-	}, [put, form.slug, fetchSubmissions, addPendingRow, removePendingRow] );
+	}, [put, form.id, fetchSubmissions, addPendingRow, removePendingRow] );
 
 	const markAsUnread = useCallback( async ( id: number ) => {
 		addPendingRow( id );
 		try {
-			await put( `/${form.slug}/submissions/${id}`, { is_read: false } );
+			await put( `/${form.id}/submissions/${id}`, { is_read: false } );
 			await fetchSubmissions();
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : 'Failed to update submission.' );
 		} finally {
 			removePendingRow( id );
 		}
-	}, [put, form.slug, fetchSubmissions, addPendingRow, removePendingRow] );
+	}, [put, form.id, fetchSubmissions, addPendingRow, removePendingRow] );
 
 	const toggleStar = useCallback( async ( submission: FormSubmission ) => {
 		addPendingRow( submission.id );
 		try {
-			await put( `/${form.slug}/submissions/${submission.id}`, {
+			await put( `/${form.id}/submissions/${submission.id}`, {
 				is_starred: !submission.is_starred,
 			} );
 			await fetchSubmissions();
@@ -214,12 +214,12 @@ export function SubmissionsList( {
 		} finally {
 			removePendingRow( submission.id );
 		}
-	}, [put, form.slug, fetchSubmissions, addPendingRow, removePendingRow] );
+	}, [put, form.id, fetchSubmissions, addPendingRow, removePendingRow] );
 
 	const toggleSpam = useCallback( async ( submission: FormSubmission ) => {
 		addPendingRow( submission.id );
 		try {
-			await put( `/${form.slug}/submissions/${submission.id}`, {
+			await put( `/${form.id}/submissions/${submission.id}`, {
 				is_spam: !submission.is_spam,
 			} );
 			await fetchSubmissions();
@@ -228,7 +228,7 @@ export function SubmissionsList( {
 		} finally {
 			removePendingRow( submission.id );
 		}
-	}, [put, form.slug, fetchSubmissions, addPendingRow, removePendingRow] );
+	}, [put, form.id, fetchSubmissions, addPendingRow, removePendingRow] );
 
 	const deleteSubmission = useCallback( async ( id: number ) => {
 		if ( !window.confirm( 'Are you sure you want to delete this submission?' ) ) {
@@ -237,14 +237,14 @@ export function SubmissionsList( {
 
 		addPendingRow( id );
 		try {
-			await del( `/${form.slug}/submissions/${id}` );
+			await del( `/${form.id}/submissions/${id}` );
 			await fetchSubmissions();
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : 'Failed to delete submission.' );
 		} finally {
 			removePendingRow( id );
 		}
-	}, [del, form.slug, fetchSubmissions, addPendingRow, removePendingRow] );
+	}, [del, form.id, fetchSubmissions, addPendingRow, removePendingRow] );
 
 	// -----------------------------------------------------------------------
 	// Bulk actions
@@ -267,7 +267,7 @@ export function SubmissionsList( {
 
 		try {
 			await post<BulkSubmissionResponse>(
-				`/${form.slug}/submissions/bulk`,
+				`/${form.id}/submissions/bulk`,
 				{ action, ids: Array.from( selected ) },
 			);
 			setSelected( new Set() );
@@ -277,7 +277,7 @@ export function SubmissionsList( {
 		} finally {
 			setIsBulkProcessing( false );
 		}
-	}, [post, form.slug, selected, fetchSubmissions] );
+	}, [post, form.id, selected, fetchSubmissions] );
 
 	// -----------------------------------------------------------------------
 	// Export
@@ -288,15 +288,15 @@ export function SubmissionsList( {
 
 		try {
 			await download(
-				`/${form.slug}/submissions/export`,
-				`${form.slug}-submissions.csv`,
+				`/${form.id}/submissions/export`,
+				`${form.id}-submissions.csv`,
 			);
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : 'Export failed.' );
 		} finally {
 			setIsExporting( false );
 		}
-	}, [download, form.slug] );
+	}, [download, form.id] );
 
 	// -----------------------------------------------------------------------
 	// Sort

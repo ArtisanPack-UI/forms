@@ -92,7 +92,7 @@ export function SubmissionDetail( {
 
 		try {
 			const response = await get<{ data: FormSubmission }>(
-				`/${form.slug}/submissions/${submissionId}`,
+				`/${form.id}/submissions/${submissionId}`,
 			);
 			setSubmission( response.data );
 			setAdminNotes( response.data.admin_notes ?? '' );
@@ -100,7 +100,7 @@ export function SubmissionDetail( {
 			// Auto-mark as read after successful fetch
 			if ( !response.data.is_read ) {
 				try {
-					await put( `/${form.slug}/submissions/${submissionId}`, { is_read: true } );
+					await put( `/${form.id}/submissions/${submissionId}`, { is_read: true } );
 					setSubmission( ( prev ) => prev ? { ...prev, is_read: true } : prev );
 				} catch {
 					// Silently fail mark-as-read to avoid blocking the view
@@ -113,7 +113,7 @@ export function SubmissionDetail( {
 		} finally {
 			setIsLoading( false );
 		}
-	}, [get, put, form.slug, submissionId] );
+	}, [get, put, form.id, submissionId] );
 
 	useEffect( () => {
 		loadSubmission();
@@ -126,14 +126,14 @@ export function SubmissionDetail( {
 	const updateSubmission = useCallback( async ( data: UpdateSubmissionRequest ) => {
 		try {
 			const response = await put<{ data: FormSubmission }>(
-				`/${form.slug}/submissions/${submissionId}`,
+				`/${form.id}/submissions/${submissionId}`,
 				data,
 			);
 			setSubmission( response.data );
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : 'Failed to update submission.' );
 		}
-	}, [put, form.slug, submissionId] );
+	}, [put, form.id, submissionId] );
 
 	const toggleStar = useCallback( async () => {
 		if ( !submission || isUpdating ) {
@@ -187,12 +187,12 @@ export function SubmissionDetail( {
 		}
 
 		try {
-			await del( `/${form.slug}/submissions/${submissionId}` );
+			await del( `/${form.id}/submissions/${submissionId}` );
 			onBack?.();
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : 'Failed to delete submission.' );
 		}
-	}, [del, form.slug, submissionId, onBack] );
+	}, [del, form.id, submissionId, onBack] );
 
 	const downloadFile = useCallback( async ( upload: FormUpload ) => {
 		try {
