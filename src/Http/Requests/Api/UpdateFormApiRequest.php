@@ -60,23 +60,27 @@ class UpdateFormApiRequest extends FormRequest
     {
         $formId = $this->route( 'form' )?->id;
 
+        // PATCH-style partial updates: each field is `sometimes` so the
+        // auto-save can send only the keys the user actually changed
+        // without tripping `required` on untouched fields.
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
             'slug' => [
+                'sometimes',
                 'nullable',
                 'string',
                 'max:255',
                 Rule::unique( 'forms', 'slug' )->ignore( $formId ),
                 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
             ],
-            'description'           => ['nullable', 'string', 'max:1000'],
-            'submit_button_text'    => ['nullable', 'string', 'max:100'],
-            'success_message'       => ['nullable', 'string', 'max:2000'],
-            'redirect_url'          => ['nullable', 'url', 'max:255'],
-            'is_active'             => ['nullable', 'boolean'],
-            'is_multi_step'         => ['nullable', 'boolean'],
-            'show_progress_bar'     => ['nullable', 'boolean'],
-            'allow_step_navigation' => ['nullable', 'boolean'],
+            'description'           => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'submit_button_text'    => ['sometimes', 'nullable', 'string', 'max:100'],
+            'success_message'       => ['sometimes', 'nullable', 'string', 'max:2000'],
+            'redirect_url'          => ['sometimes', 'nullable', 'url', 'max:255'],
+            'is_active'             => ['sometimes', 'nullable', 'boolean'],
+            'is_multi_step'         => ['sometimes', 'nullable', 'boolean'],
+            'show_progress_bar'     => ['sometimes', 'nullable', 'boolean'],
+            'allow_step_navigation' => ['sometimes', 'nullable', 'boolean'],
         ];
     }
 

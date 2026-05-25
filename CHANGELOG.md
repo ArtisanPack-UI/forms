@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Widened `artisanpack-ui/security` constraint to `^1.0|^2.0` so the package can be installed alongside Security v2.x consumers.
 - Moved `ArtisanPackUI\Forms\Database\Factories` from `autoload-dev` to production `autoload` so downstream applications can use the factories in their own test suites.
 
+### Fixed
+
+- `UpdateFormApiRequest` now uses `sometimes` on every field so PATCH-style partial updates (e.g. the FormBuilder's auto-save sending only a changed `slug`) don't trip `required` on untouched fields.
+
 ## [1.1.0] - 2026-04-08
 
 ### Added
