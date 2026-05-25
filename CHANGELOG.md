@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Widened `livewire/livewire` constraint to `^3.6.4|^4.0` so the package can be installed in Livewire 4 applications. The full test suite passes against Livewire 4.3.
 - Widened `artisanpack-ui/security` constraint to `^1.0|^2.0` so the package can be installed alongside Security v2.x consumers.
+- Moved `ArtisanPackUI\Forms\Database\Factories` from `autoload-dev` to production `autoload` so downstream applications can use the factories in their own test suites.
 
 ## [1.1.0] - 2026-04-08
 
