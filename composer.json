@@ -25,7 +25,7 @@
     "php": "^8.2",
     "illuminate/support": ">=5.3",
     "artisanpack-ui/livewire-ui-components": "^2.0",
-    "artisanpack-ui/security": "^1.0",
+    "artisanpack-ui/security": "^1.0|^2.0",
     "artisanpack-ui/accessibility": "^2.1",
     "artisanpack-ui/hooks": "^1.2",
     "livewire/livewire": "^3.6.4|^4.0"
