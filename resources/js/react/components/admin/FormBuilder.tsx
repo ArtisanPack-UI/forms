@@ -132,7 +132,7 @@ export function FormBuilder( {
 
 			if ( Object.keys( data ).length > 0 ) {
 				const savedKeys = Object.keys( data );
-				await put( `/${form.slug}`, data );
+				await put( `/${form.id}`, data );
 				setFormSettings( ( prev ) => {
 					const next = { ...prev };
 					for ( const key of savedKeys ) {
@@ -230,7 +230,7 @@ export function FormBuilder( {
 			};
 
 			const response = await post<{ data: FormField }>(
-				`/${form.slug}/fields`,
+				`/${form.id}/fields`,
 				request,
 			);
 
@@ -264,7 +264,7 @@ export function FormBuilder( {
 
 		try {
 			const response = await put<{ data: FormField }>(
-				`/${form.slug}/fields/${fieldId}`,
+				`/${form.id}/fields/${fieldId}`,
 				data,
 			);
 			setFields( ( prev ) => prev.map( ( f ) =>
@@ -291,7 +291,7 @@ export function FormBuilder( {
 		}
 
 		try {
-			await del( `/${form.slug}/fields/${fieldId}` );
+			await del( `/${form.id}/fields/${fieldId}` );
 			setFields( ( prev ) => prev.filter( ( f ) => f.id !== fieldId ) );
 
 			if ( selectedFieldId === fieldId ) {
@@ -332,7 +332,7 @@ export function FormBuilder( {
 			};
 
 			const response = await post<{ data: FormField }>(
-				`/${form.slug}/fields`,
+				`/${form.id}/fields`,
 				request,
 			);
 
@@ -379,7 +379,7 @@ export function FormBuilder( {
 		// Persist to API
 		try {
 			const orderedUuids = updatedFields.map( ( f ) => f.uuid );
-			await post( `/${form.slug}/fields/reorder`, {
+			await post( `/${form.id}/fields/reorder`, {
 				ordered_uuids: orderedUuids,
 				step_id: form.is_multi_step ? activeStepId : null,
 			} );
@@ -420,7 +420,7 @@ export function FormBuilder( {
 			};
 
 			const response = await post<{ data: FormStep }>(
-				`/${form.slug}/steps`,
+				`/${form.id}/steps`,
 				request,
 			);
 
@@ -444,7 +444,7 @@ export function FormBuilder( {
 
 		try {
 			await put<{ data: FormStep }>(
-				`/${form.slug}/steps/${stepId}`,
+				`/${form.id}/steps/${stepId}`,
 				data,
 			);
 		} catch ( err ) {
@@ -468,7 +468,7 @@ export function FormBuilder( {
 		}
 
 		try {
-			await del( `/${form.slug}/steps/${stepId}` );
+			await del( `/${form.id}/steps/${stepId}` );
 			setSteps( ( prev ) => prev.filter( ( s ) => s.id !== stepId ) );
 			setFields( ( prev ) => prev.map( ( f ) =>
 				f.step_id === stepId ? { ...f, step_id: null } : f,
@@ -508,7 +508,7 @@ export function FormBuilder( {
 		setSteps( updated );
 
 		try {
-			await post( `/${form.slug}/steps/reorder`, {
+			await post( `/${form.id}/steps/reorder`, {
 				ordered_ids: updated.map( ( s ) => s.id ),
 			} );
 		} catch ( err ) {
@@ -524,14 +524,14 @@ export function FormBuilder( {
 		}
 
 		try {
-			await put( `/${form.slug}`, { is_multi_step: true } );
+			await put( `/${form.id}`, { is_multi_step: true } );
 			const updatedForm = { ...form, is_multi_step: true };
 			setForm( updatedForm );
 
 			// Create first step if none exist
 			if ( steps.length === 0 ) {
 				const request = { title: 'Step 1', sort_order: 0 };
-				const response = await post<{ data: FormStep }>( `/${form.slug}/steps`, request );
+				const response = await post<{ data: FormStep }>( `/${form.id}/steps`, request );
 				setSteps( ( prev ) => [...prev, response.data] );
 				setActiveStepId( response.data.id );
 			}
@@ -546,7 +546,7 @@ export function FormBuilder( {
 		}
 
 		try {
-			await put( `/${form.slug}`, { is_multi_step: false } );
+			await put( `/${form.id}`, { is_multi_step: false } );
 			setForm( ( prev ) => prev ? { ...prev, is_multi_step: false } : prev );
 			setActiveStepId( null );
 		} catch ( err ) {
@@ -675,7 +675,8 @@ export function FormBuilder( {
 
 					{/* Field palette */}
 					<div className="flex-1 overflow-y-auto p-3">
-						{activePanel === 'palette' && (
+						{/* Editor lives in the right-hand pane, so the left sidebar keeps the palette visible whenever the user has not switched to the Settings tab. */}
+						{activePanel !== 'settings' && (
 							<FieldPalette onAddField={addField} />
 						)}
 
@@ -1027,7 +1028,7 @@ export function FormBuilder( {
 				</div>
 
 				{/* Right sidebar (field editor) */}
-				{activePanel === 'editor' && selectedField && (
+				{selectedField && (
 					<div className="w-80 shrink-0 bg-base-200 border-l border-base-300 overflow-y-auto p-4">
 						<FieldEditor
 							field={selectedField}

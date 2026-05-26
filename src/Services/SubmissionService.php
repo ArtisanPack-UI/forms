@@ -222,14 +222,15 @@ class SubmissionService
      */
     public function isRateLimited( string $ipAddress, int $formId, bool $logEvent = true ): bool
     {
-        $key       = "form-submission:{$formId}:{$ipAddress}";
-        $isLimited = RateLimiter::tooManyAttempts( $key, self::RATE_LIMIT_MAX_ATTEMPTS );
+        $key         = "form-submission:{$formId}:{$ipAddress}";
+        $maxAttempts = $this->resolveRateLimitMaxAttempts();
+        $isLimited   = RateLimiter::tooManyAttempts( $key, $maxAttempts );
 
         if ( $isLimited && $logEvent ) {
             $this->logSecurityEvent( 'rate_limit_exceeded', [
                 'form_id'      => $formId,
                 'ip_address'   => $ipAddress,
-                'max_attempts' => self::RATE_LIMIT_MAX_ATTEMPTS,
+                'max_attempts' => $maxAttempts,
             ] );
         }
 
@@ -250,7 +251,7 @@ class SubmissionService
     {
         $key = "form-submission:{$formId}:{$ipAddress}";
 
-        RateLimiter::hit( $key, 60 );
+        RateLimiter::hit( $key, $this->resolveRateLimitDecay() );
     }
 
     /**
@@ -370,6 +371,36 @@ class SubmissionService
             'ip_address'   => $ipAddress,
             'user_agent'   => $userAgent,
         ];
+    }
+
+    /**
+     * Resolves the configured max attempts, falling back to the
+     * hardcoded default if the config is missing or malformed.
+     *
+     * @since 1.1.2
+     */
+    protected function resolveRateLimitMaxAttempts(): int
+    {
+        $configured = config( 'artisanpack.forms.spam_protection.rate_limit.attempts' );
+
+        return is_numeric( $configured ) && (int) $configured > 0
+            ? (int) $configured
+            : self::RATE_LIMIT_MAX_ATTEMPTS;
+    }
+
+    /**
+     * Resolves the configured rate-limit decay window in seconds,
+     * falling back to 60 if the config is missing or malformed.
+     *
+     * @since 1.1.2
+     */
+    protected function resolveRateLimitDecay(): int
+    {
+        $configured = config( 'artisanpack.forms.spam_protection.rate_limit.decay' );
+
+        return is_numeric( $configured ) && (int) $configured > 0
+            ? (int) $configured
+            : 60;
     }
 
     /**

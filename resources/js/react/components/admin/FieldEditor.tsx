@@ -95,7 +95,7 @@ export interface FieldEditorProps {
  * ```
  */
 export function FieldEditor( {
-	field,
+	field: serverField,
 	allFields,
 	onChange,
 	onDelete,
@@ -105,6 +105,17 @@ export function FieldEditor( {
 }: FieldEditorProps ): React.ReactElement {
 	const [activeTab, setActiveTab] = useState<string>( 'general' );
 
+	// Mirror the field locally so every keystroke is reflected immediately
+	// — the parent re-fetches on the debounced save, so binding inputs to
+	// the prop directly would race the API response and swallow characters
+	// the user typed during that window. Reset the mirror when the user
+	// selects a different field.
+	const [field, setField] = useState<FormField>( serverField );
+
+	useEffect( () => {
+		setField( serverField );
+	}, [serverField.id] );
+
 	const isLayoutField = LAYOUT_FIELD_TYPES.has( field.type );
 	const hasOptions = OPTION_FIELD_TYPES.has( field.type );
 
@@ -113,6 +124,7 @@ export function FieldEditor( {
 
 	const updateField = useCallback(
 		( data: UpdateFieldRequest ) => {
+			setField( ( prev ) => ( { ...prev, ...data } as FormField ) );
 			pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...data };
 
 			if ( updateTimerRef.current ) {
@@ -120,11 +132,11 @@ export function FieldEditor( {
 			}
 
 			updateTimerRef.current = setTimeout( () => {
-				onChange( field.id, pendingUpdatesRef.current );
+				onChange( serverField.id, pendingUpdatesRef.current );
 				pendingUpdatesRef.current = {};
 			}, 500 );
 		},
-		[field.id, onChange],
+		[serverField.id, onChange],
 	);
 
 	useEffect( () => {
@@ -133,12 +145,12 @@ export function FieldEditor( {
 				clearTimeout( updateTimerRef.current );
 
 				if ( Object.keys( pendingUpdatesRef.current ).length > 0 ) {
-					onChange( field.id, pendingUpdatesRef.current );
+					onChange( serverField.id, pendingUpdatesRef.current );
 					pendingUpdatesRef.current = {};
 				}
 			}
 		};
-	}, [field.id, onChange] );
+	}, [serverField.id, onChange] );
 
 	// Options editor for choice fields
 	const options = useMemo( (): FieldOption[] => {

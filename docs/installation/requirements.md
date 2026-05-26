@@ -12,7 +12,7 @@ Before installing ArtisanPack UI Forms, ensure your environment meets these requ
 |-------------|---------|
 | PHP | 8.2 or higher |
 | Laravel | 11.x or 12.x |
-| Livewire | 3.x |
+| Livewire | 3.6.4+ or 4.x |
 | Database | MySQL 8.0+, PostgreSQL 13+, SQLite 3.35+ |
 
 ## PHP Extensions
@@ -30,7 +30,7 @@ These packages are automatically installed as dependencies:
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `livewire/livewire` | ^3.0 | Reactive UI components |
+| `livewire/livewire` | ^3.6.4 \| ^4.0 | Reactive UI components |
 | `artisanpack-ui/hooks` | ^1.0 | Filter and action hooks |
 | `artisanpack-ui/accessibility` | ^1.0 | WCAG compliance utilities |
 

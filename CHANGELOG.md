@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.1.1] - 2026-05-26
+
+### Changed
+
+- Widened `livewire/livewire` constraint to `^3.6.4|^4.0` so the package can be installed in Livewire 4 applications. The full test suite passes against Livewire 4.3.
+- Widened `artisanpack-ui/security` constraint to `^1.0|^2.0` so the package can be installed alongside Security v2.x consumers.
+- Moved `ArtisanPackUI\Forms\Database\Factories` from `autoload-dev` to production `autoload` so downstream applications can use the factories in their own test suites.
+
+### Fixed
+
+- `UpdateFormApiRequest` now uses `sometimes` on every field so PATCH-style partial updates (e.g. the FormBuilder's auto-save sending only a changed `slug`) don't trip `required` on untouched fields.
+- React `FormBuilder` / `SubmissionsList` / `SubmissionDetail` admin components now address forms by `form.id` in API URLs instead of `form.slug`. Using the in-flight slug caused the auto-save PUT to 404 the moment a user renamed the slug. Keying by the stable primary key fixes that and lets the route key be opaque to the UI. (Consumers also need a `Route::bind('form', ...)` that resolves numeric IDs, or to change `Form::getRouteKeyName()` to `'id'`.)
+- React `FieldEditor` now mirrors the field locally so every keystroke renders immediately. Previously the inputs were controlled by the parent's `field` prop, which only updated after the 500 ms debounced save round-trip — characters typed during that window were dropped.
+- React `FormBuilder` left sidebar now stays populated (palette by default, settings on demand) while a field is selected. Previously selecting a field set `activePanel = 'editor'`, which blanked the sidebar because nothing rendered for that case.
+- `SubmissionService::isRateLimited()` / `recordAttempt()` now honor `artisanpack.forms.spam_protection.rate_limit.attempts` / `.decay` from the package config. Previously both methods used hardcoded constants (5 attempts, 60-second window), so the published config values had no effect.
+
 ## [1.1.0] - 2026-04-08
 
 ### Added

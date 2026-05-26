@@ -435,16 +435,16 @@ class FormField extends Model
     {
         // Check for built-in types first
         $builtInRules = match ( $this->type ) {
-            'email'  => ['email'],
-            'url'    => ['url'],
-            'number' => ['numeric'],
-            'phone'  => ['string'],
-            'date'   => ['date'],
-            'time'   => ['date_format:H:i'],
-            'file'   => $this->getFileValidationRules(),
+            'email'                             => ['email'],
+            'url'                               => ['url'],
+            'number'                            => ['numeric'],
+            'phone'                             => ['string'],
+            'date'                              => ['date'],
+            'time'                              => ['date_format:H:i'],
+            'file'                              => $this->getFileValidationRules(),
             'checkbox_group', 'select_multiple' => ['array'],
-            'checkbox' => ['boolean'],
-            default    => null,
+            'checkbox'                          => ['boolean'],
+            default                             => null,
         };
 
         if ( null !== $builtInRules ) {
