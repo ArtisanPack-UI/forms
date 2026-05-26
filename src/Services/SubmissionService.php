@@ -238,36 +238,6 @@ class SubmissionService
     }
 
     /**
-     * Resolves the configured max attempts, falling back to the
-     * hardcoded default if the config is missing or malformed.
-     *
-     * @since 1.1.2
-     */
-    protected function resolveRateLimitMaxAttempts(): int
-    {
-        $configured = config( 'artisanpack.forms.spam_protection.rate_limit.attempts' );
-
-        return is_numeric( $configured ) && (int) $configured > 0
-            ? (int) $configured
-            : self::RATE_LIMIT_MAX_ATTEMPTS;
-    }
-
-    /**
-     * Resolves the configured rate-limit decay window in seconds,
-     * falling back to 60 if the config is missing or malformed.
-     *
-     * @since 1.1.2
-     */
-    protected function resolveRateLimitDecay(): int
-    {
-        $configured = config( 'artisanpack.forms.spam_protection.rate_limit.decay' );
-
-        return is_numeric( $configured ) && (int) $configured > 0
-            ? (int) $configured
-            : 60;
-    }
-
-    /**
      * Records a submission attempt for rate limiting.
      *
      * @since 1.0.0
@@ -401,6 +371,36 @@ class SubmissionService
             'ip_address'   => $ipAddress,
             'user_agent'   => $userAgent,
         ];
+    }
+
+    /**
+     * Resolves the configured max attempts, falling back to the
+     * hardcoded default if the config is missing or malformed.
+     *
+     * @since 1.1.2
+     */
+    protected function resolveRateLimitMaxAttempts(): int
+    {
+        $configured = config( 'artisanpack.forms.spam_protection.rate_limit.attempts' );
+
+        return is_numeric( $configured ) && (int) $configured > 0
+            ? (int) $configured
+            : self::RATE_LIMIT_MAX_ATTEMPTS;
+    }
+
+    /**
+     * Resolves the configured rate-limit decay window in seconds,
+     * falling back to 60 if the config is missing or malformed.
+     *
+     * @since 1.1.2
+     */
+    protected function resolveRateLimitDecay(): int
+    {
+        $configured = config( 'artisanpack.forms.spam_protection.rate_limit.decay' );
+
+        return is_numeric( $configured ) && (int) $configured > 0
+            ? (int) $configured
+            : 60;
     }
 
     /**
