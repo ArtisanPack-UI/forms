@@ -3,7 +3,7 @@
   "description": "A comprehensive form builder and management package for Laravel with drag-and-drop builder, submissions, notifications, file uploads, multi-step forms, conditional logic, and webhooks.",
   "type": "library",
   "license": "GPL-3.0-or-later",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "autoload": {
     "psr-4": {
       "ArtisanPackUI\\Forms\\": "src/",

@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-05-27
+
+### Added
+
+- React `FormBuilder` Settings panel: the **Slug** field now auto-follows the **Form Name** until the user edits the slug directly, at which point it locks to a manual state and stops mirroring the name. On load, manual mode is derived from whether the persisted slug matches the slugified name, so existing custom slugs aren't clobbered. The field hint copy reflects the current state. ([#40](https://github.com/ArtisanPack-UI/forms/issues/40))
+
 ### Fixed
 
 - Database factories are now shipped in the published dist tarball. Previously `/database/factories` was marked `export-ignore` in `.gitattributes`, so installs via `composer require --prefer-dist` autoloaded `ArtisanPackUI\Forms\Database\Factories\*` from a directory that did not exist, causing `Class not found` errors in downstream test suites and seeders. ([#41](https://github.com/ArtisanPack-UI/forms/issues/41))
+- Resolved five categories of TypeScript errors surfaced when consumers `tsc`-compiled the published React components: dropped the no-longer-supported `size` prop on `<Input>`/`<Select>` in favor of `className="input-sm"`/`"select-sm"`; added an index signature to `FieldOption` so it satisfies `@artisanpack-ui/react`'s `SelectOption`/`RadioOption` shape; imported `JSX` from `react` (React 19) and narrowed the dynamic heading `Tag` to a `HeadingTag` union in `LayoutField`; converted `GenericConditionalLogic` at the boundary in `FieldEditor` and `NotificationEditor` so the broader `action: string` shape doesn't leak into the narrower `ConditionalLogic`/`NotificationConditionalLogic` setters; and moved `artisanpack-forms.d.ts` into `resources/js/types/` with updated `shared/*` imports so the path resolves consistently in source and in the published `js/vendor/artisanpack-forms/` layout. ([#39](https://github.com/ArtisanPack-UI/forms/issues/39), [#42](https://github.com/ArtisanPack-UI/forms/issues/42))
 
 ## [1.1.1] - 2026-05-26
 
