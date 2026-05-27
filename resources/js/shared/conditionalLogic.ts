@@ -15,7 +15,7 @@ import type {
 	ConditionalLogicRule,
 	ConditionalOperator,
 	FormField,
-} from '../../types/artisanpack-forms';
+} from '../types/artisanpack-forms';
 
 /**
  * Builds a mapping of field UUIDs to field names and vice versa.
@@ -306,7 +306,7 @@ export function evaluateFieldVisibility(
 	const action = logic.action ?? 'show';
 	const logicType = logic.logic ?? 'all';
 
-	const results = logic.rules.map( ( rule ) =>
+	const results = logic.rules.map( ( rule: ConditionalLogicRule ) =>
 		evaluateRule( rule, formData, uuidToName ),
 	);
 

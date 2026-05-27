@@ -18,6 +18,7 @@ import type {
 	Form,
 	FormField,
 	FormNotification,
+	NotificationConditionalLogic,
 	NotificationType,
 	NotificationTypeInfo,
 	StoreNotificationRequest,
@@ -587,7 +588,7 @@ export function NotificationEditor( {
 							<ConditionalLogicEditor
 								value={selectedNotification.conditional_logic}
 								onChange={( logic ) => updateNotification( selectedNotification.id, {
-									conditional_logic: logic,
+									conditional_logic: logic as NotificationConditionalLogic | null,
 								} )}
 								fields={fields}
 								actions={[

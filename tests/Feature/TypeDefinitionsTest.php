@@ -19,7 +19,7 @@ describe( 'TypeScript Type Definitions', function (): void {
             // Find the source path key that ends with the expected file
             $matchingKeys = array_filter(
                 array_keys( $paths ),
-                fn ( $key ) => str_ends_with( $key, 'resources/types/artisanpack-forms.d.ts' ),
+                fn ( $key ) => str_ends_with( $key, 'resources/js/types/artisanpack-forms.d.ts' ),
             );
 
             expect( $matchingKeys )->not->toBeEmpty();
@@ -31,7 +31,7 @@ describe( 'TypeScript Type Definitions', function (): void {
         } );
 
         it( 'has the source type definitions file present', function (): void {
-            $sourcePath = __DIR__ . '/../../resources/types/artisanpack-forms.d.ts';
+            $sourcePath = __DIR__ . '/../../resources/js/types/artisanpack-forms.d.ts';
 
             expect( file_exists( $sourcePath ) )->toBeTrue();
         } );
@@ -40,7 +40,7 @@ describe( 'TypeScript Type Definitions', function (): void {
     describe( 'type definitions content', function (): void {
         beforeEach( function (): void {
             $this->content = file_get_contents(
-                __DIR__ . '/../../resources/types/artisanpack-forms.d.ts',
+                __DIR__ . '/../../resources/js/types/artisanpack-forms.d.ts',
             );
         } );
 

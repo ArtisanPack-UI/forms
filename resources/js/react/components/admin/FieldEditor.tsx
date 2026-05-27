@@ -16,6 +16,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Checkbox, Input, Select, Tabs, Textarea } from '@artisanpack-ui/react';
 
 import type {
+	ConditionalLogic,
 	FieldOption,
 	FieldType,
 	FieldWidth,
@@ -241,7 +242,9 @@ export function FieldEditor( {
 				content: (
 					<ConditionalLogicEditor
 						value={field.conditional_logic}
-						onChange={( logic ) => updateField( { conditional_logic: logic } )}
+						onChange={( logic ) => updateField( {
+							conditional_logic: logic as ConditionalLogic | null,
+						} )}
 						fields={allFields}
 						excludeFieldId={field.id}
 					/>
