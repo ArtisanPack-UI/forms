@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Database factories are now shipped in the published dist tarball. Previously `/database/factories` was marked `export-ignore` in `.gitattributes`, so installs via `composer require --prefer-dist` autoloaded `ArtisanPackUI\Forms\Database\Factories\*` from a directory that did not exist, causing `Class not found` errors in downstream test suites and seeders. ([#41](https://github.com/ArtisanPack-UI/forms/issues/41))
+
 ## [1.1.1] - 2026-05-26
 
 ### Changed
