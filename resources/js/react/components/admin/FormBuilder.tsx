@@ -33,6 +33,7 @@ import type {
 	UpdateFieldRequest,
 	UpdateFormRequest,
 } from '../../../types/artisanpack-forms';
+import { slugify } from '../../../shared/slugify';
 import { useApi } from '../../hooks/useApi';
 import type { UseApiOptions } from '../../hooks/useApi';
 import { ApiValidationError } from '../../hooks/useApi';
@@ -102,6 +103,12 @@ export function FormBuilder( {
 	// Form settings state (local copy for auto-save)
 	const [formSettings, setFormSettings] = useState<UpdateFormRequest>( {} );
 
+	// Whether the user has taken manual control of the slug field. While
+	// false, the slug auto-follows the form name (slugified). Flips to true
+	// the first time the user edits the slug input directly. Local-only —
+	// not persisted to the server.
+	const [slugIsManual, setSlugIsManual] = useState( false );
+
 	// Ref for latest form data (used in auto-save callback)
 	const formSettingsRef = useRef( formSettings );
 	formSettingsRef.current = formSettings;
@@ -119,6 +126,7 @@ export function FormBuilder( {
 		setShowPreview( false );
 		setError( null );
 		setValidationErrors( {} );
+		setSlugIsManual( false );
 	}, [formSlug] );
 
 	// Auto-save
@@ -689,15 +697,31 @@ export function FormBuilder( {
 									id="form-name"
 									label="Form Name"
 									value={form.name}
-									onChange={( e ) => updateFormSetting( { name: e.target.value } )}
+									onChange={( e ) => {
+										const name = e.target.value;
+										const updates: UpdateFormRequest = { name };
+										if ( !slugIsManual ) {
+											updates.slug = slugify( name );
+										}
+										updateFormSetting( updates );
+									}}
 								/>
 
 								<Input
 									id="form-slug"
 									label="Slug"
 									value={form.slug ?? ''}
-									onChange={( e ) => updateFormSetting( { slug: e.target.value } )}
-									hint="URL-friendly identifier for the form."
+									onChange={( e ) => {
+										if ( !slugIsManual ) {
+											setSlugIsManual( true );
+										}
+										updateFormSetting( { slug: e.target.value } );
+									}}
+									hint={
+										slugIsManual
+											? 'URL-friendly identifier for the form.'
+											: 'Derived from the form name — edit to override.'
+									}
 								/>
 
 								<Textarea
