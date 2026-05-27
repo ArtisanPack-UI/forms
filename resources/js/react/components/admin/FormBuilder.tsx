@@ -167,14 +167,13 @@ export function FormBuilder( {
 			setFields( formData.fields ?? [] );
 			setSteps( formData.steps ?? [] );
 
-			// If the persisted slug differs from what we'd derive from the
-			// current name, the user (or a prior session) already customized
-			// it — start in manual mode so editing the name doesn't clobber
-			// that custom slug.
+			// Mirror manual-mode state to the persisted data: if the slug
+			// differs from what we'd derive from the current name, the user
+			// (or a prior session) already customized it — start in manual
+			// mode so editing the name doesn't clobber it. If they match,
+			// resume auto-follow.
 			const persistedSlug = formData.slug ?? '';
-			if ( persistedSlug !== slugify( formData.name ) ) {
-				setSlugIsManual( true );
-			}
+			setSlugIsManual( persistedSlug !== slugify( formData.name ) );
 
 			// Set active step to first step if multi-step
 			if ( formData.is_multi_step && formData.steps && formData.steps.length > 0 ) {
