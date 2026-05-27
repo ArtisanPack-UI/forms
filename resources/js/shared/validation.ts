@@ -10,7 +10,7 @@
  * @since      1.1.0
  */
 
-import type { FormField, ValidationRules } from '../../types/artisanpack-forms';
+import type { FormField, ValidationRules } from '../types/artisanpack-forms';
 
 /** Layout field types that do not collect data. */
 const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );

@@ -207,7 +207,7 @@ export function ConditionalLogicEditor( {
 						<Select
 							value={logic.action}
 							onChange={( e ) => handleActionChange( e.target.value )}
-							size="sm"
+							className="select-sm"
 							options={availableActions}
 							optionValue="value"
 							optionLabel="label"
@@ -216,7 +216,7 @@ export function ConditionalLogicEditor( {
 						<Select
 							value={logic.logic}
 							onChange={( e ) => handleLogicTypeChange( e.target.value )}
-							size="sm"
+							className="select-sm"
 							options={[
 								{ value: 'all', label: 'all' },
 								{ value: 'any', label: 'any' },
@@ -238,7 +238,7 @@ export function ConditionalLogicEditor( {
 									<Select
 										value={rule.field}
 										onChange={( e ) => handleUpdateRule( index, { field: e.target.value } )}
-										size="sm"
+										className="select-sm"
 										options={availableFields.map( ( f ) => ( {
 											value: f.uuid,
 											label: f.label || f.name,
@@ -253,7 +253,7 @@ export function ConditionalLogicEditor( {
 										onChange={( e ) => handleUpdateRule( index, {
 											operator: e.target.value as ConditionalOperator,
 										} )}
-										size="sm"
+										className="select-sm"
 										options={OPERATOR_DEFINITIONS.map( ( op ) => ( {
 											value: op.value,
 											label: op.label,
@@ -268,7 +268,7 @@ export function ConditionalLogicEditor( {
 											<Select
 												value={String( rule.value ?? '' )}
 												onChange={( e ) => handleUpdateRule( index, { value: e.target.value } )}
-												size="sm"
+												className="select-sm"
 												options={[
 													{ value: '', label: 'Select...' },
 													...fieldOptions.map( ( opt ) => ( {
@@ -285,7 +285,7 @@ export function ConditionalLogicEditor( {
 												value={String( rule.value ?? '' )}
 												onChange={( e ) => handleUpdateRule( index, { value: e.target.value } )}
 												placeholder="Value"
-												size="sm"
+												className="input-sm"
 											/>
 										)
 									)}

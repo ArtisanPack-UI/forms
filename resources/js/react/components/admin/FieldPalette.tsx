@@ -145,11 +145,10 @@ export function FieldPalette( {
 			{externalSearch === undefined && (
 				<Input
 					type="search"
-					size="sm"
 					placeholder="Search fields..."
 					value={internalSearch}
 					onChange={( e ) => setInternalSearch( e.target.value )}
-					className="w-full"
+					className="input-sm w-full"
 				/>
 			)}
 

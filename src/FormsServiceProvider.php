@@ -358,7 +358,7 @@ class FormsServiceProvider extends ServiceProvider
     {
         if ( $this->app->runningInConsole() ) {
             $this->publishes( [
-                __DIR__ . '/../resources/types/artisanpack-forms.d.ts' => resource_path( 'types/artisanpack-forms.d.ts' ),
+                __DIR__ . '/../resources/js/types/artisanpack-forms.d.ts' => resource_path( 'types/artisanpack-forms.d.ts' ),
             ], 'forms-types' );
         }
     }
@@ -377,9 +377,9 @@ class FormsServiceProvider extends ServiceProvider
     {
         if ( $this->app->runningInConsole() ) {
             $this->publishes( [
-                __DIR__ . '/../resources/js/react'                     => resource_path( 'js/vendor/artisanpack-forms/react' ),
-                __DIR__ . '/../resources/js/shared'                    => resource_path( 'js/vendor/artisanpack-forms/shared' ),
-                __DIR__ . '/../resources/types/artisanpack-forms.d.ts' => resource_path( 'js/vendor/artisanpack-forms/types/artisanpack-forms.d.ts' ),
+                __DIR__ . '/../resources/js/react'                        => resource_path( 'js/vendor/artisanpack-forms/react' ),
+                __DIR__ . '/../resources/js/shared'                       => resource_path( 'js/vendor/artisanpack-forms/shared' ),
+                __DIR__ . '/../resources/js/types/artisanpack-forms.d.ts' => resource_path( 'js/vendor/artisanpack-forms/types/artisanpack-forms.d.ts' ),
             ], 'forms-react' );
         }
     }
@@ -398,9 +398,9 @@ class FormsServiceProvider extends ServiceProvider
     {
         if ( $this->app->runningInConsole() ) {
             $this->publishes( [
-                __DIR__ . '/../resources/js/vue'                       => resource_path( 'js/vendor/artisanpack-forms/vue' ),
-                __DIR__ . '/../resources/js/shared'                    => resource_path( 'js/vendor/artisanpack-forms/shared' ),
-                __DIR__ . '/../resources/types/artisanpack-forms.d.ts' => resource_path( 'js/vendor/artisanpack-forms/types/artisanpack-forms.d.ts' ),
+                __DIR__ . '/../resources/js/vue'                          => resource_path( 'js/vendor/artisanpack-forms/vue' ),
+                __DIR__ . '/../resources/js/shared'                       => resource_path( 'js/vendor/artisanpack-forms/shared' ),
+                __DIR__ . '/../resources/js/types/artisanpack-forms.d.ts' => resource_path( 'js/vendor/artisanpack-forms/types/artisanpack-forms.d.ts' ),
             ], 'forms-vue' );
         }
     }

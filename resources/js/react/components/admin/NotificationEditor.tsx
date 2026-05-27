@@ -15,6 +15,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Checkbox, Input, Loading, Select, Textarea } from '@artisanpack-ui/react';
 
 import type {
+	ConditionalLogic,
 	Form,
 	FormField,
 	FormNotification,
@@ -587,7 +588,7 @@ export function NotificationEditor( {
 							<ConditionalLogicEditor
 								value={selectedNotification.conditional_logic}
 								onChange={( logic ) => updateNotification( selectedNotification.id, {
-									conditional_logic: logic,
+									conditional_logic: logic as ConditionalLogic | null,
 								} )}
 								fields={fields}
 								actions={[

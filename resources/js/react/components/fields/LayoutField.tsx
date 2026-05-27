@@ -9,16 +9,20 @@
  * @since      1.1.0
  */
 
+import type { JSX } from 'react';
 import type { FieldComponentProps } from './types';
+
+type HeadingTag = 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 
 /**
  * Renders a heading element (h1-h6).
  */
 export function HeadingField( { field }: FieldComponentProps ) {
-	const level = field.field_config && 'level' in field.field_config
+	const rawLevel = field.field_config && 'level' in field.field_config
 		? Number( field.field_config.level )
 		: 2;
-	const Tag = `h${Math.min( Math.max( level, 1 ), 6 )}` as keyof JSX.IntrinsicElements;
+	const level = Number.isFinite( rawLevel ) ? Math.min( Math.max( rawLevel, 1 ), 6 ) : 2;
+	const Tag = ( `h${level}` as HeadingTag ) satisfies keyof JSX.IntrinsicElements;
 
 	return (
 		<Tag className={`font-bold ${field.css_classes ?? ''}`}>
