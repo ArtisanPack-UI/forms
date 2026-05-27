@@ -167,6 +167,15 @@ export function FormBuilder( {
 			setFields( formData.fields ?? [] );
 			setSteps( formData.steps ?? [] );
 
+			// If the persisted slug differs from what we'd derive from the
+			// current name, the user (or a prior session) already customized
+			// it — start in manual mode so editing the name doesn't clobber
+			// that custom slug.
+			const persistedSlug = formData.slug ?? '';
+			if ( persistedSlug !== slugify( formData.name ) ) {
+				setSlugIsManual( true );
+			}
+
 			// Set active step to first step if multi-step
 			if ( formData.is_multi_step && formData.steps && formData.steps.length > 0 ) {
 				const sorted = [...formData.steps].sort( ( a, b ) => a.sort_order - b.sort_order );
