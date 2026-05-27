@@ -21,7 +21,7 @@ export function HeadingField( { field }: FieldComponentProps ) {
 	const rawLevel = field.field_config && 'level' in field.field_config
 		? Number( field.field_config.level )
 		: 2;
-	const level = Number.isFinite( rawLevel ) ? Math.min( Math.max( rawLevel, 1 ), 6 ) : 2;
+	const level = Number.isFinite( rawLevel ) ? Math.min( Math.max( Math.trunc( rawLevel ), 1 ), 6 ) : 2;
 	const Tag = ( `h${level}` as HeadingTag ) satisfies keyof JSX.IntrinsicElements;
 
 	return (
