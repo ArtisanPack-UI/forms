@@ -353,8 +353,7 @@ export function SubmissionsList( {
 			<div className="flex flex-wrap items-center gap-3">
 				<Input
 					type="search"
-					size="sm"
-					className="w-64"
+					className="input-sm w-64"
 					placeholder="Search submissions..."
 					value={search}
 					onChange={( e ) => {
@@ -384,7 +383,7 @@ export function SubmissionsList( {
 				</div>
 
 				<Select
-					size="sm"
+					className="select-sm"
 					value={dateRange}
 					onChange={( e ) => {
 						setDateRange( e.target.value as SubmissionDateRange );

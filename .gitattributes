@@ -19,7 +19,6 @@
 
 # Testing
 /tests                              export-ignore
-/database/factories                 export-ignore
 /database/migrations/testing        export-ignore
 /phpunit.xml                        export-ignore
 /phpcs.xml                          export-ignore

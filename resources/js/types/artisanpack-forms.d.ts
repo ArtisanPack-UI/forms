@@ -130,6 +130,7 @@ export interface ConditionalLogic {
 export interface FieldOption {
     label: string;
     value: string;
+    [key: string]: string;
 }
 
 /**
