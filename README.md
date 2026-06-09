@@ -150,7 +150,7 @@ php artisan forms:prune-submissions --days=90
 ## 📦 Requirements
 
 - PHP 8.2 or higher
-- Laravel 11 or 12
+- Laravel 11, 12, or 13
 - Livewire 3.6+
 
 ## 🤝 Dependencies

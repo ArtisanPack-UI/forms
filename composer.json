@@ -23,7 +23,7 @@
   ],
   "require": {
     "php": "^8.2",
-    "illuminate/support": ">=5.3",
+    "illuminate/support": "^11.0|^12.0|^13.0",
     "artisanpack-ui/livewire-ui-components": "^2.0",
     "artisanpack-ui/security": "^1.0|^2.0",
     "artisanpack-ui/accessibility": "^2.1",
