@@ -14,7 +14,7 @@ ArtisanPack UI Forms is a comprehensive form builder and management package for 
 
 ### What Laravel versions are supported?
 
-The package supports Laravel 11 and Laravel 12.
+The package supports Laravel 11, 12, and 13. Laravel 13 requires PHP 8.3 or higher per Laravel's own constraint.
 
 ### Does it work with Livewire 3?
 
