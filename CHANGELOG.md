@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-06-09
+
 ### Added
 
 - Laravel 13 support. Updated `illuminate/support` constraint to `^11.0|^12.0|^13.0`. Laravel 13 is only selectable on PHP 8.3+ per L13's own `php` constraint. ([#47](https://github.com/ArtisanPack-UI/forms/issues/47))
