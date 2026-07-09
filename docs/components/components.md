@@ -16,6 +16,12 @@ ArtisanPack UI Forms includes pre-built Livewire components for common form oper
 | `SubmissionsList` | Lists form submissions | Admin |
 | `SubmissionDetail` | Shows submission details | Admin |
 | `NotificationEditor` | Configures email notifications | Admin |
+| `ai-spam-check` (v1.2.0+) | AI trigger UI for `SpamDetectionAgent` | Admin |
+| `ai-submission-summary` (v1.2.0+) | AI trigger UI for `SubmissionSummaryAgent` | Admin |
+| `ai-response-classifier` (v1.2.0+) | AI trigger UI for `ResponseClassificationAgent` | Admin |
+| `ai-smart-field-validator` (v1.2.0+) | AI trigger UI for `SmartFieldValidationAgent` | Public / Admin |
+
+See the [AI Features](Ai-Ai) section for detailed usage of each `ai-*` component.
 
 ## Component Namespacing
 

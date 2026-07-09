@@ -51,7 +51,12 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        php: ['8.2', '8.3', '8.4']
+        # PHP 8.2 dropped from the CI matrix in v1.2.0 because the AI feature
+        # suite pulls in `artisanpack-ui/ai` (require-dev) which requires
+        # PHP ^8.3. The forms package's runtime constraint is still `^8.2`,
+        # so consumers on PHP 8.2 who do NOT install the AI package can still
+        # use the core forms functionality.
+        php: ['8.3', '8.4']
 
     steps:
       - uses: actions/checkout@v4

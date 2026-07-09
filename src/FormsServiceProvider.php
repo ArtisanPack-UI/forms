@@ -6,8 +6,6 @@
  * Bootstraps the Forms package by registering configuration, database migrations,
  * Livewire components, event listeners, and authorization policies.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @author     Jacob Martella <support@artisanpackui.dev>
  *
@@ -18,10 +16,19 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms;
 
+use ArtisanPackUI\Ai\Agents\ArtisanPackAgent;
+use ArtisanPackUI\Forms\Ai\Agents\ResponseClassificationAgent;
+use ArtisanPackUI\Forms\Ai\Agents\SmartFieldValidationAgent;
+use ArtisanPackUI\Forms\Ai\Agents\SpamDetectionAgent;
+use ArtisanPackUI\Forms\Ai\Agents\SubmissionSummaryAgent;
 use ArtisanPackUI\Forms\Console\Commands\InstallFrontend;
 use ArtisanPackUI\Forms\Console\Commands\PruneFormSubmissions;
 use ArtisanPackUI\Forms\Events\FormSubmitted;
 use ArtisanPackUI\Forms\Listeners\SendWebhookOnSubmission;
+use ArtisanPackUI\Forms\Livewire\Ai\ResponseClassifier;
+use ArtisanPackUI\Forms\Livewire\Ai\SmartFieldValidator;
+use ArtisanPackUI\Forms\Livewire\Ai\SpamCheck;
+use ArtisanPackUI\Forms\Livewire\Ai\SubmissionSummary;
 use ArtisanPackUI\Forms\Livewire\FormBuilder;
 use ArtisanPackUI\Forms\Livewire\FormRenderer;
 use ArtisanPackUI\Forms\Livewire\FormsList;
@@ -51,8 +58,6 @@ use RuntimeException;
  * the main artisanpack.php config file following the ArtisanPack UI
  * package conventions.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @since      1.0.0
  */
@@ -66,8 +71,6 @@ class FormsServiceProvider extends ServiceProvider
      * Also registers all service classes as singletons in the container.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     public function register(): void
     {
@@ -120,8 +123,6 @@ class FormsServiceProvider extends ServiceProvider
      * config array, loads database migrations, views, and routes.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     public function boot(): void
     {
@@ -144,14 +145,77 @@ class FormsServiceProvider extends ServiceProvider
     }
 
     /**
+     * Declare AI features owned by this package.
+     *
+     * Auto-discovered by artisanpack-ui/ai when the ai package is installed.
+     * Each entry maps a fully-qualified feature key to the agent class that
+     * fulfills it, along with a human-readable label and description for the
+     * admin UI.
+     *
+     * @since 1.2.0
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function aiFeatures(): array
+    {
+        // Skip when the AI package is absent so downstream consumers (auto-discovery,
+        // admin listings) never receive class-strings for agents whose ArtisanPackAgent
+        // base cannot be autoloaded. Uses static:: so subclasses can override the
+        // availability probe in tests.
+        if ( ! static::aiPackageAvailable() ) {
+            return [];
+        }
+
+        return [
+            'forms.spam_detection' => [
+                'agent'       => SpamDetectionAgent::class,
+                'package'     => 'artisanpack-ui/forms',
+                'label'       => __( 'Spam detection' ),
+                'description' => __( 'Semantic spam score, verdict, and reasons on top of existing honeypot and rate-limit checks.' ),
+            ],
+            'forms.submission_summary' => [
+                'agent'       => SubmissionSummaryAgent::class,
+                'package'     => 'artisanpack-ui/forms',
+                'label'       => __( 'Submission summary' ),
+                'description' => __( 'Periodic digest of submission themes, notable entries, and suggested follow-ups.' ),
+            ],
+            'forms.response_classification' => [
+                'agent'       => ResponseClassificationAgent::class,
+                'package'     => 'artisanpack-ui/forms',
+                'label'       => __( 'Response classification' ),
+                'description' => __( 'Auto-categorize incoming submissions against a caller-supplied set of labels.' ),
+            ],
+            'forms.smart_validation' => [
+                'agent'       => SmartFieldValidationAgent::class,
+                'package'     => 'artisanpack-ui/forms',
+                'label'       => __( 'Smart field validation' ),
+                'description' => __( 'Opt-in semantic per-field plausibility check that complements format validation.' ),
+            ],
+        ];
+    }
+
+    /**
+     * Whether the optional `artisanpack-ui/ai` package is installed.
+     *
+     * The AI Feature Suite (agents and Livewire trigger components) all
+     * extend or resolve from types owned by `artisanpack-ui/ai`. When that
+     * package is absent, this returns false and callers skip the AI-specific
+     * registration.
+     *
+     * @since 1.2.0
+     */
+    public static function aiPackageAvailable(): bool
+    {
+        return class_exists( ArtisanPackAgent::class );
+    }
+
+    /**
      * Merges the package's default configuration with the user's customizations.
      *
      * Ensures that the user's settings under the 'forms' key in `config/artisanpack.php`
      * take precedence over the package's default values.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     protected function mergeConfiguration(): void
     {
@@ -171,8 +235,6 @@ class FormsServiceProvider extends ServiceProvider
      * @since 1.0.0
      *
      * @throws RuntimeException If the user model class is invalid.
-     *
-     * @return void
      */
     protected function validateUserModelConfiguration(): void
     {
@@ -206,8 +268,6 @@ class FormsServiceProvider extends ServiceProvider
      * if it hasn't already been defined by the user.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     protected function registerFilesystemDisk(): void
     {
@@ -227,8 +287,6 @@ class FormsServiceProvider extends ServiceProvider
      * Commands are only registered when running in the console environment.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     protected function registerCommands(): void
     {
@@ -246,8 +304,6 @@ class FormsServiceProvider extends ServiceProvider
      * Sets up listeners for form-related events such as submission webhooks.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     protected function registerEventListeners(): void
     {
@@ -261,8 +317,6 @@ class FormsServiceProvider extends ServiceProvider
      * Laravel's Gate authorization system.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     protected function registerPolicies(): void
     {
@@ -277,8 +331,6 @@ class FormsServiceProvider extends ServiceProvider
      * the unified ArtisanPack UI configuration structure.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     protected function publishConfiguration(): void
     {
@@ -295,19 +347,31 @@ class FormsServiceProvider extends ServiceProvider
      * Components are only registered if Livewire is available in the application.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     protected function registerLivewireComponents(): void
     {
-        if ( class_exists( Livewire::class ) ) {
-            Livewire::component( 'forms-list', FormsList::class );
-            Livewire::component( 'form-builder', FormBuilder::class );
-            Livewire::component( 'form-renderer', FormRenderer::class );
-            Livewire::component( 'notification-editor', NotificationEditor::class );
-            Livewire::component( 'submissions-list', SubmissionsList::class );
-            Livewire::component( 'submission-detail', SubmissionDetail::class );
+        if ( ! class_exists( Livewire::class ) ) {
+            return;
         }
+
+        Livewire::component( 'forms-list', FormsList::class );
+        Livewire::component( 'form-builder', FormBuilder::class );
+        Livewire::component( 'form-renderer', FormRenderer::class );
+        Livewire::component( 'notification-editor', NotificationEditor::class );
+        Livewire::component( 'submissions-list', SubmissionsList::class );
+        Livewire::component( 'submission-detail', SubmissionDetail::class );
+
+        // AI trigger components are only registered when artisanpack-ui/ai is
+        // installed, since each component's mount path constructs an agent
+        // that extends the ai package's ArtisanPackAgent base class.
+        if ( ! self::aiPackageAvailable() ) {
+            return;
+        }
+
+        Livewire::component( 'forms::ai-spam-check', SpamCheck::class );
+        Livewire::component( 'forms::ai-submission-summary', SubmissionSummary::class );
+        Livewire::component( 'forms::ai-response-classifier', ResponseClassifier::class );
+        Livewire::component( 'forms::ai-smart-field-validator', SmartFieldValidator::class );
     }
 
     /**
@@ -316,8 +380,6 @@ class FormsServiceProvider extends ServiceProvider
      * Only loads routes when the API is enabled in configuration.
      *
      * @since 1.1.0
-     *
-     * @return void
      */
     protected function loadApiRoutes(): void
     {
@@ -332,8 +394,6 @@ class FormsServiceProvider extends ServiceProvider
      * Views are published to resources/views/vendor/forms for customization.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     protected function publishViews(): void
     {
@@ -351,8 +411,6 @@ class FormsServiceProvider extends ServiceProvider
      * React, Vue, or other TypeScript-based frontend frameworks.
      *
      * @since 1.1.0
-     *
-     * @return void
      */
     protected function publishTypeDefinitions(): void
     {
@@ -370,8 +428,6 @@ class FormsServiceProvider extends ServiceProvider
      * for use in React-based frontend applications.
      *
      * @since 1.1.0
-     *
-     * @return void
      */
     protected function publishReactComponents(): void
     {
@@ -391,8 +447,6 @@ class FormsServiceProvider extends ServiceProvider
      * for use in Vue-based frontend applications.
      *
      * @since 1.1.0
-     *
-     * @return void
      */
     protected function publishVueComponents(): void
     {
@@ -401,7 +455,7 @@ class FormsServiceProvider extends ServiceProvider
                 __DIR__ . '/../resources/js/vue'                          => resource_path( 'js/vendor/artisanpack-forms/vue' ),
                 __DIR__ . '/../resources/js/shared'                       => resource_path( 'js/vendor/artisanpack-forms/shared' ),
                 __DIR__ . '/../resources/js/types/artisanpack-forms.d.ts' => resource_path( 'js/vendor/artisanpack-forms/types/artisanpack-forms.d.ts' ),
-            ], 'forms-vue' );
+            ], 'forms-vue');
         }
     }
 }

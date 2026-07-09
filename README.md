@@ -178,6 +178,70 @@ Event::listen(FormSubmitted::class, function ($event) {
 });
 ```
 
+## 🤖 AI features
+
+The Forms package ships four opt-in AI agents that plug into the
+[artisanpack-ui/ai](https://github.com/ArtisanPack-UI/ai) feature registry.
+Install `artisanpack-ui/ai` (v1.0+) and configure credentials to enable them;
+each feature no-ops when its toggle is off, so upgrades are non-breaking.
+
+| Feature key                         | Agent                            | Default model      | What it does                                                                                     |
+|-------------------------------------|----------------------------------|--------------------|--------------------------------------------------------------------------------------------------|
+| `forms.spam_detection`              | `SpamDetectionAgent`             | `claude-haiku-4-5` | Score a single submission for spam. Returns `spam_score`, `verdict`, and `reasons`.              |
+| `forms.submission_summary`          | `SubmissionSummaryAgent`         | `claude-sonnet-4-6`| Periodic digest of submission themes, notable entries, and suggested follow-ups.                 |
+| `forms.response_classification`     | `ResponseClassificationAgent`    | `claude-haiku-4-5` | Categorize a submission against a caller-supplied set of labels; may propose a new one.           |
+| `forms.smart_validation`            | `SmartFieldValidationAgent`      | `claude-haiku-4-5` | Opt-in per-field semantic plausibility check that complements format validation.                  |
+
+Each agent is invoked the same way — construct it with `for()` and call `run()`:
+
+```php
+use ArtisanPackUI\Forms\Ai\Agents\SpamDetectionAgent;
+
+$result = SpamDetectionAgent::for([
+    'fields' => $submission->data_array,
+    'meta'   => [
+        'ip_country'          => $submission->ip_country,
+        'submission_speed_ms' => $submission->submission_speed_ms,
+    ],
+])->run();
+// [ 'spam_score' => int, 'verdict' => 'ham'|'suspicious'|'spam', 'reasons' => string[] ]
+```
+
+Each feature also ships a Livewire trigger component you can drop into the
+admin surface. Components no-op when the feature toggle is off:
+
+```blade
+<livewire:forms::ai-spam-check
+    :submission-id="$submission->id"
+    :fields="$submission->data_array"
+    :meta="[ 'ip_country' => $submission->ip_country ]"
+/>
+
+<livewire:forms::ai-submission-summary
+    form-name="Contact us"
+    window="weekly"
+    :submissions="$submissions"
+/>
+
+<livewire:forms::ai-response-classifier
+    :submission-id="$submission->id"
+    :fields="$submission->data_array"
+    :available-categories="[ 'support-request', 'sales-inquiry', 'feedback', 'bug-report' ]"
+/>
+
+<livewire:forms::ai-smart-field-validator
+    field-name="address"
+    field-label="Address"
+    field-kind="address"
+    :value="$address"
+    :context="[ 'city' => $city, 'state' => $state ]"
+/>
+```
+
+See the [AI RFC](https://github.com/ArtisanPack-UI/.github/discussions/8) for
+the shared registry, toggle, and credential story across ArtisanPack UI
+packages.
+
 ## 🔌 Extensibility
 
 Add custom field types using filter hooks:

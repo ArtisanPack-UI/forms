@@ -58,6 +58,15 @@ Welcome to the documentation for the ArtisanPack UI Forms package. This package 
   - [Customization](Advanced-Customization)
   - [Artisan Commands](Advanced-Artisan-Commands)
 
+- **AI Features** (v1.2.0+)
+  - [AI Features Overview](Ai-Ai)
+  - [Configuration](Ai-Configuration)
+  - [Feature Toggles](Ai-Feature-Toggles)
+  - [Spam Detection](Ai-Spam-Detection)
+  - [Submission Summary](Ai-Submission-Summary)
+  - [Response Classification](Ai-Response-Classification)
+  - [Smart Field Validation](Ai-Smart-Field-Validation)
+
 - **Help**
   - [FAQ](Faq)
   - [Troubleshooting](Troubleshooting)
@@ -71,6 +80,7 @@ Welcome to the documentation for the ArtisanPack UI Forms package. This package 
 - **File Uploads**: Secure file upload handling with validation and storage management
 - **Email Notifications**: Configurable admin notifications and autoresponders
 - **Spam Protection**: Built-in honeypot and reCAPTCHA support
+- **AI Features** (v1.2.0+): Opt-in semantic spam detection, per-form submission digests, auto-categorization, and semantic per-field validation via `artisanpack-ui/ai`
 - **Webhook Integrations**: Send form data to external services
 - **Submission Management**: View, export, and manage form submissions
 - **Accessibility**: WCAG-compliant form rendering

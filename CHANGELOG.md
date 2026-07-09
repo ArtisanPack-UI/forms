@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-08
+
+### Added
+
+- Four opt-in AI agents built on `artisanpack-ui/ai` (v1.0+): `SpamDetectionAgent` (`forms.spam_detection`), `SubmissionSummaryAgent` (`forms.submission_summary`), `ResponseClassificationAgent` (`forms.response_classification`), and `SmartFieldValidationAgent` (`forms.smart_validation`). Registered via `aiFeatures()` on `FormsServiceProvider` and shipped with matching Livewire trigger components (`forms::ai-spam-check`, `forms::ai-submission-summary`, `forms::ai-response-classifier`, `forms::ai-smart-field-validator`). Each agent no-ops when its feature toggle is off, so installs without the AI package are unaffected. ([#50](https://github.com/ArtisanPack-UI/forms/issues/50), [#51](https://github.com/ArtisanPack-UI/forms/issues/51), [#52](https://github.com/ArtisanPack-UI/forms/issues/52), [#53](https://github.com/ArtisanPack-UI/forms/issues/53))
+- `sample_count` field on the `SubmissionSummaryAgent` output so callers computing per-theme percentages against a truncated sample (submissions over `SUBMISSION_LIMIT = 200`) can render accurate ratios instead of extrapolating against `total_count`. The Livewire trigger component surfaces a "themes reflect the first N of M submissions" caption when truncation happened.
+- Shared `NormalizesLLMInput` trait for the four agents providing `safeJsonEncode()`, `escapeForPrompt()`, and `hashInputFingerprint()` helpers — bounds token spend by dropping `JSON_PRETTY_PRINT`, defuses admin-authored prompt-injection payloads in `form_name` / `field_label` / `field_kind` / `value`, and produces stable cache fingerprints over realistic non-scalar submission payloads (Carbon dates, nested arrays, objects).
+- New `docs/ai/` section with an overview page, per-agent references, a configuration guide, and a feature-toggle guide.
+
+### Changed
+
+- `FormsServiceProvider::aiFeatures()` now short-circuits to `[]` when `artisanpack-ui/ai` is not installed, so consumers on `--no-dev` builds never receive class-strings that would autoload a missing `ArtisanPackAgent` base.
+- All four AI Livewire components dispatch events using camelCase named parameters (e.g. `submissionId`, `spamScore`, `formName`, `totalCount`, `sampleCount`, `suggestedNew`, `fieldName`) so parent listeners with standard PHP camelCase parameter names hydrate correctly. The dispatched event names themselves are unchanged.
+- All four AI Livewire components' public array properties (`$fields`, `$meta`, `$submissions`, `$availableCategories`, `$value`, `$context`) are marked `#[Locked]` so client-side tampering cannot swap the payload mid-run. Livewire still serializes public properties into `wire:snapshot` for state restoration — multi-tenant admin usage must scope inputs to the current viewer, as documented on each component class.
+- `SpamDetectionAgent` synthesizes a fallback reason string when a non-ham verdict (`suspicious` or `spam`) has an empty `reasons` list, so the shipped Livewire view never contradicts a positive verdict with the "no reasons" fallback text.
+- `SubmissionSummaryAgent` throws `FeatureError` when the model returns an empty `headline` so the caller sees a retryable error rather than a broken empty-headline card.
+- `SubmissionSummaryAgent::normalizeThemes` uses an `is_numeric` guard and clamps `count` to `[0, sampleCount]` — non-numeric strings like `"approximately 12"` drop to `0` and hallucinated `999`s cap at the actual sample size.
+- `SmartFieldValidationAgent` normalizes the model's `plausible` output via a strict helper that treats the string `"false"`/`"0"`/`"no"`/`"off"` as `false`, so a tool bridge that coerces the JSON enum to a string cannot silently flip the verdict.
+- Every Livewire trigger component now calls `report($exception)` in its terminal `catch (Throwable)` arm before setting the localized error string, so production failures (provider 5xx, DNS blips, missing config) reach Sentry / Laravel logs instead of vanishing.
+- Every Livewire trigger component now renders a translated generic message from its `catch (FeatureError)` arm instead of surfacing the raw exception string (which leaked the internal feature key and bypassed i18n).
+- Dropped PHP 8.2 from the CI matrix because the AI feature suite's dev-time dependency (`artisanpack-ui/ai`) requires PHP 8.3+. The forms package's runtime constraint is still `"php": "^8.2"` — consumers on PHP 8.2 who do NOT install the AI package can continue using the core forms functionality unchanged.
+- Refreshed `guzzlehttp/guzzle` and `guzzlehttp/psr7` to patch three medium-severity advisories in test-only transitive dependencies (CVE-2026-55767, CVE-2026-55568, CVE-2026-55766).
+
+### Fixed
+
+- All four agents override `cacheFingerprint()` — the base `ArtisanPackAgent` default throws `InvalidArgumentException` for any array input containing a non-scalar value, which crashed cache-enabled runs on realistic submissions (Carbon timestamps, nested arrays, objects).
+- Every agent `buildMessage()` serialization routes through the shared `safeJsonEncode()` helper (`JSON_INVALID_UTF8_SUBSTITUTE`, never returns `false`), so a malformed UTF-8 byte in a single submission field cannot collapse the whole prompt to an empty string.
+- Defensive `is_array()` narrowing on Livewire property assignments (`$this->reasons`, `$this->themes`, `$this->notable`, `$this->suggestions`) — a malformed agent output can no longer TypeError on the next Livewire hydration.
+
 ## [1.1.3] - 2026-06-09
 
 ### Added

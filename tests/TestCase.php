@@ -4,7 +4,10 @@ declare( strict_types=1 );
 
 namespace Tests;
 
+use ArtisanPackUI\Ai\AiServiceProvider;
 use ArtisanPackUI\Forms\FormsServiceProvider;
+use Illuminate\Foundation\Application;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Blade;
 use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as BaseTestCase;
@@ -51,16 +54,22 @@ abstract class TestCase extends BaseTestCase
      *
      * @since 1.0.0
      *
-     * @param  \Illuminate\Foundation\Application  $app  The application instance.
+     * @param  Application  $app  The application instance.
      *
      * @return array<int, class-string> Array of service provider class names.
      */
     protected function getPackageProviders( $app ): array
     {
-        return [
-            LivewireServiceProvider::class,
-            FormsServiceProvider::class,
-        ];
+        $providers = [LivewireServiceProvider::class];
+
+        // AI provider is optional — only register when artisanpack-ui/ai is installed.
+        if ( class_exists( AiServiceProvider::class ) ) {
+            $providers[] = AiServiceProvider::class;
+        }
+
+        $providers[] = FormsServiceProvider::class;
+
+        return $providers;
     }
 
     /**
@@ -68,7 +77,7 @@ abstract class TestCase extends BaseTestCase
      *
      * @since 1.0.0
      *
-     * @param  \Illuminate\Foundation\Application  $app  The application instance.
+     * @param  Application  $app  The application instance.
      */
     protected function defineEnvironment( $app ): void
     {
@@ -106,7 +115,7 @@ abstract class TestCase extends BaseTestCase
      *
      * @since 1.0.0
      *
-     * @param  \Illuminate\Routing\Router  $router  The router instance.
+     * @param  Router  $router  The router instance.
      */
     protected function defineRoutes( $router ): void
     {
