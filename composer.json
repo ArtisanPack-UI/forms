@@ -33,6 +33,7 @@
   "require-dev": {
     "pestphp/pest": "^3.8",
     "pestphp/pest-plugin-laravel": "^3.2",
+    "artisanpack-ui/ai": "^1.0",
     "artisanpack-ui/code-style": "^1.1",
     "artisanpack-ui/code-style-pint": "^1.1",
     "laravel/pint": "^1.26",

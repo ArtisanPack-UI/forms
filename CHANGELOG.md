@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Four opt-in AI agents built on `artisanpack-ui/ai` (v1.0+): `SpamDetectionAgent` (`forms.spam_detection`), `SubmissionSummaryAgent` (`forms.submission_summary`), `ResponseClassificationAgent` (`forms.response_classification`), and `SmartFieldValidationAgent` (`forms.smart_validation`). Registered via `aiFeatures()` on `FormsServiceProvider` and shipped with matching Livewire trigger components (`forms::ai-spam-check`, `forms::ai-submission-summary`, `forms::ai-response-classifier`, `forms::ai-smart-field-validator`). Each agent no-ops when its feature toggle is off, so installs without the AI package are unaffected. ([#50](https://github.com/ArtisanPack-UI/forms/issues/50), [#51](https://github.com/ArtisanPack-UI/forms/issues/51), [#52](https://github.com/ArtisanPack-UI/forms/issues/52), [#53](https://github.com/ArtisanPack-UI/forms/issues/53))
+
 ## [1.1.3] - 2026-06-09
 
 ### Added
