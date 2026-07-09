@@ -17,6 +17,7 @@ use ArtisanPackUI\Ai\Agents\ArtisanPackAgent;
 use ArtisanPackUI\Ai\Contracts\AgentPrompter;
 use ArtisanPackUI\Ai\Credentials\Credentials;
 use ArtisanPackUI\Ai\Exceptions\FeatureError;
+use ArtisanPackUI\Forms\Ai\Concerns\NormalizesLLMInput;
 
 /**
  * Semantic spam scoring for a form submission.
@@ -49,6 +50,8 @@ use ArtisanPackUI\Ai\Exceptions\FeatureError;
  */
 class SpamDetectionAgent extends ArtisanPackAgent
 {
+    use NormalizesLLMInput;
+
     /**
      * Allowed verdict values, in order of severity.
      *
@@ -183,24 +186,34 @@ PROMPT;
         $parts = [
             [
                 'type' => 'text',
-                'text' => "Submitted fields (JSON):\n".json_encode(
-                    $normalized['fields'],
-                    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
-                ),
+                'text' => "Submitted fields (JSON):\n".$this->safeJsonEncode($normalized['fields']),
             ],
         ];
 
         if ($normalized['meta'] !== []) {
             $parts[] = [
                 'type' => 'text',
-                'text' => "Submission metadata:\n".json_encode(
-                    $normalized['meta'],
-                    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
-                ),
+                'text' => "Submission metadata:\n".$this->safeJsonEncode($normalized['meta']),
             ];
         }
 
         return $parts;
+    }
+
+    /**
+     * Deterministic cache fingerprint over the normalized input.
+     *
+     * The base ArtisanPackAgent default throws for any non-scalar array
+     * entry, which crashes cached runs on realistic submissions (Carbon
+     * timestamps, multi-select arrays, file metadata). This override
+     * fingerprints the normalized input as JSON, so cached inputs are stable
+     * across runs regardless of the raw value types.
+     *
+     * @since 1.2.0
+     */
+    protected function cacheFingerprint(): string
+    {
+        return $this->hashInputFingerprint($this->normalizeInput($this->input()));
     }
 
     /**
@@ -219,6 +232,15 @@ PROMPT;
 
         if (count($reasons) > 5) {
             $reasons = array_slice($reasons, 0, 5);
+        }
+
+        // A non-ham verdict without a single reason silently ships a bare
+        // "spam / 92" to the caller and leaves the admin UI to render the
+        // "no reasons" fallback text — which reads as "clearly legitimate"
+        // in the shipped view. Synthesize a fallback so the render matches
+        // the verdict.
+        if ($reasons === [] && $verdict !== 'ham') {
+            $reasons = ['elevated spam score without specific signals from the model'];
         }
 
         return [

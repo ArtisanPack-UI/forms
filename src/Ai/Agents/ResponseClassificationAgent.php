@@ -17,6 +17,7 @@ use ArtisanPackUI\Ai\Agents\ArtisanPackAgent;
 use ArtisanPackUI\Ai\Contracts\AgentPrompter;
 use ArtisanPackUI\Ai\Credentials\Credentials;
 use ArtisanPackUI\Ai\Exceptions\FeatureError;
+use ArtisanPackUI\Forms\Ai\Concerns\NormalizesLLMInput;
 
 /**
  * Auto-categorize an incoming form submission against a caller-supplied set
@@ -48,6 +49,8 @@ use ArtisanPackUI\Ai\Exceptions\FeatureError;
  */
 class ResponseClassificationAgent extends ArtisanPackAgent
 {
+    use NormalizesLLMInput;
+
     /**
      * Confidence threshold at which the model may suggest a new category.
      *
@@ -208,12 +211,24 @@ PROMPT;
             ],
             [
                 'type' => 'text',
-                'text' => "Submitted fields (JSON):\n".json_encode(
-                    $normalized['fields'],
-                    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
-                ),
+                'text' => "Submitted fields (JSON):\n".$this->safeJsonEncode($normalized['fields']),
             ],
         ];
+    }
+
+    /**
+     * Deterministic cache fingerprint over the normalized input.
+     *
+     * The base ArtisanPackAgent default throws for any non-scalar array
+     * entry, which crashes cached runs on realistic submissions (Carbon
+     * timestamps, multi-select arrays, file metadata). This override
+     * fingerprints the normalized input as JSON.
+     *
+     * @since 1.2.0
+     */
+    protected function cacheFingerprint(): string
+    {
+        return $this->hashInputFingerprint($this->normalizeInput($this->input()));
     }
 
     /**

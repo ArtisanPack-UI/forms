@@ -37,6 +37,22 @@ it('registers all four Forms AI features on the FormsServiceProvider', function 
     }
 });
 
+it('returns an empty aiFeatures list when the AI package is not available', function (): void {
+    // aiFeatures() gates on FormsServiceProvider::aiPackageAvailable(), which
+    // is a static class_exists() probe. Anonymize a subclass that overrides
+    // the probe to return false so we can exercise the guarded path without
+    // touching the container-wide class-loader state.
+    $provider = new class($this->app) extends FormsServiceProvider
+    {
+        public static function aiPackageAvailable(): bool
+        {
+            return false;
+        }
+    };
+
+    expect($provider->aiFeatures())->toBe([]);
+});
+
 it('refuses to run the spam agent when the feature toggle is off', function (): void {
     $registry = $this->app->make(FeatureRegistry::class);
     $registry->register(

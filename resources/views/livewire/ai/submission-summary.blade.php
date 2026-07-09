@@ -31,6 +31,11 @@
 				<p class="forms-ai-summary__headline">{{ $headline }}</p>
 				<p class="forms-ai-summary__total">
 					{{ __( ':count submissions', ['count' => $totalCount] ) }}
+					@if ( $sampleCount > 0 && $sampleCount < $totalCount )
+						<span class="forms-ai-summary__sample-note">
+							{{ __( '(themes reflect the first :sample of :total submissions)', ['sample' => $sampleCount, 'total' => $totalCount] ) }}
+						</span>
+					@endif
 				</p>
 
 				@if ( ! empty( $themes ) )

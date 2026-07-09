@@ -19,6 +19,7 @@ use ArtisanPackUI\Ai\Exceptions\FeatureError;
 use ArtisanPackUI\Ai\Exceptions\MissingCredentialsException;
 use ArtisanPackUI\Forms\Ai\Agents\SubmissionSummaryAgent;
 use Illuminate\View\View;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Throwable;
@@ -30,6 +31,12 @@ use Throwable;
  * submissions for a chosen window. Emits `forms-ai-summary-ready` when a run
  * completes so a parent can offer a "Send digest email" action against the
  * generated summary.
+ *
+ * The submissions payload is held as a `#[Locked]` public property so
+ * client-side tampering cannot swap it out mid-run. NOTE: Livewire still
+ * serializes public properties into the DOM `wire:snapshot` for state
+ * restoration, so callers rendering this component in a multi-tenant admin
+ * should pass ONLY submissions the current user is authorized to see.
  *
  *
  * @since      1.2.0
@@ -43,6 +50,7 @@ class SubmissionSummary extends Component
     /**
      * @var array<int, array<string, mixed>>
      */
+    #[Locked]
     public array $submissions = [];
 
     public bool $isLoading = false;
@@ -52,6 +60,8 @@ class SubmissionSummary extends Component
     public ?string $headline = null;
 
     public int $totalCount = 0;
+
+    public int $sampleCount = 0;
 
     /**
      * @var array<int, array{ title: string, count: int, examples: array<int, string> }>
@@ -117,6 +127,7 @@ class SubmissionSummary extends Component
         $this->error = null;
         $this->headline = null;
         $this->totalCount = 0;
+        $this->sampleCount = 0;
         $this->themes = [];
         $this->notable = [];
         $this->suggestions = [];
@@ -131,24 +142,27 @@ class SubmissionSummary extends Component
 
             $this->headline = (string) ($output['headline'] ?? '');
             $this->totalCount = (int) ($output['total_count'] ?? 0);
-            $this->themes = $output['themes'] ?? [];
-            $this->notable = $output['notable'] ?? [];
-            $this->suggestions = $output['suggestions'] ?? [];
+            $this->sampleCount = (int) ($output['sample_count'] ?? 0);
+            $this->themes = is_array($output['themes'] ?? null) ? $output['themes'] : [];
+            $this->notable = is_array($output['notable'] ?? null) ? $output['notable'] : [];
+            $this->suggestions = is_array($output['suggestions'] ?? null) ? $output['suggestions'] : [];
 
             $this->dispatch(
                 'forms-ai-summary-ready',
-                form_name: $this->formName,
+                formName: $this->formName,
                 window: $this->window,
                 headline: $this->headline,
-                total_count: $this->totalCount,
+                totalCount: $this->totalCount,
+                sampleCount: $this->sampleCount,
             );
         } catch (FeatureDisabledException $exception) {
             $this->error = __('This AI feature is disabled.');
         } catch (MissingCredentialsException $exception) {
             $this->error = __('AI credentials are not configured.');
         } catch (FeatureError $exception) {
-            $this->error = $exception->getMessage();
+            $this->error = __('The AI agent could not summarize the submissions.');
         } catch (Throwable $exception) {
+            report($exception);
             $this->error = __('The AI agent could not complete this request.');
         } finally {
             $this->isLoading = false;

@@ -19,6 +19,7 @@ use ArtisanPackUI\Ai\Exceptions\FeatureError;
 use ArtisanPackUI\Ai\Exceptions\MissingCredentialsException;
 use ArtisanPackUI\Forms\Ai\Agents\SmartFieldValidationAgent;
 use Illuminate\View\View;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Throwable;
@@ -27,8 +28,15 @@ use Throwable;
  * Trigger UI for the {@see SmartFieldValidationAgent}.
  *
  * Mounts alongside a single form field to run an on-demand semantic check.
- * Emits `forms-ai-field-verdict` (payload: `[ 'field_name' => string,
+ * Emits `forms-ai-field-verdict` (payload: `[ 'fieldName' => string,
  * 'plausible' => bool, 'confidence' => float, 'reason' => string ]`).
+ *
+ * The submitted value and sibling context are held as `#[Locked]` public
+ * properties so client-side tampering cannot swap them out mid-run. NOTE:
+ * Livewire still serializes public properties into the DOM
+ * `wire:snapshot` for state restoration, so callers rendering this
+ * component in a multi-tenant admin should pass ONLY data the current
+ * user is authorized to see.
  *
  *
  * @since      1.2.0
@@ -41,11 +49,13 @@ class SmartFieldValidator extends Component
 
     public string $fieldKind = '';
 
+    #[Locked]
     public string $value = '';
 
     /**
      * @var array<string, mixed>
      */
+    #[Locked]
     public array $context = [];
 
     public bool $isLoading = false;
@@ -145,7 +155,7 @@ class SmartFieldValidator extends Component
 
             $this->dispatch(
                 'forms-ai-field-verdict',
-                field_name: $this->fieldName,
+                fieldName: $this->fieldName,
                 plausible: $this->plausible,
                 confidence: $this->confidence,
                 reason: $this->reason,
@@ -155,8 +165,9 @@ class SmartFieldValidator extends Component
         } catch (MissingCredentialsException $exception) {
             $this->error = __('AI credentials are not configured.');
         } catch (FeatureError $exception) {
-            $this->error = $exception->getMessage();
+            $this->error = __('The AI agent could not validate the field.');
         } catch (Throwable $exception) {
+            report($exception);
             $this->error = __('The AI agent could not complete this request.');
         } finally {
             $this->isLoading = false;
