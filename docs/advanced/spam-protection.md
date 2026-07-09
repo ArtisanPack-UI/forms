@@ -8,10 +8,13 @@ Protect your forms from spam submissions and abuse.
 
 ## Built-in Protection
 
-The package includes two spam protection mechanisms:
+The package includes two static spam protection mechanisms plus one opt-in AI agent:
 
 1. **Honeypot Field** - A hidden field that bots typically fill out
 2. **Rate Limiting** - Limits submissions per IP address
+3. **AI Spam Detection** (v1.2.0+) - Semantic scoring layered on top of the static checks; see [Ai Spam Detection](Ai-Spam-Detection).
+
+The static checks and the AI check are complementary — the AI agent runs **after** the honeypot and rate-limit checks and never replaces them.
 
 ## Honeypot Protection
 
@@ -286,6 +289,7 @@ For testing or trusted environments:
 
 ## Next Steps
 
+- [Ai Spam Detection](Ai-Spam-Detection) - Semantic scoring on top of the static checks
 - [Webhooks](Webhooks) - External integrations
 - [Customization](Customization) - Extend protection
 - [Configuration](Installation-Configuration) - All settings
