@@ -145,4 +145,4 @@ it( 'dedupes available_categories in the prompter message', function (): void {
     $parts          = collect( $this->prompter->calls[0]['message'] )->pluck( 'text' );
     $categoriesLine = $parts->first( fn ( string $text ): bool => str_starts_with( $text, 'Available categories:' ) );
     expect( substr_count( (string) $categoriesLine, 'support-request' ) )->toBe( 1 );
-});
+} );

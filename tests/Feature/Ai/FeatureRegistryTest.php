@@ -114,4 +114,4 @@ it( 'refuses to run the smart validator agent when the feature toggle is off', f
         'value'       => 'Anthropic',
     ] )->run() )
         ->toThrow( FeatureDisabledException::class );
-});
+} );

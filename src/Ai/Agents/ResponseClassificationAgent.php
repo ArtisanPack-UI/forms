@@ -299,6 +299,6 @@ PROMPT;
         $lower  = strtolower( trim( $value ) );
         $dashed = preg_replace( '/[^a-z0-9]+/', '-', $lower );
 
-        return trim( (string) $dashed, '-');
+        return trim( (string) $dashed, '-' );
     }
 }

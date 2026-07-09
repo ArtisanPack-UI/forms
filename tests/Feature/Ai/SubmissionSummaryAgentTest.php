@@ -261,5 +261,5 @@ it( 'sanitizes user-controlled form_name before sending it into the prompt', fun
     // start on its own line — form_name still lives inside the "Form name:"
     // section, defusing the "Ignore prior instructions." directive.
     $formNameLine = $parts->first( fn ( string $text ): bool => str_starts_with( $text, 'Form name:' ) );
-    expect( $formNameLine)->not->toContain( "\n");
+    expect( $formNameLine )->not->toContain( "\n");
 });

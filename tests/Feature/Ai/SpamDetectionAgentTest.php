@@ -137,4 +137,4 @@ it( 'includes the submission metadata in the prompter message when supplied', fu
         ->toBeTrue();
     expect( $parts->contains( fn ( string $text ): bool => str_contains( $text, 'submission_speed_ms' ) ) )
         ->toBeTrue();
-});
+} );

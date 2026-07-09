@@ -181,4 +181,4 @@ it( 'includes the sibling context in the prompter message when supplied', functi
     $parts = collect( $this->prompter->calls[0]['message'] )->pluck( 'text' );
     expect( $parts->contains( fn ( string $text ): bool => str_contains( $text, 'Cupertino' ) ) )
         ->toBeTrue();
-});
+} );
