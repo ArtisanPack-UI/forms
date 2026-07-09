@@ -9,7 +9,7 @@
  * @since      1.2.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire\Ai;
 
@@ -80,11 +80,11 @@ class SpamCheck extends Component
      * @param  array<string, mixed>  $fields  Submitted field values.
      * @param  array<string, mixed>  $meta  Submission metadata (ip_country, etc.).
      */
-    public function mount(int $submissionId = 0, array $fields = [], array $meta = []): void
+    public function mount( int $submissionId = 0, array $fields = [], array $meta = [] ): void
     {
         $this->submissionId = $submissionId;
-        $this->fields = $fields;
-        $this->meta = $meta;
+        $this->fields       = $fields;
+        $this->meta         = $meta;
     }
 
     /**
@@ -94,18 +94,18 @@ class SpamCheck extends Component
      *
      * @param  array{ submission_id?: int, fields?: array<string, mixed>, meta?: array<string, mixed> }  $payload  New context.
      */
-    #[On('forms-ai-submission-updated')]
-    public function submissionUpdated(array $payload): void
+    #[On( 'forms-ai-submission-updated' )]
+    public function submissionUpdated( array $payload ): void
     {
-        if (isset($payload['submission_id'])) {
+        if ( isset( $payload['submission_id'] ) ) {
             $this->submissionId = (int) $payload['submission_id'];
         }
 
-        if (isset($payload['fields']) && is_array($payload['fields'])) {
+        if ( isset( $payload['fields'] ) && is_array( $payload['fields'] ) ) {
             $this->fields = $payload['fields'];
         }
 
-        if (isset($payload['meta']) && is_array($payload['meta'])) {
+        if ( isset( $payload['meta'] ) && is_array( $payload['meta'] ) ) {
             $this->meta = $payload['meta'];
         }
     }
@@ -117,21 +117,21 @@ class SpamCheck extends Component
      */
     public function check(): void
     {
-        $this->error = null;
+        $this->error     = null;
         $this->spamScore = null;
-        $this->verdict = null;
-        $this->reasons = [];
+        $this->verdict   = null;
+        $this->reasons   = [];
         $this->isLoading = true;
 
         try {
-            $output = SpamDetectionAgent::for([
+            $output = SpamDetectionAgent::for( [
                 'fields' => $this->fields,
-                'meta' => $this->meta,
-            ])->run();
+                'meta'   => $this->meta,
+            ] )->run();
 
-            $this->spamScore = (int) ($output['spam_score'] ?? 0);
-            $this->verdict = (string) ($output['verdict'] ?? 'ham');
-            $this->reasons = is_array($output['reasons'] ?? null) ? $output['reasons'] : [];
+            $this->spamScore = (int) ( $output['spam_score'] ?? 0 );
+            $this->verdict   = (string) ( $output['verdict'] ?? 'ham' );
+            $this->reasons   = is_array( $output['reasons'] ?? null ) ? $output['reasons'] : [];
 
             $this->dispatch(
                 'forms-ai-spam-verdict',
@@ -139,15 +139,15 @@ class SpamCheck extends Component
                 verdict: $this->verdict,
                 spamScore: $this->spamScore,
             );
-        } catch (FeatureDisabledException $exception) {
-            $this->error = __('This AI feature is disabled.');
-        } catch (MissingCredentialsException $exception) {
-            $this->error = __('AI credentials are not configured.');
-        } catch (FeatureError $exception) {
-            $this->error = __('The AI agent could not validate the submission.');
-        } catch (Throwable $exception) {
-            report($exception);
-            $this->error = __('The AI agent could not complete this request.');
+        } catch ( FeatureDisabledException $exception ) {
+            $this->error = __( 'This AI feature is disabled.' );
+        } catch ( MissingCredentialsException $exception ) {
+            $this->error = __( 'AI credentials are not configured.' );
+        } catch ( FeatureError $exception ) {
+            $this->error = __( 'The AI agent could not validate the submission.' );
+        } catch ( Throwable $exception ) {
+            report( $exception );
+            $this->error = __( 'The AI agent could not complete this request.' );
         } finally {
             $this->isLoading = false;
         }
@@ -160,14 +160,14 @@ class SpamCheck extends Component
      */
     public function getIsEnabledProperty(): bool
     {
-        $registry = app(FeatureRegistry::class);
-        $key = 'forms.spam_detection';
+        $registry = app( FeatureRegistry::class );
+        $key      = 'forms.spam_detection';
 
-        if ($registry->get($key) === null) {
+        if ( null === $registry->get( $key ) ) {
             return false;
         }
 
-        return $registry->isToggleOn($key);
+        return $registry->isToggleOn( $key );
     }
 
     /**
@@ -177,6 +177,6 @@ class SpamCheck extends Component
      */
     public function render(): View
     {
-        return view('forms::livewire.ai.spam-check');
+        return view( 'forms::livewire.ai.spam-check');
     }
 }

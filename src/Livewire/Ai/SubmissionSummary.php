@@ -9,7 +9,7 @@
  * @since      1.2.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire\Ai;
 
@@ -87,10 +87,10 @@ class SubmissionSummary extends Component
      * @param  string  $window  Reporting window (daily/weekly/range).
      * @param  array<int, array<string, mixed>>  $submissions  Normalized submissions.
      */
-    public function mount(string $formName = '', string $window = 'weekly', array $submissions = []): void
+    public function mount( string $formName = '', string $window = 'weekly', array $submissions = [] ): void
     {
-        $this->formName = $formName;
-        $this->window = $window === '' ? 'weekly' : $window;
+        $this->formName    = $formName;
+        $this->window      = '' === $window ? 'weekly' : $window;
         $this->submissions = $submissions;
     }
 
@@ -101,18 +101,18 @@ class SubmissionSummary extends Component
      *
      * @param  array{ form_name?: string, window?: string, submissions?: array<int, array<string, mixed>> }  $payload  New context.
      */
-    #[On('forms-ai-summary-context-updated')]
-    public function contextUpdated(array $payload): void
+    #[On( 'forms-ai-summary-context-updated' )]
+    public function contextUpdated( array $payload ): void
     {
-        if (isset($payload['form_name'])) {
+        if ( isset( $payload['form_name'] ) ) {
             $this->formName = (string) $payload['form_name'];
         }
 
-        if (isset($payload['window']) && trim((string) $payload['window']) !== '') {
+        if ( isset( $payload['window'] ) && '' !== trim( (string) $payload['window'] ) ) {
             $this->window = (string) $payload['window'];
         }
 
-        if (isset($payload['submissions']) && is_array($payload['submissions'])) {
+        if ( isset( $payload['submissions'] ) && is_array( $payload['submissions'] ) ) {
             $this->submissions = $payload['submissions'];
         }
     }
@@ -124,28 +124,28 @@ class SubmissionSummary extends Component
      */
     public function summarize(): void
     {
-        $this->error = null;
-        $this->headline = null;
-        $this->totalCount = 0;
+        $this->error       = null;
+        $this->headline    = null;
+        $this->totalCount  = 0;
         $this->sampleCount = 0;
-        $this->themes = [];
-        $this->notable = [];
+        $this->themes      = [];
+        $this->notable     = [];
         $this->suggestions = [];
-        $this->isLoading = true;
+        $this->isLoading   = true;
 
         try {
-            $output = SubmissionSummaryAgent::for([
-                'form_name' => $this->formName,
-                'window' => $this->window,
+            $output = SubmissionSummaryAgent::for( [
+                'form_name'   => $this->formName,
+                'window'      => $this->window,
                 'submissions' => $this->submissions,
-            ])->run();
+            ] )->run();
 
-            $this->headline = (string) ($output['headline'] ?? '');
-            $this->totalCount = (int) ($output['total_count'] ?? 0);
-            $this->sampleCount = (int) ($output['sample_count'] ?? 0);
-            $this->themes = is_array($output['themes'] ?? null) ? $output['themes'] : [];
-            $this->notable = is_array($output['notable'] ?? null) ? $output['notable'] : [];
-            $this->suggestions = is_array($output['suggestions'] ?? null) ? $output['suggestions'] : [];
+            $this->headline    = (string) ( $output['headline'] ?? '' );
+            $this->totalCount  = (int) ( $output['total_count'] ?? 0 );
+            $this->sampleCount = (int) ( $output['sample_count'] ?? 0 );
+            $this->themes      = is_array( $output['themes'] ?? null ) ? $output['themes'] : [];
+            $this->notable     = is_array( $output['notable'] ?? null ) ? $output['notable'] : [];
+            $this->suggestions = is_array( $output['suggestions'] ?? null ) ? $output['suggestions'] : [];
 
             $this->dispatch(
                 'forms-ai-summary-ready',
@@ -155,15 +155,15 @@ class SubmissionSummary extends Component
                 totalCount: $this->totalCount,
                 sampleCount: $this->sampleCount,
             );
-        } catch (FeatureDisabledException $exception) {
-            $this->error = __('This AI feature is disabled.');
-        } catch (MissingCredentialsException $exception) {
-            $this->error = __('AI credentials are not configured.');
-        } catch (FeatureError $exception) {
-            $this->error = __('The AI agent could not summarize the submissions.');
-        } catch (Throwable $exception) {
-            report($exception);
-            $this->error = __('The AI agent could not complete this request.');
+        } catch ( FeatureDisabledException $exception ) {
+            $this->error = __( 'This AI feature is disabled.' );
+        } catch ( MissingCredentialsException $exception ) {
+            $this->error = __( 'AI credentials are not configured.' );
+        } catch ( FeatureError $exception ) {
+            $this->error = __( 'The AI agent could not summarize the submissions.' );
+        } catch ( Throwable $exception ) {
+            report( $exception );
+            $this->error = __( 'The AI agent could not complete this request.' );
         } finally {
             $this->isLoading = false;
         }
@@ -176,14 +176,14 @@ class SubmissionSummary extends Component
      */
     public function getIsEnabledProperty(): bool
     {
-        $registry = app(FeatureRegistry::class);
-        $key = 'forms.submission_summary';
+        $registry = app( FeatureRegistry::class );
+        $key      = 'forms.submission_summary';
 
-        if ($registry->get($key) === null) {
+        if ( null === $registry->get( $key ) ) {
             return false;
         }
 
-        return $registry->isToggleOn($key);
+        return $registry->isToggleOn( $key );
     }
 
     /**
@@ -193,6 +193,6 @@ class SubmissionSummary extends Component
      */
     public function render(): View
     {
-        return view('forms::livewire.ai.submission-summary');
+        return view( 'forms::livewire.ai.submission-summary');
     }
 }

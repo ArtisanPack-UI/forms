@@ -9,7 +9,7 @@
  * @since      1.2.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Ai\Concerns;
 
@@ -33,14 +33,14 @@ trait NormalizesLLMInput
      *
      * @since 1.2.0
      */
-    protected function safeJsonEncode(mixed $value): string
+    protected function safeJsonEncode( mixed $value ): string
     {
         $encoded = json_encode(
             $value,
             JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE,
         );
 
-        return $encoded === false ? '' : $encoded;
+        return false === $encoded ? '' : $encoded;
     }
 
     /**
@@ -55,14 +55,14 @@ trait NormalizesLLMInput
      *
      * @since 1.2.0
      */
-    protected function escapeForPrompt(string $value, int $maxLength = 256): string
+    protected function escapeForPrompt( string $value, int $maxLength = 256 ): string
     {
-        $stripped = preg_replace('/[\p{Cc}\p{Cf}]+/u', ' ', $value) ?? $value;
-        $collapsed = preg_replace('/\s+/', ' ', $stripped) ?? $stripped;
-        $trimmed = trim($collapsed);
+        $stripped  = preg_replace( '/[\p{Cc}\p{Cf}]+/u', ' ', $value ) ?? $value;
+        $collapsed = preg_replace( '/\s+/', ' ', $stripped ) ?? $stripped;
+        $trimmed   = trim( $collapsed );
 
-        if (mb_strlen($trimmed) > $maxLength) {
-            $trimmed = mb_substr($trimmed, 0, $maxLength);
+        if ( mb_strlen( $trimmed ) > $maxLength ) {
+            $trimmed = mb_substr( $trimmed, 0, $maxLength );
         }
 
         return $trimmed;
@@ -81,8 +81,8 @@ trait NormalizesLLMInput
      *
      * @since 1.2.0
      */
-    protected function hashInputFingerprint(mixed $normalizedInput): string
+    protected function hashInputFingerprint( mixed $normalizedInput ): string
     {
-        return 'shape:'.hash('sha256', $this->safeJsonEncode($normalizedInput));
+        return 'shape:' . hash( 'sha256', $this->safeJsonEncode( $normalizedInput));
     }
 }

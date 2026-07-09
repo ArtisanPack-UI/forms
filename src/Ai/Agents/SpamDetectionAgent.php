@@ -9,7 +9,7 @@
  * @since      1.2.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Ai\Agents;
 
@@ -103,16 +103,16 @@ PROMPT;
     public function outputSchema(): array
     {
         return [
-            'type' => 'object',
+            'type'                 => 'object',
             'additionalProperties' => false,
-            'required' => ['spam_score', 'verdict', 'reasons'],
-            'properties' => [
+            'required'             => ['spam_score', 'verdict', 'reasons'],
+            'properties'           => [
                 'spam_score' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 100],
-                'verdict' => ['type' => 'string', 'enum' => self::VERDICTS],
-                'reasons' => [
-                    'type' => 'array',
+                'verdict'    => ['type' => 'string', 'enum' => self::VERDICTS],
+                'reasons'    => [
+                    'type'     => 'array',
                     'maxItems' => 5,
-                    'items' => ['type' => 'string'],
+                    'items'    => ['type' => 'string'],
                 ],
             ],
         ];
@@ -121,24 +121,24 @@ PROMPT;
     /**
      * {@inheritDoc}
      */
-    protected function execute(Credentials $credentials, string $model, string $instructions): array
+    protected function execute( Credentials $credentials, string $model, string $instructions ): array
     {
-        $normalized = $this->normalizeInput($this->input());
+        $normalized = $this->normalizeInput( $this->input() );
 
-        $prompter = app(AgentPrompter::class);
+        $prompter = app( AgentPrompter::class );
 
         $result = $prompter->prompt(
             credentials: $credentials,
             model: $model,
             instructions: $instructions,
-            message: $this->buildMessage($normalized),
+            message: $this->buildMessage( $normalized ),
             outputSchema: $this->outputSchema(),
         );
 
         return [
-            'output' => $this->validateOutput($result['output'] ?? []),
-            'input_tokens' => (int) ($result['input_tokens'] ?? 0),
-            'output_tokens' => (int) ($result['output_tokens'] ?? 0),
+            'output'        => $this->validateOutput( $result['output'] ?? [] ),
+            'input_tokens'  => (int) ( $result['input_tokens'] ?? 0 ),
+            'output_tokens' => (int) ( $result['output_tokens'] ?? 0 ),
         ];
     }
 
@@ -148,11 +148,12 @@ PROMPT;
      * @since 1.2.0
      *
      * @param  mixed  $input  Raw agent input.
+     *
      * @return array{ fields: array<string, mixed>, meta: array<string, mixed> }
      */
-    protected function normalizeInput(mixed $input): array
+    protected function normalizeInput( mixed $input ): array
     {
-        if (! is_array($input)) {
+        if ( ! is_array( $input ) ) {
             throw FeatureError::forFeature(
                 $this->featureKey,
                 'input must be an array with a `fields` key.',
@@ -161,15 +162,15 @@ PROMPT;
 
         $fields = $input['fields'] ?? null;
 
-        if (! is_array($fields) || $fields === []) {
-            throw FeatureError::forFeature($this->featureKey, '`fields` must be a non-empty array.');
+        if ( ! is_array( $fields ) || [] === $fields ) {
+            throw FeatureError::forFeature( $this->featureKey, '`fields` must be a non-empty array.' );
         }
 
-        $meta = is_array($input['meta'] ?? null) ? $input['meta'] : [];
+        $meta = is_array( $input['meta'] ?? null ) ? $input['meta'] : [];
 
         return [
             'fields' => $fields,
-            'meta' => $meta,
+            'meta'   => $meta,
         ];
     }
 
@@ -179,21 +180,22 @@ PROMPT;
      * @since 1.2.0
      *
      * @param  array{ fields: array<string, mixed>, meta: array<string, mixed> }  $normalized  Normalized input.
+     *
      * @return array<int, array<string, string>>
      */
-    protected function buildMessage(array $normalized): array
+    protected function buildMessage( array $normalized ): array
     {
         $parts = [
             [
                 'type' => 'text',
-                'text' => "Submitted fields (JSON):\n".$this->safeJsonEncode($normalized['fields']),
+                'text' => "Submitted fields (JSON):\n" . $this->safeJsonEncode( $normalized['fields'] ),
             ],
         ];
 
-        if ($normalized['meta'] !== []) {
+        if ( [] !== $normalized['meta'] ) {
             $parts[] = [
                 'type' => 'text',
-                'text' => "Submission metadata:\n".$this->safeJsonEncode($normalized['meta']),
+                'text' => "Submission metadata:\n" . $this->safeJsonEncode( $normalized['meta'] ),
             ];
         }
 
@@ -213,7 +215,7 @@ PROMPT;
      */
     protected function cacheFingerprint(): string
     {
-        return $this->hashInputFingerprint($this->normalizeInput($this->input()));
+        return $this->hashInputFingerprint( $this->normalizeInput( $this->input() ) );
     }
 
     /**
@@ -222,16 +224,17 @@ PROMPT;
      * @since 1.2.0
      *
      * @param  array<string, mixed>  $output  Decoded model output.
+     *
      * @return array{ spam_score: int, verdict: string, reasons: array<int, string> }
      */
-    protected function validateOutput(array $output): array
+    protected function validateOutput( array $output ): array
     {
-        $score = $this->clampScore($output['spam_score'] ?? 0);
-        $verdict = $this->normalizeVerdict($output['verdict'] ?? null, $score);
-        $reasons = $this->stringList($output['reasons'] ?? []);
+        $score   = $this->clampScore( $output['spam_score'] ?? 0 );
+        $verdict = $this->normalizeVerdict( $output['verdict'] ?? null, $score );
+        $reasons = $this->stringList( $output['reasons'] ?? [] );
 
-        if (count($reasons) > 5) {
-            $reasons = array_slice($reasons, 0, 5);
+        if ( count( $reasons ) > 5 ) {
+            $reasons = array_slice( $reasons, 0, 5 );
         }
 
         // A non-ham verdict without a single reason silently ships a bare
@@ -239,14 +242,14 @@ PROMPT;
         // "no reasons" fallback text — which reads as "clearly legitimate"
         // in the shipped view. Synthesize a fallback so the render matches
         // the verdict.
-        if ($reasons === [] && $verdict !== 'ham') {
+        if ( [] === $reasons && 'ham' !== $verdict ) {
             $reasons = ['elevated spam score without specific signals from the model'];
         }
 
         return [
             'spam_score' => $score,
-            'verdict' => $verdict,
-            'reasons' => $reasons,
+            'verdict'    => $verdict,
+            'reasons'    => $reasons,
         ];
     }
 
@@ -257,9 +260,9 @@ PROMPT;
      *
      * @param  mixed  $value  Raw score.
      */
-    protected function clampScore(mixed $value): int
+    protected function clampScore( mixed $value ): int
     {
-        return max(0, min(100, (int) $value));
+        return max( 0, min( 100, (int) $value ) );
     }
 
     /**
@@ -271,21 +274,21 @@ PROMPT;
      * @param  mixed  $raw  Raw verdict from the model.
      * @param  int  $score  Clamped spam score.
      */
-    protected function normalizeVerdict(mixed $raw, int $score): string
+    protected function normalizeVerdict( mixed $raw, int $score ): string
     {
-        if (is_string($raw)) {
-            $candidate = strtolower(trim($raw));
+        if ( is_string( $raw ) ) {
+            $candidate = strtolower( trim( $raw ) );
 
-            if (in_array($candidate, self::VERDICTS, true)) {
+            if ( in_array( $candidate, self::VERDICTS, true ) ) {
                 return $candidate;
             }
         }
 
-        if ($score >= 75) {
+        if ( $score >= 75 ) {
             return 'spam';
         }
 
-        if ($score >= 40) {
+        if ( $score >= 40 ) {
             return 'suspicious';
         }
 
@@ -298,24 +301,25 @@ PROMPT;
      * @since 1.2.0
      *
      * @param  mixed  $raw  Raw list from the model.
+     *
      * @return array<int, string>
      */
-    protected function stringList(mixed $raw): array
+    protected function stringList( mixed $raw ): array
     {
-        if (! is_array($raw)) {
+        if ( ! is_array( $raw ) ) {
             return [];
         }
 
         $out = [];
 
-        foreach ($raw as $value) {
-            if (! is_string($value)) {
+        foreach ( $raw as $value ) {
+            if ( ! is_string( $value ) ) {
                 continue;
             }
 
-            $trimmed = trim($value);
+            $trimmed = trim( $value);
 
-            if ($trimmed === '') {
+            if ( '' === $trimmed) {
                 continue;
             }
 

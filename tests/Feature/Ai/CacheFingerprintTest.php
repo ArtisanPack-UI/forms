@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 use ArtisanPackUI\Forms\Ai\Agents\ResponseClassificationAgent;
 use ArtisanPackUI\Forms\Ai\Agents\SmartFieldValidationAgent;
@@ -17,85 +17,85 @@ use Tests\Feature\Ai\AiAgentTestSetup;
  * cacheFingerprint() to fingerprint the normalized input as JSON so
  * cached runs survive real form-submission data.
  */
-beforeEach(function (): void {
-    $this->prompter = AiAgentTestSetup::bootstrap($this->app);
+beforeEach( function (): void {
+    $this->prompter = AiAgentTestSetup::bootstrap( $this->app );
 
     // Enable the AI cache to exercise the cache-key derivation path.
-    $this->app['config']->set('artisanpack.ai.cache.enabled', true);
-    $this->app['config']->set('cache.default', 'array');
-});
+    $this->app['config']->set( 'artisanpack.ai.cache.enabled', true );
+    $this->app['config']->set( 'cache.default', 'array' );
+} );
 
-it('runs SpamDetectionAgent with a Carbon-nested submission without cacheFingerprint throwing', function (): void {
-    $this->prompter->queue([
+it( 'runs SpamDetectionAgent with a Carbon-nested submission without cacheFingerprint throwing', function (): void {
+    $this->prompter->queue( [
         'spam_score' => 5,
-        'verdict' => 'ham',
-        'reasons' => [],
-    ]);
+        'verdict'    => 'ham',
+        'reasons'    => [],
+    ] );
 
-    $result = SpamDetectionAgent::for([
+    $result = SpamDetectionAgent::for( [
         'fields' => [
-            'message' => 'legitimate customer question',
-            'submitted_at' => Carbon::parse('2026-07-01T10:00:00Z'),
-            'attachments' => [['name' => 'a.pdf', 'size' => 100]],
+            'message'      => 'legitimate customer question',
+            'submitted_at' => Carbon::parse( '2026-07-01T10:00:00Z' ),
+            'attachments'  => [['name' => 'a.pdf', 'size' => 100]],
         ],
-    ])->run();
+    ] )->run();
 
-    expect($result['verdict'])->toBe('ham');
-});
+    expect( $result['verdict'] )->toBe( 'ham' );
+} );
 
-it('runs SubmissionSummaryAgent with nested submission arrays without cacheFingerprint throwing', function (): void {
-    $this->prompter->queue([
-        'headline' => 'summary headline',
+it( 'runs SubmissionSummaryAgent with nested submission arrays without cacheFingerprint throwing', function (): void {
+    $this->prompter->queue( [
+        'headline'    => 'summary headline',
         'total_count' => 1,
-        'themes' => [],
-        'notable' => [],
+        'themes'      => [],
+        'notable'     => [],
         'suggestions' => [],
-    ]);
+    ] );
 
-    $result = SubmissionSummaryAgent::for([
-        'form_name' => 'Contact us',
+    $result = SubmissionSummaryAgent::for( [
+        'form_name'   => 'Contact us',
         'submissions' => [
-            ['message' => 'hi', 'created_at' => Carbon::parse('2026-07-01T10:00:00Z')->toIso8601String()],
+            ['message' => 'hi', 'created_at' => Carbon::parse( '2026-07-01T10:00:00Z' )->toIso8601String()],
         ],
-    ])->run();
+    ] )->run();
 
-    expect($result['headline'])->toBe('summary headline');
-});
+    expect( $result['headline'] )->toBe( 'summary headline' );
+} );
 
-it('runs ResponseClassificationAgent with nested submission arrays without cacheFingerprint throwing', function (): void {
-    $this->prompter->queue([
-        'category' => 'support-request',
+it( 'runs ResponseClassificationAgent with nested submission arrays without cacheFingerprint throwing', function (): void {
+    $this->prompter->queue( [
+        'category'   => 'support-request',
         'confidence' => 0.9,
-    ]);
+    ] );
 
-    $result = ResponseClassificationAgent::for([
+    $result = ResponseClassificationAgent::for( [
         'fields' => [
-            'message' => 'my login is broken',
+            'message'     => 'my login is broken',
             'attachments' => [['name' => 'screenshot.png']],
         ],
         'available_categories' => ['support-request', 'sales-inquiry'],
-    ])->run();
+    ] )->run();
 
-    expect($result['category'])->toBe('support-request');
-});
+    expect( $result['category'] )->toBe( 'support-request' );
+} );
 
-it('runs SmartFieldValidationAgent with a nested-context submission without cacheFingerprint throwing', function (): void {
-    $this->prompter->queue([
-        'plausible' => true,
+it( 'runs SmartFieldValidationAgent with a nested-context submission without cacheFingerprint throwing', function (): void {
+    $this->prompter->queue( [
+        'plausible'  => true,
         'confidence' => 0.9,
-        'reason' => 'looks fine',
-    ]);
+        'reason'     => 'looks fine',
+    ] );
 
-    $result = SmartFieldValidationAgent::for([
+    $result = SmartFieldValidationAgent::for( [
         'field_label' => 'Address',
-        'field_kind' => 'address',
-        'value' => '1 Infinite Loop',
-        'context' => [
-            'city' => 'Cupertino',
-            'state' => 'CA',
+        'field_kind'  => 'address',
+        'value'       => '1 Infinite Loop',
+        'context'     => [
+            'city'     => 'Cupertino',
+            'state'    => 'CA',
             'geocoded' => ['lat' => 37.331, 'lng' => -122.030],
         ],
-    ])->run();
+    ] )->run();
 
-    expect($result['plausible'])->toBeTrue();
+    expect( $result['plausible'])->toBeTrue();
 });

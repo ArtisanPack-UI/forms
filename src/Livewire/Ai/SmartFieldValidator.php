@@ -9,7 +9,7 @@
  * @since      1.2.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire\Ai;
 
@@ -88,11 +88,11 @@ class SmartFieldValidator extends Component
         string $value = '',
         array $context = [],
     ): void {
-        $this->fieldName = $fieldName;
+        $this->fieldName  = $fieldName;
         $this->fieldLabel = $fieldLabel;
-        $this->fieldKind = $fieldKind;
-        $this->value = $value;
-        $this->context = $context;
+        $this->fieldKind  = $fieldKind;
+        $this->value      = $value;
+        $this->context    = $context;
     }
 
     /**
@@ -102,26 +102,26 @@ class SmartFieldValidator extends Component
      *
      * @param  array{ field_name?: string, field_label?: string, field_kind?: string, value?: string, context?: array<string, mixed> }  $payload  New context.
      */
-    #[On('forms-ai-field-context-updated')]
-    public function contextUpdated(array $payload): void
+    #[On( 'forms-ai-field-context-updated' )]
+    public function contextUpdated( array $payload ): void
     {
-        if (isset($payload['field_name'])) {
+        if ( isset( $payload['field_name'] ) ) {
             $this->fieldName = (string) $payload['field_name'];
         }
 
-        if (isset($payload['field_label'])) {
+        if ( isset( $payload['field_label'] ) ) {
             $this->fieldLabel = (string) $payload['field_label'];
         }
 
-        if (isset($payload['field_kind'])) {
+        if ( isset( $payload['field_kind'] ) ) {
             $this->fieldKind = (string) $payload['field_kind'];
         }
 
-        if (isset($payload['value'])) {
+        if ( isset( $payload['value'] ) ) {
             $this->value = (string) $payload['value'];
         }
 
-        if (isset($payload['context']) && is_array($payload['context'])) {
+        if ( isset( $payload['context'] ) && is_array( $payload['context'] ) ) {
             $this->context = $payload['context'];
         }
     }
@@ -133,25 +133,25 @@ class SmartFieldValidator extends Component
      */
     public function validateField(): void
     {
-        $this->error = null;
-        $this->plausible = null;
+        $this->error      = null;
+        $this->plausible  = null;
         $this->confidence = null;
-        $this->reason = null;
+        $this->reason     = null;
         $this->suggestion = null;
-        $this->isLoading = true;
+        $this->isLoading  = true;
 
         try {
-            $output = SmartFieldValidationAgent::for([
+            $output = SmartFieldValidationAgent::for( [
                 'field_label' => $this->fieldLabel,
-                'field_kind' => $this->fieldKind,
-                'value' => $this->value,
-                'context' => $this->context === [] ? null : $this->context,
-            ])->run();
+                'field_kind'  => $this->fieldKind,
+                'value'       => $this->value,
+                'context'     => [] === $this->context ? null : $this->context,
+            ] )->run();
 
-            $this->plausible = (bool) ($output['plausible'] ?? true);
-            $this->confidence = (float) ($output['confidence'] ?? 0);
-            $this->reason = (string) ($output['reason'] ?? '');
-            $this->suggestion = isset($output['suggestion']) ? (string) $output['suggestion'] : null;
+            $this->plausible  = (bool) ( $output['plausible'] ?? true );
+            $this->confidence = (float) ( $output['confidence'] ?? 0 );
+            $this->reason     = (string) ( $output['reason'] ?? '' );
+            $this->suggestion = isset( $output['suggestion'] ) ? (string) $output['suggestion'] : null;
 
             $this->dispatch(
                 'forms-ai-field-verdict',
@@ -160,15 +160,15 @@ class SmartFieldValidator extends Component
                 confidence: $this->confidence,
                 reason: $this->reason,
             );
-        } catch (FeatureDisabledException $exception) {
-            $this->error = __('This AI feature is disabled.');
-        } catch (MissingCredentialsException $exception) {
-            $this->error = __('AI credentials are not configured.');
-        } catch (FeatureError $exception) {
-            $this->error = __('The AI agent could not validate the field.');
-        } catch (Throwable $exception) {
-            report($exception);
-            $this->error = __('The AI agent could not complete this request.');
+        } catch ( FeatureDisabledException $exception ) {
+            $this->error = __( 'This AI feature is disabled.' );
+        } catch ( MissingCredentialsException $exception ) {
+            $this->error = __( 'AI credentials are not configured.' );
+        } catch ( FeatureError $exception ) {
+            $this->error = __( 'The AI agent could not validate the field.' );
+        } catch ( Throwable $exception ) {
+            report( $exception );
+            $this->error = __( 'The AI agent could not complete this request.' );
         } finally {
             $this->isLoading = false;
         }
@@ -181,14 +181,14 @@ class SmartFieldValidator extends Component
      */
     public function getIsEnabledProperty(): bool
     {
-        $registry = app(FeatureRegistry::class);
-        $key = 'forms.smart_validation';
+        $registry = app( FeatureRegistry::class );
+        $key      = 'forms.smart_validation';
 
-        if ($registry->get($key) === null) {
+        if ( null === $registry->get( $key ) ) {
             return false;
         }
 
-        return $registry->isToggleOn($key);
+        return $registry->isToggleOn( $key );
     }
 
     /**
@@ -198,6 +198,6 @@ class SmartFieldValidator extends Component
      */
     public function render(): View
     {
-        return view('forms::livewire.ai.smart-field-validator');
+        return view( 'forms::livewire.ai.smart-field-validator');
     }
 }

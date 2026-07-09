@@ -9,7 +9,7 @@
  * @since      1.2.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire\Ai;
 
@@ -76,10 +76,10 @@ class ResponseClassifier extends Component
      * @param  array<string, mixed>  $fields  Submitted field values.
      * @param  array<int, string>  $availableCategories  Category labels to choose from.
      */
-    public function mount(int $submissionId = 0, array $fields = [], array $availableCategories = []): void
+    public function mount( int $submissionId = 0, array $fields = [], array $availableCategories = [] ): void
     {
-        $this->submissionId = $submissionId;
-        $this->fields = $fields;
+        $this->submissionId        = $submissionId;
+        $this->fields              = $fields;
         $this->availableCategories = $availableCategories;
     }
 
@@ -90,18 +90,18 @@ class ResponseClassifier extends Component
      *
      * @param  array{ submission_id?: int, fields?: array<string, mixed>, available_categories?: array<int, string> }  $payload  New context.
      */
-    #[On('forms-ai-classifier-context-updated')]
-    public function contextUpdated(array $payload): void
+    #[On( 'forms-ai-classifier-context-updated' )]
+    public function contextUpdated( array $payload ): void
     {
-        if (isset($payload['submission_id'])) {
+        if ( isset( $payload['submission_id'] ) ) {
             $this->submissionId = (int) $payload['submission_id'];
         }
 
-        if (isset($payload['fields']) && is_array($payload['fields'])) {
+        if ( isset( $payload['fields'] ) && is_array( $payload['fields'] ) ) {
             $this->fields = $payload['fields'];
         }
 
-        if (isset($payload['available_categories']) && is_array($payload['available_categories'])) {
+        if ( isset( $payload['available_categories'] ) && is_array( $payload['available_categories'] ) ) {
             $this->availableCategories = $payload['available_categories'];
         }
     }
@@ -113,30 +113,30 @@ class ResponseClassifier extends Component
      */
     public function classify(): void
     {
-        $this->error = null;
-        $this->category = null;
-        $this->confidence = null;
+        $this->error        = null;
+        $this->category     = null;
+        $this->confidence   = null;
         $this->suggestedNew = null;
-        $this->isLoading = true;
+        $this->isLoading    = true;
 
         try {
-            $output = ResponseClassificationAgent::for([
-                'fields' => $this->fields,
+            $output = ResponseClassificationAgent::for( [
+                'fields'               => $this->fields,
                 'available_categories' => $this->availableCategories,
-            ])->run();
+            ] )->run();
 
-            $this->category = (string) ($output['category'] ?? '');
-            $this->confidence = (float) ($output['confidence'] ?? 0);
-            $this->suggestedNew = isset($output['suggested_new']) ? (string) $output['suggested_new'] : null;
-        } catch (FeatureDisabledException $exception) {
-            $this->error = __('This AI feature is disabled.');
-        } catch (MissingCredentialsException $exception) {
-            $this->error = __('AI credentials are not configured.');
-        } catch (FeatureError $exception) {
-            $this->error = __('The AI agent could not classify the submission.');
-        } catch (Throwable $exception) {
-            report($exception);
-            $this->error = __('The AI agent could not complete this request.');
+            $this->category     = (string) ( $output['category'] ?? '' );
+            $this->confidence   = (float) ( $output['confidence'] ?? 0 );
+            $this->suggestedNew = isset( $output['suggested_new'] ) ? (string) $output['suggested_new'] : null;
+        } catch ( FeatureDisabledException $exception ) {
+            $this->error = __( 'This AI feature is disabled.' );
+        } catch ( MissingCredentialsException $exception ) {
+            $this->error = __( 'AI credentials are not configured.' );
+        } catch ( FeatureError $exception ) {
+            $this->error = __( 'The AI agent could not classify the submission.' );
+        } catch ( Throwable $exception ) {
+            report( $exception );
+            $this->error = __( 'The AI agent could not complete this request.' );
         } finally {
             $this->isLoading = false;
         }
@@ -149,7 +149,7 @@ class ResponseClassifier extends Component
      */
     public function accept(): void
     {
-        if ($this->category === null) {
+        if ( null === $this->category ) {
             return;
         }
 
@@ -169,14 +169,14 @@ class ResponseClassifier extends Component
      */
     public function getIsEnabledProperty(): bool
     {
-        $registry = app(FeatureRegistry::class);
-        $key = 'forms.response_classification';
+        $registry = app( FeatureRegistry::class );
+        $key      = 'forms.response_classification';
 
-        if ($registry->get($key) === null) {
+        if ( null === $registry->get( $key ) ) {
             return false;
         }
 
-        return $registry->isToggleOn($key);
+        return $registry->isToggleOn( $key );
     }
 
     /**
@@ -186,6 +186,6 @@ class ResponseClassifier extends Component
      */
     public function render(): View
     {
-        return view('forms::livewire.ai.response-classifier');
+        return view( 'forms::livewire.ai.response-classifier');
     }
 }

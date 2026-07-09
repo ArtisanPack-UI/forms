@@ -19,6 +19,7 @@ Each agent no-ops when its feature toggle is off, so installs without the AI pac
 
 ## Requirements
 
+- **PHP 8.3+** (the AI features require `artisanpack-ui/ai` which requires PHP 8.3+ — the forms package's own runtime is still PHP 8.2+, so consumers on PHP 8.2 who don't want AI can continue using the core forms functionality)
 - `artisanpack-ui/forms` v1.2.0+
 - `artisanpack-ui/ai` v1.0+ installed and configured with a provider (Anthropic, Ollama, etc.)
 - A configured credentials store (env, admin settings, or per-feature override)

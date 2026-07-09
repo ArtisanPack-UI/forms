@@ -9,7 +9,7 @@
  * @since      1.2.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Ai\Agents;
 
@@ -115,39 +115,39 @@ PROMPT;
     public function outputSchema(): array
     {
         return [
-            'type' => 'object',
+            'type'                 => 'object',
             'additionalProperties' => false,
-            'required' => ['headline', 'total_count', 'themes', 'notable', 'suggestions'],
-            'properties' => [
-                'headline' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 140],
+            'required'             => ['headline', 'total_count', 'themes', 'notable', 'suggestions'],
+            'properties'           => [
+                'headline'    => ['type' => 'string', 'minLength' => 1, 'maxLength' => 140],
                 'total_count' => ['type' => 'integer', 'minimum' => 0],
-                'themes' => [
-                    'type' => 'array',
+                'themes'      => [
+                    'type'     => 'array',
                     'maxItems' => 6,
-                    'items' => [
-                        'type' => 'object',
+                    'items'    => [
+                        'type'                 => 'object',
                         'additionalProperties' => false,
-                        'required' => ['title', 'count', 'examples'],
-                        'properties' => [
-                            'title' => ['type' => 'string'],
-                            'count' => ['type' => 'integer', 'minimum' => 0],
+                        'required'             => ['title', 'count', 'examples'],
+                        'properties'           => [
+                            'title'    => ['type' => 'string'],
+                            'count'    => ['type' => 'integer', 'minimum' => 0],
                             'examples' => [
-                                'type' => 'array',
+                                'type'     => 'array',
                                 'maxItems' => 3,
-                                'items' => ['type' => 'string'],
+                                'items'    => ['type' => 'string'],
                             ],
                         ],
                     ],
                 ],
                 'notable' => [
-                    'type' => 'array',
+                    'type'     => 'array',
                     'maxItems' => 5,
-                    'items' => ['type' => 'string'],
+                    'items'    => ['type' => 'string'],
                 ],
                 'suggestions' => [
-                    'type' => 'array',
+                    'type'     => 'array',
                     'maxItems' => 3,
-                    'items' => ['type' => 'string'],
+                    'items'    => ['type' => 'string'],
                 ],
             ],
         ];
@@ -156,18 +156,18 @@ PROMPT;
     /**
      * {@inheritDoc}
      */
-    protected function execute(Credentials $credentials, string $model, string $instructions): array
+    protected function execute( Credentials $credentials, string $model, string $instructions ): array
     {
-        $normalized = $this->normalizeInput($this->input());
-        $sampleCount = count($normalized['submissions']);
+        $normalized  = $this->normalizeInput( $this->input() );
+        $sampleCount = count( $normalized['submissions'] );
 
-        $prompter = app(AgentPrompter::class);
+        $prompter = app( AgentPrompter::class );
 
         $result = $prompter->prompt(
             credentials: $credentials,
             model: $model,
             instructions: $instructions,
-            message: $this->buildMessage($normalized),
+            message: $this->buildMessage( $normalized ),
             outputSchema: $this->outputSchema(),
         );
 
@@ -177,8 +177,8 @@ PROMPT;
                 $normalized['total_count'],
                 $sampleCount,
             ),
-            'input_tokens' => (int) ($result['input_tokens'] ?? 0),
-            'output_tokens' => (int) ($result['output_tokens'] ?? 0),
+            'input_tokens'  => (int) ( $result['input_tokens'] ?? 0 ),
+            'output_tokens' => (int) ( $result['output_tokens'] ?? 0 ),
         ];
     }
 
@@ -194,7 +194,7 @@ PROMPT;
      */
     protected function cacheFingerprint(): string
     {
-        return $this->hashInputFingerprint($this->normalizeInput($this->input()));
+        return $this->hashInputFingerprint( $this->normalizeInput( $this->input() ) );
     }
 
     /**
@@ -203,45 +203,46 @@ PROMPT;
      * @since 1.2.0
      *
      * @param  mixed  $input  Raw agent input.
+     *
      * @return array{ form_name: string, window: string, submissions: array<int, array<string, mixed>>, total_count: int }
      */
-    protected function normalizeInput(mixed $input): array
+    protected function normalizeInput( mixed $input ): array
     {
-        if (! is_array($input)) {
+        if ( ! is_array( $input ) ) {
             throw FeatureError::forFeature(
                 $this->featureKey,
                 'input must be an array with `form_name` and `submissions` keys.',
             );
         }
 
-        $formName = isset($input['form_name']) && is_string($input['form_name'])
-            ? trim($input['form_name'])
+        $formName = isset( $input['form_name'] ) && is_string( $input['form_name'] )
+            ? trim( $input['form_name'] )
             : '';
 
-        if ($formName === '') {
-            throw FeatureError::forFeature($this->featureKey, '`form_name` must be a non-empty string.');
+        if ( '' === $formName ) {
+            throw FeatureError::forFeature( $this->featureKey, '`form_name` must be a non-empty string.' );
         }
 
         $submissions = $input['submissions'] ?? null;
 
-        if (! is_array($submissions)) {
-            throw FeatureError::forFeature($this->featureKey, '`submissions` must be an array.');
+        if ( ! is_array( $submissions ) ) {
+            throw FeatureError::forFeature( $this->featureKey, '`submissions` must be an array.' );
         }
 
-        $window = isset($input['window']) && is_string($input['window'])
-            ? trim($input['window'])
+        $window = isset( $input['window'] ) && is_string( $input['window'] )
+            ? trim( $input['window'] )
             : 'weekly';
 
-        $total = count($submissions);
+        $total = count( $submissions );
 
-        if ($total > self::SUBMISSION_LIMIT) {
-            $submissions = array_slice($submissions, 0, self::SUBMISSION_LIMIT);
+        if ( $total > self::SUBMISSION_LIMIT ) {
+            $submissions = array_slice( $submissions, 0, self::SUBMISSION_LIMIT );
         }
 
         return [
-            'form_name' => $formName,
-            'window' => $window === '' ? 'weekly' : $window,
-            'submissions' => array_values($submissions),
+            'form_name'   => $formName,
+            'window'      => '' === $window ? 'weekly' : $window,
+            'submissions' => array_values( $submissions ),
             'total_count' => $total,
         ];
     }
@@ -252,36 +253,37 @@ PROMPT;
      * @since 1.2.0
      *
      * @param  array{ form_name: string, window: string, submissions: array<int, array<string, mixed>>, total_count: int }  $normalized  Normalized input.
+     *
      * @return array<int, array<string, string>>
      */
-    protected function buildMessage(array $normalized): array
+    protected function buildMessage( array $normalized ): array
     {
         // Escape values that end up in the prompt as free-form strings — an
         // admin-controlled form name or window label with a "Ignore prior
         // instructions." payload can otherwise jailbreak the digest.
-        $safeFormName = $this->escapeForPrompt($normalized['form_name'], 128);
-        $safeWindow = $this->escapeForPrompt($normalized['window'], 64);
+        $safeFormName = $this->escapeForPrompt( $normalized['form_name'], 128 );
+        $safeWindow   = $this->escapeForPrompt( $normalized['window'], 64 );
 
         $parts = [
-            ['type' => 'text', 'text' => sprintf('Form name: %s', $safeFormName)],
-            ['type' => 'text', 'text' => sprintf('Reporting window: %s', $safeWindow)],
-            ['type' => 'text', 'text' => sprintf('Total submissions in window: %d', $normalized['total_count'])],
+            ['type' => 'text', 'text' => sprintf( 'Form name: %s', $safeFormName )],
+            ['type' => 'text', 'text' => sprintf( 'Reporting window: %s', $safeWindow )],
+            ['type' => 'text', 'text' => sprintf( 'Total submissions in window: %d', $normalized['total_count'] )],
         ];
 
-        if ($normalized['total_count'] > count($normalized['submissions'])) {
+        if ( $normalized['total_count'] > count( $normalized['submissions'] ) ) {
             $parts[] = [
                 'type' => 'text',
                 'text' => sprintf(
                     'NOTE: only the first %d submissions are included below. Use `total_count` as the true window count; `themes[].count` must reflect only what you observe in the sample and MUST NOT exceed %d.',
-                    count($normalized['submissions']),
-                    count($normalized['submissions']),
+                    count( $normalized['submissions'] ),
+                    count( $normalized['submissions'] ),
                 ),
             ];
         }
 
         $parts[] = [
             'type' => 'text',
-            'text' => "Submissions (JSON array):\n".$this->safeJsonEncode($normalized['submissions']),
+            'text' => "Submissions (JSON array):\n" . $this->safeJsonEncode( $normalized['submissions'] ),
         ];
 
         return $parts;
@@ -297,32 +299,33 @@ PROMPT;
      * @param  array<string, mixed>  $output  Decoded model output.
      * @param  int  $inputTotal  Ground-truth submission count.
      * @param  int  $sampleCount  Number of submissions actually shown to the model.
+     *
      * @return array{ headline: string, total_count: int, sample_count: int, themes: array<int, array{ title: string, count: int, examples: array<int, string> }>, notable: array<int, string>, suggestions: array<int, string> }
      */
-    protected function validateOutput(array $output, int $inputTotal, int $sampleCount): array
+    protected function validateOutput( array $output, int $inputTotal, int $sampleCount ): array
     {
-        $headline = isset($output['headline']) && is_string($output['headline'])
-            ? trim($output['headline'])
+        $headline = isset( $output['headline'] ) && is_string( $output['headline'] )
+            ? trim( $output['headline'] )
             : '';
 
-        if ($headline === '') {
+        if ( '' === $headline ) {
             throw FeatureError::forFeature(
                 $this->featureKey,
                 'model returned an empty headline; retry the run.',
             );
         }
 
-        if (mb_strlen($headline) > 140) {
-            $headline = mb_substr($headline, 0, 140);
+        if ( mb_strlen( $headline ) > 140 ) {
+            $headline = mb_substr( $headline, 0, 140 );
         }
 
         return [
-            'headline' => $headline,
-            'total_count' => $inputTotal,
+            'headline'     => $headline,
+            'total_count'  => $inputTotal,
             'sample_count' => $sampleCount,
-            'themes' => $this->normalizeThemes($output['themes'] ?? [], $sampleCount),
-            'notable' => $this->clampList($this->stringList($output['notable'] ?? []), 5),
-            'suggestions' => $this->clampList($this->stringList($output['suggestions'] ?? []), 3),
+            'themes'       => $this->normalizeThemes( $output['themes'] ?? [], $sampleCount ),
+            'notable'      => $this->clampList( $this->stringList( $output['notable'] ?? [] ), 5 ),
+            'suggestions'  => $this->clampList( $this->stringList( $output['suggestions'] ?? [] ), 3 ),
         ];
     }
 
@@ -335,36 +338,37 @@ PROMPT;
      *
      * @param  mixed  $raw  Raw themes from the model.
      * @param  int  $sampleCount  Number of submissions in the prompt sample.
+     *
      * @return array<int, array{ title: string, count: int, examples: array<int, string> }>
      */
-    protected function normalizeThemes(mixed $raw, int $sampleCount): array
+    protected function normalizeThemes( mixed $raw, int $sampleCount ): array
     {
-        if (! is_array($raw)) {
+        if ( ! is_array( $raw ) ) {
             return [];
         }
 
         $themes = [];
 
-        foreach ($raw as $theme) {
-            if (! is_array($theme)) {
+        foreach ( $raw as $theme ) {
+            if ( ! is_array( $theme ) ) {
                 continue;
             }
 
-            $title = isset($theme['title']) ? trim((string) $theme['title']) : '';
+            $title = isset( $theme['title'] ) ? trim( (string) $theme['title'] ) : '';
 
-            if ($title === '') {
+            if ( '' === $title ) {
                 continue;
             }
 
             $themes[] = [
-                'title' => $title,
-                'count' => $this->normalizeCount($theme['count'] ?? 0, $sampleCount),
-                'examples' => $this->clampList($this->stringList($theme['examples'] ?? []), 3),
+                'title'    => $title,
+                'count'    => $this->normalizeCount( $theme['count'] ?? 0, $sampleCount ),
+                'examples' => $this->clampList( $this->stringList( $theme['examples'] ?? [] ), 3 ),
             ];
         }
 
-        if (count($themes) > 6) {
-            $themes = array_slice($themes, 0, 6);
+        if ( count( $themes ) > 6 ) {
+            $themes = array_slice( $themes, 0, 6 );
         }
 
         return $themes;
@@ -381,11 +385,11 @@ PROMPT;
      *
      * @since 1.2.0
      */
-    protected function normalizeCount(mixed $value, int $sampleCount): int
+    protected function normalizeCount( mixed $value, int $sampleCount ): int
     {
-        $numeric = is_numeric($value) ? (int) $value : 0;
+        $numeric = is_numeric( $value ) ? (int) $value : 0;
 
-        return max(0, min($sampleCount, $numeric));
+        return max( 0, min( $sampleCount, $numeric ) );
     }
 
     /**
@@ -395,11 +399,12 @@ PROMPT;
      *
      * @param  array<int, string>  $list  Input list.
      * @param  int  $max  Maximum length.
+     *
      * @return array<int, string>
      */
-    protected function clampList(array $list, int $max): array
+    protected function clampList( array $list, int $max ): array
     {
-        return count($list) > $max ? array_slice($list, 0, $max) : $list;
+        return count( $list ) > $max ? array_slice( $list, 0, $max ) : $list;
     }
 
     /**
@@ -408,24 +413,25 @@ PROMPT;
      * @since 1.2.0
      *
      * @param  mixed  $raw  Raw list from the model.
+     *
      * @return array<int, string>
      */
-    protected function stringList(mixed $raw): array
+    protected function stringList( mixed $raw ): array
     {
-        if (! is_array($raw)) {
+        if ( ! is_array( $raw ) ) {
             return [];
         }
 
         $out = [];
 
-        foreach ($raw as $value) {
-            if (! is_string($value)) {
+        foreach ( $raw as $value) {
+            if ( ! is_string( $value)) {
                 continue;
             }
 
-            $trimmed = trim($value);
+            $trimmed = trim( $value);
 
-            if ($trimmed === '') {
+            if ( '' === $trimmed) {
                 continue;
             }
 

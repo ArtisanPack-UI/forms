@@ -7,7 +7,7 @@
  * @since      1.2.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace Tests\Support;
 
@@ -45,11 +45,11 @@ final class FakeAgentPrompter implements AgentPrompter
      * @param  int  $inputTokens  Reported input tokens.
      * @param  int  $outputTokens  Reported output tokens.
      */
-    public function queue(array $output, int $inputTokens = 100, int $outputTokens = 50): void
+    public function queue( array $output, int $inputTokens = 100, int $outputTokens = 50 ): void
     {
         $this->queue[] = [
-            'output' => $output,
-            'input_tokens' => $inputTokens,
+            'output'        => $output,
+            'input_tokens'  => $inputTokens,
             'output_tokens' => $outputTokens,
         ];
     }
@@ -65,21 +65,21 @@ final class FakeAgentPrompter implements AgentPrompter
         array $outputSchema,
     ): array {
         $this->calls[] = [
-            'credentials' => $credentials,
-            'model' => $model,
-            'instructions' => $instructions,
-            'message' => $message,
+            'credentials'   => $credentials,
+            'model'         => $model,
+            'instructions'  => $instructions,
+            'message'       => $message,
             'output_schema' => $outputSchema,
         ];
 
-        if ($this->queue === []) {
+        if ( [] === $this->queue ) {
             return [
-                'output' => [],
-                'input_tokens' => 0,
+                'output'        => [],
+                'input_tokens'  => 0,
                 'output_tokens' => 0,
             ];
         }
 
-        return array_shift($this->queue);
+        return array_shift( $this->queue );
     }
 }

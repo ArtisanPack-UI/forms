@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SmartFieldValidationAgent` normalizes the model's `plausible` output via a strict helper that treats the string `"false"`/`"0"`/`"no"`/`"off"` as `false`, so a tool bridge that coerces the JSON enum to a string cannot silently flip the verdict.
 - Every Livewire trigger component now calls `report($exception)` in its terminal `catch (Throwable)` arm before setting the localized error string, so production failures (provider 5xx, DNS blips, missing config) reach Sentry / Laravel logs instead of vanishing.
 - Every Livewire trigger component now renders a translated generic message from its `catch (FeatureError)` arm instead of surfacing the raw exception string (which leaked the internal feature key and bypassed i18n).
+- Dropped PHP 8.2 from the CI matrix because the AI feature suite's dev-time dependency (`artisanpack-ui/ai`) requires PHP 8.3+. The forms package's runtime constraint is still `"php": "^8.2"` — consumers on PHP 8.2 who do NOT install the AI package can continue using the core forms functionality unchanged.
+- Refreshed `guzzlehttp/guzzle` and `guzzlehttp/psr7` to patch three medium-severity advisories in test-only transitive dependencies (CVE-2026-55767, CVE-2026-55568, CVE-2026-55766).
 
 ### Fixed
 

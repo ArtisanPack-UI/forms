@@ -9,7 +9,7 @@
  * @since      1.2.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Ai\Agents;
 
@@ -100,12 +100,12 @@ PROMPT;
     public function outputSchema(): array
     {
         return [
-            'type' => 'object',
+            'type'                 => 'object',
             'additionalProperties' => false,
-            'required' => ['category', 'confidence'],
-            'properties' => [
-                'category' => ['type' => 'string'],
-                'confidence' => ['type' => 'number', 'minimum' => 0, 'maximum' => 1],
+            'required'             => ['category', 'confidence'],
+            'properties'           => [
+                'category'      => ['type' => 'string'],
+                'confidence'    => ['type' => 'number', 'minimum' => 0, 'maximum' => 1],
                 'suggested_new' => ['type' => 'string'],
             ],
         ];
@@ -114,24 +114,24 @@ PROMPT;
     /**
      * {@inheritDoc}
      */
-    protected function execute(Credentials $credentials, string $model, string $instructions): array
+    protected function execute( Credentials $credentials, string $model, string $instructions ): array
     {
-        $normalized = $this->normalizeInput($this->input());
+        $normalized = $this->normalizeInput( $this->input() );
 
-        $prompter = app(AgentPrompter::class);
+        $prompter = app( AgentPrompter::class );
 
         $result = $prompter->prompt(
             credentials: $credentials,
             model: $model,
             instructions: $instructions,
-            message: $this->buildMessage($normalized),
+            message: $this->buildMessage( $normalized ),
             outputSchema: $this->outputSchema(),
         );
 
         return [
-            'output' => $this->validateOutput($result['output'] ?? [], $normalized['available_categories']),
-            'input_tokens' => (int) ($result['input_tokens'] ?? 0),
-            'output_tokens' => (int) ($result['output_tokens'] ?? 0),
+            'output'        => $this->validateOutput( $result['output'] ?? [], $normalized['available_categories'] ),
+            'input_tokens'  => (int) ( $result['input_tokens'] ?? 0 ),
+            'output_tokens' => (int) ( $result['output_tokens'] ?? 0 ),
         ];
     }
 
@@ -141,11 +141,12 @@ PROMPT;
      * @since 1.2.0
      *
      * @param  mixed  $input  Raw agent input.
+     *
      * @return array{ fields: array<string, mixed>, available_categories: array<int, string> }
      */
-    protected function normalizeInput(mixed $input): array
+    protected function normalizeInput( mixed $input ): array
     {
-        if (! is_array($input)) {
+        if ( ! is_array( $input ) ) {
             throw FeatureError::forFeature(
                 $this->featureKey,
                 'input must be an array with `fields` and `available_categories` keys.',
@@ -154,13 +155,13 @@ PROMPT;
 
         $fields = $input['fields'] ?? null;
 
-        if (! is_array($fields) || $fields === []) {
-            throw FeatureError::forFeature($this->featureKey, '`fields` must be a non-empty array.');
+        if ( ! is_array( $fields ) || [] === $fields ) {
+            throw FeatureError::forFeature( $this->featureKey, '`fields` must be a non-empty array.' );
         }
 
         $rawCategories = $input['available_categories'] ?? null;
 
-        if (! is_array($rawCategories) || $rawCategories === []) {
+        if ( ! is_array( $rawCategories ) || [] === $rawCategories ) {
             throw FeatureError::forFeature(
                 $this->featureKey,
                 '`available_categories` must be a non-empty array of strings.',
@@ -169,19 +170,19 @@ PROMPT;
 
         $categories = [];
 
-        foreach ($rawCategories as $category) {
-            if (! is_string($category)) {
+        foreach ( $rawCategories as $category ) {
+            if ( ! is_string( $category ) ) {
                 continue;
             }
 
-            $trimmed = trim($category);
+            $trimmed = trim( $category );
 
-            if ($trimmed !== '' && ! in_array($trimmed, $categories, true)) {
+            if ( '' !== $trimmed && ! in_array( $trimmed, $categories, true ) ) {
                 $categories[] = $trimmed;
             }
         }
 
-        if ($categories === []) {
+        if ( [] === $categories ) {
             throw FeatureError::forFeature(
                 $this->featureKey,
                 '`available_categories` must contain at least one non-empty string.',
@@ -189,7 +190,7 @@ PROMPT;
         }
 
         return [
-            'fields' => $fields,
+            'fields'               => $fields,
             'available_categories' => $categories,
         ];
     }
@@ -200,18 +201,19 @@ PROMPT;
      * @since 1.2.0
      *
      * @param  array{ fields: array<string, mixed>, available_categories: array<int, string> }  $normalized  Normalized input.
+     *
      * @return array<int, array<string, string>>
      */
-    protected function buildMessage(array $normalized): array
+    protected function buildMessage( array $normalized ): array
     {
         return [
             [
                 'type' => 'text',
-                'text' => 'Available categories: '.implode(', ', $normalized['available_categories']),
+                'text' => 'Available categories: ' . implode( ', ', $normalized['available_categories'] ),
             ],
             [
                 'type' => 'text',
-                'text' => "Submitted fields (JSON):\n".$this->safeJsonEncode($normalized['fields']),
+                'text' => "Submitted fields (JSON):\n" . $this->safeJsonEncode( $normalized['fields'] ),
             ],
         ];
     }
@@ -228,7 +230,7 @@ PROMPT;
      */
     protected function cacheFingerprint(): string
     {
-        return $this->hashInputFingerprint($this->normalizeInput($this->input()));
+        return $this->hashInputFingerprint( $this->normalizeInput( $this->input() ) );
     }
 
     /**
@@ -239,32 +241,33 @@ PROMPT;
      *
      * @param  array<string, mixed>  $output  Decoded model output.
      * @param  array<int, string>  $categories  Whitelist of allowed categories.
+     *
      * @return array{ category: string, confidence: float, suggested_new?: string }
      */
-    protected function validateOutput(array $output, array $categories): array
+    protected function validateOutput( array $output, array $categories ): array
     {
-        $category = isset($output['category']) && is_string($output['category'])
-            ? trim($output['category'])
+        $category = isset( $output['category'] ) && is_string( $output['category'] )
+            ? trim( $output['category'] )
             : '';
-        $confidence = $this->clampConfidence($output['confidence'] ?? 0);
+        $confidence = $this->clampConfidence( $output['confidence'] ?? 0 );
 
         // If the model returned a category that isn't on the whitelist, fall
         // back to the first available label at very low confidence rather
         // than propagate an invalid selection to the caller.
-        if ($category === '' || ! in_array($category, $categories, true)) {
-            $category = $categories[0];
-            $confidence = min($confidence, 0.2);
+        if ( '' === $category || ! in_array( $category, $categories, true ) ) {
+            $category   = $categories[0];
+            $confidence = min( $confidence, 0.2 );
         }
 
         $result = [
-            'category' => $category,
+            'category'   => $category,
             'confidence' => $confidence,
         ];
 
-        if ($confidence < self::NEW_CATEGORY_THRESHOLD && isset($output['suggested_new']) && is_string($output['suggested_new'])) {
-            $suggested = $this->normalizeSlug($output['suggested_new']);
+        if ( $confidence < self::NEW_CATEGORY_THRESHOLD && isset( $output['suggested_new'] ) && is_string( $output['suggested_new'] ) ) {
+            $suggested = $this->normalizeSlug( $output['suggested_new'] );
 
-            if ($suggested !== '' && ! in_array($suggested, $categories, true)) {
+            if ( '' !== $suggested && ! in_array( $suggested, $categories, true ) ) {
                 $result['suggested_new'] = $suggested;
             }
         }
@@ -279,9 +282,9 @@ PROMPT;
      *
      * @param  mixed  $value  Raw confidence.
      */
-    protected function clampConfidence(mixed $value): float
+    protected function clampConfidence( mixed $value ): float
     {
-        return max(0.0, min(1.0, (float) $value));
+        return max( 0.0, min( 1.0, (float) $value ) );
     }
 
     /**
@@ -291,11 +294,11 @@ PROMPT;
      *
      * @param  string  $value  Raw suggestion.
      */
-    protected function normalizeSlug(string $value): string
+    protected function normalizeSlug( string $value ): string
     {
-        $lower = strtolower(trim($value));
-        $dashed = preg_replace('/[^a-z0-9]+/', '-', $lower);
+        $lower  = strtolower( trim( $value));
+        $dashed = preg_replace( '/[^a-z0-9]+/', '-', $lower);
 
-        return trim((string) $dashed, '-');
+        return trim( (string) $dashed, '-');
     }
 }

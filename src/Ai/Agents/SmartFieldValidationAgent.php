@@ -9,7 +9,7 @@
  * @since      1.2.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Ai\Agents;
 
@@ -103,13 +103,13 @@ PROMPT;
     public function outputSchema(): array
     {
         return [
-            'type' => 'object',
+            'type'                 => 'object',
             'additionalProperties' => false,
-            'required' => ['plausible', 'confidence', 'reason'],
-            'properties' => [
-                'plausible' => ['type' => 'boolean'],
+            'required'             => ['plausible', 'confidence', 'reason'],
+            'properties'           => [
+                'plausible'  => ['type' => 'boolean'],
                 'confidence' => ['type' => 'number', 'minimum' => 0, 'maximum' => 1],
-                'reason' => ['type' => 'string', 'maxLength' => 200],
+                'reason'     => ['type' => 'string', 'maxLength' => 200],
                 'suggestion' => ['type' => 'string'],
             ],
         ];
@@ -118,24 +118,24 @@ PROMPT;
     /**
      * {@inheritDoc}
      */
-    protected function execute(Credentials $credentials, string $model, string $instructions): array
+    protected function execute( Credentials $credentials, string $model, string $instructions ): array
     {
-        $normalized = $this->normalizeInput($this->input());
+        $normalized = $this->normalizeInput( $this->input() );
 
-        $prompter = app(AgentPrompter::class);
+        $prompter = app( AgentPrompter::class );
 
         $result = $prompter->prompt(
             credentials: $credentials,
             model: $model,
             instructions: $instructions,
-            message: $this->buildMessage($normalized),
+            message: $this->buildMessage( $normalized ),
             outputSchema: $this->outputSchema(),
         );
 
         return [
-            'output' => $this->validateOutput($result['output'] ?? []),
-            'input_tokens' => (int) ($result['input_tokens'] ?? 0),
-            'output_tokens' => (int) ($result['output_tokens'] ?? 0),
+            'output'        => $this->validateOutput( $result['output'] ?? [] ),
+            'input_tokens'  => (int) ( $result['input_tokens'] ?? 0 ),
+            'output_tokens' => (int) ( $result['output_tokens'] ?? 0 ),
         ];
     }
 
@@ -145,50 +145,51 @@ PROMPT;
      * @since 1.2.0
      *
      * @param  mixed  $input  Raw agent input.
+     *
      * @return array{ field_label: string, field_kind: string, value: string, context: array<string, mixed>|null }
      */
-    protected function normalizeInput(mixed $input): array
+    protected function normalizeInput( mixed $input ): array
     {
-        if (! is_array($input)) {
+        if ( ! is_array( $input ) ) {
             throw FeatureError::forFeature(
                 $this->featureKey,
                 'input must be an array with `field_label`, `field_kind`, and `value` keys.',
             );
         }
 
-        $label = isset($input['field_label']) && is_string($input['field_label'])
-            ? trim($input['field_label'])
+        $label = isset( $input['field_label'] ) && is_string( $input['field_label'] )
+            ? trim( $input['field_label'] )
             : '';
-        $kind = isset($input['field_kind']) && is_string($input['field_kind'])
-            ? trim($input['field_kind'])
+        $kind = isset( $input['field_kind'] ) && is_string( $input['field_kind'] )
+            ? trim( $input['field_kind'] )
             : '';
-        $value = isset($input['value']) && is_string($input['value'])
-            ? trim($input['value'])
+        $value = isset( $input['value'] ) && is_string( $input['value'] )
+            ? trim( $input['value'] )
             : '';
 
-        if ($label === '') {
-            throw FeatureError::forFeature($this->featureKey, '`field_label` must be a non-empty string.');
+        if ( '' === $label ) {
+            throw FeatureError::forFeature( $this->featureKey, '`field_label` must be a non-empty string.' );
         }
 
-        if ($kind === '') {
-            throw FeatureError::forFeature($this->featureKey, '`field_kind` must be a non-empty string.');
+        if ( '' === $kind ) {
+            throw FeatureError::forFeature( $this->featureKey, '`field_kind` must be a non-empty string.' );
         }
 
-        if ($value === '') {
-            throw FeatureError::forFeature($this->featureKey, '`value` must be a non-empty string.');
+        if ( '' === $value ) {
+            throw FeatureError::forFeature( $this->featureKey, '`value` must be a non-empty string.' );
         }
 
         $context = null;
 
-        if (isset($input['context']) && is_array($input['context']) && $input['context'] !== []) {
+        if ( isset( $input['context'] ) && is_array( $input['context'] ) && [] !== $input['context'] ) {
             $context = $input['context'];
         }
 
         return [
             'field_label' => $label,
-            'field_kind' => $kind,
-            'value' => $value,
-            'context' => $context,
+            'field_kind'  => $kind,
+            'value'       => $value,
+            'context'     => $context,
         ];
     }
 
@@ -198,9 +199,10 @@ PROMPT;
      * @since 1.2.0
      *
      * @param  array{ field_label: string, field_kind: string, value: string, context: array<string, mixed>|null }  $normalized  Normalized input.
+     *
      * @return array<int, array<string, string>>
      */
-    protected function buildMessage(array $normalized): array
+    protected function buildMessage( array $normalized ): array
     {
         // field_label and field_kind are configurable per-field in the form
         // builder and can be user-controlled; escape them before they land
@@ -208,20 +210,20 @@ PROMPT;
         // style injection. The submitted value is also a user string but is
         // presented as data-to-inspect rather than context, so we only strip
         // control characters and cap length there.
-        $safeLabel = $this->escapeForPrompt($normalized['field_label'], 128);
-        $safeKind = $this->escapeForPrompt($normalized['field_kind'], 64);
-        $safeValue = $this->escapeForPrompt($normalized['value'], 512);
+        $safeLabel = $this->escapeForPrompt( $normalized['field_label'], 128 );
+        $safeKind  = $this->escapeForPrompt( $normalized['field_kind'], 64 );
+        $safeValue = $this->escapeForPrompt( $normalized['value'], 512 );
 
         $parts = [
-            ['type' => 'text', 'text' => sprintf('Field label: %s', $safeLabel)],
-            ['type' => 'text', 'text' => sprintf('Field kind: %s', $safeKind)],
-            ['type' => 'text', 'text' => sprintf('Submitted value: %s', $safeValue)],
+            ['type' => 'text', 'text' => sprintf( 'Field label: %s', $safeLabel )],
+            ['type' => 'text', 'text' => sprintf( 'Field kind: %s', $safeKind )],
+            ['type' => 'text', 'text' => sprintf( 'Submitted value: %s', $safeValue )],
         ];
 
-        if ($normalized['context'] !== null) {
+        if ( null !== $normalized['context'] ) {
             $parts[] = [
                 'type' => 'text',
-                'text' => "Sibling fields (JSON) for cross-checks:\n".$this->safeJsonEncode($normalized['context']),
+                'text' => "Sibling fields (JSON) for cross-checks:\n" . $this->safeJsonEncode( $normalized['context'] ),
             ];
         }
 
@@ -239,7 +241,7 @@ PROMPT;
      */
     protected function cacheFingerprint(): string
     {
-        return $this->hashInputFingerprint($this->normalizeInput($this->input()));
+        return $this->hashInputFingerprint( $this->normalizeInput( $this->input() ) );
     }
 
     /**
@@ -249,31 +251,32 @@ PROMPT;
      * @since 1.2.0
      *
      * @param  array<string, mixed>  $output  Decoded model output.
+     *
      * @return array{ plausible: bool, confidence: float, reason: string, suggestion?: string }
      */
-    protected function validateOutput(array $output): array
+    protected function validateOutput( array $output ): array
     {
-        $plausible = $this->normalizePlausible($output['plausible'] ?? true);
-        $confidence = max(0.0, min(1.0, (float) ($output['confidence'] ?? 0)));
+        $plausible  = $this->normalizePlausible( $output['plausible'] ?? true );
+        $confidence = max( 0.0, min( 1.0, (float) ( $output['confidence'] ?? 0 ) ) );
 
-        $reason = isset($output['reason']) && is_string($output['reason'])
-            ? trim($output['reason'])
+        $reason = isset( $output['reason'] ) && is_string( $output['reason'] )
+            ? trim( $output['reason'] )
             : '';
 
-        if (mb_strlen($reason) > 200) {
-            $reason = mb_substr($reason, 0, 200);
+        if ( mb_strlen( $reason ) > 200 ) {
+            $reason = mb_substr( $reason, 0, 200 );
         }
 
         $result = [
-            'plausible' => $plausible,
+            'plausible'  => $plausible,
             'confidence' => $confidence,
-            'reason' => $reason,
+            'reason'     => $reason,
         ];
 
-        if (! $plausible && isset($output['suggestion']) && is_string($output['suggestion'])) {
-            $suggestion = trim($output['suggestion']);
+        if ( ! $plausible && isset( $output['suggestion'] ) && is_string( $output['suggestion'] ) ) {
+            $suggestion = trim( $output['suggestion'] );
 
-            if ($suggestion !== '') {
+            if ( '' !== $suggestion ) {
                 $result['suggestion'] = $suggestion;
             }
         }
@@ -291,16 +294,16 @@ PROMPT;
      *
      * @since 1.2.0
      */
-    protected function normalizePlausible(mixed $raw): bool
+    protected function normalizePlausible( mixed $raw ): bool
     {
-        if (is_string($raw)) {
-            $normalized = strtolower(trim($raw));
+        if ( is_string( $raw ) ) {
+            $normalized = strtolower( trim( $raw ) );
 
-            if (in_array($normalized, ['false', '0', 'no', 'off'], true)) {
+            if ( in_array( $normalized, ['false', '0', 'no', 'off'], true )) {
                 return false;
             }
 
-            if (in_array($normalized, ['true', '1', 'yes', 'on'], true)) {
+            if ( in_array( $normalized, ['true', '1', 'yes', 'on'], true)) {
                 return true;
             }
         }
