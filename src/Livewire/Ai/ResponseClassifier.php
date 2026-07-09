@@ -19,6 +19,7 @@ use ArtisanPackUI\Ai\Exceptions\FeatureError;
 use ArtisanPackUI\Ai\Exceptions\MissingCredentialsException;
 use ArtisanPackUI\Forms\Ai\Agents\ResponseClassificationAgent;
 use Illuminate\View\View;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Throwable;
@@ -27,9 +28,15 @@ use Throwable;
  * Trigger UI for the {@see ResponseClassificationAgent}.
  *
  * Mounts inside the submissions admin surface. Emits
- * `forms-ai-category-selected` (payload: `[ 'submission_id' => int,
- * 'category' => string, 'confidence' => float, 'suggested_new' => string|null ]`)
+ * `forms-ai-category-selected` (payload: `[ 'submissionId' => int,
+ * 'category' => string, 'confidence' => float, 'suggestedNew' => string|null ]`)
  * when the user accepts a suggestion.
+ *
+ * The submitted fields are held as a `#[Locked]` public property so
+ * client-side tampering cannot swap them out mid-run. NOTE: Livewire still
+ * serializes public properties into the DOM `wire:snapshot` for state
+ * restoration, so callers rendering this component in a multi-tenant admin
+ * should pass ONLY submissions the current user is authorized to see.
  *
  *
  * @since      1.2.0
@@ -41,11 +48,13 @@ class ResponseClassifier extends Component
     /**
      * @var array<string, mixed>
      */
+    #[Locked]
     public array $fields = [];
 
     /**
      * @var array<int, string>
      */
+    #[Locked]
     public array $availableCategories = [];
 
     public bool $isLoading = false;
@@ -124,8 +133,9 @@ class ResponseClassifier extends Component
         } catch (MissingCredentialsException $exception) {
             $this->error = __('AI credentials are not configured.');
         } catch (FeatureError $exception) {
-            $this->error = $exception->getMessage();
+            $this->error = __('The AI agent could not classify the submission.');
         } catch (Throwable $exception) {
+            report($exception);
             $this->error = __('The AI agent could not complete this request.');
         } finally {
             $this->isLoading = false;
@@ -145,10 +155,10 @@ class ResponseClassifier extends Component
 
         $this->dispatch(
             'forms-ai-category-selected',
-            submission_id: $this->submissionId,
+            submissionId: $this->submissionId,
             category: $this->category,
             confidence: $this->confidence ?? 0.0,
-            suggested_new: $this->suggestedNew,
+            suggestedNew: $this->suggestedNew,
         );
     }
 

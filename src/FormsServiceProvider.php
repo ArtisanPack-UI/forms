@@ -323,6 +323,14 @@ class FormsServiceProvider extends ServiceProvider
      */
     public function aiFeatures(): array
     {
+        // Skip when the AI package is absent so downstream consumers (auto-discovery,
+        // admin listings) never receive class-strings for agents whose ArtisanPackAgent
+        // base cannot be autoloaded. Uses static:: so subclasses can override the
+        // availability probe in tests.
+        if (! static::aiPackageAvailable()) {
+            return [];
+        }
+
         return [
             'forms.spam_detection' => [
                 'agent' => SpamDetectionAgent::class,

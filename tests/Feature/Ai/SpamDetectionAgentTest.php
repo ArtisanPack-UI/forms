@@ -91,6 +91,35 @@ it('raises FeatureError when fields is missing or empty', function (): void {
         ->toThrow(FeatureError::class);
 });
 
+it('synthesizes a fallback reason when a non-ham verdict has no reasons', function (): void {
+    $this->prompter->queue([
+        'spam_score' => 88,
+        'verdict' => 'spam',
+        'reasons' => [],
+    ]);
+
+    $result = SpamDetectionAgent::for([
+        'fields' => ['message' => 'unclear'],
+    ])->run();
+
+    expect($result['verdict'])->toBe('spam');
+    expect($result['reasons'])->toHaveCount(1);
+});
+
+it('does not synthesize reasons when the verdict is ham', function (): void {
+    $this->prompter->queue([
+        'spam_score' => 5,
+        'verdict' => 'ham',
+        'reasons' => [],
+    ]);
+
+    $result = SpamDetectionAgent::for([
+        'fields' => ['message' => 'legitimate customer message'],
+    ])->run();
+
+    expect($result['reasons'])->toBe([]);
+});
+
 it('includes the submission metadata in the prompter message when supplied', function (): void {
     $this->prompter->queue([
         'spam_score' => 5,

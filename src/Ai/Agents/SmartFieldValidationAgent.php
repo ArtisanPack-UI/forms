@@ -17,6 +17,7 @@ use ArtisanPackUI\Ai\Agents\ArtisanPackAgent;
 use ArtisanPackUI\Ai\Contracts\AgentPrompter;
 use ArtisanPackUI\Ai\Credentials\Credentials;
 use ArtisanPackUI\Ai\Exceptions\FeatureError;
+use ArtisanPackUI\Forms\Ai\Concerns\NormalizesLLMInput;
 
 /**
  * Opt-in per-field semantic validation for a single form field.
@@ -53,6 +54,8 @@ use ArtisanPackUI\Ai\Exceptions\FeatureError;
  */
 class SmartFieldValidationAgent extends ArtisanPackAgent
 {
+    use NormalizesLLMInput;
+
     /**
      * {@inheritDoc}
      */
@@ -199,23 +202,44 @@ PROMPT;
      */
     protected function buildMessage(array $normalized): array
     {
+        // field_label and field_kind are configurable per-field in the form
+        // builder and can be user-controlled; escape them before they land
+        // in the free-form prompt to defuse "Ignore prior instructions."
+        // style injection. The submitted value is also a user string but is
+        // presented as data-to-inspect rather than context, so we only strip
+        // control characters and cap length there.
+        $safeLabel = $this->escapeForPrompt($normalized['field_label'], 128);
+        $safeKind = $this->escapeForPrompt($normalized['field_kind'], 64);
+        $safeValue = $this->escapeForPrompt($normalized['value'], 512);
+
         $parts = [
-            ['type' => 'text', 'text' => sprintf('Field label: %s', $normalized['field_label'])],
-            ['type' => 'text', 'text' => sprintf('Field kind: %s', $normalized['field_kind'])],
-            ['type' => 'text', 'text' => sprintf('Submitted value: %s', $normalized['value'])],
+            ['type' => 'text', 'text' => sprintf('Field label: %s', $safeLabel)],
+            ['type' => 'text', 'text' => sprintf('Field kind: %s', $safeKind)],
+            ['type' => 'text', 'text' => sprintf('Submitted value: %s', $safeValue)],
         ];
 
         if ($normalized['context'] !== null) {
             $parts[] = [
                 'type' => 'text',
-                'text' => "Sibling fields (JSON) for cross-checks:\n".json_encode(
-                    $normalized['context'],
-                    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
-                ),
+                'text' => "Sibling fields (JSON) for cross-checks:\n".$this->safeJsonEncode($normalized['context']),
             ];
         }
 
         return $parts;
+    }
+
+    /**
+     * Deterministic cache fingerprint over the normalized input.
+     *
+     * The base ArtisanPackAgent default throws for any non-scalar array
+     * entry, which crashes cached runs on realistic submissions. This
+     * override fingerprints the normalized input as JSON.
+     *
+     * @since 1.2.0
+     */
+    protected function cacheFingerprint(): string
+    {
+        return $this->hashInputFingerprint($this->normalizeInput($this->input()));
     }
 
     /**
@@ -229,7 +253,7 @@ PROMPT;
      */
     protected function validateOutput(array $output): array
     {
-        $plausible = (bool) ($output['plausible'] ?? true);
+        $plausible = $this->normalizePlausible($output['plausible'] ?? true);
         $confidence = max(0.0, min(1.0, (float) ($output['confidence'] ?? 0)));
 
         $reason = isset($output['reason']) && is_string($output['reason'])
@@ -255,5 +279,32 @@ PROMPT;
         }
 
         return $result;
+    }
+
+    /**
+     * Coerce the model's `plausible` output into a strict boolean.
+     *
+     * `(bool) "false"` returns TRUE in PHP — any tool-bridge that coerces
+     * the JSON enum to a string flips the verdict. Handle string forms
+     * explicitly (`"false"`, `"0"`, `"no"`) and then fall through to the
+     * PHP default so real booleans and integer 1/0 still work.
+     *
+     * @since 1.2.0
+     */
+    protected function normalizePlausible(mixed $raw): bool
+    {
+        if (is_string($raw)) {
+            $normalized = strtolower(trim($raw));
+
+            if (in_array($normalized, ['false', '0', 'no', 'off'], true)) {
+                return false;
+            }
+
+            if (in_array($normalized, ['true', '1', 'yes', 'on'], true)) {
+                return true;
+            }
+        }
+
+        return (bool) $raw;
     }
 }
