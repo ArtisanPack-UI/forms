@@ -299,11 +299,11 @@ PROMPT;
         if ( is_string( $raw ) ) {
             $normalized = strtolower( trim( $raw ) );
 
-            if ( in_array( $normalized, ['false', '0', 'no', 'off'], true )) {
+            if ( in_array( $normalized, ['false', '0', 'no', 'off'], true ) ) {
                 return false;
             }
 
-            if ( in_array( $normalized, ['true', '1', 'yes', 'on'], true)) {
+            if ( in_array( $normalized, ['true', '1', 'yes', 'on'], true ) ) {
                 return true;
             }
         }

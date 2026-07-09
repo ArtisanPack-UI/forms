@@ -177,6 +177,6 @@ class SpamCheck extends Component
      */
     public function render(): View
     {
-        return view( 'forms::livewire.ai.spam-check');
+        return view( 'forms::livewire.ai.spam-check' );
     }
 }

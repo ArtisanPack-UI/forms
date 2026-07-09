@@ -133,8 +133,8 @@ it( 'includes the submission metadata in the prompter message when supplied', fu
     ] )->run();
 
     $parts = collect( $this->prompter->calls[0]['message'] )->pluck( 'text' );
-    expect( $parts->contains( fn ( string $text ): bool => str_contains( $text, 'ip_country')))
+    expect( $parts->contains( fn ( string $text ): bool => str_contains( $text, 'ip_country' ) ) )
         ->toBeTrue();
-    expect( $parts->contains( fn ( string $text): bool => str_contains( $text, 'submission_speed_ms')))
+    expect( $parts->contains( fn ( string $text ): bool => str_contains( $text, 'submission_speed_ms' ) ) )
         ->toBeTrue();
 });

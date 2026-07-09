@@ -186,6 +186,6 @@ class ResponseClassifier extends Component
      */
     public function render(): View
     {
-        return view( 'forms::livewire.ai.response-classifier');
+        return view( 'forms::livewire.ai.response-classifier' );
     }
 }

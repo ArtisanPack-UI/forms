@@ -296,8 +296,8 @@ PROMPT;
      */
     protected function normalizeSlug( string $value ): string
     {
-        $lower  = strtolower( trim( $value));
-        $dashed = preg_replace( '/[^a-z0-9]+/', '-', $lower);
+        $lower  = strtolower( trim( $value ) );
+        $dashed = preg_replace( '/[^a-z0-9]+/', '-', $lower );
 
         return trim( (string) $dashed, '-');
     }

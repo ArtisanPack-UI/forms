@@ -198,6 +198,6 @@ class SmartFieldValidator extends Component
      */
     public function render(): View
     {
-        return view( 'forms::livewire.ai.smart-field-validator');
+        return view( 'forms::livewire.ai.smart-field-validator' );
     }
 }

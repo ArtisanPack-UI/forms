@@ -193,6 +193,6 @@ class SubmissionSummary extends Component
      */
     public function render(): View
     {
-        return view( 'forms::livewire.ai.submission-summary');
+        return view( 'forms::livewire.ai.submission-summary' );
     }
 }

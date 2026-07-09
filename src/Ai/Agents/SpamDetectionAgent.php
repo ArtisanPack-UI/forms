@@ -317,9 +317,9 @@ PROMPT;
                 continue;
             }
 
-            $trimmed = trim( $value);
+            $trimmed = trim( $value );
 
-            if ( '' === $trimmed) {
+            if ( '' === $trimmed ) {
                 continue;
             }
 

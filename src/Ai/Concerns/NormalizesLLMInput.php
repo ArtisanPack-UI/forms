@@ -83,6 +83,6 @@ trait NormalizesLLMInput
      */
     protected function hashInputFingerprint( mixed $normalizedInput ): string
     {
-        return 'shape:' . hash( 'sha256', $this->safeJsonEncode( $normalizedInput));
+        return 'shape:' . hash( 'sha256', $this->safeJsonEncode( $normalizedInput ) );
     }
 }

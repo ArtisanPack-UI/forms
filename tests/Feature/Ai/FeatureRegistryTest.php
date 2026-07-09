@@ -112,6 +112,6 @@ it( 'refuses to run the smart validator agent when the feature toggle is off', f
         'field_label' => 'Company',
         'field_kind'  => 'company_name',
         'value'       => 'Anthropic',
-    ])->run())
-        ->toThrow( FeatureDisabledException::class);
+    ] )->run() )
+        ->toThrow( FeatureDisabledException::class );
 });

@@ -424,14 +424,14 @@ PROMPT;
 
         $out = [];
 
-        foreach ( $raw as $value) {
-            if ( ! is_string( $value)) {
+        foreach ( $raw as $value ) {
+            if ( ! is_string( $value ) ) {
                 continue;
             }
 
-            $trimmed = trim( $value);
+            $trimmed = trim( $value );
 
-            if ( '' === $trimmed) {
+            if ( '' === $trimmed ) {
                 continue;
             }
 

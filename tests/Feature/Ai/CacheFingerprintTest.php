@@ -97,5 +97,5 @@ it( 'runs SmartFieldValidationAgent with a nested-context submission without cac
         ],
     ] )->run();
 
-    expect( $result['plausible'])->toBeTrue();
-});
+    expect( $result['plausible'] )->toBeTrue();
+} );
