@@ -98,7 +98,7 @@ Use filters to modify the payload:
 ```php
 use function addFilter;
 
-addFilter('forms.webhook_payload', function ($payload, $form, $submission) {
+addFilter('ap.forms.webhookPayload', function ($payload, $form, $submission) {
     // Add custom data
     $payload['custom'] = [
         'campaign' => $submission->getMetadata('utm_campaign'),
@@ -283,7 +283,7 @@ FORMS_WEBHOOK_URL=https://hook.us1.make.com/xxxxx
 ### Custom API
 
 ```php
-addFilter('forms.webhook_payload', function ($payload, $form, $submission) {
+addFilter('ap.forms.webhookPayload', function ($payload, $form, $submission) {
     // Transform to API-specific format
     return [
         'api_key' => config('services.my_api.key'),

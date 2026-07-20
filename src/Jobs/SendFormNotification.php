@@ -6,15 +6,13 @@
  * Queued job that sends a single form notification email.
  * Handles recipient resolution, email building, and error logging.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @author     Jacob Martella <support@artisanpackui.dev>
  *
  * @since      1.0.0
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace ArtisanPackUI\Forms\Jobs;
 
@@ -37,8 +35,6 @@ use Throwable;
  * Queued job that sends a single form notification email.
  * Handles recipient resolution, email building, and error logging.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @since      1.0.0
  */
@@ -53,8 +49,6 @@ class SendFormNotification implements ShouldQueue
      * The number of times the job may be attempted.
      *
      * @since 1.0.0
-     *
-     * @var int
      */
     public int $tries = 3;
 
@@ -62,8 +56,6 @@ class SendFormNotification implements ShouldQueue
      * The number of seconds to wait before retrying the job.
      *
      * @since 1.0.0
-     *
-     * @var int
      */
     public int $backoff = 60;
 
@@ -71,8 +63,6 @@ class SendFormNotification implements ShouldQueue
      * The form notification to send.
      *
      * @since 1.0.0
-     *
-     * @var FormNotification
      */
     public FormNotification $notification;
 
@@ -80,8 +70,6 @@ class SendFormNotification implements ShouldQueue
      * The form submission data.
      *
      * @since 1.0.0
-     *
-     * @var FormSubmission
      */
     public FormSubmission $submission;
 
@@ -90,13 +78,13 @@ class SendFormNotification implements ShouldQueue
      *
      * @since 1.0.0
      *
-     * @param FormNotification $notification The notification to send.
-     * @param FormSubmission   $submission   The form submission data.
+     * @param  FormNotification  $notification  The notification to send.
+     * @param  FormSubmission  $submission  The form submission data.
      */
-    public function __construct( FormNotification $notification, FormSubmission $submission )
+    public function __construct(FormNotification $notification, FormSubmission $submission)
     {
         $this->notification = $notification;
-        $this->submission   = $submission;
+        $this->submission = $submission;
     }
 
     /**
@@ -105,75 +93,73 @@ class SendFormNotification implements ShouldQueue
      * Loads required relationships, resolves recipients, and sends the notification email.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     public function handle(): void
     {
         // Ensure relationships are loaded
-        $this->submission->loadMissing( ['form', 'values.field'] );
-        $this->notification->loadMissing( 'form' );
+        $this->submission->loadMissing(['form', 'values.field']);
+        $this->notification->loadMissing('form');
 
         // Get recipient emails
-        $recipients = $this->notification->getRecipientEmails( $this->submission );
+        $recipients = $this->notification->getRecipientEmails($this->submission);
 
         // Apply filter hook to allow modifying recipients
-        if ( function_exists( 'applyFilters' ) ) {
+        if (function_exists('applyFilters')) {
             $recipients = applyFilters(
-                'forms.notification_recipients',
+                'ap.forms.notificationRecipients',
                 $recipients,
                 $this->notification,
             );
         }
 
-        if ( empty( $recipients ) ) {
-            Log::warning( 'Form notification has no valid recipients', [
-                'notification_id'   => $this->notification->id,
+        if (empty($recipients)) {
+            Log::warning('Form notification has no valid recipients', [
+                'notification_id' => $this->notification->id,
                 'notification_name' => $this->notification->name,
-                'submission_id'     => $this->submission->id,
-                'form_id'           => $this->submission->form_id,
-            ] );
+                'submission_id' => $this->submission->id,
+                'form_id' => $this->submission->form_id,
+            ]);
 
             return;
         }
 
         try {
             // Fire before_send action hook
-            if ( function_exists( 'doAction' ) ) {
+            if (function_exists('doAction')) {
                 doAction(
-                    'forms.notification.before_send',
+                    'ap.forms.notification.beforeSend',
                     $this->notification,
                     $this->submission,
                 );
             }
 
             // Create and send the mailable
-            $mailable = new FormSubmissionNotification( $this->notification, $this->submission );
+            $mailable = new FormSubmissionNotification($this->notification, $this->submission);
 
-            Mail::to( $recipients )->send( $mailable );
+            Mail::to($recipients)->send($mailable);
 
             // Fire sent action hook
-            if ( function_exists( 'doAction' ) ) {
+            if (function_exists('doAction')) {
                 doAction(
-                    'forms.notification.sent',
+                    'ap.forms.notification.sent',
                     $this->notification,
                     $this->submission,
                 );
             }
 
-            Log::info( 'Form notification sent successfully', [
-                'notification_id'   => $this->notification->id,
+            Log::info('Form notification sent successfully', [
+                'notification_id' => $this->notification->id,
                 'notification_name' => $this->notification->name,
-                'submission_id'     => $this->submission->id,
-                'recipients'        => $recipients,
-            ] );
-        } catch ( Exception $e ) {
-            Log::error( 'Failed to send form notification', [
-                'notification_id'   => $this->notification->id,
+                'submission_id' => $this->submission->id,
+                'recipients' => $recipients,
+            ]);
+        } catch (Exception $e) {
+            Log::error('Failed to send form notification', [
+                'notification_id' => $this->notification->id,
                 'notification_name' => $this->notification->name,
-                'submission_id'     => $this->submission->id,
-                'error'             => $e->getMessage(),
-            ] );
+                'submission_id' => $this->submission->id,
+                'error' => $e->getMessage(),
+            ]);
 
             throw $e; // Re-throw to trigger retry
         }
@@ -186,18 +172,16 @@ class SendFormNotification implements ShouldQueue
      *
      * @since 1.0.0
      *
-     * @param Throwable $exception The exception that caused the failure.
-     *
-     * @return void
+     * @param  Throwable  $exception  The exception that caused the failure.
      */
-    public function failed( Throwable $exception ): void
+    public function failed(Throwable $exception): void
     {
-        Log::error( 'Form notification job failed permanently', [
-            'notification_id'   => $this->notification->id,
+        Log::error('Form notification job failed permanently', [
+            'notification_id' => $this->notification->id,
             'notification_name' => $this->notification->name,
-            'submission_id'     => $this->submission->id,
-            'error'             => $exception->getMessage(),
-        ] );
+            'submission_id' => $this->submission->id,
+            'error' => $exception->getMessage(),
+        ]);
     }
 
     /**
@@ -213,9 +197,9 @@ class SendFormNotification implements ShouldQueue
     {
         return [
             'form-notification',
-            'notification:' . $this->notification->id,
-            'submission:' . $this->submission->id,
-            'form:' . $this->submission->form_id,
+            'notification:'.$this->notification->id,
+            'submission:'.$this->submission->id,
+            'form:'.$this->submission->form_id,
         ];
     }
 }

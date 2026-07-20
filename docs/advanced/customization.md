@@ -96,7 +96,7 @@ use function addFilter;
 
 public function boot(): void
 {
-    addFilter('forms.field_types', function ($types) {
+    addFilter('ap.forms.fieldTypes', function ($types) {
         $types['color-picker'] = [
             'label' => 'Color Picker',
             'icon' => 'palette',
@@ -144,12 +144,12 @@ public function boot(): void
 
 | Filter | Arguments | Description |
 |--------|-----------|-------------|
-| `forms.field_types` | `$types` | Modify available field types |
-| `forms.validation_rules` | `$rules, $form` | Modify validation rules |
-| `forms.notification_message` | `$message, $notification, $submission` | Modify notification content |
-| `forms.webhook_payload` | `$payload, $form, $submission` | Modify webhook data |
+| `ap.forms.fieldTypes` | `$types` | Modify available field types |
+| `ap.forms.validationRules` | `$rules, $form` | Modify validation rules |
+| `ap.forms.notificationMessage` | `$message, $notification, $submission` | Modify notification content |
+| `ap.forms.webhookPayload` | `$payload, $form, $submission` | Modify webhook data |
 | `forms.spam_check` | `$isSpam, $form, $data` | Custom spam detection |
-| `forms.settings_tabs` | `$tabs, $form` | Add admin settings tabs |
+| `ap.forms.settingsTabs` | `$tabs, $form` | Add admin settings tabs |
 
 ### Examples
 
@@ -157,7 +157,7 @@ public function boot(): void
 use function addFilter;
 
 // Add custom validation
-addFilter('forms.validation_rules', function ($rules, $form) {
+addFilter('ap.forms.validationRules', function ($rules, $form) {
     if ($form->slug === 'job-application') {
         $rules['formData.resume'] = 'required|mimes:pdf,doc,docx|max:5120';
     }
@@ -165,7 +165,7 @@ addFilter('forms.validation_rules', function ($rules, $form) {
 });
 
 // Modify notification
-addFilter('forms.notification_message', function ($message, $notification, $submission) {
+addFilter('ap.forms.notificationMessage', function ($message, $notification, $submission) {
     return $message . "\n\n---\nProcessed by MyApp v" . config('app.version');
 });
 

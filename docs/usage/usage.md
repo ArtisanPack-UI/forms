@@ -143,12 +143,12 @@ Use filter hooks to customize behavior:
 use function addFilter;
 
 // Customize notification message
-addFilter('forms.notification_message', function ($message, $notification, $submission) {
+addFilter('ap.forms.notificationMessage', function ($message, $notification, $submission) {
     return $message . "\n\nProcessed at: " . now()->format('Y-m-d H:i:s');
 });
 
 // Add custom validation
-addFilter('forms.validation_rules', function ($rules, $form) {
+addFilter('ap.forms.validationRules', function ($rules, $form) {
     // Add custom rules
     $rules['email'] = 'required|email|ends_with:@company.com';
     return $rules;
