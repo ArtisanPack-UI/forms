@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Deprecated
+
+- All 18 hooks previously shipped under `forms.*` / snake_case names have been renamed to the ecosystem-standard `ap.forms.*` camelCase convention (Wave 2 of the cross-package hooks standardization). Existing subscribers continue firing via deprecation aliases registered in `Support\HookAliases`, emitting an info-level `HookDeprecations` log entry per unique resolution. **Aliases will be removed in the next major version — migrate subscribers to the new names before then.** Full rename map is documented in the README. Requires `artisanpack-ui/hooks: ^1.2` (deprecation logging is a no-op on 1.2.x and active on 1.3.0+). ([#57](https://github.com/ArtisanPack-UI/forms/issues/57))
+
 ## [1.2.0] - 2026-07-08
 
 ### Added

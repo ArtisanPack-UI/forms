@@ -6,24 +6,24 @@
  * Represents an individual field configuration including type,
  * validation rules, conditional logic, and display settings.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @author     Jacob Martella <support@artisanpackui.dev>
  *
  * @since      1.0.0
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace ArtisanPackUI\Forms\Models;
 
+use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Database\Factories\FormFieldFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
@@ -32,8 +32,6 @@ use Illuminate\Support\Str;
  * Represents an individual field configuration including type,
  * validation rules, conditional logic, and display settings.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @property int $id
  * @property int $form_id
@@ -52,8 +50,8 @@ use Illuminate\Support\Str;
  * @property string $width
  * @property string|null $css_classes
  * @property int $sort_order
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  * @property-read Form $form
  * @property-read FormStep|null $step
  * @property-read bool $has_conditional_logic
@@ -106,7 +104,7 @@ class FormField extends Model
      */
     public function form(): BelongsTo
     {
-        return $this->belongsTo( Form::class );
+        return $this->belongsTo(Form::class);
     }
 
     /**
@@ -118,7 +116,7 @@ class FormField extends Model
      */
     public function step(): BelongsTo
     {
-        return $this->belongsTo( FormStep::class );
+        return $this->belongsTo(FormStep::class);
     }
 
     /**
@@ -130,7 +128,7 @@ class FormField extends Model
      */
     public function submissionValues(): HasMany
     {
-        return $this->hasMany( FormSubmissionValue::class, 'field_id' );
+        return $this->hasMany(FormSubmissionValue::class, 'field_id');
     }
 
     // =========================================
@@ -142,13 +140,12 @@ class FormField extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<FormField> $query The query builder instance.
-     *
+     * @param  Builder<FormField>  $query  The query builder instance.
      * @return Builder<FormField> The modified query builder.
      */
-    public function scopeRequired( Builder $query ): Builder
+    public function scopeRequired(Builder $query): Builder
     {
-        return $query->where( 'is_required', true );
+        return $query->where('is_required', true);
     }
 
     /**
@@ -156,14 +153,13 @@ class FormField extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<FormField> $query The query builder instance.
-     * @param string             $type  The field type to filter by.
-     *
+     * @param  Builder<FormField>  $query  The query builder instance.
+     * @param  string  $type  The field type to filter by.
      * @return Builder<FormField> The modified query builder.
      */
-    public function scopeOfType( Builder $query, string $type ): Builder
+    public function scopeOfType(Builder $query, string $type): Builder
     {
-        return $query->where( 'type', $type );
+        return $query->where('type', $type);
     }
 
     /**
@@ -171,13 +167,12 @@ class FormField extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<FormField> $query The query builder instance.
-     *
+     * @param  Builder<FormField>  $query  The query builder instance.
      * @return Builder<FormField> The modified query builder.
      */
-    public function scopeWithoutStep( Builder $query ): Builder
+    public function scopeWithoutStep(Builder $query): Builder
     {
-        return $query->whereNull( 'step_id' );
+        return $query->whereNull('step_id');
     }
 
     /**
@@ -185,14 +180,13 @@ class FormField extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<FormField> $query  The query builder instance.
-     * @param int                $stepId The step ID to filter by.
-     *
+     * @param  Builder<FormField>  $query  The query builder instance.
+     * @param  int  $stepId  The step ID to filter by.
      * @return Builder<FormField> The modified query builder.
      */
-    public function scopeInStep( Builder $query, int $stepId ): Builder
+    public function scopeInStep(Builder $query, int $stepId): Builder
     {
-        return $query->where( 'step_id', $stepId );
+        return $query->where('step_id', $stepId);
     }
 
     // =========================================
@@ -208,8 +202,8 @@ class FormField extends Model
      */
     public function getHasConditionalLogicAttribute(): bool
     {
-        return ! empty( $this->conditional_logic ) &&
-               ! empty( $this->conditional_logic['rules'] );
+        return ! empty($this->conditional_logic) &&
+               ! empty($this->conditional_logic['rules']);
     }
 
     /**
@@ -221,7 +215,7 @@ class FormField extends Model
      */
     public function getIsFileFieldAttribute(): bool
     {
-        return 'file' === $this->type;
+        return $this->type === 'file';
     }
 
     /**
@@ -245,11 +239,11 @@ class FormField extends Model
      */
     public function getWidthClassAttribute(): string
     {
-        return match ( $this->width ) {
-            'half'       => 'w-full md:w-1/2',
-            'third'      => 'w-full md:w-1/3',
+        return match ($this->width) {
+            'half' => 'w-full md:w-1/2',
+            'third' => 'w-full md:w-1/3',
             'two-thirds' => 'w-full md:w-2/3',
-            default      => 'w-full',
+            default => 'w-full',
         };
     }
 
@@ -262,14 +256,13 @@ class FormField extends Model
      *
      * @since 1.0.0
      *
-     * @param string $key     The config key using dot notation.
-     * @param mixed  $default The default value if key not found.
-     *
+     * @param  string  $key  The config key using dot notation.
+     * @param  mixed  $default  The default value if key not found.
      * @return mixed The config value or default.
      */
-    public function getConfig( string $key, mixed $default = null ): mixed
+    public function getConfig(string $key, mixed $default = null): mixed
     {
-        return data_get( $this->field_config, $key, $default );
+        return data_get($this->field_config, $key, $default);
     }
 
     /**
@@ -277,20 +270,19 @@ class FormField extends Model
      *
      * @since 1.0.0
      *
-     * @param string $key     The validation rule key.
-     * @param mixed  $default The default value if key not found.
-     *
+     * @param  string  $key  The validation rule key.
+     * @param  mixed  $default  The default value if key not found.
      * @return mixed The validation rule or default.
      */
-    public function getValidationRule( string $key, mixed $default = null ): mixed
+    public function getValidationRule(string $key, mixed $default = null): mixed
     {
-        return data_get( $this->validation_rules, $key, $default );
+        return data_get($this->validation_rules, $key, $default);
     }
 
     /**
      * Builds the Laravel validation rules array for this field.
      *
-     * Applies the 'forms.validation_rules' filter hook to allow
+     * Applies the 'ap.forms.validationRules' filter hook to allow
      * third-party packages to modify validation rules for a field.
      *
      * @since 1.0.0
@@ -300,55 +292,55 @@ class FormField extends Model
     public function buildValidationRules(): array
     {
         // Layout fields don't need validation
-        if ( $this->isLayoutField() ) {
+        if ($this->isLayoutField()) {
             return [];
         }
 
         $rules = [];
 
-        if ( $this->is_required ) {
+        if ($this->is_required) {
             $rules[] = 'required';
         } else {
             $rules[] = 'nullable';
         }
 
         // Type-specific rules
-        $rules = array_merge( $rules, $this->getTypeValidationRules() );
+        $rules = array_merge($rules, $this->getTypeValidationRules());
 
         // Custom validation rules
-        if ( $min = $this->getValidationRule( 'min' ) ) {
+        if ($min = $this->getValidationRule('min')) {
             $rules[] = "min:{$min}";
         }
 
-        if ( $max = $this->getValidationRule( 'max' ) ) {
+        if ($max = $this->getValidationRule('max')) {
             $rules[] = "max:{$max}";
         }
 
-        if ( $pattern = $this->getValidationRule( 'pattern' ) ) {
+        if ($pattern = $this->getValidationRule('pattern')) {
             $rules[] = "regex:{$pattern}";
         }
 
         // Date range validation
-        if ( $minDate = $this->getValidationRule( 'min_date' ) ) {
+        if ($minDate = $this->getValidationRule('min_date')) {
             $rules[] = "after_or_equal:{$minDate}";
         }
 
-        if ( $maxDate = $this->getValidationRule( 'max_date' ) ) {
+        if ($maxDate = $this->getValidationRule('max_date')) {
             $rules[] = "before_or_equal:{$maxDate}";
         }
 
         // Time range validation
-        if ( $minTime = $this->getValidationRule( 'min_time' ) ) {
+        if ($minTime = $this->getValidationRule('min_time')) {
             $rules[] = "after_or_equal:{$minTime}";
         }
 
-        if ( $maxTime = $this->getValidationRule( 'max_time' ) ) {
+        if ($maxTime = $this->getValidationRule('max_time')) {
             $rules[] = "before_or_equal:{$maxTime}";
         }
 
         // Apply filter hook for extensibility
-        if ( function_exists( 'applyFilters' ) ) {
-            $rules = applyFilters( 'forms.validation_rules', $rules, $this );
+        if (function_exists('applyFilters')) {
+            $rules = applyFilters('ap.forms.validationRules', $rules, $this);
         }
 
         return $rules;
@@ -365,7 +357,7 @@ class FormField extends Model
      */
     public function isLayoutField(): bool
     {
-        return \ArtisanPackUI\Forms\Config\FieldTypes::isLayoutField( $this->type );
+        return FieldTypes::isLayoutField($this->type);
     }
 
     /**
@@ -390,9 +382,9 @@ class FormField extends Model
     protected function casts(): array
     {
         return [
-            'is_required'       => 'boolean',
-            'validation_rules'  => 'array',
-            'field_config'      => 'array',
+            'is_required' => 'boolean',
+            'validation_rules' => 'array',
+            'field_config' => 'array',
             'conditional_logic' => 'array',
         ];
     }
@@ -407,24 +399,22 @@ class FormField extends Model
      * Sets up model event listeners to auto-generate UUIDs on creation.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     protected static function boot(): void
     {
         parent::boot();
 
-        static::creating( function ( FormField $field ): void {
-            if ( empty( $field->uuid ) ) {
+        static::creating(function (FormField $field): void {
+            if (empty($field->uuid)) {
                 $field->uuid = Str::uuid()->toString();
             }
-        } );
+        });
     }
 
     /**
      * Gets validation rules specific to the field type.
      *
-     * Supports custom field types registered via the 'artisanpack.forms.field_types'
+     * Supports custom field types registered via the 'ap.forms.fieldTypes'
      * filter hook by checking for a 'type_validation' key in the field type config.
      *
      * @since 1.0.0
@@ -434,31 +424,31 @@ class FormField extends Model
     protected function getTypeValidationRules(): array
     {
         // Check for built-in types first
-        $builtInRules = match ( $this->type ) {
-            'email'                             => ['email'],
-            'url'                               => ['url'],
-            'number'                            => ['numeric'],
-            'phone'                             => ['string'],
-            'date'                              => ['date'],
-            'time'                              => ['date_format:H:i'],
-            'file'                              => $this->getFileValidationRules(),
+        $builtInRules = match ($this->type) {
+            'email' => ['email'],
+            'url' => ['url'],
+            'number' => ['numeric'],
+            'phone' => ['string'],
+            'date' => ['date'],
+            'time' => ['date_format:H:i'],
+            'file' => $this->getFileValidationRules(),
             'checkbox_group', 'select_multiple' => ['array'],
-            'checkbox'                          => ['boolean'],
-            default                             => null,
+            'checkbox' => ['boolean'],
+            default => null,
         };
 
-        if ( null !== $builtInRules ) {
+        if ($builtInRules !== null) {
             return $builtInRules;
         }
 
         // Check for custom type validation rules from the filter hook
-        $typeConfig = \ArtisanPackUI\Forms\Config\FieldTypes::getTypeConfig( $this->type );
+        $typeConfig = FieldTypes::getTypeConfig($this->type);
 
-        if ( null !== $typeConfig && isset( $typeConfig['type_validation'] ) ) {
+        if ($typeConfig !== null && isset($typeConfig['type_validation'])) {
             $customRules = $typeConfig['type_validation'];
 
             // Support both array of rules and single rule string
-            return is_array( $customRules ) ? $customRules : [$customRules];
+            return is_array($customRules) ? $customRules : [$customRules];
         }
 
         // Default to string validation for unknown types
@@ -476,11 +466,11 @@ class FormField extends Model
     {
         $rules = ['file'];
 
-        if ( $types = $this->getConfig( 'allowed_types' ) ) {
-            $rules[] = 'mimes:' . implode( ',', $types );
+        if ($types = $this->getConfig('allowed_types')) {
+            $rules[] = 'mimes:'.implode(',', $types);
         }
 
-        if ( $maxSize = $this->getConfig( 'max_size' ) ) {
+        if ($maxSize = $this->getConfig('max_size')) {
             $rules[] = "max:{$maxSize}";
         }
 

@@ -7,15 +7,13 @@
  * Supports dynamic recipients, placeholder parsing, and
  * conditional submission data inclusion.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @author     Jacob Martella <support@artisanpackui.dev>
  *
  * @since      1.0.0
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace ArtisanPackUI\Forms\Mail;
 
@@ -25,6 +23,7 @@ use ArtisanPackUI\Forms\Services\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -36,8 +35,6 @@ use Illuminate\Queue\SerializesModels;
  * Supports dynamic recipients, placeholder parsing, and
  * conditional submission data inclusion.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @since      1.0.0
  */
@@ -111,40 +108,40 @@ class FormSubmissionNotification extends Mailable
      *
      * @since 1.0.0
      *
-     * @param FormNotification $notification The notification configuration.
-     * @param FormSubmission   $submission   The form submission data.
+     * @param  FormNotification  $notification  The notification configuration.
+     * @param  FormSubmission  $submission  The form submission data.
      */
-    public function __construct( FormNotification $notification, FormSubmission $submission )
+    public function __construct(FormNotification $notification, FormSubmission $submission)
     {
         $this->notification = $notification;
-        $this->submission   = $submission;
+        $this->submission = $submission;
 
         // Pre-parse templates
-        $notificationService = app( NotificationService::class );
-        $this->parsedSubject = $notificationService->parseTemplate( $notification->subject, $submission );
-        $this->parsedMessage = $notificationService->parseTemplate( $notification->message, $submission );
+        $notificationService = app(NotificationService::class);
+        $this->parsedSubject = $notificationService->parseTemplate($notification->subject, $submission);
+        $this->parsedMessage = $notificationService->parseTemplate($notification->message, $submission);
 
         // Apply filter hook to allow modifying the message
-        if ( function_exists( 'applyFilters' ) ) {
+        if (function_exists('applyFilters')) {
             $this->parsedMessage = applyFilters(
-                'forms.notification_message',
+                'ap.forms.notificationMessage',
                 $this->parsedMessage,
                 $notification,
                 $submission,
             );
         }
 
-        $this->submissionDataTable = $notificationService->formatAllFieldsAsTable( $submission );
+        $this->submissionDataTable = $notificationService->formatAllFieldsAsTable($submission);
 
         // Get CC/BCC recipients upfront
-        $this->ccEmails  = $notificationService->getCcEmails( $notification );
-        $this->bccEmails = $notificationService->getBccEmails( $notification );
+        $this->ccEmails = $notificationService->getCcEmails($notification);
+        $this->bccEmails = $notificationService->getBccEmails($notification);
 
         // Determine whether to show IP address:
         // - Check config setting
         // - Hide for autoresponder emails (privacy: don't show submitter their own IP)
-        $this->showIpAddress = config( 'artisanpack.forms.notifications.show_ip_in_emails', true )
-            && FormNotification::TYPE_AUTORESPONDER !== $notification->type;
+        $this->showIpAddress = config('artisanpack.forms.notifications.show_ip_in_emails', true)
+            && $notification->type !== FormNotification::TYPE_AUTORESPONDER;
     }
 
     /**
@@ -158,18 +155,18 @@ class FormSubmissionNotification extends Mailable
     {
         // Build from address
         $from = null;
-        if ( $this->notification->from_email ) {
+        if ($this->notification->from_email) {
             $from = new Address(
                 $this->notification->from_email,
-                $this->notification->from_name ?? config( 'app.name' ),
+                $this->notification->from_name ?? config('app.name'),
             );
         }
 
         // Build reply-to
-        $replyTo      = [];
-        $replyToEmail = $this->notification->getReplyToEmail( $this->submission );
-        if ( $replyToEmail && filter_var( $replyToEmail, FILTER_VALIDATE_EMAIL ) ) {
-            $replyTo = [new Address( $replyToEmail )];
+        $replyTo = [];
+        $replyToEmail = $this->notification->getReplyToEmail($this->submission);
+        if ($replyToEmail && filter_var($replyToEmail, FILTER_VALIDATE_EMAIL)) {
+            $replyTo = [new Address($replyToEmail)];
         }
 
         return new Envelope(
@@ -201,7 +198,7 @@ class FormSubmissionNotification extends Mailable
      *
      * @since 1.0.0
      *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment> The message attachments.
+     * @return array<int, Attachment> The message attachments.
      */
     public function attachments(): array
     {

@@ -6,19 +6,18 @@
  * Business logic layer for exporting form submissions to various formats.
  * Supports CSV export with configurable headers and data transformations.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @author     Jacob Martella <support@artisanpackui.dev>
  *
  * @since      1.0.0
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace ArtisanPackUI\Forms\Services;
 
 use ArtisanPackUI\Forms\Models\Form;
+use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Response;
@@ -31,8 +30,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Business logic layer for exporting form submissions to various formats.
  * Supports CSV export with configurable headers and data transformations.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @since      1.0.0
  */
@@ -41,72 +38,70 @@ class ExportService
     /**
      * Exports submissions to CSV format.
      *
-     * Applies the 'forms.export_headers' and 'forms.export_data' filter hooks
+     * Applies the 'ap.forms.exportHeaders' and 'ap.forms.exportData' filter hooks
      * to allow third-party packages to modify export data.
      *
      * @since 1.0.0
      *
-     * @param Form                              $form        The form to export from.
-     * @param Collection<int, FormSubmission>   $submissions The submissions to export.
-     * @param string|null                       $filename    Optional custom filename.
-     *
+     * @param  Form  $form  The form to export from.
+     * @param  Collection<int, FormSubmission>  $submissions  The submissions to export.
+     * @param  string|null  $filename  Optional custom filename.
      * @return StreamedResponse The CSV download response.
      */
-    public function exportToCsv( Form $form, Collection $submissions, ?string $filename = null ): StreamedResponse
+    public function exportToCsv(Form $form, Collection $submissions, ?string $filename = null): StreamedResponse
     {
-        $filename = $filename ?? $form->slug . '-submissions-' . now()->format( 'Y-m-d' ) . '.csv';
+        $filename = $filename ?? $form->slug.'-submissions-'.now()->format('Y-m-d').'.csv';
 
-        $headers = $this->buildHeaders( $form );
-        $rows    = $this->buildRows( $form, $submissions );
+        $headers = $this->buildHeaders($form);
+        $rows = $this->buildRows($form, $submissions);
 
-        return Response::streamDownload( function () use ( $headers, $rows ): void {
-            $handle = fopen( 'php://output', 'w' );
+        return Response::streamDownload(function () use ($headers, $rows): void {
+            $handle = fopen('php://output', 'w');
 
-            if ( false === $handle ) {
-                throw new RuntimeException( __( 'Failed to open output stream for CSV export.' ) );
+            if ($handle === false) {
+                throw new RuntimeException(__('Failed to open output stream for CSV export.'));
             }
 
             // Write headers
-            fputcsv( $handle, $headers );
+            fputcsv($handle, $headers);
 
             // Write rows
-            foreach ( $rows as $row ) {
-                fputcsv( $handle, $row );
+            foreach ($rows as $row) {
+                fputcsv($handle, $row);
             }
 
-            fclose( $handle );
+            fclose($handle);
         }, $filename, [
-            'Content-Type'        => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ] );
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
     }
 
     /**
      * Builds CSV headers from form fields.
      *
-     * Applies the 'forms.export_headers' filter hook to allow
+     * Applies the 'ap.forms.exportHeaders' filter hook to allow
      * third-party packages to modify export headers.
      *
      * @since 1.0.0
      *
-     * @param Form $form The form to build headers for.
-     *
+     * @param  Form  $form  The form to build headers for.
      * @return array<int, string> The CSV headers.
      */
-    public function buildHeaders( Form $form ): array
+    public function buildHeaders(Form $form): array
     {
-        $localizeHeaders = config( 'artisanpack.forms.export.localize_headers', false );
+        $localizeHeaders = config('artisanpack.forms.export.localize_headers', false);
 
         $headers = [
-            $localizeHeaders ? __( 'Submission ID' ) : 'Submission ID',
-            $localizeHeaders ? __( 'Submission Number' ) : 'Submission Number',
-            $localizeHeaders ? __( 'Submitted At' ) : 'Submitted At',
+            $localizeHeaders ? __('Submission ID') : 'Submission ID',
+            $localizeHeaders ? __('Submission Number') : 'Submission Number',
+            $localizeHeaders ? __('Submitted At') : 'Submitted At',
         ];
 
         // Add field headers
-        foreach ( $form->fields()->orderBy( 'sort_order' )->get() as $field ) {
+        foreach ($form->fields()->orderBy('sort_order')->get() as $field) {
             // Skip layout fields
-            if ( $field->isLayoutField() ) {
+            if ($field->isLayoutField()) {
                 continue;
             }
 
@@ -114,20 +109,20 @@ class ExportService
         }
 
         // Add metadata headers
-        $headers[] = $localizeHeaders ? __( 'Page URL' ) : 'Page URL';
+        $headers[] = $localizeHeaders ? __('Page URL') : 'Page URL';
 
         // Only include IP Address header if explicitly enabled in config
-        if ( config( 'artisanpack.forms.privacy.include_ip_address', false ) ) {
-            $headers[] = $localizeHeaders ? __( 'IP Address' ) : 'IP Address';
+        if (config('artisanpack.forms.privacy.include_ip_address', false)) {
+            $headers[] = $localizeHeaders ? __('IP Address') : 'IP Address';
         }
 
-        $headers[] = $localizeHeaders ? __( 'Is Read' ) : 'Is Read';
-        $headers[] = $localizeHeaders ? __( 'Is Spam' ) : 'Is Spam';
-        $headers[] = $localizeHeaders ? __( 'Is Starred' ) : 'Is Starred';
+        $headers[] = $localizeHeaders ? __('Is Read') : 'Is Read';
+        $headers[] = $localizeHeaders ? __('Is Spam') : 'Is Spam';
+        $headers[] = $localizeHeaders ? __('Is Starred') : 'Is Starred';
 
         // Apply filter hook for extensibility
-        if ( function_exists( 'applyFilters' ) ) {
-            $headers = applyFilters( 'forms.export_headers', $headers, $form );
+        if (function_exists('applyFilters')) {
+            $headers = applyFilters('ap.forms.exportHeaders', $headers, $form);
         }
 
         return $headers;
@@ -138,18 +133,17 @@ class ExportService
      *
      * @since 1.0.0
      *
-     * @param Form                            $form        The form.
-     * @param Collection<int, FormSubmission> $submissions The submissions.
-     *
+     * @param  Form  $form  The form.
+     * @param  Collection<int, FormSubmission>  $submissions  The submissions.
      * @return array<int, array<int, string>> The CSV rows.
      */
-    public function buildRows( Form $form, Collection $submissions ): array
+    public function buildRows(Form $form, Collection $submissions): array
     {
-        $fields = $form->fields()->orderBy( 'sort_order' )->get();
-        $rows   = [];
+        $fields = $form->fields()->orderBy('sort_order')->get();
+        $rows = [];
 
-        foreach ( $submissions as $submission ) {
-            $row    = $this->buildRow( $form, $submission, $fields );
+        foreach ($submissions as $submission) {
+            $row = $this->buildRow($form, $submission, $fields);
             $rows[] = $row;
         }
 
@@ -159,33 +153,32 @@ class ExportService
     /**
      * Builds a single CSV row from a submission.
      *
-     * Applies the 'forms.export_data' filter hook to allow
+     * Applies the 'ap.forms.exportData' filter hook to allow
      * third-party packages to modify export row data.
      *
      * @since 1.0.0
      *
-     * @param Form                                                    $form       The form.
-     * @param FormSubmission                                          $submission The submission.
-     * @param Collection<int, \ArtisanPackUI\Forms\Models\FormField>  $fields     The form fields.
-     *
+     * @param  Form  $form  The form.
+     * @param  FormSubmission  $submission  The submission.
+     * @param  Collection<int, FormField>  $fields  The form fields.
      * @return array<int, string> The CSV row data.
      */
-    public function buildRow( Form $form, FormSubmission $submission, $fields ): array
+    public function buildRow(Form $form, FormSubmission $submission, $fields): array
     {
         $row = [
             (string) $submission->id,
             $submission->submission_number,
-            $submission->created_at->format( 'Y-m-d H:i:s' ),
+            $submission->created_at->format('Y-m-d H:i:s'),
         ];
 
         // Add field values
-        foreach ( $fields as $field ) {
+        foreach ($fields as $field) {
             // Skip layout fields
-            if ( $field->isLayoutField() ) {
+            if ($field->isLayoutField()) {
                 continue;
             }
 
-            $value = $submission->getValue( $field->name );
+            $value = $submission->getValue($field->name);
             $row[] = $value ?? '';
         }
 
@@ -193,18 +186,18 @@ class ExportService
         $row[] = $submission->page_url ?? '';
 
         // Only include IP address if explicitly enabled in config
-        if ( config( 'artisanpack.forms.privacy.include_ip_address', false ) ) {
+        if (config('artisanpack.forms.privacy.include_ip_address', false)) {
             $row[] = $submission->ip_address ?? '';
         }
 
         // Use stable boolean values (1/0) by default for machine parsing
         // Use localized Yes/No only when explicitly enabled
-        $localizeBooleans = config( 'artisanpack.forms.export.localize_booleans', false );
+        $localizeBooleans = config('artisanpack.forms.export.localize_booleans', false);
 
-        if ( $localizeBooleans ) {
-            $row[] = $submission->is_read ? __( 'Yes' ) : __( 'No' );
-            $row[] = $submission->is_spam ? __( 'Yes' ) : __( 'No' );
-            $row[] = $submission->is_starred ? __( 'Yes' ) : __( 'No' );
+        if ($localizeBooleans) {
+            $row[] = $submission->is_read ? __('Yes') : __('No');
+            $row[] = $submission->is_spam ? __('Yes') : __('No');
+            $row[] = $submission->is_starred ? __('Yes') : __('No');
         } else {
             $row[] = $submission->is_read ? '1' : '0';
             $row[] = $submission->is_spam ? '1' : '0';
@@ -212,8 +205,8 @@ class ExportService
         }
 
         // Apply filter hook for extensibility
-        if ( function_exists( 'applyFilters' ) ) {
-            $row = applyFilters( 'forms.export_data', $row, $submission );
+        if (function_exists('applyFilters')) {
+            $row = applyFilters('ap.forms.exportData', $row, $submission);
         }
 
         return $row;
@@ -224,40 +217,39 @@ class ExportService
      *
      * @since 1.0.0
      *
-     * @param Form                            $form        The form to export from.
-     * @param Collection<int, FormSubmission> $submissions The submissions to export.
-     *
+     * @param  Form  $form  The form to export from.
+     * @param  Collection<int, FormSubmission>  $submissions  The submissions to export.
      * @return array<int, array<string, mixed>> The JSON export data.
      */
-    public function exportToJson( Form $form, Collection $submissions ): array
+    public function exportToJson(Form $form, Collection $submissions): array
     {
         $data = [];
 
-        foreach ( $submissions as $submission ) {
+        foreach ($submissions as $submission) {
             // Build metadata, respecting privacy settings
             $metadata = [
-                'page_url'   => $submission->page_url,
-                'is_read'    => $submission->is_read,
-                'is_spam'    => $submission->is_spam,
+                'page_url' => $submission->page_url,
+                'is_read' => $submission->is_read,
+                'is_spam' => $submission->is_spam,
                 'is_starred' => $submission->is_starred,
             ];
 
             // Only include IP address if explicitly enabled in config
-            if ( config( 'artisanpack.forms.privacy.include_ip_address', false ) ) {
+            if (config('artisanpack.forms.privacy.include_ip_address', false)) {
                 $metadata['ip_address'] = $submission->ip_address;
             }
 
             $submissionData = [
-                'id'                => $submission->id,
+                'id' => $submission->id,
                 'submission_number' => $submission->submission_number,
-                'submitted_at'      => $submission->created_at->toIso8601String(),
-                'data'              => $submission->data_array,
-                'metadata'          => $metadata,
+                'submitted_at' => $submission->created_at->toIso8601String(),
+                'data' => $submission->data_array,
+                'metadata' => $metadata,
             ];
 
             // Apply filter hook for extensibility
-            if ( function_exists( 'applyFilters' ) ) {
-                $submissionData = applyFilters( 'forms.export_data', $submissionData, $submission );
+            if (function_exists('applyFilters')) {
+                $submissionData = applyFilters('ap.forms.exportData', $submissionData, $submission);
             }
 
             $data[] = $submissionData;
