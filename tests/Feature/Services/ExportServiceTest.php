@@ -213,22 +213,22 @@ describe( 'ExportService', function (): void {
             } );
 
             $form = Form::factory()->create();
-            FormSubmission::factory()->for( $form)->create();
+            FormSubmission::factory()->for( $form )->create();
 
             $submissions = $form->submissions()->get();
-            $data        = $this->service->exportToJson( $form, $submissions);
+            $data        = $this->service->exportToJson( $form, $submissions );
 
-            expect( $data[0]['custom_json_field'])->toBe( 'custom_value');
-        });
-    });
-});
+            expect( $data[0]['custom_json_field'] )->toBe( 'custom_value' );
+        } );
+    } );
+} );
 
 afterEach( function (): void {
     // Reset privacy config
-    config( ['artisanpack.forms.privacy.include_ip_address' => false]);
+    config( ['artisanpack.forms.privacy.include_ip_address' => false] );
 
-    if ( function_exists( 'removeAllFilters')) {
-        removeAllFilters( 'ap.forms.exportHeaders');
+    if ( function_exists( 'removeAllFilters' ) ) {
+        removeAllFilters( 'ap.forms.exportHeaders' );
         removeAllFilters( 'ap.forms.exportData');
     }
 });

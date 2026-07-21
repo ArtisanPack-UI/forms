@@ -296,7 +296,7 @@ return [
     'disk_config' => [
         'form-uploads' => [
             'driver'     => 'local',
-            'root'       => storage_path( 'app/form-uploads'),
+            'root'       => storage_path( 'app/form-uploads' ),
             'visibility' => 'private',
         ],
     ],

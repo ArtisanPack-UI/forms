@@ -80,8 +80,8 @@ describe( 'HookAliases', function (): void {
             $oldCalled = true;
         } );
 
-        doAction( 'ap.forms.form.created', new stdClass);
+        doAction( 'ap.forms.form.created', new stdClass );
 
-        expect( $oldCalled)->toBeTrue();
-    });
+        expect( $oldCalled )->toBeTrue();
+    } );
 });

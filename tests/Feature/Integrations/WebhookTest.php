@@ -227,13 +227,13 @@ describe( 'Webhook Integration', function (): void {
 
 afterEach( function (): void {
     // Reset config after each test
-    config( ['artisanpack.forms.webhooks.enabled' => false]);
-    config( ['artisanpack.forms.webhooks.url' => null]);
-    config( ['artisanpack.forms.privacy.include_ip_address' => false]);
-    config( ['artisanpack.forms.privacy.include_user_agent' => false]);
+    config( ['artisanpack.forms.webhooks.enabled' => false] );
+    config( ['artisanpack.forms.webhooks.url' => null] );
+    config( ['artisanpack.forms.privacy.include_ip_address' => false] );
+    config( ['artisanpack.forms.privacy.include_user_agent' => false] );
 
     // Reset filters
-    if ( function_exists( 'removeAllFilters')) {
+    if ( function_exists( 'removeAllFilters' ) ) {
         removeAllFilters( 'ap.forms.webhookPayload');
     }
 });
