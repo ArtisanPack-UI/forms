@@ -12,7 +12,7 @@
  * @since      1.0.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms;
 
@@ -75,45 +75,45 @@ class FormsServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(
-            __DIR__.'/../config/forms.php',
+            __DIR__ . '/../config/forms.php',
             'artisanpack-forms-temp',
         );
 
-        $this->app->singleton('forms', function ($app) {
+        $this->app->singleton( 'forms', function ( $app ) {
             return new Forms;
-        });
+        } );
 
-        $this->app->singleton(FormService::class, function ($app) {
+        $this->app->singleton( FormService::class, function ( $app ) {
             return new FormService;
-        });
+        } );
 
-        $this->app->singleton(FieldService::class, function ($app) {
+        $this->app->singleton( FieldService::class, function ( $app ) {
             return new FieldService;
-        });
+        } );
 
-        $this->app->singleton(StepService::class, function ($app) {
+        $this->app->singleton( StepService::class, function ( $app ) {
             return new StepService;
-        });
+        } );
 
-        $this->app->singleton(ConditionalLogicService::class, function ($app) {
+        $this->app->singleton( ConditionalLogicService::class, function ( $app ) {
             return new ConditionalLogicService;
-        });
+        } );
 
-        $this->app->singleton(NotificationService::class, function ($app) {
-            return new NotificationService($app->make(ConditionalLogicService::class));
-        });
+        $this->app->singleton( NotificationService::class, function ( $app ) {
+            return new NotificationService( $app->make( ConditionalLogicService::class ) );
+        } );
 
-        $this->app->singleton(SubmissionService::class, function ($app) {
-            return new SubmissionService($app->make(NotificationService::class));
-        });
+        $this->app->singleton( SubmissionService::class, function ( $app ) {
+            return new SubmissionService( $app->make( NotificationService::class ) );
+        } );
 
-        $this->app->singleton(ExportService::class, function ($app) {
+        $this->app->singleton( ExportService::class, function ( $app ) {
             return new ExportService;
-        });
+        } );
 
-        $this->app->singleton(IntegrationService::class, function ($app) {
+        $this->app->singleton( IntegrationService::class, function ( $app ) {
             return new IntegrationService;
-        });
+        } );
     }
 
     /**
@@ -135,9 +135,9 @@ class FormsServiceProvider extends ServiceProvider
         $this->registerEventListeners();
         $this->registerPolicies();
         $this->publishConfiguration();
-        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-        $this->loadViewsFrom(__DIR__.'/../resources/views', 'forms');
-        $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        $this->loadMigrationsFrom( __DIR__ . '/../database/migrations' );
+        $this->loadViewsFrom( __DIR__ . '/../resources/views', 'forms' );
+        $this->loadRoutesFrom( __DIR__ . '/../routes/web.php' );
         $this->loadApiRoutes();
         $this->registerLivewireComponents();
         $this->publishViews();
@@ -164,34 +164,34 @@ class FormsServiceProvider extends ServiceProvider
         // admin listings) never receive class-strings for agents whose ArtisanPackAgent
         // base cannot be autoloaded. Uses static:: so subclasses can override the
         // availability probe in tests.
-        if (! static::aiPackageAvailable()) {
+        if ( ! static::aiPackageAvailable() ) {
             return [];
         }
 
         return [
             'forms.spam_detection' => [
-                'agent' => SpamDetectionAgent::class,
-                'package' => 'artisanpack-ui/forms',
-                'label' => __('Spam detection'),
-                'description' => __('Semantic spam score, verdict, and reasons on top of existing honeypot and rate-limit checks.'),
+                'agent'       => SpamDetectionAgent::class,
+                'package'     => 'artisanpack-ui/forms',
+                'label'       => __( 'Spam detection' ),
+                'description' => __( 'Semantic spam score, verdict, and reasons on top of existing honeypot and rate-limit checks.' ),
             ],
             'forms.submission_summary' => [
-                'agent' => SubmissionSummaryAgent::class,
-                'package' => 'artisanpack-ui/forms',
-                'label' => __('Submission summary'),
-                'description' => __('Periodic digest of submission themes, notable entries, and suggested follow-ups.'),
+                'agent'       => SubmissionSummaryAgent::class,
+                'package'     => 'artisanpack-ui/forms',
+                'label'       => __( 'Submission summary' ),
+                'description' => __( 'Periodic digest of submission themes, notable entries, and suggested follow-ups.' ),
             ],
             'forms.response_classification' => [
-                'agent' => ResponseClassificationAgent::class,
-                'package' => 'artisanpack-ui/forms',
-                'label' => __('Response classification'),
-                'description' => __('Auto-categorize incoming submissions against a caller-supplied set of labels.'),
+                'agent'       => ResponseClassificationAgent::class,
+                'package'     => 'artisanpack-ui/forms',
+                'label'       => __( 'Response classification' ),
+                'description' => __( 'Auto-categorize incoming submissions against a caller-supplied set of labels.' ),
             ],
             'forms.smart_validation' => [
-                'agent' => SmartFieldValidationAgent::class,
-                'package' => 'artisanpack-ui/forms',
-                'label' => __('Smart field validation'),
-                'description' => __('Opt-in semantic per-field plausibility check that complements format validation.'),
+                'agent'       => SmartFieldValidationAgent::class,
+                'package'     => 'artisanpack-ui/forms',
+                'label'       => __( 'Smart field validation' ),
+                'description' => __( 'Opt-in semantic per-field plausibility check that complements format validation.' ),
             ],
         ];
     }
@@ -208,7 +208,7 @@ class FormsServiceProvider extends ServiceProvider
      */
     public static function aiPackageAvailable(): bool
     {
-        return class_exists(ArtisanPackAgent::class);
+        return class_exists( ArtisanPackAgent::class );
     }
 
     /**
@@ -221,10 +221,10 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function mergeConfiguration(): void
     {
-        $packageDefaults = config('artisanpack-forms-temp', []);
-        $userConfig = config('artisanpack.forms', []);
-        $mergedConfig = array_replace_recursive($packageDefaults, $userConfig);
-        config(['artisanpack.forms' => $mergedConfig]);
+        $packageDefaults = config( 'artisanpack-forms-temp', [] );
+        $userConfig      = config( 'artisanpack.forms', [] );
+        $mergedConfig    = array_replace_recursive( $packageDefaults, $userConfig );
+        config( ['artisanpack.forms' => $mergedConfig] );
     }
 
     /**
@@ -241,23 +241,23 @@ class FormsServiceProvider extends ServiceProvider
     protected function validateUserModelConfiguration(): void
     {
         // Only validate if ownership restriction is enabled
-        if (! config('artisanpack.forms.authorization.restrict_by_owner', false)) {
+        if ( ! config( 'artisanpack.forms.authorization.restrict_by_owner', false ) ) {
             return;
         }
 
-        $userModel = config('artisanpack.forms.authorization.user_model', 'App\\Models\\User');
+        $userModel = config( 'artisanpack.forms.authorization.user_model', 'App\\Models\\User' );
 
-        if (! class_exists($userModel)) {
+        if ( ! class_exists( $userModel ) ) {
             throw new RuntimeException(
-                "The configured user model class '{$userModel}' does not exist. ".
-                'Please set a valid class in FORMS_USER_MODEL environment variable or '.
+                "The configured user model class '{$userModel}' does not exist. " .
+                'Please set a valid class in FORMS_USER_MODEL environment variable or ' .
                 'artisanpack.forms.authorization.user_model configuration.',
             );
         }
 
-        if (! is_subclass_of($userModel, Model::class)) {
+        if ( ! is_subclass_of( $userModel, Model::class ) ) {
             throw new RuntimeException(
-                "The configured user model class '{$userModel}' must extend ".
+                "The configured user model class '{$userModel}' must extend " .
                 'Illuminate\\Database\\Eloquent\\Model.',
             );
         }
@@ -273,12 +273,12 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function registerFilesystemDisk(): void
     {
-        $diskConfig = config('artisanpack.forms.disk_config', []);
+        $diskConfig = config( 'artisanpack.forms.disk_config', [] );
 
-        foreach ($diskConfig as $diskName => $diskSettings) {
+        foreach ( $diskConfig as $diskName => $diskSettings ) {
             // Only add the disk if it doesn't already exist
-            if (config("filesystems.disks.{$diskName}") === null) {
-                config(["filesystems.disks.{$diskName}" => $diskSettings]);
+            if ( null === config( "filesystems.disks.{$diskName}" ) ) {
+                config( ["filesystems.disks.{$diskName}" => $diskSettings] );
             }
         }
     }
@@ -292,11 +292,11 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function registerCommands(): void
     {
-        if ($this->app->runningInConsole()) {
-            $this->commands([
+        if ( $this->app->runningInConsole() ) {
+            $this->commands( [
                 InstallFrontend::class,
                 PruneFormSubmissions::class,
-            ]);
+            ] );
         }
     }
 
@@ -309,7 +309,7 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function registerEventListeners(): void
     {
-        Event::listen(FormSubmitted::class, SendWebhookOnSubmission::class);
+        Event::listen( FormSubmitted::class, SendWebhookOnSubmission::class );
     }
 
     /**
@@ -322,8 +322,8 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function registerPolicies(): void
     {
-        Gate::policy(Models\Form::class, Policies\FormPolicy::class);
-        Gate::policy(Models\FormSubmission::class, Policies\SubmissionPolicy::class);
+        Gate::policy( Models\Form::class, Policies\FormPolicy::class );
+        Gate::policy( Models\FormSubmission::class, Policies\SubmissionPolicy::class );
     }
 
     /**
@@ -336,10 +336,10 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function publishConfiguration(): void
     {
-        if ($this->app->runningInConsole()) {
-            $this->publishes([
-                __DIR__.'/../config/forms.php' => config_path('artisanpack/forms.php'),
-            ], 'artisanpack-package-config');
+        if ( $this->app->runningInConsole() ) {
+            $this->publishes( [
+                __DIR__ . '/../config/forms.php' => config_path( 'artisanpack/forms.php' ),
+            ], 'artisanpack-package-config' );
         }
     }
 
@@ -352,28 +352,28 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function registerLivewireComponents(): void
     {
-        if (! class_exists(Livewire::class)) {
+        if ( ! class_exists( Livewire::class ) ) {
             return;
         }
 
-        Livewire::component('forms-list', FormsList::class);
-        Livewire::component('form-builder', FormBuilder::class);
-        Livewire::component('form-renderer', FormRenderer::class);
-        Livewire::component('notification-editor', NotificationEditor::class);
-        Livewire::component('submissions-list', SubmissionsList::class);
-        Livewire::component('submission-detail', SubmissionDetail::class);
+        Livewire::component( 'forms-list', FormsList::class );
+        Livewire::component( 'form-builder', FormBuilder::class );
+        Livewire::component( 'form-renderer', FormRenderer::class );
+        Livewire::component( 'notification-editor', NotificationEditor::class );
+        Livewire::component( 'submissions-list', SubmissionsList::class );
+        Livewire::component( 'submission-detail', SubmissionDetail::class );
 
         // AI trigger components are only registered when artisanpack-ui/ai is
         // installed, since each component's mount path constructs an agent
         // that extends the ai package's ArtisanPackAgent base class.
-        if (! self::aiPackageAvailable()) {
+        if ( ! self::aiPackageAvailable() ) {
             return;
         }
 
-        Livewire::component('forms::ai-spam-check', SpamCheck::class);
-        Livewire::component('forms::ai-submission-summary', SubmissionSummary::class);
-        Livewire::component('forms::ai-response-classifier', ResponseClassifier::class);
-        Livewire::component('forms::ai-smart-field-validator', SmartFieldValidator::class);
+        Livewire::component( 'forms::ai-spam-check', SpamCheck::class );
+        Livewire::component( 'forms::ai-submission-summary', SubmissionSummary::class );
+        Livewire::component( 'forms::ai-response-classifier', ResponseClassifier::class );
+        Livewire::component( 'forms::ai-smart-field-validator', SmartFieldValidator::class );
     }
 
     /**
@@ -385,8 +385,8 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function loadApiRoutes(): void
     {
-        if (config('artisanpack.forms.api.enabled', true)) {
-            $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
+        if ( config( 'artisanpack.forms.api.enabled', true ) ) {
+            $this->loadRoutesFrom( __DIR__ . '/../routes/api.php' );
         }
     }
 
@@ -399,10 +399,10 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function publishViews(): void
     {
-        if ($this->app->runningInConsole()) {
-            $this->publishes([
-                __DIR__.'/../resources/views' => resource_path('views/vendor/forms'),
-            ], 'artisanpack-forms-views');
+        if ( $this->app->runningInConsole() ) {
+            $this->publishes( [
+                __DIR__ . '/../resources/views' => resource_path( 'views/vendor/forms' ),
+            ], 'artisanpack-forms-views' );
         }
     }
 
@@ -416,10 +416,10 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function publishTypeDefinitions(): void
     {
-        if ($this->app->runningInConsole()) {
-            $this->publishes([
-                __DIR__.'/../resources/js/types/artisanpack-forms.d.ts' => resource_path('types/artisanpack-forms.d.ts'),
-            ], 'forms-types');
+        if ( $this->app->runningInConsole() ) {
+            $this->publishes( [
+                __DIR__ . '/../resources/js/types/artisanpack-forms.d.ts' => resource_path( 'types/artisanpack-forms.d.ts' ),
+            ], 'forms-types' );
         }
     }
 
@@ -433,12 +433,12 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function publishReactComponents(): void
     {
-        if ($this->app->runningInConsole()) {
-            $this->publishes([
-                __DIR__.'/../resources/js/react' => resource_path('js/vendor/artisanpack-forms/react'),
-                __DIR__.'/../resources/js/shared' => resource_path('js/vendor/artisanpack-forms/shared'),
-                __DIR__.'/../resources/js/types/artisanpack-forms.d.ts' => resource_path('js/vendor/artisanpack-forms/types/artisanpack-forms.d.ts'),
-            ], 'forms-react');
+        if ( $this->app->runningInConsole() ) {
+            $this->publishes( [
+                __DIR__ . '/../resources/js/react'                        => resource_path( 'js/vendor/artisanpack-forms/react' ),
+                __DIR__ . '/../resources/js/shared'                       => resource_path( 'js/vendor/artisanpack-forms/shared' ),
+                __DIR__ . '/../resources/js/types/artisanpack-forms.d.ts' => resource_path( 'js/vendor/artisanpack-forms/types/artisanpack-forms.d.ts' ),
+            ], 'forms-react' );
         }
     }
 
@@ -452,11 +452,11 @@ class FormsServiceProvider extends ServiceProvider
      */
     protected function publishVueComponents(): void
     {
-        if ($this->app->runningInConsole()) {
-            $this->publishes([
-                __DIR__.'/../resources/js/vue' => resource_path('js/vendor/artisanpack-forms/vue'),
-                __DIR__.'/../resources/js/shared' => resource_path('js/vendor/artisanpack-forms/shared'),
-                __DIR__.'/../resources/js/types/artisanpack-forms.d.ts' => resource_path('js/vendor/artisanpack-forms/types/artisanpack-forms.d.ts'),
+        if ( $this->app->runningInConsole()) {
+            $this->publishes( [
+                __DIR__ . '/../resources/js/vue'                          => resource_path( 'js/vendor/artisanpack-forms/vue'),
+                __DIR__ . '/../resources/js/shared'                       => resource_path( 'js/vendor/artisanpack-forms/shared'),
+                __DIR__ . '/../resources/js/types/artisanpack-forms.d.ts' => resource_path( 'js/vendor/artisanpack-forms/types/artisanpack-forms.d.ts'),
             ], 'forms-vue');
         }
     }

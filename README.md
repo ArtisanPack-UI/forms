@@ -289,6 +289,44 @@ listed below.
 | `forms.notification.sent`        | `ap.forms.notification.sent`       |
 | `forms.notification_message`     | `ap.forms.notificationMessage`     |
 
+### Additional hooks
+
+The following hooks have no legacy alias — they were introduced under the
+canonical `ap.forms.*` convention.
+
+| Hook                              | Type   | Payload                                            |
+|-----------------------------------|--------|----------------------------------------------------|
+| `ap.forms.beforeValidate`         | action | `(FormRequest $request)`                           |
+| `ap.forms.validated`              | action | `(FormRequest $request, array $validated)`         |
+| `ap.forms.fieldRender`            | filter | `(string $html, FormField $field)`                 |
+| `ap.forms.integrationRegistered`  | action | `(string $slug, array $config)`                    |
+| `ap.forms.notificationSubject`    | filter | `(string $subject, FormNotification $notification, FormSubmission $submission)` |
+| `ap.forms.notificationBody`       | filter | `(string $body, FormNotification $notification, FormSubmission $submission)` |
+
+Examples:
+
+```php
+use ArtisanPackUI\Forms\Services\IntegrationService;
+use function addAction;
+use function addFilter;
+
+// Wrap every rendered field in a diagnostic marker
+addFilter('ap.forms.fieldRender', function (string $html, $field): string {
+    return '<div data-field="' . $field->name . '">' . $html . '</div>';
+});
+
+// Observe integration registration from a third-party package
+addAction('ap.forms.integrationRegistered', function (string $slug, array $config): void {
+    logger()->info("forms integration registered: {$slug}", $config);
+});
+
+// Register your own integration from your service provider boot()
+app(IntegrationService::class)->registerIntegration('mailchimp', [
+    'label' => 'Mailchimp',
+    'icon'  => 'o-envelope',
+]);
+```
+
 ## 🤝 Contributing
 
 Contributions are welcome! To contribute:

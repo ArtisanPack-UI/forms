@@ -12,7 +12,7 @@
  * @since      1.0.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Jobs;
 
@@ -81,10 +81,10 @@ class SendFormNotification implements ShouldQueue
      * @param  FormNotification  $notification  The notification to send.
      * @param  FormSubmission  $submission  The form submission data.
      */
-    public function __construct(FormNotification $notification, FormSubmission $submission)
+    public function __construct( FormNotification $notification, FormSubmission $submission )
     {
         $this->notification = $notification;
-        $this->submission = $submission;
+        $this->submission   = $submission;
     }
 
     /**
@@ -97,69 +97,63 @@ class SendFormNotification implements ShouldQueue
     public function handle(): void
     {
         // Ensure relationships are loaded
-        $this->submission->loadMissing(['form', 'values.field']);
-        $this->notification->loadMissing('form');
+        $this->submission->loadMissing( ['form', 'values.field'] );
+        $this->notification->loadMissing( 'form' );
 
         // Get recipient emails
-        $recipients = $this->notification->getRecipientEmails($this->submission);
+        $recipients = $this->notification->getRecipientEmails( $this->submission );
 
         // Apply filter hook to allow modifying recipients
-        if (function_exists('applyFilters')) {
-            $recipients = applyFilters(
-                'ap.forms.notificationRecipients',
-                $recipients,
-                $this->notification,
-            );
-        }
+        $recipients = applyFilters(
+            'ap.forms.notificationRecipients',
+            $recipients,
+            $this->notification,
+        );
 
-        if (empty($recipients)) {
-            Log::warning('Form notification has no valid recipients', [
-                'notification_id' => $this->notification->id,
+        if ( empty( $recipients ) ) {
+            Log::warning( 'Form notification has no valid recipients', [
+                'notification_id'   => $this->notification->id,
                 'notification_name' => $this->notification->name,
-                'submission_id' => $this->submission->id,
-                'form_id' => $this->submission->form_id,
-            ]);
+                'submission_id'     => $this->submission->id,
+                'form_id'           => $this->submission->form_id,
+            ] );
 
             return;
         }
 
         try {
             // Fire before_send action hook
-            if (function_exists('doAction')) {
-                doAction(
-                    'ap.forms.notification.beforeSend',
-                    $this->notification,
-                    $this->submission,
-                );
-            }
+            doAction(
+                'ap.forms.notification.beforeSend',
+                $this->notification,
+                $this->submission,
+            );
 
             // Create and send the mailable
-            $mailable = new FormSubmissionNotification($this->notification, $this->submission);
+            $mailable = new FormSubmissionNotification( $this->notification, $this->submission );
 
-            Mail::to($recipients)->send($mailable);
+            Mail::to( $recipients )->send( $mailable );
 
             // Fire sent action hook
-            if (function_exists('doAction')) {
-                doAction(
-                    'ap.forms.notification.sent',
-                    $this->notification,
-                    $this->submission,
-                );
-            }
+            doAction(
+                'ap.forms.notification.sent',
+                $this->notification,
+                $this->submission,
+            );
 
-            Log::info('Form notification sent successfully', [
-                'notification_id' => $this->notification->id,
+            Log::info( 'Form notification sent successfully', [
+                'notification_id'   => $this->notification->id,
                 'notification_name' => $this->notification->name,
-                'submission_id' => $this->submission->id,
-                'recipients' => $recipients,
-            ]);
-        } catch (Exception $e) {
-            Log::error('Failed to send form notification', [
-                'notification_id' => $this->notification->id,
+                'submission_id'     => $this->submission->id,
+                'recipients'        => $recipients,
+            ] );
+        } catch ( Exception $e ) {
+            Log::error( 'Failed to send form notification', [
+                'notification_id'   => $this->notification->id,
                 'notification_name' => $this->notification->name,
-                'submission_id' => $this->submission->id,
-                'error' => $e->getMessage(),
-            ]);
+                'submission_id'     => $this->submission->id,
+                'error'             => $e->getMessage(),
+            ] );
 
             throw $e; // Re-throw to trigger retry
         }
@@ -174,14 +168,14 @@ class SendFormNotification implements ShouldQueue
      *
      * @param  Throwable  $exception  The exception that caused the failure.
      */
-    public function failed(Throwable $exception): void
+    public function failed( Throwable $exception ): void
     {
-        Log::error('Form notification job failed permanently', [
-            'notification_id' => $this->notification->id,
+        Log::error( 'Form notification job failed permanently', [
+            'notification_id'   => $this->notification->id,
             'notification_name' => $this->notification->name,
-            'submission_id' => $this->submission->id,
-            'error' => $exception->getMessage(),
-        ]);
+            'submission_id'     => $this->submission->id,
+            'error'             => $exception->getMessage(),
+        ] );
     }
 
     /**
@@ -197,9 +191,9 @@ class SendFormNotification implements ShouldQueue
     {
         return [
             'form-notification',
-            'notification:'.$this->notification->id,
-            'submission:'.$this->submission->id,
-            'form:'.$this->submission->form_id,
+            'notification:' . $this->notification->id,
+            'submission:' . $this->submission->id,
+            'form:' . $this->submission->form_id,
         ];
     }
 }

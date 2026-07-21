@@ -24,9 +24,9 @@ return [
     */
 
     'admin' => [
-        'prefix' => env('FORMS_ADMIN_PREFIX', 'admin/forms'),
+        'prefix'     => env( 'FORMS_ADMIN_PREFIX', 'admin/forms' ),
         'middleware' => ['web', 'auth'],
-        'per_page' => 15,
+        'per_page'   => 15,
     ],
 
     /*
@@ -41,10 +41,10 @@ return [
     */
 
     'api' => [
-        'enabled' => env('FORMS_API_ENABLED', true),
-        'prefix' => env('FORMS_API_PREFIX', 'api/v1/forms'),
+        'enabled'    => env( 'FORMS_API_ENABLED', true ),
+        'prefix'     => env( 'FORMS_API_PREFIX', 'api/v1/forms' ),
         'middleware' => ['api', 'auth:sanctum'],
-        'per_page' => 15,
+        'per_page'   => 15,
     ],
 
     /*
@@ -59,9 +59,9 @@ return [
     */
 
     'uploads' => [
-        'disk' => env('FORMS_UPLOADS_DISK', 'form-uploads'),
-        'directory' => env('FORMS_UPLOADS_DIRECTORY', 'uploads'),
-        'max_size' => env('FORMS_UPLOADS_MAX_SIZE', 10240), // KB (10MB default)
+        'disk'          => env( 'FORMS_UPLOADS_DISK', 'form-uploads' ),
+        'directory'     => env( 'FORMS_UPLOADS_DIRECTORY', 'uploads' ),
+        'max_size'      => env( 'FORMS_UPLOADS_MAX_SIZE', 10240 ), // KB (10MB default)
         'allowed_mimes' => [
             'application/pdf',
             'application/msword',
@@ -89,8 +89,8 @@ return [
     */
 
     'submissions' => [
-        'store_submissions' => true,
-        'retention_days' => env('FORMS_RETENTION_DAYS', null), // null = keep forever
+        'store_submissions'        => true,
+        'retention_days'           => env( 'FORMS_RETENTION_DAYS', null ), // null = keep forever
         'submission_number_format' => 'FORM-{year}-{sequence}',
     ],
 
@@ -107,13 +107,13 @@ return [
 
     'spam_protection' => [
         'honeypot' => [
-            'enabled' => true,
+            'enabled'    => true,
             'field_name' => 'website_url',
         ],
         'rate_limit' => [
-            'enabled' => true,
+            'enabled'  => true,
             'attempts' => 5,
-            'decay' => 60, // seconds
+            'decay'    => 60, // seconds
         ],
     ],
 
@@ -129,10 +129,10 @@ return [
     */
 
     'notifications' => [
-        'from_name' => env('FORMS_FROM_NAME'),
-        'from_email' => env('FORMS_FROM_EMAIL'),
-        'queue' => env('FORMS_NOTIFICATION_QUEUE', 'default'),
-        'show_ip_in_emails' => env('FORMS_SHOW_IP_IN_EMAILS', true),
+        'from_name'         => env( 'FORMS_FROM_NAME' ),
+        'from_email'        => env( 'FORMS_FROM_EMAIL' ),
+        'queue'             => env( 'FORMS_NOTIFICATION_QUEUE', 'default' ),
+        'show_ip_in_emails' => env( 'FORMS_SHOW_IP_IN_EMAILS', true ),
     ],
 
     /*
@@ -145,10 +145,10 @@ return [
     */
 
     'display' => [
-        'label_position' => 'above', // 'above', 'beside', 'hidden'
+        'label_position'          => 'above', // 'above', 'beside', 'hidden'
         'show_required_indicator' => true,
-        'required_indicator' => '*',
-        'error_display' => 'below', // 'below', 'tooltip', 'summary'
+        'required_indicator'      => '*',
+        'error_display'           => 'below', // 'below', 'tooltip', 'summary'
     ],
 
     /*
@@ -163,12 +163,12 @@ return [
     */
 
     'webhooks' => [
-        'enabled' => env('FORMS_WEBHOOKS_ENABLED', false),
-        'url' => env('FORMS_WEBHOOK_URL'),
-        'secret' => env('FORMS_WEBHOOK_SECRET'),
-        'queue' => env('FORMS_WEBHOOK_QUEUE', 'default'),
-        'timeout' => env('FORMS_WEBHOOK_TIMEOUT', 30),
-        'retry_times' => 3,
+        'enabled'       => env( 'FORMS_WEBHOOKS_ENABLED', false ),
+        'url'           => env( 'FORMS_WEBHOOK_URL' ),
+        'secret'        => env( 'FORMS_WEBHOOK_SECRET' ),
+        'queue'         => env( 'FORMS_WEBHOOK_QUEUE', 'default' ),
+        'timeout'       => env( 'FORMS_WEBHOOK_TIMEOUT', 30 ),
+        'retry_times'   => 3,
         'retry_backoff' => [10, 60, 300], // seconds
     ],
 
@@ -202,18 +202,18 @@ return [
         // Submission metadata settings (what gets stored in the database)
         'submission' => [
             // Include IP address in submission metadata
-            'include_ip' => env('FORMS_INCLUDE_IP', true),
+            'include_ip' => env( 'FORMS_INCLUDE_IP', true ),
 
             // Anonymize IP addresses by masking the last octet (e.g., 192.168.1.x becomes 192.168.1.0)
-            'anonymize_ip' => env('FORMS_ANONYMIZE_IP', false),
+            'anonymize_ip' => env( 'FORMS_ANONYMIZE_IP', false ),
 
             // Include user agent in submission metadata
-            'include_user_agent' => env('FORMS_INCLUDE_USER_AGENT', true),
+            'include_user_agent' => env( 'FORMS_INCLUDE_USER_AGENT', true ),
         ],
 
         // Webhook/Export settings (what gets sent externally) - defaults to false for privacy
-        'include_ip_address' => env('FORMS_INCLUDE_IP_ADDRESS', false),
-        'include_user_agent' => env('FORMS_WEBHOOK_INCLUDE_USER_AGENT', false),
+        'include_ip_address' => env( 'FORMS_INCLUDE_IP_ADDRESS', false ),
+        'include_user_agent' => env( 'FORMS_WEBHOOK_INCLUDE_USER_AGENT', false ),
     ],
 
     /*
@@ -229,11 +229,11 @@ return [
     'export' => [
         // Localize export headers (e.g., "Submission ID" vs English literals)
         // When false, headers use stable English strings for machine processing
-        'localize_headers' => env('FORMS_EXPORT_LOCALIZE_HEADERS', false),
+        'localize_headers' => env( 'FORMS_EXPORT_LOCALIZE_HEADERS', false ),
 
         // Localize boolean values in exports (e.g., "Yes"/"No" vs 1/0)
         // When false, booleans export as 1/0 for consistent machine parsing
-        'localize_booleans' => env('FORMS_EXPORT_LOCALIZE_BOOLEANS', false),
+        'localize_booleans' => env( 'FORMS_EXPORT_LOCALIZE_BOOLEANS', false ),
     ],
 
     /*
@@ -249,7 +249,7 @@ return [
 
     'security' => [
         // Enable logging of security events (honeypot, rate limiting, invalid files)
-        'logging_enabled' => env('FORMS_SECURITY_LOGGING', true),
+        'logging_enabled' => env( 'FORMS_SECURITY_LOGGING', true ),
     ],
 
     /*
@@ -273,13 +273,13 @@ return [
 
     'authorization' => [
         // Enable ownership-based access control (recommended for multi-user apps)
-        'restrict_by_owner' => env('FORMS_RESTRICT_BY_OWNER', false),
+        'restrict_by_owner' => env( 'FORMS_RESTRICT_BY_OWNER', false ),
 
         // Allow users with is_admin attribute to bypass ownership checks
-        'allow_admin_bypass' => env('FORMS_ALLOW_ADMIN_BYPASS', true),
+        'allow_admin_bypass' => env( 'FORMS_ALLOW_ADMIN_BYPASS', true ),
 
         // The user model class for ownership relationships
-        'user_model' => env('FORMS_USER_MODEL', 'App\\Models\\User'),
+        'user_model' => env( 'FORMS_USER_MODEL', 'App\\Models\\User' ),
     ],
 
     /*
@@ -295,8 +295,8 @@ return [
 
     'disk_config' => [
         'form-uploads' => [
-            'driver' => 'local',
-            'root' => storage_path('app/form-uploads'),
+            'driver'     => 'local',
+            'root'       => storage_path( 'app/form-uploads'),
             'visibility' => 'private',
         ],
     ],
