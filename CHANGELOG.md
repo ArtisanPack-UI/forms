@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-21
+
 ### Added
 
 - Six new `ap.forms.*` hooks for the Wave 5 cross-package standardization ([#58](https://github.com/ArtisanPack-UI/forms/issues/58)):

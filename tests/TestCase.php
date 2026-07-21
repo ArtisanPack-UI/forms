@@ -6,6 +6,7 @@ namespace Tests;
 
 use ArtisanPackUI\Ai\AiServiceProvider;
 use ArtisanPackUI\Forms\FormsServiceProvider;
+use ArtisanPackUI\Hooks\Providers\HooksServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Blade;
@@ -60,7 +61,10 @@ abstract class TestCase extends BaseTestCase
      */
     protected function getPackageProviders( $app ): array
     {
-        $providers = [LivewireServiceProvider::class];
+        $providers = [
+            HooksServiceProvider::class,
+            LivewireServiceProvider::class,
+        ];
 
         // AI provider is optional — only register when artisanpack-ui/ai is installed.
         if ( class_exists( AiServiceProvider::class ) ) {

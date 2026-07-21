@@ -146,10 +146,21 @@ public function boot(): void
 |--------|-----------|-------------|
 | `ap.forms.fieldTypes` | `$types` | Modify available field types |
 | `ap.forms.validationRules` | `$rules, $form` | Modify validation rules |
-| `ap.forms.notificationMessage` | `$message, $notification, $submission` | Modify notification content |
+| `ap.forms.fieldRender` | `$html, $field` | Modify the rendered HTML of a single field before it's echoed by the form renderer |
+| `ap.forms.notificationMessage` | `$message, $notification, $submission` | Modify notification content (legacy; still runs before `notificationSubject` / `notificationBody`) |
+| `ap.forms.notificationSubject` | `$subject, $notification, $submission` | Modify outgoing notification email subject |
+| `ap.forms.notificationBody` | `$body, $notification, $submission` | Modify outgoing notification email body |
 | `ap.forms.webhookPayload` | `$payload, $form, $submission` | Modify webhook data |
 | `forms.spam_check` | `$isSpam, $form, $data` | Custom spam detection |
 | `ap.forms.settingsTabs` | `$tabs, $form` | Add admin settings tabs |
+
+### Available Actions
+
+| Action | Arguments | Description |
+|--------|-----------|-------------|
+| `ap.forms.beforeValidate` | `$request` | Fires from a package `FormRequest::prepareForValidation()` just before Laravel validates the request |
+| `ap.forms.validated` | `$request, $validated` | Fires from `FormRequest::passedValidation()` after validation succeeds |
+| `ap.forms.integrationRegistered` | `$slug, $config` | Fires when `IntegrationService::registerIntegration()` registers an integration so ecosystem packages can observe registrations |
 
 ### Examples
 
