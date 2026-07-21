@@ -229,6 +229,6 @@ afterEach( function (): void {
 
     if ( function_exists( 'removeAllFilters' ) ) {
         removeAllFilters( 'ap.forms.exportHeaders' );
-        removeAllFilters( 'ap.forms.exportData');
+        removeAllFilters( 'ap.forms.exportData' );
     }
 });

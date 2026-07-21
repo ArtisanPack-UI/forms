@@ -417,7 +417,7 @@ afterEach( function (): void {
     RateLimiter::clear( 'form-submission:1:192.168.1.2' );
     RateLimiter::clear( 'form-submission:2:192.168.1.1' );
 
-    if ( function_exists( 'removeAllFilters' )) {
-        removeAllFilters( 'ap.forms.submissionData');
+    if ( function_exists( 'removeAllFilters' ) ) {
+        removeAllFilters( 'ap.forms.submissionData' );
     }
 });
