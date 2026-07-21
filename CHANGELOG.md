@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Six new `ap.forms.*` hooks for the Wave 5 cross-package standardization ([#58](https://github.com/ArtisanPack-UI/forms/issues/58)):
+  - `ap.forms.beforeValidate` action — fires from `FormRequest::prepareForValidation()` just before Laravel validates a package form request. Payload: `(FormRequest $request)`.
+  - `ap.forms.validated` action — fires from `FormRequest::passedValidation()` after validation succeeds. Payload: `(FormRequest $request, array $validated)`.
+  - `ap.forms.fieldRender` filter — pipes each field's rendered HTML through subscribers before it's echoed in the form-renderer view. Payload: `(string $html, FormField $field)`.
+  - `ap.forms.integrationRegistered` action — fires from `IntegrationService::registerIntegration($slug, $config)` so ecosystem packages can observe every integration registration. Payload: `(string $slug, array $config)`.
+  - `ap.forms.notificationSubject` filter — mutates outgoing notification email subjects. Payload: `(string $subject, FormNotification $notification, FormSubmission $submission)`. Both `notificationSubject` and `notificationBody` fire AFTER the legacy `notificationMessage` filter (which stays for back-compat), on the already-parsed template.
+  - `ap.forms.notificationBody` filter — mutates outgoing notification email bodies. Payload: `(string $body, FormNotification $notification, FormSubmission $submission)`.
+- `Support\FiresValidationHooks` trait applied to `StoreFormRequest`, `UpdateFormRequest`, and `SubmitFormApiRequest` wiring the two validation-lifecycle hooks above.
+- `Support\FieldRenderer::render()` helper used by the form renderer view to render each field partial and pipe the HTML through `ap.forms.fieldRender`.
+- `IntegrationService::registerIntegration(string $slug, array $config = [])` for integration packages to announce themselves during their service provider boot.
+
+### Changed
+
+- Bumped the `artisanpack-ui/hooks` constraint to `^1.3` and dropped every `function_exists('applyFilters' | 'doAction')` guard across `src/`. Hooks 1.3 is now a hard runtime requirement — the 15+ pre-existing guarded sites and the six new Wave 5 sites all call the hook helpers directly.
+
 ### Deprecated
 
 - All 18 hooks previously shipped under `forms.*` / snake_case names have been renamed to the ecosystem-standard `ap.forms.*` camelCase convention (Wave 2 of the cross-package hooks standardization). Existing subscribers continue firing via deprecation aliases registered in `Support\HookAliases`, emitting an info-level `HookDeprecations` log entry per unique resolution. **Aliases will be removed in the next major version — migrate subscribers to the new names before then.** Full rename map is documented in the README. Requires `artisanpack-ui/hooks: ^1.2` (deprecation logging is a no-op on 1.2.x and active on 1.3.0+). ([#57](https://github.com/ArtisanPack-UI/forms/issues/57))

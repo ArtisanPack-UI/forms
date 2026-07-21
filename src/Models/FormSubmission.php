@@ -12,7 +12,7 @@
  * @since      1.0.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
 
@@ -91,7 +91,7 @@ class FormSubmission extends Model
      */
     public function form(): BelongsTo
     {
-        return $this->belongsTo(Form::class);
+        return $this->belongsTo( Form::class );
     }
 
     /**
@@ -103,7 +103,7 @@ class FormSubmission extends Model
      */
     public function values(): HasMany
     {
-        return $this->hasMany(FormSubmissionValue::class, 'submission_id');
+        return $this->hasMany( FormSubmissionValue::class, 'submission_id' );
     }
 
     /**
@@ -115,7 +115,7 @@ class FormSubmission extends Model
      */
     public function uploads(): HasMany
     {
-        return $this->hasMany(FormUpload::class, 'submission_id');
+        return $this->hasMany( FormUpload::class, 'submission_id' );
     }
 
     // =========================================
@@ -128,11 +128,12 @@ class FormSubmission extends Model
      * @since 1.0.0
      *
      * @param  Builder<FormSubmission>  $query  The query builder instance.
+     *
      * @return Builder<FormSubmission> The modified query builder.
      */
-    public function scopeUnread(Builder $query): Builder
+    public function scopeUnread( Builder $query ): Builder
     {
-        return $query->where('is_read', false);
+        return $query->where( 'is_read', false );
     }
 
     /**
@@ -141,11 +142,12 @@ class FormSubmission extends Model
      * @since 1.0.0
      *
      * @param  Builder<FormSubmission>  $query  The query builder instance.
+     *
      * @return Builder<FormSubmission> The modified query builder.
      */
-    public function scopeRead(Builder $query): Builder
+    public function scopeRead( Builder $query ): Builder
     {
-        return $query->where('is_read', true);
+        return $query->where( 'is_read', true );
     }
 
     /**
@@ -154,11 +156,12 @@ class FormSubmission extends Model
      * @since 1.0.0
      *
      * @param  Builder<FormSubmission>  $query  The query builder instance.
+     *
      * @return Builder<FormSubmission> The modified query builder.
      */
-    public function scopeNotSpam(Builder $query): Builder
+    public function scopeNotSpam( Builder $query ): Builder
     {
-        return $query->where('is_spam', false);
+        return $query->where( 'is_spam', false );
     }
 
     /**
@@ -167,11 +170,12 @@ class FormSubmission extends Model
      * @since 1.0.0
      *
      * @param  Builder<FormSubmission>  $query  The query builder instance.
+     *
      * @return Builder<FormSubmission> The modified query builder.
      */
-    public function scopeSpam(Builder $query): Builder
+    public function scopeSpam( Builder $query ): Builder
     {
-        return $query->where('is_spam', true);
+        return $query->where( 'is_spam', true );
     }
 
     /**
@@ -180,11 +184,12 @@ class FormSubmission extends Model
      * @since 1.0.0
      *
      * @param  Builder<FormSubmission>  $query  The query builder instance.
+     *
      * @return Builder<FormSubmission> The modified query builder.
      */
-    public function scopeStarred(Builder $query): Builder
+    public function scopeStarred( Builder $query ): Builder
     {
-        return $query->where('is_starred', true);
+        return $query->where( 'is_starred', true );
     }
 
     /**
@@ -194,11 +199,12 @@ class FormSubmission extends Model
      *
      * @param  Builder<FormSubmission>  $query  The query builder instance.
      * @param  int  $days  Number of days to look back.
+     *
      * @return Builder<FormSubmission> The modified query builder.
      */
-    public function scopeRecent(Builder $query, int $days = 30): Builder
+    public function scopeRecent( Builder $query, int $days = 30 ): Builder
     {
-        return $query->where('created_at', '>=', now()->subDays($days));
+        return $query->where( 'created_at', '>=', now()->subDays( $days ) );
     }
 
     // =========================================
@@ -214,9 +220,9 @@ class FormSubmission extends Model
      */
     public function getDataAttribute(): Collection
     {
-        return $this->values->mapWithKeys(function (FormSubmissionValue $value) {
+        return $this->values->mapWithKeys( function ( FormSubmissionValue $value ) {
             return [$value->field_name => $value->display_value];
-        });
+        } );
     }
 
     /**
@@ -242,7 +248,7 @@ class FormSubmission extends Model
      */
     public function markAsRead(): void
     {
-        $this->update(['is_read' => true]);
+        $this->update( ['is_read' => true] );
     }
 
     /**
@@ -252,7 +258,7 @@ class FormSubmission extends Model
      */
     public function markAsUnread(): void
     {
-        $this->update(['is_read' => false]);
+        $this->update( ['is_read' => false] );
     }
 
     /**
@@ -262,7 +268,7 @@ class FormSubmission extends Model
      */
     public function toggleSpam(): void
     {
-        $this->update(['is_spam' => ! $this->is_spam]);
+        $this->update( ['is_spam' => ! $this->is_spam] );
     }
 
     /**
@@ -272,7 +278,7 @@ class FormSubmission extends Model
      */
     public function toggleStar(): void
     {
-        $this->update(['is_starred' => ! $this->is_starred]);
+        $this->update( ['is_starred' => ! $this->is_starred] );
     }
 
     /**
@@ -281,12 +287,13 @@ class FormSubmission extends Model
      * @since 1.0.0
      *
      * @param  string  $fieldName  The field name to retrieve.
+     *
      * @return string|null The field value or null if not found.
      */
-    public function getValue(string $fieldName): ?string
+    public function getValue( string $fieldName ): ?string
     {
         return $this->values
-            ->firstWhere('field_name', $fieldName)
+            ->firstWhere( 'field_name', $fieldName )
             ?->display_value;
     }
 
@@ -299,9 +306,9 @@ class FormSubmission extends Model
      */
     public function getEmailValue(): ?string
     {
-        $emailValue = $this->values->first(function ($value) {
-            return $value->field_type === 'email';
-        });
+        $emailValue = $this->values->first( function ( $value ) {
+            return 'email' === $value->field_type;
+        } );
 
         return $emailValue?->value;
     }
@@ -328,8 +335,8 @@ class FormSubmission extends Model
     protected function casts(): array
     {
         return [
-            'is_read' => 'boolean',
-            'is_spam' => 'boolean',
+            'is_read'    => 'boolean',
+            'is_spam'    => 'boolean',
             'is_starred' => 'boolean',
         ];
     }
@@ -349,41 +356,35 @@ class FormSubmission extends Model
     {
         parent::boot();
 
-        static::creating(function (FormSubmission $submission): void {
-            if (empty($submission->submission_number)) {
-                $submission->submission_number = static::generateSubmissionNumber($submission->form_id);
+        static::creating( function ( FormSubmission $submission ): void {
+            if ( empty( $submission->submission_number ) ) {
+                $submission->submission_number = static::generateSubmissionNumber( $submission->form_id );
             }
-        });
+        } );
 
-        static::created(function (FormSubmission $submission): void {
+        static::created( function ( FormSubmission $submission ): void {
             // Fire action hook for extensibility
-            if (function_exists('doAction')) {
-                doAction('ap.forms.submission.created', $submission);
-            }
+            doAction( 'ap.forms.submission.created', $submission );
 
             // Dispatch Laravel event
-            FormSubmitted::dispatch($submission);
-        });
+            FormSubmitted::dispatch( $submission );
+        } );
 
-        static::updated(function (FormSubmission $submission): void {
+        static::updated( function ( FormSubmission $submission ): void {
             // Fire action hook for extensibility
-            if (function_exists('doAction')) {
-                doAction('ap.forms.submission.updated', $submission);
-            }
+            doAction( 'ap.forms.submission.updated', $submission );
 
             // Dispatch Laravel event
-            SubmissionUpdated::dispatch($submission);
-        });
+            SubmissionUpdated::dispatch( $submission );
+        } );
 
-        static::deleted(function (FormSubmission $submission): void {
+        static::deleted( function ( FormSubmission $submission ): void {
             // Fire action hook for extensibility
-            if (function_exists('doAction')) {
-                doAction('ap.forms.submission.deleted', $submission);
-            }
+            doAction( 'ap.forms.submission.deleted', $submission );
 
             // Dispatch Laravel event
-            SubmissionDeleted::dispatch($submission);
-        });
+            SubmissionDeleted::dispatch( $submission );
+        } );
     }
 
     /**
@@ -392,22 +393,23 @@ class FormSubmission extends Model
      * @since 1.0.0
      *
      * @param  int  $formId  The form ID to generate a submission number for.
+     *
      * @return string The unique submission number.
      */
-    protected static function generateSubmissionNumber(int $formId): string
+    protected static function generateSubmissionNumber( int $formId ): string
     {
-        $format = config('artisanpack.forms.submissions.submission_number_format', 'FORM-{year}-{sequence}');
+        $format = config( 'artisanpack.forms.submissions.submission_number_format', 'FORM-{year}-{sequence}' );
 
-        $count = static::where('form_id', $formId)
-            ->whereYear('created_at', now()->year)
+        $count = static::where( 'form_id', $formId )
+            ->whereYear( 'created_at', now()->year )
             ->count() + 1;
 
         $replacements = [
-            '{year}' => now()->format('Y'),
-            '{sequence}' => sprintf('%05d', $count),
-            '{form_id}' => $formId,
+            '{year}'     => now()->format( 'Y' ),
+            '{sequence}' => sprintf( '%05d', $count ),
+            '{form_id}'  => $formId,
         ];
 
-        return str_replace(array_keys($replacements), array_values($replacements), $format);
+        return str_replace( array_keys( $replacements ), array_values( $replacements), $format);
     }
 }

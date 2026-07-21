@@ -18,6 +18,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Http\Requests\Api;
 
 use ArtisanPackUI\Forms\Models\Form;
+use ArtisanPackUI\Forms\Support\FiresValidationHooks;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -31,6 +32,8 @@ use Illuminate\Validation\Rule;
  */
 class UpdateFormApiRequest extends FormRequest
 {
+    use FiresValidationHooks;
+
     /**
      * Determines if the user is authorized to make this request.
      *
@@ -93,6 +96,8 @@ class UpdateFormApiRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        $this->fireBeforeValidate();
+
         if ( $this->has( 'slug' ) && '' === $this->slug ) {
             $this->merge( ['slug' => null] );
         }
