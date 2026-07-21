@@ -7,8 +7,6 @@
  * Supports dynamic recipients, placeholder parsing, and
  * conditional submission data inclusion.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @author     Jacob Martella <support@artisanpackui.dev>
  *
@@ -25,6 +23,7 @@ use ArtisanPackUI\Forms\Services\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -36,8 +35,6 @@ use Illuminate\Queue\SerializesModels;
  * Supports dynamic recipients, placeholder parsing, and
  * conditional submission data inclusion.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @since      1.0.0
  */
@@ -111,8 +108,8 @@ class FormSubmissionNotification extends Mailable
      *
      * @since 1.0.0
      *
-     * @param FormNotification $notification The notification configuration.
-     * @param FormSubmission   $submission   The form submission data.
+     * @param  FormNotification  $notification  The notification configuration.
+     * @param  FormSubmission  $submission  The form submission data.
      */
     public function __construct( FormNotification $notification, FormSubmission $submission )
     {
@@ -124,15 +121,27 @@ class FormSubmissionNotification extends Mailable
         $this->parsedSubject = $notificationService->parseTemplate( $notification->subject, $submission );
         $this->parsedMessage = $notificationService->parseTemplate( $notification->message, $submission );
 
-        // Apply filter hook to allow modifying the message
-        if ( function_exists( 'applyFilters' ) ) {
-            $this->parsedMessage = applyFilters(
-                'forms.notification_message',
-                $this->parsedMessage,
-                $notification,
-                $submission,
-            );
-        }
+        // Apply filter hooks to allow modifying the message
+        $this->parsedMessage = applyFilters(
+            'ap.forms.notificationMessage',
+            $this->parsedMessage,
+            $notification,
+            $submission,
+        );
+
+        $this->parsedSubject = applyFilters(
+            'ap.forms.notificationSubject',
+            $this->parsedSubject,
+            $notification,
+            $submission,
+        );
+
+        $this->parsedMessage = applyFilters(
+            'ap.forms.notificationBody',
+            $this->parsedMessage,
+            $notification,
+            $submission,
+        );
 
         $this->submissionDataTable = $notificationService->formatAllFieldsAsTable( $submission );
 
@@ -201,7 +210,7 @@ class FormSubmissionNotification extends Mailable
      *
      * @since 1.0.0
      *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment> The message attachments.
+     * @return array<int, Attachment> The message attachments.
      */
     public function attachments(): array
     {

@@ -156,11 +156,11 @@
                                     :aria-hidden="!visible"
                                     :inert="!visible"
                                 >
-                                    @include('forms::components.fields.' . $field->type, [
-                                        'field' => $field,
-                                        'value' => $formData[$field->name] ?? null,
-                                        'error' => $errors->first('formData.' . $field->name),
-                                    ])
+                                    {!! \ArtisanPackUI\Forms\Support\FieldRenderer::render(
+                                        $field,
+                                        $formData[$field->name] ?? null,
+                                        $errors->first('formData.' . $field->name),
+                                    ) !!}
                                 </div>
                             @endforeach
                         </div>
@@ -251,11 +251,11 @@
                             :aria-hidden="!visible"
                             :inert="!visible"
                         >
-                            @include('forms::components.fields.' . $field->type, [
-                                'field' => $field,
-                                'value' => $formData[$field->name] ?? null,
-                                'error' => $errors->first('formData.' . $field->name),
-                            ])
+                            {!! \ArtisanPackUI\Forms\Support\FieldRenderer::render(
+                                $field,
+                                $formData[$field->name] ?? null,
+                                $errors->first('formData.' . $field->name),
+                            ) !!}
                         </div>
                     @endforeach
                 </div>

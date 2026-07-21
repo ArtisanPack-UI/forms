@@ -96,7 +96,7 @@ use function addFilter;
 
 public function boot(): void
 {
-    addFilter('forms.field_types', function ($types) {
+    addFilter('ap.forms.fieldTypes', function ($types) {
         $types['color-picker'] = [
             'label' => 'Color Picker',
             'icon' => 'palette',
@@ -144,12 +144,23 @@ public function boot(): void
 
 | Filter | Arguments | Description |
 |--------|-----------|-------------|
-| `forms.field_types` | `$types` | Modify available field types |
-| `forms.validation_rules` | `$rules, $form` | Modify validation rules |
-| `forms.notification_message` | `$message, $notification, $submission` | Modify notification content |
-| `forms.webhook_payload` | `$payload, $form, $submission` | Modify webhook data |
+| `ap.forms.fieldTypes` | `$types` | Modify available field types |
+| `ap.forms.validationRules` | `$rules, $form` | Modify validation rules |
+| `ap.forms.fieldRender` | `$html, $field` | Modify the rendered HTML of a single field before it's echoed by the form renderer |
+| `ap.forms.notificationMessage` | `$message, $notification, $submission` | Modify notification content (legacy; still runs before `notificationSubject` / `notificationBody`) |
+| `ap.forms.notificationSubject` | `$subject, $notification, $submission` | Modify outgoing notification email subject |
+| `ap.forms.notificationBody` | `$body, $notification, $submission` | Modify outgoing notification email body |
+| `ap.forms.webhookPayload` | `$payload, $form, $submission` | Modify webhook data |
 | `forms.spam_check` | `$isSpam, $form, $data` | Custom spam detection |
-| `forms.settings_tabs` | `$tabs, $form` | Add admin settings tabs |
+| `ap.forms.settingsTabs` | `$tabs, $form` | Add admin settings tabs |
+
+### Available Actions
+
+| Action | Arguments | Description |
+|--------|-----------|-------------|
+| `ap.forms.beforeValidate` | `$request` | Fires from a package `FormRequest::prepareForValidation()` just before Laravel validates the request |
+| `ap.forms.validated` | `$request, $validated` | Fires from `FormRequest::passedValidation()` after validation succeeds |
+| `ap.forms.integrationRegistered` | `$slug, $config` | Fires when `IntegrationService::registerIntegration()` registers an integration so ecosystem packages can observe registrations |
 
 ### Examples
 
@@ -157,7 +168,7 @@ public function boot(): void
 use function addFilter;
 
 // Add custom validation
-addFilter('forms.validation_rules', function ($rules, $form) {
+addFilter('ap.forms.validationRules', function ($rules, $form) {
     if ($form->slug === 'job-application') {
         $rules['formData.resume'] = 'required|mimes:pdf,doc,docx|max:5120';
     }
@@ -165,7 +176,7 @@ addFilter('forms.validation_rules', function ($rules, $form) {
 });
 
 // Modify notification
-addFilter('forms.notification_message', function ($message, $notification, $submission) {
+addFilter('ap.forms.notificationMessage', function ($message, $notification, $submission) {
     return $message . "\n\n---\nProcessed by MyApp v" . config('app.version');
 });
 

@@ -6,8 +6,6 @@
  * Queued job that sends a single form notification email.
  * Handles recipient resolution, email building, and error logging.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @author     Jacob Martella <support@artisanpackui.dev>
  *
@@ -37,8 +35,6 @@ use Throwable;
  * Queued job that sends a single form notification email.
  * Handles recipient resolution, email building, and error logging.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @since      1.0.0
  */
@@ -53,8 +49,6 @@ class SendFormNotification implements ShouldQueue
      * The number of times the job may be attempted.
      *
      * @since 1.0.0
-     *
-     * @var int
      */
     public int $tries = 3;
 
@@ -62,8 +56,6 @@ class SendFormNotification implements ShouldQueue
      * The number of seconds to wait before retrying the job.
      *
      * @since 1.0.0
-     *
-     * @var int
      */
     public int $backoff = 60;
 
@@ -71,8 +63,6 @@ class SendFormNotification implements ShouldQueue
      * The form notification to send.
      *
      * @since 1.0.0
-     *
-     * @var FormNotification
      */
     public FormNotification $notification;
 
@@ -80,8 +70,6 @@ class SendFormNotification implements ShouldQueue
      * The form submission data.
      *
      * @since 1.0.0
-     *
-     * @var FormSubmission
      */
     public FormSubmission $submission;
 
@@ -90,8 +78,8 @@ class SendFormNotification implements ShouldQueue
      *
      * @since 1.0.0
      *
-     * @param FormNotification $notification The notification to send.
-     * @param FormSubmission   $submission   The form submission data.
+     * @param  FormNotification  $notification  The notification to send.
+     * @param  FormSubmission  $submission  The form submission data.
      */
     public function __construct( FormNotification $notification, FormSubmission $submission )
     {
@@ -105,8 +93,6 @@ class SendFormNotification implements ShouldQueue
      * Loads required relationships, resolves recipients, and sends the notification email.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     public function handle(): void
     {
@@ -118,13 +104,11 @@ class SendFormNotification implements ShouldQueue
         $recipients = $this->notification->getRecipientEmails( $this->submission );
 
         // Apply filter hook to allow modifying recipients
-        if ( function_exists( 'applyFilters' ) ) {
-            $recipients = applyFilters(
-                'forms.notification_recipients',
-                $recipients,
-                $this->notification,
-            );
-        }
+        $recipients = applyFilters(
+            'ap.forms.notificationRecipients',
+            $recipients,
+            $this->notification,
+        );
 
         if ( empty( $recipients ) ) {
             Log::warning( 'Form notification has no valid recipients', [
@@ -139,13 +123,11 @@ class SendFormNotification implements ShouldQueue
 
         try {
             // Fire before_send action hook
-            if ( function_exists( 'doAction' ) ) {
-                doAction(
-                    'forms.notification.before_send',
-                    $this->notification,
-                    $this->submission,
-                );
-            }
+            doAction(
+                'ap.forms.notification.beforeSend',
+                $this->notification,
+                $this->submission,
+            );
 
             // Create and send the mailable
             $mailable = new FormSubmissionNotification( $this->notification, $this->submission );
@@ -153,13 +135,11 @@ class SendFormNotification implements ShouldQueue
             Mail::to( $recipients )->send( $mailable );
 
             // Fire sent action hook
-            if ( function_exists( 'doAction' ) ) {
-                doAction(
-                    'forms.notification.sent',
-                    $this->notification,
-                    $this->submission,
-                );
-            }
+            doAction(
+                'ap.forms.notification.sent',
+                $this->notification,
+                $this->submission,
+            );
 
             Log::info( 'Form notification sent successfully', [
                 'notification_id'   => $this->notification->id,
@@ -186,9 +166,7 @@ class SendFormNotification implements ShouldQueue
      *
      * @since 1.0.0
      *
-     * @param Throwable $exception The exception that caused the failure.
-     *
-     * @return void
+     * @param  Throwable  $exception  The exception that caused the failure.
      */
     public function failed( Throwable $exception ): void
     {

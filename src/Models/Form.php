@@ -6,8 +6,6 @@
  * Represents the main form definition including basic info,
  * display settings, multi-step configuration, and status.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @author     Jacob Martella <support@artisanpackui.dev>
  *
@@ -27,6 +25,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -36,26 +35,24 @@ use Illuminate\Support\Str;
  * Represents the main form definition including basic info,
  * display settings, multi-step configuration, and status.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @since      1.0.0
  *
- * @property int                              $id
- * @property int|null                         $user_id
- * @property string                           $name
- * @property string                           $slug
- * @property string|null                      $description
- * @property string                           $submit_button_text
- * @property string|null                      $success_message
- * @property string|null                      $redirect_url
- * @property array|null                       $settings
- * @property bool                             $is_multi_step
- * @property bool                             $show_progress_bar
- * @property bool                             $allow_step_navigation
- * @property bool                             $is_active
- * @property \Illuminate\Support\Carbon|null  $created_at
- * @property \Illuminate\Support\Carbon|null  $updated_at
+ * @property int $id
+ * @property int|null $user_id
+ * @property string $name
+ * @property string $slug
+ * @property string|null $description
+ * @property string $submit_button_text
+ * @property string|null $success_message
+ * @property string|null $redirect_url
+ * @property array|null $settings
+ * @property bool $is_multi_step
+ * @property bool $show_progress_bar
+ * @property bool $allow_step_navigation
+ * @property bool $is_active
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  * @property-read int                         $unread_submissions_count
  * @property-read int                         $total_submissions_count
  * @property-read Collection                  $active_notifications
@@ -165,7 +162,7 @@ class Form extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<Form> $query The query builder instance.
+     * @param  Builder<Form>  $query  The query builder instance.
      *
      * @return Builder<Form> The modified query builder.
      */
@@ -179,7 +176,7 @@ class Form extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<Form> $query The query builder instance.
+     * @param  Builder<Form>  $query  The query builder instance.
      *
      * @return Builder<Form> The modified query builder.
      */
@@ -193,7 +190,7 @@ class Form extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<Form> $query The query builder instance.
+     * @param  Builder<Form>  $query  The query builder instance.
      *
      * @return Builder<Form> The modified query builder.
      */
@@ -270,8 +267,8 @@ class Form extends Model
      *
      * @since 1.0.0
      *
-     * @param string $key     The setting key using dot notation.
-     * @param mixed  $default The default value if key not found.
+     * @param  string  $key  The setting key using dot notation.
+     * @param  mixed  $default  The default value if key not found.
      *
      * @return mixed The setting value or default.
      */
@@ -381,8 +378,6 @@ class Form extends Model
      * Sets up model event listeners for creating, created, updated, and deleted events.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     protected static function boot(): void
     {
@@ -396,9 +391,7 @@ class Form extends Model
 
         static::created( function ( Form $form ): void {
             // Fire action hook for extensibility
-            if ( function_exists( 'doAction' ) ) {
-                doAction( 'forms.form.created', $form );
-            }
+            doAction( 'ap.forms.form.created', $form );
 
             // Dispatch Laravel event
             FormCreated::dispatch( $form );
@@ -406,9 +399,7 @@ class Form extends Model
 
         static::updated( function ( Form $form ): void {
             // Fire action hook for extensibility
-            if ( function_exists( 'doAction' ) ) {
-                doAction( 'forms.form.updated', $form );
-            }
+            doAction( 'ap.forms.form.updated', $form );
 
             // Dispatch Laravel event
             FormUpdated::dispatch( $form );
@@ -416,9 +407,7 @@ class Form extends Model
 
         static::deleted( function ( Form $form ): void {
             // Fire action hook for extensibility
-            if ( function_exists( 'doAction' ) ) {
-                doAction( 'forms.form.deleted', $form );
-            }
+            doAction( 'ap.forms.form.deleted', $form );
 
             // Dispatch Laravel event
             FormDeleted::dispatch( $form );
@@ -430,7 +419,7 @@ class Form extends Model
      *
      * @since 1.0.0
      *
-     * @param string $name The name to generate a slug from.
+     * @param  string  $name  The name to generate a slug from.
      *
      * @return string The unique slug.
      */

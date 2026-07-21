@@ -6,8 +6,6 @@
  * Represents an individual field configuration including type,
  * validation rules, conditional logic, and display settings.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @author     Jacob Martella <support@artisanpackui.dev>
  *
@@ -18,12 +16,14 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
 
+use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Database\Factories\FormFieldFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
@@ -32,8 +32,6 @@ use Illuminate\Support\Str;
  * Represents an individual field configuration including type,
  * validation rules, conditional logic, and display settings.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @property int $id
  * @property int $form_id
@@ -52,8 +50,8 @@ use Illuminate\Support\Str;
  * @property string $width
  * @property string|null $css_classes
  * @property int $sort_order
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  * @property-read Form $form
  * @property-read FormStep|null $step
  * @property-read bool $has_conditional_logic
@@ -142,7 +140,7 @@ class FormField extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<FormField> $query The query builder instance.
+     * @param  Builder<FormField>  $query  The query builder instance.
      *
      * @return Builder<FormField> The modified query builder.
      */
@@ -156,8 +154,8 @@ class FormField extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<FormField> $query The query builder instance.
-     * @param string             $type  The field type to filter by.
+     * @param  Builder<FormField>  $query  The query builder instance.
+     * @param  string  $type  The field type to filter by.
      *
      * @return Builder<FormField> The modified query builder.
      */
@@ -171,7 +169,7 @@ class FormField extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<FormField> $query The query builder instance.
+     * @param  Builder<FormField>  $query  The query builder instance.
      *
      * @return Builder<FormField> The modified query builder.
      */
@@ -185,8 +183,8 @@ class FormField extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<FormField> $query  The query builder instance.
-     * @param int                $stepId The step ID to filter by.
+     * @param  Builder<FormField>  $query  The query builder instance.
+     * @param  int  $stepId  The step ID to filter by.
      *
      * @return Builder<FormField> The modified query builder.
      */
@@ -262,8 +260,8 @@ class FormField extends Model
      *
      * @since 1.0.0
      *
-     * @param string $key     The config key using dot notation.
-     * @param mixed  $default The default value if key not found.
+     * @param  string  $key  The config key using dot notation.
+     * @param  mixed  $default  The default value if key not found.
      *
      * @return mixed The config value or default.
      */
@@ -277,8 +275,8 @@ class FormField extends Model
      *
      * @since 1.0.0
      *
-     * @param string $key     The validation rule key.
-     * @param mixed  $default The default value if key not found.
+     * @param  string  $key  The validation rule key.
+     * @param  mixed  $default  The default value if key not found.
      *
      * @return mixed The validation rule or default.
      */
@@ -290,7 +288,7 @@ class FormField extends Model
     /**
      * Builds the Laravel validation rules array for this field.
      *
-     * Applies the 'forms.validation_rules' filter hook to allow
+     * Applies the 'ap.forms.validationRules' filter hook to allow
      * third-party packages to modify validation rules for a field.
      *
      * @since 1.0.0
@@ -347,9 +345,7 @@ class FormField extends Model
         }
 
         // Apply filter hook for extensibility
-        if ( function_exists( 'applyFilters' ) ) {
-            $rules = applyFilters( 'forms.validation_rules', $rules, $this );
-        }
+        $rules = applyFilters( 'ap.forms.validationRules', $rules, $this );
 
         return $rules;
     }
@@ -365,7 +361,7 @@ class FormField extends Model
      */
     public function isLayoutField(): bool
     {
-        return \ArtisanPackUI\Forms\Config\FieldTypes::isLayoutField( $this->type );
+        return FieldTypes::isLayoutField( $this->type );
     }
 
     /**
@@ -407,8 +403,6 @@ class FormField extends Model
      * Sets up model event listeners to auto-generate UUIDs on creation.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     protected static function boot(): void
     {
@@ -424,7 +418,7 @@ class FormField extends Model
     /**
      * Gets validation rules specific to the field type.
      *
-     * Supports custom field types registered via the 'artisanpack.forms.field_types'
+     * Supports custom field types registered via the 'ap.forms.fieldTypes'
      * filter hook by checking for a 'type_validation' key in the field type config.
      *
      * @since 1.0.0
@@ -452,7 +446,7 @@ class FormField extends Model
         }
 
         // Check for custom type validation rules from the filter hook
-        $typeConfig = \ArtisanPackUI\Forms\Config\FieldTypes::getTypeConfig( $this->type );
+        $typeConfig = FieldTypes::getTypeConfig( $this->type );
 
         if ( null !== $typeConfig && isset( $typeConfig['type_validation'] ) ) {
             $customRules = $typeConfig['type_validation'];

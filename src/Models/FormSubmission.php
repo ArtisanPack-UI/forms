@@ -6,8 +6,6 @@
  * Represents a form submission including metadata, status flags,
  * and admin notes. Links to submitted values and file uploads.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @author     Jacob Martella <support@artisanpackui.dev>
  *
@@ -27,6 +25,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -35,8 +34,6 @@ use Illuminate\Support\Collection;
  * Represents a form submission including metadata, status flags,
  * and admin notes. Links to submitted values and file uploads.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @property int $id
  * @property int $form_id
@@ -49,8 +46,8 @@ use Illuminate\Support\Collection;
  * @property bool $is_spam
  * @property bool $is_starred
  * @property string|null $admin_notes
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  * @property-read Form $form
  * @property-read Collection $data
  * @property-read array $data_array
@@ -130,7 +127,7 @@ class FormSubmission extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<FormSubmission> $query The query builder instance.
+     * @param  Builder<FormSubmission>  $query  The query builder instance.
      *
      * @return Builder<FormSubmission> The modified query builder.
      */
@@ -144,7 +141,7 @@ class FormSubmission extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<FormSubmission> $query The query builder instance.
+     * @param  Builder<FormSubmission>  $query  The query builder instance.
      *
      * @return Builder<FormSubmission> The modified query builder.
      */
@@ -158,7 +155,7 @@ class FormSubmission extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<FormSubmission> $query The query builder instance.
+     * @param  Builder<FormSubmission>  $query  The query builder instance.
      *
      * @return Builder<FormSubmission> The modified query builder.
      */
@@ -172,7 +169,7 @@ class FormSubmission extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<FormSubmission> $query The query builder instance.
+     * @param  Builder<FormSubmission>  $query  The query builder instance.
      *
      * @return Builder<FormSubmission> The modified query builder.
      */
@@ -186,7 +183,7 @@ class FormSubmission extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<FormSubmission> $query The query builder instance.
+     * @param  Builder<FormSubmission>  $query  The query builder instance.
      *
      * @return Builder<FormSubmission> The modified query builder.
      */
@@ -200,8 +197,8 @@ class FormSubmission extends Model
      *
      * @since 1.0.0
      *
-     * @param Builder<FormSubmission> $query The query builder instance.
-     * @param int                     $days  Number of days to look back.
+     * @param  Builder<FormSubmission>  $query  The query builder instance.
+     * @param  int  $days  Number of days to look back.
      *
      * @return Builder<FormSubmission> The modified query builder.
      */
@@ -248,8 +245,6 @@ class FormSubmission extends Model
      * Marks the submission as read.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     public function markAsRead(): void
     {
@@ -260,8 +255,6 @@ class FormSubmission extends Model
      * Marks the submission as unread.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     public function markAsUnread(): void
     {
@@ -272,8 +265,6 @@ class FormSubmission extends Model
      * Toggles the spam status.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     public function toggleSpam(): void
     {
@@ -284,8 +275,6 @@ class FormSubmission extends Model
      * Toggles the starred status.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     public function toggleStar(): void
     {
@@ -297,7 +286,7 @@ class FormSubmission extends Model
      *
      * @since 1.0.0
      *
-     * @param string $fieldName The field name to retrieve.
+     * @param  string  $fieldName  The field name to retrieve.
      *
      * @return string|null The field value or null if not found.
      */
@@ -362,8 +351,6 @@ class FormSubmission extends Model
      * Sets up model event listeners for creating, created, updated, and deleted events.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     protected static function boot(): void
     {
@@ -377,9 +364,7 @@ class FormSubmission extends Model
 
         static::created( function ( FormSubmission $submission ): void {
             // Fire action hook for extensibility
-            if ( function_exists( 'doAction' ) ) {
-                doAction( 'forms.submission.created', $submission );
-            }
+            doAction( 'ap.forms.submission.created', $submission );
 
             // Dispatch Laravel event
             FormSubmitted::dispatch( $submission );
@@ -387,9 +372,7 @@ class FormSubmission extends Model
 
         static::updated( function ( FormSubmission $submission ): void {
             // Fire action hook for extensibility
-            if ( function_exists( 'doAction' ) ) {
-                doAction( 'forms.submission.updated', $submission );
-            }
+            doAction( 'ap.forms.submission.updated', $submission );
 
             // Dispatch Laravel event
             SubmissionUpdated::dispatch( $submission );
@@ -397,9 +380,7 @@ class FormSubmission extends Model
 
         static::deleted( function ( FormSubmission $submission ): void {
             // Fire action hook for extensibility
-            if ( function_exists( 'doAction' ) ) {
-                doAction( 'forms.submission.deleted', $submission );
-            }
+            doAction( 'ap.forms.submission.deleted', $submission );
 
             // Dispatch Laravel event
             SubmissionDeleted::dispatch( $submission );
@@ -411,7 +392,7 @@ class FormSubmission extends Model
      *
      * @since 1.0.0
      *
-     * @param int $formId The form ID to generate a submission number for.
+     * @param  int  $formId  The form ID to generate a submission number for.
      *
      * @return string The unique submission number.
      */

@@ -389,12 +389,12 @@ describe( 'SubmissionService', function (): void {
     } );
 
     describe( 'filter hooks', function (): void {
-        it( 'applies forms.submission_data filter', function (): void {
+        it( 'applies ap.forms.submissionData filter', function (): void {
             if ( ! function_exists( 'addFilter' ) ) {
                 $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter( 'forms.submission_data', function ( array $data, Form $form ): array {
+            addFilter( 'ap.forms.submissionData', function ( array $data, Form $form ): array {
                 $data['injected_field'] = 'hook_value';
 
                 return $data;
@@ -418,6 +418,6 @@ afterEach( function (): void {
     RateLimiter::clear( 'form-submission:2:192.168.1.1' );
 
     if ( function_exists( 'removeAllFilters' ) ) {
-        removeAllFilters( 'forms.submission_data' );
+        removeAllFilters( 'ap.forms.submissionData' );
     }
 } );

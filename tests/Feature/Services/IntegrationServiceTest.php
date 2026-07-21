@@ -138,7 +138,7 @@ describe( 'IntegrationService', function (): void {
                 $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter( 'forms.settings_tabs', function ( array $tabs ): array {
+            addFilter( 'ap.forms.settingsTabs', function ( array $tabs ): array {
                 $tabs[] = [
                     'id'        => 'tab1',
                     'label'     => 'Tab 1',
@@ -166,6 +166,6 @@ describe( 'IntegrationService', function (): void {
 
 afterEach( function (): void {
     if ( function_exists( 'removeAllFilters' ) ) {
-        removeAllFilters( 'forms.settings_tabs' );
+        removeAllFilters( 'ap.forms.settingsTabs' );
     }
 } );

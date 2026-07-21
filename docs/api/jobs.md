@@ -183,7 +183,7 @@ Use filters to modify the webhook payload:
 ```php
 use function addFilter;
 
-addFilter('forms.webhook_payload', function ($payload, $form, $submission) {
+addFilter('ap.forms.webhookPayload', function ($payload, $form, $submission) {
     // Add custom data
     $payload['custom'] = [
         'source' => 'website',

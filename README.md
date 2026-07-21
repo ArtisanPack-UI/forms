@@ -249,7 +249,7 @@ Add custom field types using filter hooks:
 ```php
 use function addFilter;
 
-addFilter('forms.field_types', function (array $types) {
+addFilter('ap.forms.fieldTypes', function (array $types) {
     $types['my-custom-field'] = [
         'label' => 'My Custom Field',
         'view' => 'my-package::fields.custom',
@@ -257,6 +257,74 @@ addFilter('forms.field_types', function (array $types) {
     ];
     return $types;
 });
+```
+
+### Hook naming
+
+All package hooks use the `ap.forms.*` camelCase convention shared across the
+ArtisanPack UI ecosystem. Hooks previously shipped under `forms.*` / snake_case
+names remain registered as deprecation aliases (via `Support\HookAliases`), so
+existing subscribers keep firing but emit an info-level deprecation log. The
+aliases will be removed in the next major version — migrate to the new names
+listed below.
+
+| Old (deprecated)                 | New (canonical)                    |
+|----------------------------------|------------------------------------|
+| `forms.field_types`              | `ap.forms.fieldTypes`              |
+| `forms.field_categories`         | `ap.forms.fieldCategories`         |
+| `forms.validation_rules`         | `ap.forms.validationRules`         |
+| `forms.form.created`             | `ap.forms.form.created`            |
+| `forms.form.updated`             | `ap.forms.form.updated`            |
+| `forms.form.deleted`             | `ap.forms.form.deleted`            |
+| `forms.submission.created`       | `ap.forms.submission.created`      |
+| `forms.submission.updated`       | `ap.forms.submission.updated`      |
+| `forms.submission.deleted`       | `ap.forms.submission.deleted`      |
+| `forms.webhook_payload`          | `ap.forms.webhookPayload`          |
+| `forms.settings_tabs`            | `ap.forms.settingsTabs`            |
+| `forms.submission_data`          | `ap.forms.submissionData`          |
+| `forms.export_headers`           | `ap.forms.exportHeaders`           |
+| `forms.export_data`              | `ap.forms.exportData`              |
+| `forms.notification_recipients`  | `ap.forms.notificationRecipients`  |
+| `forms.notification.before_send` | `ap.forms.notification.beforeSend` |
+| `forms.notification.sent`        | `ap.forms.notification.sent`       |
+| `forms.notification_message`     | `ap.forms.notificationMessage`     |
+
+### Additional hooks
+
+The following hooks have no legacy alias — they were introduced under the
+canonical `ap.forms.*` convention.
+
+| Hook                              | Type   | Payload                                            |
+|-----------------------------------|--------|----------------------------------------------------|
+| `ap.forms.beforeValidate`         | action | `(FormRequest $request)`                           |
+| `ap.forms.validated`              | action | `(FormRequest $request, array $validated)`         |
+| `ap.forms.fieldRender`            | filter | `(string $html, FormField $field)`                 |
+| `ap.forms.integrationRegistered`  | action | `(string $slug, array $config)`                    |
+| `ap.forms.notificationSubject`    | filter | `(string $subject, FormNotification $notification, FormSubmission $submission)` |
+| `ap.forms.notificationBody`       | filter | `(string $body, FormNotification $notification, FormSubmission $submission)` |
+
+Examples:
+
+```php
+use ArtisanPackUI\Forms\Services\IntegrationService;
+use function addAction;
+use function addFilter;
+
+// Wrap every rendered field in a diagnostic marker
+addFilter('ap.forms.fieldRender', function (string $html, $field): string {
+    return '<div data-field="' . $field->name . '">' . $html . '</div>';
+});
+
+// Observe integration registration from a third-party package
+addAction('ap.forms.integrationRegistered', function (string $slug, array $config): void {
+    logger()->info("forms integration registered: {$slug}", $config);
+});
+
+// Register your own integration from your service provider boot()
+app(IntegrationService::class)->registerIntegration('mailchimp', [
+    'label' => 'Mailchimp',
+    'icon'  => 'o-envelope',
+]);
 ```
 
 ## 🤝 Contributing

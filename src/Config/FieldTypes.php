@@ -6,8 +6,6 @@
  * Defines all available field types with their metadata, categories,
  * icons, validation options, and default values for the form builder.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @author     Jacob Martella <support@artisanpackui.dev>
  *
@@ -24,8 +22,6 @@ namespace ArtisanPackUI\Forms\Config;
  * Provides static methods and constants for retrieving field type
  * definitions, categories, and metadata used throughout the form builder.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @since      1.0.0
  */
@@ -470,7 +466,7 @@ class FieldTypes
     /**
      * Gets all field type definitions.
      *
-     * Applies the 'forms.field_types' filter hook to allow
+     * Applies the 'ap.forms.fieldTypes' filter hook to allow
      * third-party packages to register custom field types.
      *
      * @since 1.0.0
@@ -482,9 +478,7 @@ class FieldTypes
         $types = self::types();
 
         // Apply filter hook for extensibility
-        if ( function_exists( 'applyFilters' ) ) {
-            $types = applyFilters( 'forms.field_types', $types );
-        }
+        $types = applyFilters( 'ap.forms.fieldTypes', $types );
 
         return $types;
     }
@@ -492,7 +486,7 @@ class FieldTypes
     /**
      * Gets all field categories with their field types (filtered).
      *
-     * Applies the 'forms.field_categories' filter hook to allow
+     * Applies the 'ap.forms.fieldCategories' filter hook to allow
      * third-party packages to register custom categories.
      *
      * @since 1.0.0
@@ -504,9 +498,7 @@ class FieldTypes
         $categories = self::categories();
 
         // Apply filter hook for extensibility
-        if ( function_exists( 'applyFilters' ) ) {
-            $categories = applyFilters( 'forms.field_categories', $categories );
-        }
+        $categories = applyFilters( 'ap.forms.fieldCategories', $categories );
 
         return $categories;
     }
@@ -516,7 +508,7 @@ class FieldTypes
      *
      * @since 1.0.0
      *
-     * @param string $type The field type name.
+     * @param  string  $type  The field type name.
      *
      * @return array<string, mixed>|null The field type config or null if not found.
      */
@@ -532,7 +524,7 @@ class FieldTypes
      *
      * @since 1.0.0
      *
-     * @param string $type The field type name.
+     * @param  string  $type  The field type name.
      *
      * @return array<string, mixed> The default values for the field type.
      */
@@ -548,7 +540,7 @@ class FieldTypes
      *
      * @since 1.0.0
      *
-     * @param string $type The field type name.
+     * @param  string  $type  The field type name.
      *
      * @return bool True if the field type has configurable options.
      */
@@ -564,7 +556,7 @@ class FieldTypes
      *
      * @since 1.0.0
      *
-     * @param string $type The field type name.
+     * @param  string  $type  The field type name.
      *
      * @return array<string> Array of available validation option names.
      */
@@ -592,7 +584,7 @@ class FieldTypes
      *
      * @since 1.0.0
      *
-     * @param string $type The field type name.
+     * @param  string  $type  The field type name.
      *
      * @return bool True if the field type exists.
      */
@@ -608,7 +600,7 @@ class FieldTypes
      *
      * @since 1.0.0
      *
-     * @param string $type The field type name.
+     * @param  string  $type  The field type name.
      *
      * @return bool True if the field type supports placeholders.
      */
@@ -624,7 +616,7 @@ class FieldTypes
      *
      * @since 1.0.0
      *
-     * @param string $type The field type name.
+     * @param  string  $type  The field type name.
      *
      * @return bool True if the field type supports default values.
      */
@@ -643,7 +635,7 @@ class FieldTypes
      *
      * @since 1.0.0
      *
-     * @param string $type The field type name.
+     * @param  string  $type  The field type name.
      *
      * @return bool True if the field type is a layout element.
      */

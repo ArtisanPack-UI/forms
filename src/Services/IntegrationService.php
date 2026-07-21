@@ -7,8 +7,6 @@
  * Provides hooks for integration packages to register settings panels
  * and handles integration settings storage.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @author     Jacob Martella <support@artisanpackui.dev>
  *
@@ -28,8 +26,6 @@ use ArtisanPackUI\Forms\Models\Form;
  * Provides hooks for integration packages to register settings panels
  * and handles integration settings storage.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @since      1.0.0
  */
@@ -38,7 +34,7 @@ class IntegrationService
     /**
      * Gets all registered integration settings tabs.
      *
-     * Applies the 'forms.settings_tabs' filter hook to allow
+     * Applies the 'ap.forms.settingsTabs' filter hook to allow
      * third-party packages to register custom settings tabs.
      *
      * Each tab should have the following structure:
@@ -59,11 +55,23 @@ class IntegrationService
         $tabs = [];
 
         // Apply filter hook for extensibility
-        if ( function_exists( 'applyFilters' ) ) {
-            $tabs = applyFilters( 'forms.settings_tabs', $tabs );
-        }
+        $tabs = applyFilters( 'ap.forms.settingsTabs', $tabs );
 
         return $tabs;
+    }
+
+    /**
+     * Fires the `ap.forms.integrationRegistered` action so ecosystem packages can
+     * announce themselves from their service provider `boot()`.
+     *
+     * @since 1.3.0
+     *
+     * @param  string  $slug  Unique integration slug (e.g. "mailchimp").
+     * @param  array<string, mixed>  $config  Integration metadata (label, icon, component, ...).
+     */
+    public function registerIntegration( string $slug, array $config = [] ): void
+    {
+        doAction( 'ap.forms.integrationRegistered', $slug, $config );
     }
 
     /**
@@ -74,10 +82,10 @@ class IntegrationService
      *
      * @since 1.0.0
      *
-     * @param Form        $form     The form.
-     * @param string      $provider The integration provider name.
-     * @param string|null $key      Specific setting key, or null for all provider settings.
-     * @param mixed       $default  Default value if setting not found.
+     * @param  Form  $form  The form.
+     * @param  string  $provider  The integration provider name.
+     * @param  string|null  $key  Specific setting key, or null for all provider settings.
+     * @param  mixed  $default  Default value if setting not found.
      *
      * @return mixed The setting value, provider settings array, or default.
      */
@@ -97,11 +105,9 @@ class IntegrationService
      *
      * @since 1.0.0
      *
-     * @param Form                 $form     The form.
-     * @param string               $provider The integration provider name.
-     * @param array<string, mixed> $settings The settings to store.
-     *
-     * @return void
+     * @param  Form  $form  The form.
+     * @param  string  $provider  The integration provider name.
+     * @param  array<string, mixed>  $settings  The settings to store.
      */
     public function setIntegrationSettings( Form $form, string $provider, array $settings ): void
     {
@@ -121,12 +127,10 @@ class IntegrationService
      *
      * @since 1.0.0
      *
-     * @param Form   $form     The form.
-     * @param string $provider The integration provider name.
-     * @param string $key      The setting key.
-     * @param mixed  $value    The setting value.
-     *
-     * @return void
+     * @param  Form  $form  The form.
+     * @param  string  $provider  The integration provider name.
+     * @param  string  $key  The setting key.
+     * @param  mixed  $value  The setting value.
      */
     public function updateIntegrationSetting( Form $form, string $provider, string $key, mixed $value ): void
     {
@@ -150,10 +154,8 @@ class IntegrationService
      *
      * @since 1.0.0
      *
-     * @param Form   $form     The form.
-     * @param string $provider The integration provider name.
-     *
-     * @return void
+     * @param  Form  $form  The form.
+     * @param  string  $provider  The integration provider name.
      */
     public function removeIntegrationSettings( Form $form, string $provider ): void
     {
@@ -170,8 +172,8 @@ class IntegrationService
      *
      * @since 1.0.0
      *
-     * @param Form   $form     The form.
-     * @param string $provider The integration provider name.
+     * @param  Form  $form  The form.
+     * @param  string  $provider  The integration provider name.
      *
      * @return bool True if the form has settings for the provider.
      */
@@ -185,7 +187,7 @@ class IntegrationService
      *
      * @since 1.0.0
      *
-     * @param Form $form The form.
+     * @param  Form  $form  The form.
      *
      * @return array<int, string> The configured provider names.
      */
@@ -197,6 +199,6 @@ class IntegrationService
             return [];
         }
 
-        return array_keys( array_filter( $integrations, fn ( $config ) => ! empty( $config ) ));
+        return array_keys( array_filter( $integrations, fn ( $config ) => ! empty( $config )));
     }
 }

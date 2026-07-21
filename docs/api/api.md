@@ -169,18 +169,18 @@ Extend functionality using filter hooks:
 use function addFilter;
 
 // Modify validation rules
-addFilter('forms.validation_rules', function ($rules, $form) {
+addFilter('ap.forms.validationRules', function ($rules, $form) {
     // Add custom rules
     return $rules;
 });
 
 // Modify notification message
-addFilter('forms.notification_message', function ($message, $notification, $submission) {
+addFilter('ap.forms.notificationMessage', function ($message, $notification, $submission) {
     return $message;
 });
 
 // Modify webhook payload
-addFilter('forms.webhook_payload', function ($payload, $form, $submission) {
+addFilter('ap.forms.webhookPayload', function ($payload, $form, $submission) {
     $payload['custom'] = 'data';
     return $payload;
 });

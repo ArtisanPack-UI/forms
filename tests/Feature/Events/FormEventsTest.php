@@ -20,11 +20,11 @@ describe( 'Form Events', function (): void {
             } );
         } );
 
-        it( 'fires forms.form.created action hook when form is created', function (): void {
+        it( 'fires ap.forms.form.created action hook when form is created', function (): void {
             $hookFired    = false;
             $receivedForm = null;
 
-            addAction( 'forms.form.created', function ( Form $form ) use ( &$hookFired, &$receivedForm ): void {
+            addAction( 'ap.forms.form.created', function ( Form $form ) use ( &$hookFired, &$receivedForm ): void {
                 $hookFired    = true;
                 $receivedForm = $form;
             } );
@@ -49,11 +49,11 @@ describe( 'Form Events', function (): void {
             } );
         } );
 
-        it( 'fires forms.form.updated action hook when form is updated', function (): void {
+        it( 'fires ap.forms.form.updated action hook when form is updated', function (): void {
             $hookFired    = false;
             $receivedForm = null;
 
-            addAction( 'forms.form.updated', function ( Form $form ) use ( &$hookFired, &$receivedForm ): void {
+            addAction( 'ap.forms.form.updated', function ( Form $form ) use ( &$hookFired, &$receivedForm ): void {
                 $hookFired    = true;
                 $receivedForm = $form;
             } );
@@ -80,11 +80,11 @@ describe( 'Form Events', function (): void {
             } );
         } );
 
-        it( 'fires forms.form.deleted action hook when form is deleted', function (): void {
+        it( 'fires ap.forms.form.deleted action hook when form is deleted', function (): void {
             $hookFired      = false;
             $receivedFormId = null;
 
-            addAction( 'forms.form.deleted', function ( Form $form ) use ( &$hookFired, &$receivedFormId ): void {
+            addAction( 'ap.forms.form.deleted', function ( Form $form ) use ( &$hookFired, &$receivedFormId ): void {
                 $hookFired      = true;
                 $receivedFormId = $form->id;
             } );

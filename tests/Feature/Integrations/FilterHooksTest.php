@@ -12,24 +12,24 @@ use ArtisanPackUI\Forms\Services\SubmissionService;
 beforeEach( function (): void {
     // Reset any registered filters between tests
     if ( function_exists( 'removeAllFilters' ) ) {
-        removeAllFilters( 'forms.field_types' );
-        removeAllFilters( 'forms.field_categories' );
-        removeAllFilters( 'forms.validation_rules' );
-        removeAllFilters( 'forms.submission_data' );
-        removeAllFilters( 'forms.export_headers' );
-        removeAllFilters( 'forms.export_data' );
-        removeAllFilters( 'forms.settings_tabs' );
+        removeAllFilters( 'ap.forms.fieldTypes' );
+        removeAllFilters( 'ap.forms.fieldCategories' );
+        removeAllFilters( 'ap.forms.validationRules' );
+        removeAllFilters( 'ap.forms.submissionData' );
+        removeAllFilters( 'ap.forms.exportHeaders' );
+        removeAllFilters( 'ap.forms.exportData' );
+        removeAllFilters( 'ap.forms.settingsTabs' );
     }
 } );
 
 describe( 'Filter Hooks', function (): void {
-    describe( 'forms.field_types filter', function (): void {
+    describe( 'ap.forms.fieldTypes filter', function (): void {
         it( 'allows registering custom field types', function (): void {
             if ( ! function_exists( 'addFilter' ) ) {
                 $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter( 'forms.field_types', function ( array $types ): array {
+            addFilter( 'ap.forms.fieldTypes', function ( array $types ): array {
                 $types['custom_rating'] = [
                     'label'                  => 'Star Rating',
                     'icon'                   => 'o-star',
@@ -57,7 +57,7 @@ describe( 'Filter Hooks', function (): void {
                 $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter( 'forms.field_types', function ( array $types ): array {
+            addFilter( 'ap.forms.fieldTypes', function ( array $types ): array {
                 $types['text']['label'] = 'Modified Text Input';
 
                 return $types;
@@ -69,13 +69,13 @@ describe( 'Filter Hooks', function (): void {
         } );
     } );
 
-    describe( 'forms.field_categories filter', function (): void {
+    describe( 'ap.forms.fieldCategories filter', function (): void {
         it( 'allows registering custom field categories', function (): void {
             if ( ! function_exists( 'addFilter' ) ) {
                 $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter( 'forms.field_categories', function ( array $categories ): array {
+            addFilter( 'ap.forms.fieldCategories', function ( array $categories ): array {
                 $categories['custom'] = [
                     'label'  => 'Custom Fields',
                     'fields' => ['custom_rating'],
@@ -91,13 +91,13 @@ describe( 'Filter Hooks', function (): void {
         } );
     } );
 
-    describe( 'forms.validation_rules filter', function (): void {
+    describe( 'ap.forms.validationRules filter', function (): void {
         it( 'allows modifying validation rules for a field', function (): void {
             if ( ! function_exists( 'addFilter' ) ) {
                 $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter( 'forms.validation_rules', function ( array $rules, FormField $field ): array {
+            addFilter( 'ap.forms.validationRules', function ( array $rules, FormField $field ): array {
                 // Add a custom rule for email fields
                 if ( 'email' === $field->type ) {
                     $rules[] = 'ends_with:@example.com';
@@ -119,13 +119,13 @@ describe( 'Filter Hooks', function (): void {
         } );
     } );
 
-    describe( 'forms.submission_data filter', function (): void {
+    describe( 'ap.forms.submissionData filter', function (): void {
         it( 'allows modifying submission data before saving', function (): void {
             if ( ! function_exists( 'addFilter' ) ) {
                 $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter( 'forms.submission_data', function ( array $data, Form $form ): array {
+            addFilter( 'ap.forms.submissionData', function ( array $data, Form $form ): array {
                 // Add a tracking field to all submissions
                 $data['_tracking_id'] = 'TRACK-' . uniqid();
 
@@ -146,13 +146,13 @@ describe( 'Filter Hooks', function (): void {
         } );
     } );
 
-    describe( 'forms.export_headers filter', function (): void {
+    describe( 'ap.forms.exportHeaders filter', function (): void {
         it( 'allows modifying export headers', function (): void {
             if ( ! function_exists( 'addFilter' ) ) {
                 $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter( 'forms.export_headers', function ( array $headers, Form $form ): array {
+            addFilter( 'ap.forms.exportHeaders', function ( array $headers, Form $form ): array {
                 $headers[] = 'Custom Column';
 
                 return $headers;
@@ -167,13 +167,13 @@ describe( 'Filter Hooks', function (): void {
         } );
     } );
 
-    describe( 'forms.settings_tabs filter', function (): void {
+    describe( 'ap.forms.settingsTabs filter', function (): void {
         it( 'allows registering custom settings tabs', function (): void {
             if ( ! function_exists( 'addFilter' ) ) {
                 $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter( 'forms.settings_tabs', function ( array $tabs ): array {
+            addFilter( 'ap.forms.settingsTabs', function ( array $tabs ): array {
                 $tabs[] = [
                     'id'          => 'mailchimp',
                     'label'       => 'Mailchimp',

@@ -126,6 +126,8 @@ class FormsServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Support\HookAliases::register();
+
         $this->mergeConfiguration();
         $this->validateUserModelConfiguration();
         $this->registerFilesystemDisk();

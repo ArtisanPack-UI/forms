@@ -237,7 +237,7 @@ Use filter hooks to customize:
 use function addFilter;
 
 // Modify the message
-addFilter('forms.notification_message', function ($message, $notification, $submission) {
+addFilter('ap.forms.notificationMessage', function ($message, $notification, $submission) {
     // Add tracking pixel
     return $message . '<img src="https://example.com/track/' . $submission->id . '">';
 });

@@ -88,12 +88,12 @@ describe( 'Webhook Integration', function (): void {
             expect( fn () => $job->handle() )->toThrow( RuntimeException::class );
         } );
 
-        it( 'applies forms.webhook_payload filter', function (): void {
+        it( 'applies ap.forms.webhookPayload filter', function (): void {
             if ( ! function_exists( 'addFilter' ) ) {
                 $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter( 'forms.webhook_payload', function ( array $payload, FormSubmission $submission ): array {
+            addFilter( 'ap.forms.webhookPayload', function ( array $payload, FormSubmission $submission ): array {
                 $payload['custom_field'] = 'custom_value';
 
                 return $payload;
@@ -234,6 +234,6 @@ afterEach( function (): void {
 
     // Reset filters
     if ( function_exists( 'removeAllFilters' ) ) {
-        removeAllFilters( 'forms.webhook_payload');
+        removeAllFilters( 'ap.forms.webhookPayload');
     }
 });

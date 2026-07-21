@@ -36,13 +36,13 @@ Customize behavior at runtime:
 use function addFilter;
 
 // Modify validation rules
-addFilter('forms.validation_rules', function ($rules, $form) {
+addFilter('ap.forms.validationRules', function ($rules, $form) {
     $rules['email'] = 'required|email|unique:users,email';
     return $rules;
 });
 
 // Modify webhook payload
-addFilter('forms.webhook_payload', function ($payload, $form, $submission) {
+addFilter('ap.forms.webhookPayload', function ($payload, $form, $submission) {
     $payload['custom_field'] = 'value';
     return $payload;
 });
@@ -55,7 +55,7 @@ Register custom field types:
 ```php
 use function addFilter;
 
-addFilter('forms.field_types', function ($types) {
+addFilter('ap.forms.fieldTypes', function ($types) {
     $types['color-picker'] = [
         'label' => 'Color Picker',
         'icon' => 'palette',

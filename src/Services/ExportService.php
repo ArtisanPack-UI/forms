@@ -6,8 +6,6 @@
  * Business logic layer for exporting form submissions to various formats.
  * Supports CSV export with configurable headers and data transformations.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @author     Jacob Martella <support@artisanpackui.dev>
  *
@@ -19,6 +17,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Services;
 
 use ArtisanPackUI\Forms\Models\Form;
+use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Response;
@@ -31,8 +30,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Business logic layer for exporting form submissions to various formats.
  * Supports CSV export with configurable headers and data transformations.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @since      1.0.0
  */
@@ -41,14 +38,14 @@ class ExportService
     /**
      * Exports submissions to CSV format.
      *
-     * Applies the 'forms.export_headers' and 'forms.export_data' filter hooks
+     * Applies the 'ap.forms.exportHeaders' and 'ap.forms.exportData' filter hooks
      * to allow third-party packages to modify export data.
      *
      * @since 1.0.0
      *
-     * @param Form                              $form        The form to export from.
-     * @param Collection<int, FormSubmission>   $submissions The submissions to export.
-     * @param string|null                       $filename    Optional custom filename.
+     * @param  Form  $form  The form to export from.
+     * @param  Collection<int, FormSubmission>  $submissions  The submissions to export.
+     * @param  string|null  $filename  Optional custom filename.
      *
      * @return StreamedResponse The CSV download response.
      */
@@ -84,12 +81,12 @@ class ExportService
     /**
      * Builds CSV headers from form fields.
      *
-     * Applies the 'forms.export_headers' filter hook to allow
+     * Applies the 'ap.forms.exportHeaders' filter hook to allow
      * third-party packages to modify export headers.
      *
      * @since 1.0.0
      *
-     * @param Form $form The form to build headers for.
+     * @param  Form  $form  The form to build headers for.
      *
      * @return array<int, string> The CSV headers.
      */
@@ -126,9 +123,7 @@ class ExportService
         $headers[] = $localizeHeaders ? __( 'Is Starred' ) : 'Is Starred';
 
         // Apply filter hook for extensibility
-        if ( function_exists( 'applyFilters' ) ) {
-            $headers = applyFilters( 'forms.export_headers', $headers, $form );
-        }
+        $headers = applyFilters( 'ap.forms.exportHeaders', $headers, $form );
 
         return $headers;
     }
@@ -138,8 +133,8 @@ class ExportService
      *
      * @since 1.0.0
      *
-     * @param Form                            $form        The form.
-     * @param Collection<int, FormSubmission> $submissions The submissions.
+     * @param  Form  $form  The form.
+     * @param  Collection<int, FormSubmission>  $submissions  The submissions.
      *
      * @return array<int, array<int, string>> The CSV rows.
      */
@@ -159,14 +154,14 @@ class ExportService
     /**
      * Builds a single CSV row from a submission.
      *
-     * Applies the 'forms.export_data' filter hook to allow
+     * Applies the 'ap.forms.exportData' filter hook to allow
      * third-party packages to modify export row data.
      *
      * @since 1.0.0
      *
-     * @param Form                                                    $form       The form.
-     * @param FormSubmission                                          $submission The submission.
-     * @param Collection<int, \ArtisanPackUI\Forms\Models\FormField>  $fields     The form fields.
+     * @param  Form  $form  The form.
+     * @param  FormSubmission  $submission  The submission.
+     * @param  Collection<int, FormField>  $fields  The form fields.
      *
      * @return array<int, string> The CSV row data.
      */
@@ -212,9 +207,7 @@ class ExportService
         }
 
         // Apply filter hook for extensibility
-        if ( function_exists( 'applyFilters' ) ) {
-            $row = applyFilters( 'forms.export_data', $row, $submission );
-        }
+        $row = applyFilters( 'ap.forms.exportData', $row, $submission );
 
         return $row;
     }
@@ -224,8 +217,8 @@ class ExportService
      *
      * @since 1.0.0
      *
-     * @param Form                            $form        The form to export from.
-     * @param Collection<int, FormSubmission> $submissions The submissions to export.
+     * @param  Form  $form  The form to export from.
+     * @param  Collection<int, FormSubmission>  $submissions  The submissions to export.
      *
      * @return array<int, array<string, mixed>> The JSON export data.
      */
@@ -256,9 +249,7 @@ class ExportService
             ];
 
             // Apply filter hook for extensibility
-            if ( function_exists( 'applyFilters' ) ) {
-                $submissionData = applyFilters( 'forms.export_data', $submissionData, $submission );
-            }
+            $submissionData = applyFilters( 'ap.forms.exportData', $submissionData, $submission );
 
             $data[] = $submissionData;
         }

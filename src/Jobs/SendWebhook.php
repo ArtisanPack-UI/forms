@@ -6,8 +6,6 @@
  * Queued job that sends a webhook notification when a form submission is created.
  * Supports webhook secret verification for secure integrations.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @author     Jacob Martella <support@artisanpackui.dev>
  *
@@ -36,8 +34,6 @@ use Throwable;
  * Queued job that sends a webhook notification when a form submission is created.
  * Supports webhook secret verification for secure integrations.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @since      1.0.0
  */
@@ -52,8 +48,6 @@ class SendWebhook implements ShouldQueue
      * The number of times the job may be attempted.
      *
      * @since 1.0.0
-     *
-     * @var int
      */
     public int $tries = 3;
 
@@ -72,8 +66,6 @@ class SendWebhook implements ShouldQueue
      * The form submission to send.
      *
      * @since 1.0.0
-     *
-     * @var FormSubmission
      */
     public FormSubmission $submission;
 
@@ -81,8 +73,6 @@ class SendWebhook implements ShouldQueue
      * The webhook URL to send to.
      *
      * @since 1.0.0
-     *
-     * @var string
      */
     public string $url;
 
@@ -90,8 +80,6 @@ class SendWebhook implements ShouldQueue
      * The optional webhook secret for signature verification.
      *
      * @since 1.0.0
-     *
-     * @var string|null
      */
     public ?string $secret;
 
@@ -100,9 +88,9 @@ class SendWebhook implements ShouldQueue
      *
      * @since 1.0.0
      *
-     * @param FormSubmission $submission The form submission to send.
-     * @param string         $url        The webhook URL.
-     * @param string|null    $secret     Optional secret for signature verification.
+     * @param  FormSubmission  $submission  The form submission to send.
+     * @param  string  $url  The webhook URL.
+     * @param  string|null  $secret  Optional secret for signature verification.
      */
     public function __construct( FormSubmission $submission, string $url, ?string $secret = null )
     {
@@ -117,8 +105,6 @@ class SendWebhook implements ShouldQueue
      * Builds the payload, sends the webhook request, and handles the response.
      *
      * @since 1.0.0
-     *
-     * @return void
      */
     public function handle(): void
     {
@@ -176,9 +162,7 @@ class SendWebhook implements ShouldQueue
      *
      * @since 1.0.0
      *
-     * @param Throwable $exception The exception that caused the failure.
-     *
-     * @return void
+     * @param  Throwable  $exception  The exception that caused the failure.
      */
     public function failed( Throwable $exception ): void
     {
@@ -254,9 +238,7 @@ class SendWebhook implements ShouldQueue
         ];
 
         // Apply filter hook to allow modifying the webhook payload
-        if ( function_exists( 'applyFilters' ) ) {
-            $payload = applyFilters( 'forms.webhook_payload', $payload, $this->submission );
-        }
+        $payload = applyFilters( 'ap.forms.webhookPayload', $payload, $this->submission );
 
         return $payload;
     }
@@ -268,7 +250,7 @@ class SendWebhook implements ShouldQueue
      *
      * @since 1.0.0
      *
-     * @param array<string, mixed> $payload The webhook payload for signature generation.
+     * @param  array<string, mixed>  $payload  The webhook payload for signature generation.
      *
      * @return array<string, string> The request headers.
      */
@@ -298,7 +280,7 @@ class SendWebhook implements ShouldQueue
      *
      * @since 1.0.0
      *
-     * @param array<string, mixed> $payload The webhook payload to sign.
+     * @param  array<string, mixed>  $payload  The webhook payload to sign.
      *
      * @return string The HMAC signature.
      */

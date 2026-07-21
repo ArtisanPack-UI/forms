@@ -98,7 +98,7 @@ The package includes 20+ field types including text, email, textarea, select, ch
 Yes, use the filter hook:
 
 ```php
-addFilter('forms.field_types', function ($types) {
+addFilter('ap.forms.fieldTypes', function ($types) {
     $types['my-field'] = [
         'label' => 'My Custom Field',
         'view' => 'my-package::fields.my-field',

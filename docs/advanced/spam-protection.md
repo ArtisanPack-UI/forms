@@ -169,7 +169,7 @@ RECAPTCHA_SECRET_KEY=your-secret-key
 ```php
 use function addFilter;
 
-addFilter('forms.validation_rules', function ($rules, $form) {
+addFilter('ap.forms.validationRules', function ($rules, $form) {
     if ($form->settings['recaptcha_enabled'] ?? false) {
         $rules['g-recaptcha-response'] = 'required|recaptcha';
     }

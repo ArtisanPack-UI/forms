@@ -18,6 +18,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Http\Requests\Api;
 
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Forms\Support\FiresValidationHooks;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -30,6 +31,8 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class BulkSubmissionApiRequest extends FormRequest
 {
+    use FiresValidationHooks;
+
     /**
      * Determines if the user is authorized to make this request.
      *

@@ -6,8 +6,6 @@
  * Defines all settings for the Forms package including storage, submissions,
  * spam protection, notification defaults, privacy settings, and authorization.
  *
- * @package    ArtisanPack_UI
- * @subpackage Forms
  *
  * @author     Jacob Martella <support@artisanpackui.dev>
  *
@@ -180,7 +178,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Configure settings for third-party integrations. Integration packages
-    | can register their own settings via the 'forms.settings_tabs' filter hook.
+    | can register their own settings via the 'ap.forms.settingsTabs' filter hook.
     |
     */
 

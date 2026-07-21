@@ -22,11 +22,11 @@ describe( 'Submission Events', function (): void {
             } );
         } );
 
-        it( 'fires forms.submission.created action hook when submission is created', function (): void {
+        it( 'fires ap.forms.submission.created action hook when submission is created', function (): void {
             $hookFired          = false;
             $receivedSubmission = null;
 
-            addAction( 'forms.submission.created', function ( FormSubmission $submission ) use ( &$hookFired, &$receivedSubmission ): void {
+            addAction( 'ap.forms.submission.created', function ( FormSubmission $submission ) use ( &$hookFired, &$receivedSubmission ): void {
                 $hookFired          = true;
                 $receivedSubmission = $submission;
             } );
@@ -53,11 +53,11 @@ describe( 'Submission Events', function (): void {
             } );
         } );
 
-        it( 'fires forms.submission.updated action hook when submission is updated', function (): void {
+        it( 'fires ap.forms.submission.updated action hook when submission is updated', function (): void {
             $hookFired          = false;
             $receivedSubmission = null;
 
-            addAction( 'forms.submission.updated', function ( FormSubmission $submission ) use ( &$hookFired, &$receivedSubmission ): void {
+            addAction( 'ap.forms.submission.updated', function ( FormSubmission $submission ) use ( &$hookFired, &$receivedSubmission ): void {
                 $hookFired          = true;
                 $receivedSubmission = $submission;
             } );
@@ -86,11 +86,11 @@ describe( 'Submission Events', function (): void {
             } );
         } );
 
-        it( 'fires forms.submission.deleted action hook when submission is deleted', function (): void {
+        it( 'fires ap.forms.submission.deleted action hook when submission is deleted', function (): void {
             $hookFired            = false;
             $receivedSubmissionId = null;
 
-            addAction( 'forms.submission.deleted', function ( FormSubmission $submission ) use ( &$hookFired, &$receivedSubmissionId ): void {
+            addAction( 'ap.forms.submission.deleted', function ( FormSubmission $submission ) use ( &$hookFired, &$receivedSubmissionId ): void {
                 $hookFired            = true;
                 $receivedSubmissionId = $submission->id;
             } );

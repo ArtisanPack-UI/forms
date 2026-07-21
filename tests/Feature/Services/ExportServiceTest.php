@@ -7,6 +7,7 @@ use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use ArtisanPackUI\Forms\Services\ExportService;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 beforeEach( function (): void {
     $this->service = app( ExportService::class );
@@ -62,12 +63,12 @@ describe( 'ExportService', function (): void {
                 ->and( $headers )->not->toContain( 'Section Header' );
         } );
 
-        it( 'applies forms.export_headers filter', function (): void {
+        it( 'applies ap.forms.exportHeaders filter', function (): void {
             if ( ! function_exists( 'addFilter' ) ) {
                 $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter( 'forms.export_headers', function ( array $headers, Form $form ): array {
+            addFilter( 'ap.forms.exportHeaders', function ( array $headers, Form $form ): array {
                 $headers[] = 'Custom Integration Column';
 
                 return $headers;
@@ -125,12 +126,12 @@ describe( 'ExportService', function (): void {
             expect( $row )->toContain( '192.168.1.1' );
         } );
 
-        it( 'applies forms.export_data filter', function (): void {
+        it( 'applies ap.forms.exportData filter', function (): void {
             if ( ! function_exists( 'addFilter' ) ) {
                 $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter( 'forms.export_data', function ( array $row, FormSubmission $submission ): array {
+            addFilter( 'ap.forms.exportData', function ( array $row, FormSubmission $submission ): array {
                 $row[] = 'Added by integration';
 
                 return $row;
@@ -165,7 +166,7 @@ describe( 'ExportService', function (): void {
 
             $response = $this->service->exportToCsv( $form, $submissions );
 
-            expect( $response )->toBeInstanceOf( Symfony\Component\HttpFoundation\StreamedResponse::class )
+            expect( $response )->toBeInstanceOf( StreamedResponse::class )
                 ->and( $response->headers->get( 'Content-Type' ) )->toBe( 'text/csv' );
         } );
 
@@ -200,12 +201,12 @@ describe( 'ExportService', function (): void {
                 ->and( $data[0] )->toHaveKey( 'metadata' );
         } );
 
-        it( 'applies forms.export_data filter to JSON export', function (): void {
+        it( 'applies ap.forms.exportData filter to JSON export', function (): void {
             if ( ! function_exists( 'addFilter' ) ) {
                 $this->markTestSkipped( 'Hook system not available' );
             }
 
-            addFilter( 'forms.export_data', function ( array $data, FormSubmission $submission ): array {
+            addFilter( 'ap.forms.exportData', function ( array $data, FormSubmission $submission ): array {
                 $data['custom_json_field'] = 'custom_value';
 
                 return $data;
@@ -227,7 +228,7 @@ afterEach( function (): void {
     config( ['artisanpack.forms.privacy.include_ip_address' => false] );
 
     if ( function_exists( 'removeAllFilters' ) ) {
-        removeAllFilters( 'forms.export_headers' );
-        removeAllFilters( 'forms.export_data' );
+        removeAllFilters( 'ap.forms.exportHeaders' );
+        removeAllFilters( 'ap.forms.exportData' );
     }
 });
