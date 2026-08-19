@@ -130,6 +130,12 @@ class FormBuilder extends Component
     /**
      * Get field type categories with their field types.
      *
+     * Reads the filtered categories so a package that registered a custom type
+     * through `ap.forms.fieldTypes` and filed it under a category through
+     * `ap.forms.fieldCategories` has its button appear in the builder palette.
+     * Reading the raw categories would silently drop every such type, since the
+     * palette is driven by the category-to-types map rather than the type list.
+     *
      * @return array<string, array{label: string, fields: array<string, array<string, mixed>>}>
      */
     #[Computed]
@@ -137,7 +143,7 @@ class FormBuilder extends Component
     {
         $categories = [];
 
-        foreach ( FieldTypes::getCategories() as $key => $category ) {
+        foreach ( FieldTypes::getCategoriesFiltered() as $key => $category ) {
             $fields = [];
             foreach ( $category['fields'] as $fieldType ) {
                 $config = FieldTypes::getTypeConfig( $fieldType );

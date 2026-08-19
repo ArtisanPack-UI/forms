@@ -74,6 +74,21 @@
         </div>
     </div>
 
+    {{-- Live preview for a field type registered by another package. The
+         `ap.forms.fieldCardPreview` filter lets an integration draw the field as
+         it will look on the public form — an availability picker, a rich widget —
+         beneath the card chrome, so the builder shows the real thing rather than
+         a bare label. A type that registers no preview returns '' and the card
+         stays as it was. --}}
+    @php
+        $fieldCardPreview = applyFilters( 'ap.forms.fieldCardPreview', '', $field );
+    @endphp
+    @if ( '' !== trim( $fieldCardPreview ) )
+        <div class="field-card-preview mt-3 border-t border-base-200 pt-3">
+            {!! $fieldCardPreview !!}
+        </div>
+    @endif
+
     {{-- Conditional logic indicator --}}
     @if ($field->has_conditional_logic)
         <div class="mt-2 flex items-center gap-1 text-xs text-warning">

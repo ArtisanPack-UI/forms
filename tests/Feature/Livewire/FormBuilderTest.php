@@ -34,6 +34,63 @@ describe( 'FormBuilder Component', function (): void {
             Livewire::test( FormBuilder::class, ['form' => $this->form] )
                 ->assertSee( 'Test Field' );
         } );
+
+        it( 'shows a custom type filed through the category hook in the palette', function (): void {
+            addFilter( 'ap.forms.fieldTypes', static function ( array $types ): array {
+                $types['booking_slot'] = [
+                    'label'                  => 'Booking Slot',
+                    'icon'                   => 'o-calendar-days',
+                    'category'               => 'advanced',
+                    'has_options'            => false,
+                    'supports_placeholder'   => false,
+                    'supports_default_value' => false,
+                    'validation_options'     => [],
+                ];
+
+                return $types;
+            } );
+
+            addFilter( 'ap.forms.fieldCategories', static function ( array $categories ): array {
+                $categories['advanced']['fields'][] = 'booking_slot';
+
+                return $categories;
+            } );
+
+            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+                ->assertSee( 'Booking Slot' );
+
+            removeAllFilters( 'ap.forms.fieldTypes' );
+            removeAllFilters( 'ap.forms.fieldCategories' );
+        } );
+
+        it( 'renders custom field settings from the ap.forms.fieldSettings filter', function (): void {
+            $field = FormField::factory()->for( $this->form )->create( ['type' => 'text', 'label' => 'Contact'] );
+
+            addFilter(
+                'ap.forms.fieldSettings',
+                static fn ( string $html, $f, $form ): string => $html . '<div>CUSTOM-SETTINGS-MARKER-' . $f->type . '</div>',
+            );
+
+            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+                ->call( 'selectField', $field->uuid )
+                ->assertSee( 'CUSTOM-SETTINGS-MARKER-text', false );
+
+            removeAllFilters( 'ap.forms.fieldSettings' );
+        } );
+
+        it( 'renders a live card preview from the ap.forms.fieldCardPreview filter', function (): void {
+            FormField::factory()->for( $this->form )->create( ['type' => 'text', 'label' => 'Contact'] );
+
+            addFilter(
+                'ap.forms.fieldCardPreview',
+                static fn ( string $html, $f ): string => $html . '<div>CARD-PREVIEW-MARKER-' . $f->type . '</div>',
+            );
+
+            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+                ->assertSee( 'CARD-PREVIEW-MARKER-text', false );
+
+            removeAllFilters( 'ap.forms.fieldCardPreview' );
+        } );
     } );
 
     describe( 'adding fields', function (): void {

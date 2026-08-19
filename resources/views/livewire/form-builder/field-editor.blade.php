@@ -73,6 +73,23 @@
 
             {{-- General tab --}}
             <div x-show="activeTab === 'general'" x-cloak class="space-y-3">
+                {{-- Custom settings for a field type registered by another package.
+                     The `ap.forms.fieldSettings` filter is given the field and the
+                     form, so an integration can render its own controls — a service
+                     picker, mappings to other fields on the form — that persist via
+                     `updateField({ field_config: ... })`. The controls appear above
+                     the standard label so a type whose configuration is its point
+                     leads with that configuration. --}}
+                @php
+                    $customFieldSettings = applyFilters( 'ap.forms.fieldSettings', '', $field, $this->form );
+                @endphp
+                @if ( '' !== trim( $customFieldSettings ) )
+                    <div class="field-custom-settings">
+                        {!! $customFieldSettings !!}
+                    </div>
+                    <div class="divider text-xs text-base-content/50">{{ __( 'Field Basics' ) }}</div>
+                @endif
+
                 {{-- Label --}}
                 <div class="form-control">
                     <label class="label" for="field-label">
