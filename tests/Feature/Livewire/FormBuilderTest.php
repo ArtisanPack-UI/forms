@@ -8,6 +8,16 @@ use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormStep;
 use Livewire\Livewire;
 
+// Filters are process-global, so clear the ones these tests register here rather
+// than at the end of each test: an assertion or a render that throws must still
+// not leak a registration into a later test.
+afterEach( function (): void {
+    removeAllFilters( 'ap.forms.fieldTypes' );
+    removeAllFilters( 'ap.forms.fieldCategories' );
+    removeAllFilters( 'ap.forms.fieldSettings' );
+    removeAllFilters( 'ap.forms.fieldCardPreview' );
+} );
+
 describe( 'FormBuilder Component', function (): void {
     beforeEach( function (): void {
         $this->form = Form::factory()->create();
@@ -58,9 +68,6 @@ describe( 'FormBuilder Component', function (): void {
 
             Livewire::test( FormBuilder::class, ['form' => $this->form] )
                 ->assertSee( 'Booking Slot' );
-
-            removeAllFilters( 'ap.forms.fieldTypes' );
-            removeAllFilters( 'ap.forms.fieldCategories' );
         } );
 
         it( 'renders custom field settings from the ap.forms.fieldSettings filter', function (): void {
@@ -74,8 +81,6 @@ describe( 'FormBuilder Component', function (): void {
             Livewire::test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
                 ->assertSee( 'CUSTOM-SETTINGS-MARKER-text', false );
-
-            removeAllFilters( 'ap.forms.fieldSettings' );
         } );
 
         it( 'renders a live card preview from the ap.forms.fieldCardPreview filter', function (): void {
@@ -88,8 +93,6 @@ describe( 'FormBuilder Component', function (): void {
 
             Livewire::test( FormBuilder::class, ['form' => $this->form] )
                 ->assertSee( 'CARD-PREVIEW-MARKER-text', false );
-
-            removeAllFilters( 'ap.forms.fieldCardPreview' );
         } );
     } );
 
