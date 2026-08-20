@@ -7,6 +7,7 @@ use ArtisanPackUI\Forms\Events\SubmissionDeleted;
 use ArtisanPackUI\Forms\Events\SubmissionUpdated;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Support\Facades\Event;
 
 describe( 'Submission Events', function (): void {
@@ -20,6 +21,20 @@ describe( 'Submission Events', function (): void {
             Event::assertDispatched( FormSubmitted::class, function ( FormSubmitted $event ) use ( $submission ) {
                 return $event->submission->id === $submission->id;
             } );
+        } );
+
+        // Regression: the submission's field values are written *after* the
+        // FormSubmission row in SubmissionService::create(), inside the same
+        // transaction. FormSubmitted is dispatched from the model's `created`
+        // hook, which runs before those values exist, so a listener that reads
+        // `$event->submission->values` (the bookings appointment listener, the
+        // webhook dispatcher, the ConvertKit sync) would see an empty submission.
+        // Deferring the event until the transaction commits is what gives every
+        // listener the complete submission it is documented to receive; if this
+        // contract is dropped, form-driven bookings silently stop being created.
+        it( 'defers FormSubmitted until after the submission transaction commits', function (): void {
+            expect( new FormSubmitted( new FormSubmission() ) )
+                ->toBeInstanceOf( ShouldDispatchAfterCommit::class );
         } );
 
         it( 'fires ap.forms.submission.created action hook when submission is created', function (): void {
