@@ -45,12 +45,12 @@ describe( 'FormBuilder Component', function (): void {
                 ->assertSee( 'Test Field' );
         } );
 
-        it( 'shows a custom type filed through the category hook in the palette', function (): void {
+        it( 'shows a custom type filed under a new category in the palette', function (): void {
             addFilter( 'ap.forms.fieldTypes', static function ( array $types ): array {
                 $types['booking_slot'] = [
                     'label'                  => 'Booking Slot',
                     'icon'                   => 'o-calendar-days',
-                    'category'               => 'advanced',
+                    'category'               => 'bookings',
                     'has_options'            => false,
                     'supports_placeholder'   => false,
                     'supports_default_value' => false,
@@ -61,12 +61,16 @@ describe( 'FormBuilder Component', function (): void {
             } );
 
             addFilter( 'ap.forms.fieldCategories', static function ( array $categories ): array {
-                $categories['advanced']['fields'][] = 'booking_slot';
+                $categories['bookings'] = [
+                    'label'  => 'Bookings',
+                    'fields' => ['booking_slot'],
+                ];
 
                 return $categories;
             } );
 
             Livewire::test( FormBuilder::class, ['form' => $this->form] )
+                ->assertSee( 'Bookings' )
                 ->assertSee( 'Booking Slot' );
         } );
 

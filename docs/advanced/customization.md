@@ -147,9 +147,14 @@ category, editor controls, and canvas preview:
 // In a service provider's boot()
 use function addFilter;
 
-// 1. File the type under a custom palette category.
+// 1. File the type under a custom palette category. Each category is a
+//    ['label' => string, 'fields' => string[]] entry; every slug in `fields`
+//    must be a type registered through `ap.forms.fieldTypes` (here, `appointment`).
 addFilter('ap.forms.fieldCategories', function (array $categories): array {
-    $categories['bookings'] = ['label' => 'Bookings', 'icon' => 'calendar'];
+    $categories['bookings'] = [
+        'label'  => 'Bookings',
+        'fields' => ['appointment'],
+    ];
 
     return $categories;
 });
@@ -167,19 +172,22 @@ addFilter('ap.forms.fieldSettings', function (string $html, $field, $form): stri
     ])->render();
 });
 
-// 3. Render a live preview on the builder canvas instead of the bare card.
+// 3. Render a live preview of the field inside its card on the builder canvas.
 addFilter('ap.forms.fieldCardPreview', function (string $html, $field): string {
     if ('appointment' !== $field->type) {
         return $html;
     }
 
-    return view('my-package::builder.appointment-preview', ['field' => $field])->render();
+    return $html . view('my-package::builder.appointment-preview', ['field' => $field])->render();
 });
 ```
 
-Each filter is passed an empty string as its first argument; return a non-empty
-string to take over that slot, or return it unchanged to leave the default
-rendering in place.
+`ap.forms.fieldCategories` receives and returns the palette's category array.
+`ap.forms.fieldSettings` and `ap.forms.fieldCardPreview` are each passed an
+existing HTML string (empty by default) as their first argument — append your
+markup to it, or return it unchanged to leave the default rendering in place. The
+card preview is inserted inside the field's existing card on the canvas, not in
+place of it.
 
 ## Filter Hooks
 
@@ -190,7 +198,7 @@ rendering in place.
 | `ap.forms.fieldTypes` | `$types` | Modify available field types |
 | `ap.forms.fieldCategories` | `$categories` | Add or modify the field-type categories shown in the builder palette |
 | `ap.forms.fieldSettings` | `$html, $field, $form` | Inject custom controls into the field editor (the field and the rest of the form are in scope for mapping dropdowns) |
-| `ap.forms.fieldCardPreview` | `$html, $field` | Render a live preview of the field on the builder canvas instead of the bare card |
+| `ap.forms.fieldCardPreview` | `$html, $field` | Render a live preview of the field inside its card on the builder canvas |
 | `ap.forms.validationRules` | `$rules, $form` | Modify validation rules |
 | `ap.forms.fieldRender` | `$html, $field` | Modify the rendered HTML of a single field before it's echoed by the form renderer |
 | `ap.forms.notificationMessage` | `$message, $notification, $submission` | Modify notification content (legacy; still runs before `notificationSubject` / `notificationBody`) |
