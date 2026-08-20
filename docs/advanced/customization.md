@@ -137,6 +137,50 @@ public function boot(): void
 </div>
 ```
 
+### Make a Custom Field a First-Class Builder Citizen
+
+Registering a field type via `ap.forms.fieldTypes` makes it available, but the
+drag-and-drop builder offers three further seams so your field can carry its own
+category, editor controls, and canvas preview:
+
+```php
+// In a service provider's boot()
+use function addFilter;
+
+// 1. File the type under a custom palette category.
+addFilter('ap.forms.fieldCategories', function (array $categories): array {
+    $categories['bookings'] = ['label' => 'Bookings', 'icon' => 'calendar'];
+
+    return $categories;
+});
+
+// 2. Inject custom controls into the field editor. The field being edited and
+//    the form (its other fields) are in scope — handy for mapping dropdowns.
+addFilter('ap.forms.fieldSettings', function (string $html, $field, $form): string {
+    if ('appointment' !== $field->type) {
+        return $html;
+    }
+
+    return $html . view('my-package::builder.appointment-settings', [
+        'field' => $field,
+        'form'  => $form,
+    ])->render();
+});
+
+// 3. Render a live preview on the builder canvas instead of the bare card.
+addFilter('ap.forms.fieldCardPreview', function (string $html, $field): string {
+    if ('appointment' !== $field->type) {
+        return $html;
+    }
+
+    return view('my-package::builder.appointment-preview', ['field' => $field])->render();
+});
+```
+
+Each filter is passed an empty string as its first argument; return a non-empty
+string to take over that slot, or return it unchanged to leave the default
+rendering in place.
+
 ## Filter Hooks
 
 ### Available Filters
@@ -144,6 +188,9 @@ public function boot(): void
 | Filter | Arguments | Description |
 |--------|-----------|-------------|
 | `ap.forms.fieldTypes` | `$types` | Modify available field types |
+| `ap.forms.fieldCategories` | `$categories` | Add or modify the field-type categories shown in the builder palette |
+| `ap.forms.fieldSettings` | `$html, $field, $form` | Inject custom controls into the field editor (the field and the rest of the form are in scope for mapping dropdowns) |
+| `ap.forms.fieldCardPreview` | `$html, $field` | Render a live preview of the field on the builder canvas instead of the bare card |
 | `ap.forms.validationRules` | `$rules, $form` | Modify validation rules |
 | `ap.forms.fieldRender` | `$html, $field` | Modify the rendered HTML of a single field before it's echoed by the form renderer |
 | `ap.forms.notificationMessage` | `$message, $notification, $submission` | Modify notification content (legacy; still runs before `notificationSubject` / `notificationBody`) |

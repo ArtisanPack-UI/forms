@@ -7,8 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-20
+
+### Added
+
+- Three builder-extensibility seams so a package that registers a custom field type via `ap.forms.fieldTypes` (e.g. `artisanpack-ui/bookings`' Appointment field) can be a first-class citizen of the drag-and-drop builder ([#63](https://github.com/ArtisanPack-UI/forms/issues/63)):
+  - `ap.forms.fieldCategories` filter — the palette now reads `FieldTypes::getCategoriesFiltered()`, so a type filed under a custom category actually appears. The filter existed but was previously dead code the builder never reached. Payload: `(array $categories)`.
+  - `ap.forms.fieldSettings` filter — inject custom controls into the field editor, with the field and the form (its other fields) in scope for mapping dropdowns. Payload: `(string $html, FormField $field, Form $form)`.
+  - `ap.forms.fieldCardPreview` filter — render a live preview of the field on the builder canvas instead of the bare card. Payload: `(string $html, FormField $field)`.
+
 ### Fixed
 
+- `FormSubmitted` is now dispatched after the submission transaction commits. It was previously fired from the `FormSubmission` model's `created` hook, which runs before `SubmissionService::create()` writes the submission's field values, so any listener reading `$submission->values` received an empty submission — most visibly the bookings appointment listener, which found no `booking_slot` value, returned early, and silently created no booking while still reporting success. Implementing `ShouldDispatchAfterCommit` defers delivery until the values (written in the same transaction) are present, matching the event's documented contract. ([#65](https://github.com/ArtisanPack-UI/forms/issues/65))
 - Registered the `forms-views` and `forms-config` publish tags the documentation has always instructed. Both were documented but never registered — `forms-views` (documented 16 times) resolved to nothing, and `forms-config` was only reachable via the ecosystem-wide `artisanpack-package-config` tag, which publishes every installed ArtisanPack package's config rather than just this one. `vendor:publish` exits `0` on a tag that matches nothing, so following the documented install steps silently published nothing. The registered `artisanpack-forms-views` and `artisanpack-package-config` tags continue to work as aliases. ([#62](https://github.com/ArtisanPack-UI/forms/issues/62))
 - Dropped the `--tag=forms-migrations` instruction from the installation and customization guides. The package loads its own migrations via `loadMigrationsFrom()`, so there was never a tag to publish — `php artisan migrate` is all a consumer needs. ([#62](https://github.com/ArtisanPack-UI/forms/issues/62))
 - Added `tests/Feature/PublishTagsTest.php`, which walks the README and every Markdown file under `docs/` and asserts every documented `--tag=` value is a registered publish group, so this drift cannot silently recur.

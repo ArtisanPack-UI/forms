@@ -299,6 +299,9 @@ canonical `ap.forms.*` convention.
 | `ap.forms.beforeValidate`         | action | `(FormRequest $request)`                           |
 | `ap.forms.validated`              | action | `(FormRequest $request, array $validated)`         |
 | `ap.forms.fieldRender`            | filter | `(string $html, FormField $field)`                 |
+| `ap.forms.fieldCategories`        | filter | `(array $categories)`                              |
+| `ap.forms.fieldSettings`          | filter | `(string $html, FormField $field, Form $form)`     |
+| `ap.forms.fieldCardPreview`       | filter | `(string $html, FormField $field)`                 |
 | `ap.forms.integrationRegistered`  | action | `(string $slug, array $config)`                    |
 | `ap.forms.notificationSubject`    | filter | `(string $subject, FormNotification $notification, FormSubmission $submission)` |
 | `ap.forms.notificationBody`       | filter | `(string $body, FormNotification $notification, FormSubmission $submission)` |
