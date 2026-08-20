@@ -17,7 +17,6 @@ php artisan vendor:publish --provider="ArtisanPackUI\Forms\FormsServiceProvider"
 # Publish specific assets
 php artisan vendor:publish --tag=forms-config
 php artisan vendor:publish --tag=forms-views
-php artisan vendor:publish --tag=forms-migrations
 ```
 
 ## Custom Views

@@ -330,7 +330,10 @@ class FormsServiceProvider extends ServiceProvider
      * Publishes the configuration file to the application's config directory.
      *
      * Configuration will be published to config/artisanpack/forms.php to maintain
-     * the unified ArtisanPack UI configuration structure.
+     * the unified ArtisanPack UI configuration structure. It is registered under
+     * both the ecosystem-wide `artisanpack-package-config` tag and the
+     * package-scoped `forms-config` tag, so consumers can publish this file alone
+     * without pulling in every other ArtisanPack package's config.
      *
      * @since 1.0.0
      */
@@ -339,7 +342,7 @@ class FormsServiceProvider extends ServiceProvider
         if ( $this->app->runningInConsole() ) {
             $this->publishes( [
                 __DIR__ . '/../config/forms.php' => config_path( 'artisanpack/forms.php' ),
-            ], 'artisanpack-package-config' );
+            ], [ 'artisanpack-package-config', 'forms-config' ] );
         }
     }
 
@@ -393,7 +396,9 @@ class FormsServiceProvider extends ServiceProvider
     /**
      * Publishes the package's views.
      *
-     * Views are published to resources/views/vendor/forms for customization.
+     * Views are published to resources/views/vendor/forms for customization. They
+     * are registered under both the `artisanpack-forms-views` tag and the shorter
+     * `forms-views` alias the documentation instructs.
      *
      * @since 1.0.0
      */
@@ -402,7 +407,7 @@ class FormsServiceProvider extends ServiceProvider
         if ( $this->app->runningInConsole() ) {
             $this->publishes( [
                 __DIR__ . '/../resources/views' => resource_path( 'views/vendor/forms' ),
-            ], 'artisanpack-forms-views' );
+            ], [ 'artisanpack-forms-views', 'forms-views' ] );
         }
     }
 

@@ -22,9 +22,11 @@ php artisan vendor:publish --provider="ArtisanPackUI\Forms\FormsServiceProvider"
 
 # Or publish specific assets
 php artisan vendor:publish --tag=forms-config
-php artisan vendor:publish --tag=forms-migrations
 php artisan vendor:publish --tag=forms-views
 ```
+
+The package loads its own migrations automatically, so there is nothing to
+publish for them — running `php artisan migrate` below is all that is needed.
 
 ## Step 3: Run Migrations
 
