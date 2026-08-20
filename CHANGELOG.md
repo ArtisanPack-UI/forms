@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Registered the `forms-views` and `forms-config` publish tags the documentation has always instructed. Both were documented but never registered — `forms-views` (documented 16 times) resolved to nothing, and `forms-config` was only reachable via the ecosystem-wide `artisanpack-package-config` tag, which publishes every installed ArtisanPack package's config rather than just this one. `vendor:publish` exits `0` on a tag that matches nothing, so following the documented install steps silently published nothing. The registered `artisanpack-forms-views` and `artisanpack-package-config` tags continue to work as aliases. ([#62](https://github.com/ArtisanPack-UI/forms/issues/62))
+- Dropped the `--tag=forms-migrations` instruction from the installation and customization guides. The package loads its own migrations via `loadMigrationsFrom()`, so there was never a tag to publish — `php artisan migrate` is all a consumer needs. ([#62](https://github.com/ArtisanPack-UI/forms/issues/62))
+- Added `tests/Feature/PublishTagsTest.php`, which walks the README and every Markdown file under `docs/` and asserts every documented `--tag=` value is a registered publish group, so this drift cannot silently recur.
+
 ## [1.3.0] - 2026-07-21
 
 ### Added
