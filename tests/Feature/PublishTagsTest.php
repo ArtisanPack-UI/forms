@@ -221,6 +221,7 @@ function formsDocFiles(): array
 
 test( 'every publish tag the docs instruct is actually registered', function (): void {
     $unregistered = [];
+    $ownedTags    = formsOwnedPublishTags();
 
     foreach ( formsDocFiles() as $file ) {
         $contents = file_get_contents( $file );
@@ -232,7 +233,7 @@ test( 'every publish tag the docs instruct is actually registered', function ():
         preg_match_all( '/--tag=["\']?([a-z0-9._-]+)["\']?/i', $contents, $matches );
 
         foreach ( array_unique( $matches[1] ) as $tag ) {
-            if ( ! array_key_exists( $tag, ServiceProvider::$publishGroups ) ) {
+            if ( ! in_array( $tag, $ownedTags, true ) ) {
                 $unregistered[] = basename( $file ) . ' documents --tag=' . $tag;
             }
         }
