@@ -22,6 +22,12 @@ describe( 'Submission Events', function (): void {
             } );
         } );
 
+        // The after-commit boundary — that a listener runs once, after commit,
+        // and reads the submission's persisted field values rather than an empty
+        // submission — is covered by tests/Unit/Events/FormSubmittedAfterCommitTest.
+        // It lives in Unit because an after-commit event never fires inside
+        // RefreshDatabase's wrapping transaction, which never commits.
+
         it( 'fires ap.forms.submission.created action hook when submission is created', function (): void {
             $hookFired          = false;
             $receivedSubmission = null;

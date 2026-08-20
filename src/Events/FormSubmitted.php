@@ -20,6 +20,7 @@ namespace ArtisanPackUI\Forms\Events;
 
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
@@ -34,7 +35,7 @@ use Illuminate\Queue\SerializesModels;
  *
  * @since      1.0.0
  */
-class FormSubmitted
+class FormSubmitted implements ShouldDispatchAfterCommit
 {
     use Dispatchable;
     use InteractsWithSockets;
