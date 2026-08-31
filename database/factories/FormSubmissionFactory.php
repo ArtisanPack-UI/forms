@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace ArtisanPackUI\Forms\Database\Factories;
 
+use ArtisanPackUI\Forms\Enums\SubmissionStatus;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -53,8 +54,31 @@ class FormSubmissionFactory extends Factory
             'is_read' => false,
             'is_spam' => false,
             'is_starred' => false,
+            'spam_score' => null,
+            'status' => SubmissionStatus::Received,
             'admin_notes' => null,
         ];
+    }
+
+    /**
+     * Indicate that the submission is quarantined.
+     */
+    public function quarantined(?float $spamScore = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => SubmissionStatus::Quarantined,
+            'spam_score' => $spamScore ?? fake()->randomFloat(4, 0.5, 1),
+        ]);
+    }
+
+    /**
+     * Indicate that the submission is archived.
+     */
+    public function archived(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => SubmissionStatus::Archived,
+        ]);
     }
 
     /**

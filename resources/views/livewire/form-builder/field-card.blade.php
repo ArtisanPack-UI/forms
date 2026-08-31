@@ -30,7 +30,7 @@
             <button
                 type="button"
                 wire:click="selectField('{{ $field->uuid }}')"
-                class="block w-full text-left"
+                class="block w-full cursor-pointer rounded text-left hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
                 <div class="flex items-center gap-2">
                     <span class="truncate font-medium">{{ $field->label }}</span>

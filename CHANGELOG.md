@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-08-31
+
+### Added
+
+- Submission lifecycle columns and quarantine-aware notifications so a spam-quarantine integration has a first-class contract to write to and suppress on, complementing the existing `FormSubmitted` event and `ap.forms.submission.created` action hook ([#68](https://github.com/ArtisanPack-UI/forms/issues/68)):
+  - Migration adds a nullable `spam_score` (decimal) column and a `status` column (default `received`), both indexed.
+  - `SubmissionStatus` enum (`Received`, `Quarantined`, `Archived`) with a translatable `label()`.
+  - `FormSubmission` gains the two columns as fillable/cast attributes, `quarantined()` and `withStatus()` query scopes, and `isQuarantined()` / `quarantine()` / `release()` helpers.
+  - `NotificationService` suppresses the notification pipeline for quarantined submissions by default, overridable via the new `ap.forms.submission.should_send_notifications` filter. Payload: `(bool $shouldSend, FormSubmission $submission)`.
+  - `FormSubmissionFactory` gains `quarantined()` and `archived()` states.
+- React field-component registry seam so a host can render and edit a host-defined custom field type (e.g. `artisanpack-ui/bookings`' `booking_slot`) without patching vendored source — bringing the React renderer to parity with the server-side `ap.forms.*` extensibility ([#69](https://github.com/ArtisanPack-UI/forms/issues/69)):
+  - `registerFieldComponent(type, component)` / `FormRenderer` + `FieldRenderer` `fieldComponents` prop — overlay the built-in renderer map so an unknown `field.type` resolves to a host component instead of rendering `null`.
+  - `registerFieldPaletteGroup(group)` / `FieldPalette` `extraGroups` (and `FormBuilder` `paletteExtraGroups`) prop — append builder palette groups for custom types; palette items may carry an `iconPath` (raw SVG path) for an icon outside the built-in set.
+  - `registerFieldSettings(type, component)` / `FieldEditor` `customSettings` (and `FormBuilder` `fieldCustomSettings`) prop — contribute a per-type settings panel to the editor's General tab. The panel receives `allFields` (the other fields in the form), mirroring the server-side `ap.forms.fieldSettings` filter's `Form` argument, so it can build controls that map to existing fields (e.g. a booking's name/email/phone selects).
+  - `registerFieldCardPreview(type, component)` / `FormBuilder` `fieldCardPreviews` prop — render a live preview inside the field's card on the builder canvas, the React equivalent of the server-side `ap.forms.fieldCardPreview` filter.
+  - Across all seams a per-instance prop takes precedence over a module-level registration; renderer components then fall back to the built-in (overlay by type), palette groups append after the built-ins, editor settings render additively below the shared settings, and card previews have no built-in fallback (the generic card shows when none is registered).
+- Widened the `FieldType` union to `BuiltInFieldType | (string & {})` so a TypeScript host can legally construct and hold a custom field across `FormField.type`, `StoreFieldRequest.type`, `FieldPaletteItem.type`, and the admin editor props while keeping autocomplete for the built-in types. ([#69](https://github.com/ArtisanPack-UI/forms/issues/69))
+
+### Fixed
+
+- Bare `<button>` elements across the React, Vue, and Livewire admin surfaces fell through to the browser UA defaults — arrow cursor, no hover feedback, and no focus ring (WCAG 2.2 SC 2.4.7 Focus Visible). Each genuinely-bare button now carries the interaction affordance the daisyUI buttons already inherit, via per-button utility classes since the package ships no stylesheet: the React/Vue `SubmissionsList` view buttons gain `link-hover`; the Livewire sort headers (forms-list, submissions-list), field-card select, and notification select gain `cursor-pointer`, a hover state, and a focus-visible ring; the AI feature partials keep their consumer-styled BEM hook and gain neutral affordance utilities. daisyUI `.btn`/`.tab`/`.link` buttons, drag handles, and the `SubmissionDetail` anchors were already correct and left untouched. ([#70](https://github.com/ArtisanPack-UI/forms/issues/70))
+
 ## [1.4.0] - 2026-08-20
 
 ### Added

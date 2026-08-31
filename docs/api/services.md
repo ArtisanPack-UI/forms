@@ -317,6 +317,16 @@ Send all active notifications for a submission.
 public function sendNotifications(FormSubmission $submission): void
 ```
 
+#### shouldSendNotifications
+
+*(since 1.5.0)*
+
+Decide whether the notification pipeline should run for a submission. Quarantined submissions are suppressed by default; the decision passes through the `ap.forms.submission.should_send_notifications` filter so it can be overridden per submission.
+
+```php
+public function shouldSendNotifications(FormSubmission $submission): bool
+```
+
 #### parseTemplate
 
 Parse placeholders in a template.

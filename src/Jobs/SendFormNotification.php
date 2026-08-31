@@ -19,6 +19,7 @@ namespace ArtisanPackUI\Forms\Jobs;
 use ArtisanPackUI\Forms\Mail\FormSubmissionNotification;
 use ArtisanPackUI\Forms\Models\FormNotification;
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Forms\Services\NotificationService;
 use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -99,6 +100,20 @@ class SendFormNotification implements ShouldQueue
         // Ensure relationships are loaded
         $this->submission->loadMissing( ['form', 'values.field'] );
         $this->notification->loadMissing( 'form' );
+
+        // Re-evaluate the quarantine policy at execution time. The submission
+        // may have been quarantined after this job was dispatched, and the
+        // same `ap.forms.submission.should_send_notifications` filter override
+        // applies here as at dispatch.
+        if ( ! app( NotificationService::class )->shouldSendNotifications( $this->submission ) ) {
+            Log::info( 'Skipping form notification; submission is no longer eligible', [
+                'notification_id' => $this->notification->id,
+                'submission_id'   => $this->submission->id,
+                'form_id'         => $this->submission->form_id,
+            ] );
+
+            return;
+        }
 
         // Get recipient emails
         $recipients = $this->notification->getRecipientEmails( $this->submission );

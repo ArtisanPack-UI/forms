@@ -10,7 +10,7 @@
 			wire:loading.attr="disabled"
 			wire:target="summarize"
 			@disabled( $isLoading || '' === trim( $formName ) )
-			class="forms-ai-summary__button"
+			class="forms-ai-summary__button cursor-pointer hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed"
 		>
 			<span wire:loading.remove wire:target="summarize">
 				{{ __( 'Summarize submissions' ) }}

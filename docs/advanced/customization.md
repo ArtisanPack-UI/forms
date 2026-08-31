@@ -206,6 +206,7 @@ place of it.
 | `ap.forms.notificationBody` | `$body, $notification, $submission` | Modify outgoing notification email body |
 | `ap.forms.webhookPayload` | `$payload, $form, $submission` | Modify webhook data |
 | `forms.spam_check` | `$isSpam, $form, $data` | Custom spam detection |
+| `ap.forms.submission.should_send_notifications` | `$shouldSend, $submission` | Decide whether the notification pipeline runs for a submission; defaults to `false` for quarantined submissions (since 1.5.0) |
 | `ap.forms.settingsTabs` | `$tabs, $form` | Add admin settings tabs |
 
 ### Available Actions

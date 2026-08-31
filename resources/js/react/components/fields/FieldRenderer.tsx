@@ -10,7 +10,7 @@
  * @since      1.1.0
  */
 
-import type { DisplayConfig, FieldType, FormField } from '../../../types/artisanpack-forms';
+import type { BuiltInFieldType, DisplayConfig, FormField } from '../../../types/artisanpack-forms';
 import { DateField, FileField } from './AdvancedField';
 import {
 	CheckboxField,
@@ -30,7 +30,8 @@ import {
 	TimeField,
 	UrlField,
 } from './TextField';
-import type { FieldComponentProps } from './types';
+import { getRegisteredFieldComponent, ownEntry } from './registry';
+import type { FieldComponent, FieldComponentMap } from './registry';
 
 /** Props for the FieldRenderer component. */
 export interface FieldRendererProps {
@@ -46,10 +47,16 @@ export interface FieldRendererProps {
 	onFileChange?: ( file: File | File[] ) => void;
 	/** Display configuration from the form. */
 	displayConfig: DisplayConfig;
+	/**
+	 * Host-supplied field components that overlay the built-ins. Takes
+	 * precedence over the module-level registry (see `registerFieldComponent`)
+	 * and the built-in components for the same type.
+	 */
+	fieldComponents?: FieldComponentMap;
 }
 
-/** Map of field types to their React components. */
-const FIELD_COMPONENTS: Record<FieldType, React.ComponentType<FieldComponentProps>> = {
+/** Map of built-in field types to their React components. */
+const FIELD_COMPONENTS: Record<BuiltInFieldType, FieldComponent> = {
 	text: TextField,
 	email: EmailField,
 	phone: PhoneField,
@@ -100,8 +107,17 @@ export function FieldRenderer( {
 	onChange,
 	onFileChange,
 	displayConfig,
+	fieldComponents,
 }: FieldRendererProps ) {
-	const Component = FIELD_COMPONENTS[field.type];
+	// Resolution order: host prop overlay, then the module-level registry,
+	// then the built-in components. This keeps built-ins working while letting
+	// a host add or override a type without patching the vendored source.
+	// `ownEntry` guards the plain-object maps so an arbitrary type such as
+	// `constructor` cannot resolve an inherited `Object.prototype` member.
+	const Component =
+		ownEntry( fieldComponents, field.type ) ??
+		getRegisteredFieldComponent( field.type ) ??
+		ownEntry( FIELD_COMPONENTS as Record<string, FieldComponent>, field.type );
 
 	if ( !Component ) {
 		return null;

@@ -36,6 +36,14 @@ describe( 'SubmissionsList Livewire Component', function (): void {
             Livewire::test( SubmissionsList::class, ['formId' => $form->id] )
                 ->assertSee( 'No submissions found' );
         } );
+
+        it( 'renders sort headers with cursor, hover and focus-visible affordances', function (): void {
+            $form = Form::factory()->create();
+            FormSubmission::factory()->for( $form )->create();
+
+            Livewire::test( SubmissionsList::class, ['formId' => $form->id] )
+                ->assertSeeHtml( 'cursor-pointer rounded hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary' );
+        } );
     } );
 
     describe( 'search', function (): void {
