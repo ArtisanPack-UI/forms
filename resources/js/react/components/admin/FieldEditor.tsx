@@ -25,7 +25,7 @@ import type {
 	ValidationRules,
 } from '../../../types/artisanpack-forms';
 
-import { getRegisteredFieldSettings } from '../fields/registry';
+import { getRegisteredFieldSettings, ownEntry } from '../fields/registry';
 import type { CustomFieldSettingsComponent } from '../fields/registry';
 import { ConditionalLogicEditor } from './ConditionalLogicEditor';
 
@@ -130,8 +130,9 @@ export function FieldEditor( {
 	const hasOptions = OPTION_FIELD_TYPES.has( field.type );
 
 	// Host-supplied settings panel for this field type, if any. The per-instance
-	// prop wins over a module-level registration.
-	const CustomSettings = customSettings?.[field.type] ?? getRegisteredFieldSettings( field.type );
+	// prop wins over a module-level registration. `ownEntry` guards the plain
+	// object so a type such as `constructor` cannot resolve a prototype member.
+	const CustomSettings = ownEntry( customSettings, field.type ) ?? getRegisteredFieldSettings( field.type );
 
 	const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>( null );
 	const pendingUpdatesRef = useRef<UpdateFieldRequest>( {} );

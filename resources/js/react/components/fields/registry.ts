@@ -60,6 +60,24 @@ export interface FieldCardPreviewProps {
 /** A React component that renders a live preview on the builder field card. */
 export type FieldCardPreviewComponent = React.ComponentType<FieldCardPreviewProps>;
 
+/**
+ * Read a plain-object map by an arbitrary string key, treating inherited
+ * prototype members (`constructor`, `toString`, …) as absent.
+ *
+ * The widened `FieldType` allows any string, so a field typed `constructor`
+ * would otherwise resolve `Object.prototype.constructor` from a plain-object
+ * overlay map instead of falling through to the registry/built-in. The
+ * `Map`-backed registries are immune to this; only the plain-object maps
+ * (host overlay props and the built-in constants) need the guard.
+ */
+export function ownEntry<T>( map: Record<string, T> | undefined | null, key: string ): T | undefined {
+	if ( ! map || ! Object.prototype.hasOwnProperty.call( map, key ) ) {
+		return undefined;
+	}
+
+	return map[key];
+}
+
 // ---------------------------------------------------------------------------
 // Field renderer components
 // ---------------------------------------------------------------------------

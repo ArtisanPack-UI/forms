@@ -30,7 +30,7 @@ import {
 	TimeField,
 	UrlField,
 } from './TextField';
-import { getRegisteredFieldComponent } from './registry';
+import { getRegisteredFieldComponent, ownEntry } from './registry';
 import type { FieldComponent, FieldComponentMap } from './registry';
 
 /** Props for the FieldRenderer component. */
@@ -112,10 +112,12 @@ export function FieldRenderer( {
 	// Resolution order: host prop overlay, then the module-level registry,
 	// then the built-in components. This keeps built-ins working while letting
 	// a host add or override a type without patching the vendored source.
+	// `ownEntry` guards the plain-object maps so an arbitrary type such as
+	// `constructor` cannot resolve an inherited `Object.prototype` member.
 	const Component =
-		fieldComponents?.[field.type] ??
+		ownEntry( fieldComponents, field.type ) ??
 		getRegisteredFieldComponent( field.type ) ??
-		FIELD_COMPONENTS[field.type as BuiltInFieldType];
+		ownEntry( FIELD_COMPONENTS as Record<string, FieldComponent>, field.type );
 
 	if ( !Component ) {
 		return null;

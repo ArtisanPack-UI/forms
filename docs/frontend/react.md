@@ -263,9 +263,18 @@ the global registry:
 | `FieldEditor` / `FormBuilder` | `customSettings` / `fieldCustomSettings` | Built-in editor settings |
 | `FormBuilder` | `fieldCardPreviews` | Generic builder canvas card |
 
-Resolution order for a given type is: per-instance prop, then module-level
-registration, then the built-in. Registering an existing type overrides its
-built-in; registering a new type adds it alongside the built-ins.
+Across all seams a per-instance prop takes precedence over a module-level
+registration, but what each seam does with the resolved value differs:
+
+- **Renderer components** overlay by type: prop → registry → built-in. A
+  registered type overrides its built-in; a new type is added alongside them.
+- **Palette groups** append — the built-in groups render first, then the
+  module-registered groups, then any per-instance `extraGroups`. Nothing is
+  overridden.
+- **Editor settings** are additive: the resolved panel renders below the
+  shared settings in the General tab. There is no built-in panel to replace.
+- **Card previews** resolve prop → registry with no built-in fallback; a field
+  with no registered preview shows the generic builder card.
 
 The `FieldType` union is widened to `BuiltInFieldType | (string & {})`, so a
 host can legally construct and hold a custom field (e.g. `booking_slot`) across

@@ -18,7 +18,7 @@ import type {
 	FieldPaletteItem,
 	FieldType,
 } from '../../../types/artisanpack-forms';
-import { getRegisteredFieldPaletteGroups } from '../fields/registry';
+import { getRegisteredFieldPaletteGroups, ownEntry } from '../fields/registry';
 
 /** SVG icon helper for inline field icons. */
 function PaletteIcon( { d }: { d: string } ): React.ReactElement {
@@ -186,7 +186,7 @@ export function FieldPalette( {
 									title={`Add ${field.label} field`}
 								>
 									<span className="text-base-content/50 w-5 text-center shrink-0">
-										<PaletteIcon d={field.iconPath ?? ICON_PATHS[field.icon] ?? ''} />
+										<PaletteIcon d={field.iconPath ?? ownEntry( ICON_PATHS, field.icon ) ?? ''} />
 									</span>
 									<span>
 										{field.label}

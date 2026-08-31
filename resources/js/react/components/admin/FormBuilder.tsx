@@ -34,7 +34,7 @@ import type {
 	UpdateFieldRequest,
 	UpdateFormRequest,
 } from '../../../types/artisanpack-forms';
-import { getRegisteredFieldCardPreview } from '../fields/registry';
+import { getRegisteredFieldCardPreview, ownEntry } from '../fields/registry';
 import type { CustomFieldSettingsComponent, FieldCardPreviewComponent } from '../fields/registry';
 import { slugify } from '../../../shared/slugify';
 import { useApi } from '../../hooks/useApi';
@@ -1076,7 +1076,7 @@ export function FormBuilder( {
 										</div>
 										{( () => {
 											const CardPreview =
-												fieldCardPreviews?.[field.type] ??
+												ownEntry( fieldCardPreviews, field.type ) ??
 												getRegisteredFieldCardPreview( field.type );
 
 											return CardPreview ? (
