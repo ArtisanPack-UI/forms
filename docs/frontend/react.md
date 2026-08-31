@@ -23,6 +23,7 @@ The main component for displaying forms to users. Fetches the form definition fr
 | `loadingComponent` | `ReactNode` | No | Skeleton | Custom loading UI |
 | `errorComponent` | `ComponentType<{message}>` | No | Default | Custom error UI |
 | `successComponent` | `ComponentType<{message}>` | No | Default | Custom success UI |
+| `fieldComponents` | `FieldComponentMap` | No | - | Host components that overlay the built-ins by field type (see [Custom Field Types](#custom-field-types)) |
 
 ### Usage
 
@@ -185,6 +186,91 @@ Individual field type components are available for building custom form layouts:
 | `ParagraphField` | paragraph |
 | `DividerField` | divider |
 | `HtmlField` | html |
+
+## Custom Field Types
+
+The server side already lets a package register a custom field type, its
+validation, and its Blade rendering through the `ap.forms.*` filters (e.g.
+`artisanpack-ui/bookings` registers a `booking_slot` type). The React renderer
+exposes a matching extensibility seam so a host can supply the renderer and
+builder UI for that type — overlaying, not replacing, the built-ins.
+
+Register once at application bootstrap and every `FormRenderer`, `FieldPalette`,
+and `FieldEditor` picks it up automatically. Registrations are resync-safe:
+they live in host code, not in the vendored package source.
+
+```tsx
+import {
+    registerFieldComponent,
+    registerFieldPaletteGroup,
+    registerFieldSettings,
+    registerFieldCardPreview,
+} from './vendor/artisanpack-forms/react';
+import type {
+    FieldComponent,
+    CustomFieldSettingsProps,
+} from './vendor/artisanpack-forms/react';
+
+// 1. Public renderer component for the custom type.
+const BookingSlotField: FieldComponent = ( { field, value, onChange } ) => (
+    // ...service select -> month calendar -> slot list
+    <div>{/* render the booking slot picker */}</div>
+);
+registerFieldComponent( 'booking_slot', BookingSlotField );
+
+// 2. Builder palette entry (icon is raw SVG path data, 16x16 viewBox).
+registerFieldPaletteGroup( {
+    label: 'Bookings',
+    fields: [
+        {
+            type: 'booking_slot',
+            label: 'Booking Slot',
+            icon: 'booking_slot',
+            category: 'advanced',
+            iconPath: 'M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z',
+        },
+    ],
+} );
+
+// 3. Custom settings panel in the field editor's General tab. `allFields`
+//    carries the other fields in the form, so the panel can map the booking's
+//    name/email/phone to existing form fields — the React equivalent of the
+//    server-side `ap.forms.fieldSettings` filter's `Form` argument.
+function BookingSlotSettings( { field, allFields, updateField }: CustomFieldSettingsProps ) {
+    return (
+        <div>
+            {/* e.g. a <select> of allFields for the "Name Form Field" mapping */}
+            {/* inputs that call updateField({ field_config: ... }) */}
+        </div>
+    );
+}
+registerFieldSettings( 'booking_slot', BookingSlotSettings );
+
+// 4. Live preview on the builder canvas card (the React equivalent of the
+//    server-side `ap.forms.fieldCardPreview` filter).
+registerFieldCardPreview( 'booking_slot', ( { field } ) => (
+    <div>{/* e.g. a mini calendar / "Choose a time" preview */}</div>
+) );
+```
+
+Every seam also has an equivalent prop for explicit, per-instance use without
+the global registry:
+
+| Component | Prop | Overlays |
+|-----------|------|----------|
+| `FormRenderer` / `FieldRenderer` | `fieldComponents` | Built-in renderer components |
+| `FieldPalette` / `FormBuilder` | `extraGroups` / `paletteExtraGroups` | Built-in palette groups |
+| `FieldEditor` / `FormBuilder` | `customSettings` / `fieldCustomSettings` | Built-in editor settings |
+| `FormBuilder` | `fieldCardPreviews` | Generic builder canvas card |
+
+Resolution order for a given type is: per-instance prop, then module-level
+registration, then the built-in. Registering an existing type overrides its
+built-in; registering a new type adds it alongside the built-ins.
+
+The `FieldType` union is widened to `BuiltInFieldType | (string & {})`, so a
+host can legally construct and hold a custom field (e.g. `booking_slot`) across
+`FormField`, `StoreFieldRequest`, `FieldPaletteItem`, and the admin editor
+props while keeping autocomplete for the built-in types.
 
 ## Admin Components
 

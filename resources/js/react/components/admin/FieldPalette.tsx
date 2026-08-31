@@ -18,6 +18,7 @@ import type {
 	FieldPaletteItem,
 	FieldType,
 } from '../../../types/artisanpack-forms';
+import { getRegisteredFieldPaletteGroups } from '../fields/registry';
 
 /** SVG icon helper for inline field icons. */
 function PaletteIcon( { d }: { d: string } ): React.ReactElement {
@@ -102,6 +103,12 @@ export interface FieldPaletteProps {
 	searchFilter?: string;
 	/** Optional CSS class name. */
 	className?: string;
+	/**
+	 * Extra palette groups appended after the built-ins (and after any
+	 * module-registered groups). Use for host-defined field types; items may
+	 * carry an `iconPath` to supply an icon outside the built-in set.
+	 */
+	extraGroups?: FieldPaletteGroup[];
 }
 
 /**
@@ -116,18 +123,25 @@ export function FieldPalette( {
 	onAddField,
 	searchFilter: externalSearch,
 	className,
+	extraGroups,
 }: FieldPaletteProps ): React.ReactElement {
 	const [internalSearch, setInternalSearch] = useState( '' );
 	const search = externalSearch ?? internalSearch;
 
+	// Built-ins first, then module-registered groups, then per-instance extras.
+	const allGroups = useMemo(
+		() => [...FIELD_PALETTE, ...getRegisteredFieldPaletteGroups(), ...( extraGroups ?? [] )],
+		[extraGroups],
+	);
+
 	const filteredGroups = useMemo( () => {
 		if ( !search ) {
-			return FIELD_PALETTE;
+			return allGroups;
 		}
 
 		const lower = search.toLowerCase();
 
-		return FIELD_PALETTE
+		return allGroups
 			.map( ( group ) => ( {
 				...group,
 				fields: group.fields.filter( ( field ) =>
@@ -136,7 +150,7 @@ export function FieldPalette( {
 				),
 			} ) )
 			.filter( ( group ) => group.fields.length > 0 );
-	}, [search] );
+	}, [search, allGroups] );
 
 	return (
 		<div className={`space-y-4 ${className ?? ''}`}>
@@ -172,7 +186,7 @@ export function FieldPalette( {
 									title={`Add ${field.label} field`}
 								>
 									<span className="text-base-content/50 w-5 text-center shrink-0">
-										<PaletteIcon d={ICON_PATHS[field.icon] ?? ''} />
+										<PaletteIcon d={field.iconPath ?? ICON_PATHS[field.icon] ?? ''} />
 									</span>
 									<span>
 										{field.label}

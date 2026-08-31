@@ -24,6 +24,7 @@ import { Loading } from '@artisanpack-ui/react';
 import { Textarea } from '@artisanpack-ui/react';
 
 import type {
+	FieldPaletteGroup,
 	FieldType,
 	Form,
 	FormField,
@@ -33,6 +34,8 @@ import type {
 	UpdateFieldRequest,
 	UpdateFormRequest,
 } from '../../../types/artisanpack-forms';
+import { getRegisteredFieldCardPreview } from '../fields/registry';
+import type { CustomFieldSettingsComponent, FieldCardPreviewComponent } from '../fields/registry';
 import { slugify } from '../../../shared/slugify';
 import { useApi } from '../../hooks/useApi';
 import type { UseApiOptions } from '../../hooks/useApi';
@@ -51,6 +54,22 @@ export interface FormBuilderProps extends UseApiOptions {
 	onViewSubmissions?: () => void;
 	/** Optional CSS class name. */
 	className?: string;
+	/**
+	 * Extra palette groups for host-defined field types, forwarded to the
+	 * field palette. Appended after the built-in and module-registered groups.
+	 */
+	paletteExtraGroups?: FieldPaletteGroup[];
+	/**
+	 * Custom per-type settings panels, forwarded to the field editor. Keyed by
+	 * field type; takes precedence over module-level registrations.
+	 */
+	fieldCustomSettings?: Record<string, CustomFieldSettingsComponent>;
+	/**
+	 * Custom canvas previews keyed by field type. Rendered inside the field's
+	 * card on the builder canvas; takes precedence over module-level
+	 * registrations (see `registerFieldCardPreview`).
+	 */
+	fieldCardPreviews?: Record<string, FieldCardPreviewComponent>;
 }
 
 /** Internal type for dragging state. */
@@ -80,6 +99,9 @@ export function FormBuilder( {
 	onBack,
 	onViewSubmissions,
 	className,
+	paletteExtraGroups,
+	fieldCustomSettings,
+	fieldCardPreviews,
 }: FormBuilderProps ): React.ReactElement {
 	const { get, post, put, del } = useApi( { baseUrl, csrfToken, authorization, credentials } );
 
@@ -693,7 +715,7 @@ export function FormBuilder( {
 					<div className="flex-1 overflow-y-auto p-3">
 						{/* Editor lives in the right-hand pane, so the left sidebar keeps the palette visible whenever the user has not switched to the Settings tab. */}
 						{activePanel !== 'settings' && (
-							<FieldPalette onAddField={addField} />
+							<FieldPalette onAddField={addField} extraGroups={paletteExtraGroups} />
 						)}
 
 						{/* Form settings */}
@@ -1052,6 +1074,17 @@ export function FormBuilder( {
 												</Button>
 											</div>
 										</div>
+										{( () => {
+											const CardPreview =
+												fieldCardPreviews?.[field.type] ??
+												getRegisteredFieldCardPreview( field.type );
+
+											return CardPreview ? (
+												<div className="border-t border-base-300 p-3">
+													<CardPreview field={field} />
+												</div>
+											) : null;
+										} )()}
 									</div>
 								) )}
 							</div>
@@ -1072,6 +1105,7 @@ export function FormBuilder( {
 								setSelectedFieldId( null );
 								setActivePanel( 'palette' );
 							}}
+							customSettings={fieldCustomSettings}
 						/>
 					</div>
 				)}

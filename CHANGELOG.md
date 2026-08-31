@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- React field-component registry seam so a host can render and edit a host-defined custom field type (e.g. `artisanpack-ui/bookings`' `booking_slot`) without patching vendored source — bringing the React renderer to parity with the server-side `ap.forms.*` extensibility ([#69](https://github.com/ArtisanPack-UI/forms/issues/69)):
+  - `registerFieldComponent(type, component)` / `FormRenderer` + `FieldRenderer` `fieldComponents` prop — overlay the built-in renderer map so an unknown `field.type` resolves to a host component instead of rendering `null`.
+  - `registerFieldPaletteGroup(group)` / `FieldPalette` `extraGroups` (and `FormBuilder` `paletteExtraGroups`) prop — append builder palette groups for custom types; palette items may carry an `iconPath` (raw SVG path) for an icon outside the built-in set.
+  - `registerFieldSettings(type, component)` / `FieldEditor` `customSettings` (and `FormBuilder` `fieldCustomSettings`) prop — contribute a per-type settings panel to the editor's General tab. The panel receives `allFields` (the other fields in the form), mirroring the server-side `ap.forms.fieldSettings` filter's `Form` argument, so it can build controls that map to existing fields (e.g. a booking's name/email/phone selects).
+  - `registerFieldCardPreview(type, component)` / `FormBuilder` `fieldCardPreviews` prop — render a live preview inside the field's card on the builder canvas, the React equivalent of the server-side `ap.forms.fieldCardPreview` filter.
+  - Resolution order for every seam is per-instance prop → module-level registration → built-in.
+- Widened the `FieldType` union to `BuiltInFieldType | (string & {})` so a TypeScript host can legally construct and hold a custom field across `FormField.type`, `StoreFieldRequest.type`, `FieldPaletteItem.type`, and the admin editor props while keeping autocomplete for the built-in types. ([#69](https://github.com/ArtisanPack-UI/forms/issues/69))
+
 ## [1.4.0] - 2026-08-20
 
 ### Added

@@ -25,6 +25,8 @@ import type {
 	ValidationRules,
 } from '../../../types/artisanpack-forms';
 
+import { getRegisteredFieldSettings } from '../fields/registry';
+import type { CustomFieldSettingsComponent } from '../fields/registry';
 import { ConditionalLogicEditor } from './ConditionalLogicEditor';
 
 /** Safely parse a numeric input value, returning undefined for empty or NaN. */
@@ -78,6 +80,12 @@ export interface FieldEditorProps {
 	onClose: () => void;
 	/** Optional CSS class name. */
 	className?: string;
+	/**
+	 * Host-supplied settings panels keyed by field type. Rendered in the
+	 * General tab below the shared settings. Takes precedence over the
+	 * module-level registry (see `registerFieldSettings`) for the same type.
+	 */
+	customSettings?: Record<string, CustomFieldSettingsComponent>;
 }
 
 /**
@@ -103,6 +111,7 @@ export function FieldEditor( {
 	onDuplicate,
 	onClose,
 	className,
+	customSettings,
 }: FieldEditorProps ): React.ReactElement {
 	const [activeTab, setActiveTab] = useState<string>( 'general' );
 
@@ -119,6 +128,10 @@ export function FieldEditor( {
 
 	const isLayoutField = LAYOUT_FIELD_TYPES.has( field.type );
 	const hasOptions = OPTION_FIELD_TYPES.has( field.type );
+
+	// Host-supplied settings panel for this field type, if any. The per-instance
+	// prop wins over a module-level registration.
+	const CustomSettings = customSettings?.[field.type] ?? getRegisteredFieldSettings( field.type );
 
 	const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>( null );
 	const pendingUpdatesRef = useRef<UpdateFieldRequest>( {} );
@@ -219,6 +232,8 @@ export function FieldEditor( {
 						handleAddOption={handleAddOption}
 						handleUpdateOption={handleUpdateOption}
 						handleRemoveOption={handleRemoveOption}
+						customSettings={CustomSettings}
+						allFields={allFields}
 					/>
 				),
 			},
@@ -257,6 +272,7 @@ export function FieldEditor( {
 		field, isLayoutField, hasOptions, options, validationRules,
 		allFields, updateField, updateValidation,
 		handleAddOption, handleUpdateOption, handleRemoveOption,
+		CustomSettings,
 	] );
 
 	return (
@@ -325,6 +341,8 @@ interface GeneralTabContentProps {
 	handleAddOption: () => void;
 	handleUpdateOption: ( index: number, key: 'label' | 'value', value: string ) => void;
 	handleRemoveOption: ( index: number ) => void;
+	customSettings?: CustomFieldSettingsComponent;
+	allFields: FormField[];
 }
 
 function GeneralTabContent( {
@@ -338,6 +356,8 @@ function GeneralTabContent( {
 	handleAddOption,
 	handleUpdateOption,
 	handleRemoveOption,
+	customSettings: CustomSettings,
+	allFields,
 }: GeneralTabContentProps ): React.ReactElement {
 	return (
 		<div className="space-y-4 p-4">
@@ -502,6 +522,11 @@ function GeneralTabContent( {
 						} )}
 					/>
 				</div>
+			)}
+
+			{/* Host-supplied settings panel for a custom field type */}
+			{CustomSettings && (
+				<CustomSettings field={field} allFields={allFields} updateField={updateField} />
 			)}
 		</div>
 	);

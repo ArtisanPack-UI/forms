@@ -54,6 +54,35 @@ export {
 
 export type { FieldComponentProps } from './components/fields/types';
 
+// Field extensibility registry
+export {
+	registerFieldComponent,
+	unregisterFieldComponent,
+	getRegisteredFieldComponent,
+	getRegisteredFieldComponents,
+	clearRegisteredFieldComponents,
+	registerFieldPaletteGroup,
+	getRegisteredFieldPaletteGroups,
+	clearRegisteredFieldPaletteGroups,
+	registerFieldSettings,
+	unregisterFieldSettings,
+	getRegisteredFieldSettings,
+	clearRegisteredFieldSettings,
+	registerFieldCardPreview,
+	unregisterFieldCardPreview,
+	getRegisteredFieldCardPreview,
+	clearRegisteredFieldCardPreviews,
+} from './components/fields/registry';
+
+export type {
+	FieldComponent,
+	FieldComponentMap,
+	CustomFieldSettingsProps,
+	CustomFieldSettingsComponent,
+	FieldCardPreviewProps,
+	FieldCardPreviewComponent,
+} from './components/fields/registry';
+
 // Hooks
 export { useForm } from './hooks/useForm';
 export type { UseFormOptions, UseFormReturn } from './hooks/useForm';
