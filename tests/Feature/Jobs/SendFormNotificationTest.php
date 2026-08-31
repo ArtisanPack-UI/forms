@@ -128,6 +128,44 @@ describe( 'SendFormNotification Job', function (): void {
             $job->handle();
         } );
 
+        it( 'skips sending when the submission was quarantined after dispatch', function (): void {
+            Mail::fake();
+
+            $notification = FormNotification::factory()->create( [
+                'to_email' => 'admin@example.com',
+                'to_field' => null,
+            ] );
+            $submission = FormSubmission::factory()->for( $notification->form )->create();
+
+            $job = new SendFormNotification( $notification, $submission );
+
+            // Quarantine the submission after the job is constructed/dispatched.
+            $submission->quarantine( 0.99 );
+
+            $job->handle();
+
+            Mail::assertNothingSent();
+        } );
+
+        it( 'still sends a quarantined submission when the filter overrides suppression', function (): void {
+            Mail::fake();
+
+            $notification = FormNotification::factory()->create( [
+                'to_email' => 'admin@example.com',
+                'to_field' => null,
+            ] );
+            $submission = FormSubmission::factory()->for( $notification->form )->quarantined()->create();
+
+            addFilter( 'ap.forms.submission.should_send_notifications', fn (): bool => true );
+
+            $job = new SendFormNotification( $notification, $submission );
+            $job->handle();
+
+            Mail::assertSent( FormSubmissionNotification::class );
+
+            removeAllFilters( 'ap.forms.submission.should_send_notifications' );
+        } );
+
         it( 'rethrows exceptions for retry', function (): void {
             Mail::shouldReceive( 'to->send' )
                 ->andThrow( new Exception( 'Mail server error' ) );
