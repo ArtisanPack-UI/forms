@@ -10,7 +10,7 @@
 			wire:loading.attr="disabled"
 			wire:target="classify"
 			@disabled( $isLoading || [] === $fields || [] === $availableCategories )
-			class="forms-ai-classifier__button"
+			class="forms-ai-classifier__button cursor-pointer hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed"
 		>
 			<span wire:loading.remove wire:target="classify">
 				{{ __( 'Classify submission' ) }}
@@ -47,7 +47,7 @@
 				<button
 					type="button"
 					wire:click="accept"
-					class="forms-ai-classifier__accept"
+					class="forms-ai-classifier__accept cursor-pointer hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
 				>
 					{{ __( 'Apply category' ) }}
 				</button>

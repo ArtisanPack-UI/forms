@@ -26,6 +26,13 @@ describe( 'FormsList Livewire Component', function (): void {
             Livewire::test( FormsList::class )
                 ->assertSee( 'No forms found' );
         } );
+
+        it( 'renders sort headers with cursor, hover and focus-visible affordances', function (): void {
+            Form::factory()->create();
+
+            Livewire::test( FormsList::class )
+                ->assertSeeHtml( 'cursor-pointer rounded hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary' );
+        } );
     } );
 
     describe( 'search', function (): void {

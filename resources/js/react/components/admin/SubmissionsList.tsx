@@ -526,7 +526,7 @@ export function SubmissionsList( {
 										{onViewSubmission ? (
 											<button
 												type="button"
-												className="link link-primary"
+												className="link link-hover link-primary"
 												onClick={() => onViewSubmission( submission )}
 											>
 												{submission.submission_number}
