@@ -17,9 +17,14 @@
 // ---------------------------------------------------------------------------
 
 /**
- * All available form field types.
+ * The field types shipped with the package.
+ *
+ * These map one-to-one to the built-in field components, palette entries,
+ * and editor settings. Host applications extend the set at runtime via the
+ * field-component registry seam (see `registerFieldComponent`), so consumer
+ * code should type against {@link FieldType} rather than this closed union.
  */
-export type FieldType =
+export type BuiltInFieldType =
     | 'text'
     | 'email'
     | 'phone'
@@ -39,6 +44,18 @@ export type FieldType =
     | 'paragraph'
     | 'divider'
     | 'html';
+
+/**
+ * All available form field types.
+ *
+ * Includes the {@link BuiltInFieldType} literals (preserved for editor
+ * autocomplete) plus any host-registered string type. The `& {}` intersection
+ * keeps the literal suggestions from collapsing into a bare `string`, while
+ * still allowing custom types such as `booking_slot` to be assigned across
+ * `FormField.type`, `StoreFieldRequest.type`, `FieldPaletteItem.type`, and the
+ * admin editor props.
+ */
+export type FieldType = BuiltInFieldType | ( string & {} );
 
 /**
  * Field type category groupings.
@@ -631,6 +648,12 @@ export interface FieldPaletteItem {
     label: string;
     icon: string;
     category: FieldTypeCategory;
+    /**
+     * Optional raw SVG path data (16x16 viewBox) rendered in place of the
+     * built-in icon lookup. Host-registered palette items use this to supply
+     * an icon for a custom field type that is not in the built-in icon set.
+     */
+    iconPath?: string;
 }
 
 /**

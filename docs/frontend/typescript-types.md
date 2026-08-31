@@ -21,12 +21,21 @@ Types are published to `resources/types/artisanpack-forms.d.ts` (standalone) or 
 ## Field Types
 
 ```typescript
-type FieldType =
+// The types shipped with the package.
+type BuiltInFieldType =
     | 'text' | 'email' | 'textarea' | 'select' | 'select_multiple'
-    | 'checkbox' | 'checkbox_group' | 'radio' | 'toggle'
+    | 'checkbox' | 'checkbox_group' | 'radio'
     | 'number' | 'phone' | 'url' | 'file' | 'date' | 'time'
     | 'heading' | 'paragraph' | 'divider' | 'html' | 'hidden';
+
+// Built-in literals (for autocomplete) plus any host-registered string type.
+type FieldType = BuiltInFieldType | ( string & {} );
 ```
+
+The `(string & {})` arm lets a host application register a custom field type
+(via `registerFieldComponent`) and hold it across `FormField`,
+`StoreFieldRequest`, and the palette/editor props. See
+[Custom Field Types](React#custom-field-types).
 
 ## Conditional Logic Types
 

@@ -16,6 +16,7 @@ import { Button } from '@artisanpack-ui/react/form';
 import type { SubmitFormResponse } from '../../types/artisanpack-forms';
 import { useForm } from '../hooks/useForm';
 import { FieldRenderer } from './fields/FieldRenderer';
+import type { FieldComponentMap } from './fields/registry';
 import { MultiStepForm } from './MultiStepForm';
 
 /** Props for the FormRenderer component. */
@@ -38,6 +39,12 @@ export interface FormRendererProps {
 	errorComponent?: React.ComponentType<{ message: string }>;
 	/** Custom success component. Receives the success message as a prop. */
 	successComponent?: React.ComponentType<{ message: string }>;
+	/**
+	 * Host-supplied field components that overlay the built-ins, letting a
+	 * custom `field.type` (e.g. `booking_slot`) resolve to a host component
+	 * instead of rendering nothing. Overlays the module-level registry too.
+	 */
+	fieldComponents?: FieldComponentMap;
 }
 
 /**
@@ -117,6 +124,7 @@ export function FormRenderer( {
 	loadingComponent,
 	errorComponent: ErrorComponent = DefaultError,
 	successComponent: SuccessComponent = DefaultSuccess,
+	fieldComponents,
 }: FormRendererProps ) {
 	const {
 		form,
@@ -193,6 +201,7 @@ export function FormRenderer( {
 						onChange={( value ) => setValue( field.name, value )}
 						onFileChange={( file ) => setFile( field.name, file )}
 						displayConfig={form.config.display}
+						fieldComponents={fieldComponents}
 					/>
 				);
 			} )}
