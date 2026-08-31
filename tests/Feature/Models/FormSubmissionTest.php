@@ -2,6 +2,7 @@
 
 declare( strict_types=1 );
 
+use ArtisanPackUI\Forms\Enums\SubmissionStatus;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
@@ -124,6 +125,22 @@ describe( 'FormSubmission Model', function (): void {
 
             expect( FormSubmission::recent( 30 )->count() )->toBe( 1 );
         } );
+
+        it( 'filters quarantined submissions', function (): void {
+            FormSubmission::factory()->create();
+            FormSubmission::factory()->quarantined()->create();
+
+            expect( FormSubmission::quarantined()->count() )->toBe( 1 );
+        } );
+
+        it( 'filters submissions by status', function (): void {
+            FormSubmission::factory()->create();
+            FormSubmission::factory()->archived()->create();
+            FormSubmission::factory()->archived()->create();
+
+            expect( FormSubmission::withStatus( SubmissionStatus::Archived )->count() )->toBe( 2 )
+                ->and( FormSubmission::withStatus( SubmissionStatus::Received )->count() )->toBe( 1 );
+        } );
     } );
 
     describe( 'accessors', function (): void {
@@ -185,6 +202,33 @@ describe( 'FormSubmission Model', function (): void {
 
             $submission->toggleStar();
             expect( $submission->fresh()->is_starred )->toBeFalse();
+        } );
+
+        it( 'defaults to the received status', function (): void {
+            $submission = FormSubmission::factory()->create();
+
+            expect( $submission->status )->toBe( SubmissionStatus::Received )
+                ->and( $submission->spam_score )->toBeNull()
+                ->and( $submission->isQuarantined() )->toBeFalse();
+        } );
+
+        it( 'quarantines a submission and records the spam score', function (): void {
+            $submission = FormSubmission::factory()->create();
+
+            $submission->quarantine( 0.97 );
+
+            expect( $submission->fresh()->status )->toBe( SubmissionStatus::Quarantined )
+                ->and( $submission->fresh()->spam_score )->toBe( 0.97 )
+                ->and( $submission->fresh()->isQuarantined() )->toBeTrue();
+        } );
+
+        it( 'releases a submission from quarantine', function (): void {
+            $submission = FormSubmission::factory()->quarantined()->create();
+
+            $submission->release();
+
+            expect( $submission->fresh()->status )->toBe( SubmissionStatus::Received )
+                ->and( $submission->fresh()->isQuarantined() )->toBeFalse();
         } );
 
         it( 'gets value by field name', function (): void {

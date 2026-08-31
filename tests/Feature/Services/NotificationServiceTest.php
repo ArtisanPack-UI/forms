@@ -243,6 +243,36 @@ describe( 'NotificationService', function (): void {
             expect( $count )->toBe( 0 );
             Queue::assertNotPushed( SendFormNotification::class );
         } );
+
+        it( 'suppresses notifications for quarantined submissions', function (): void {
+            Queue::fake();
+
+            $form = Form::factory()->create();
+            FormNotification::factory()->for( $form )->create( ['is_active' => true] );
+            $submission = FormSubmission::factory()->for( $form )->quarantined()->create();
+
+            $count = $this->service->sendNotifications( $submission );
+
+            expect( $count )->toBe( 0 );
+            Queue::assertNotPushed( SendFormNotification::class );
+        } );
+
+        it( 'allows overriding the suppression via the filter', function (): void {
+            Queue::fake();
+
+            $form = Form::factory()->create();
+            FormNotification::factory()->for( $form )->create( ['is_active' => true] );
+            $submission = FormSubmission::factory()->for( $form )->quarantined()->create();
+
+            addFilter( 'ap.forms.submission.should_send_notifications', fn (): bool => true );
+
+            $count = $this->service->sendNotifications( $submission );
+
+            expect( $count )->toBe( 1 );
+            Queue::assertPushed( SendFormNotification::class, 1 );
+
+            removeAllFilters( 'ap.forms.submission.should_send_notifications' );
+        } );
     } );
 
     describe( 'placeholder system', function (): void {
