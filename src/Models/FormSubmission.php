@@ -17,6 +17,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Models;
 
 use ArtisanPackUI\Forms\Database\Factories\FormSubmissionFactory;
+use ArtisanPackUI\Forms\Enums\SubmissionStatus;
 use ArtisanPackUI\Forms\Events\FormSubmitted;
 use ArtisanPackUI\Forms\Events\SubmissionDeleted;
 use ArtisanPackUI\Forms\Events\SubmissionUpdated;
@@ -45,6 +46,8 @@ use Illuminate\Support\Collection;
  * @property bool $is_read
  * @property bool $is_spam
  * @property bool $is_starred
+ * @property float|null $spam_score
+ * @property SubmissionStatus $status
  * @property string|null $admin_notes
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -75,6 +78,8 @@ class FormSubmission extends Model
         'is_read',
         'is_spam',
         'is_starred',
+        'spam_score',
+        'status',
         'admin_notes',
     ];
 
@@ -193,6 +198,35 @@ class FormSubmission extends Model
     }
 
     /**
+     * Scopes a query to submissions matching the given status.
+     *
+     * @since 1.5.0
+     *
+     * @param  Builder<FormSubmission>  $query  The query builder instance.
+     * @param  SubmissionStatus  $status  The status to filter by.
+     *
+     * @return Builder<FormSubmission> The modified query builder.
+     */
+    public function scopeWithStatus( Builder $query, SubmissionStatus $status ): Builder
+    {
+        return $query->where( 'status', $status->value );
+    }
+
+    /**
+     * Scopes a query to only include quarantined submissions.
+     *
+     * @since 1.5.0
+     *
+     * @param  Builder<FormSubmission>  $query  The query builder instance.
+     *
+     * @return Builder<FormSubmission> The modified query builder.
+     */
+    public function scopeQuarantined( Builder $query ): Builder
+    {
+        return $query->where( 'status', SubmissionStatus::Quarantined->value );
+    }
+
+    /**
      * Scopes a query to only include recent submissions.
      *
      * @since 1.0.0
@@ -282,6 +316,46 @@ class FormSubmission extends Model
     }
 
     /**
+     * Determines whether the submission is currently quarantined.
+     *
+     * @since 1.5.0
+     *
+     * @return bool True if the submission is quarantined.
+     */
+    public function isQuarantined(): bool
+    {
+        return SubmissionStatus::Quarantined === $this->status;
+    }
+
+    /**
+     * Quarantines the submission, optionally recording a spam score.
+     *
+     * @since 1.5.0
+     *
+     * @param  float|null  $spamScore  The spam score to record, if any.
+     */
+    public function quarantine( ?float $spamScore = null ): void
+    {
+        $attributes = ['status' => SubmissionStatus::Quarantined];
+
+        if ( null !== $spamScore ) {
+            $attributes['spam_score'] = $spamScore;
+        }
+
+        $this->update( $attributes );
+    }
+
+    /**
+     * Releases the submission from quarantine back to the received state.
+     *
+     * @since 1.5.0
+     */
+    public function release(): void
+    {
+        $this->update( ['status' => SubmissionStatus::Received] );
+    }
+
+    /**
      * Gets a submitted value by field name.
      *
      * @since 1.0.0
@@ -338,6 +412,8 @@ class FormSubmission extends Model
             'is_read'    => 'boolean',
             'is_spam'    => 'boolean',
             'is_starred' => 'boolean',
+            'spam_score' => 'float',
+            'status'     => SubmissionStatus::class,
         ];
     }
 

@@ -236,6 +236,10 @@ class NotificationService
     {
         $submission->loadMissing( ['form', 'values'] );
 
+        if ( ! $this->shouldSendNotifications( $submission ) ) {
+            return 0;
+        }
+
         $notifications = $submission->form
             ->notifications()
             ->active()
@@ -252,6 +256,31 @@ class NotificationService
         }
 
         return $queuedCount;
+    }
+
+    /**
+     * Determines whether the notification pipeline should run for a submission.
+     *
+     * Quarantined submissions are suppressed by default so spam-quarantine
+     * integrations can hold them for review. The decision is passed through
+     * the `ap.forms.submission.should_send_notifications` filter so it can be
+     * overridden per submission.
+     *
+     * @since 1.5.0
+     *
+     * @param FormSubmission $submission The form submission.
+     *
+     * @return bool True if the notification pipeline should run.
+     */
+    public function shouldSendNotifications( FormSubmission $submission ): bool
+    {
+        $shouldSend = ! $submission->isQuarantined();
+
+        return (bool) applyFilters(
+            'ap.forms.submission.should_send_notifications',
+            $shouldSend,
+            $submission,
+        );
     }
 
     /**
