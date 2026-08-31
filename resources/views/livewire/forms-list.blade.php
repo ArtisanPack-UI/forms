@@ -35,7 +35,7 @@
                     <thead>
                         <tr>
                             <th>
-                                <button wire:click="sort('name')" class="group inline-flex items-center gap-1">
+                                <button wire:click="sort('name')" class="group inline-flex items-center gap-1 cursor-pointer rounded hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                                     {{ __( 'Name' ) }}
                                     @if ($sortBy === 'name')
                                         <x-artisanpack-icon name="o-chevron-up" class="w-4 h-4 {{ $sortDirection === 'desc' ? 'rotate-180' : '' }}" />
@@ -44,7 +44,7 @@
                             </th>
                             <th>{{ __( 'Fields' ) }}</th>
                             <th>
-                                <button wire:click="sort('submissions')" class="group inline-flex items-center gap-1">
+                                <button wire:click="sort('submissions')" class="group inline-flex items-center gap-1 cursor-pointer rounded hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                                     {{ __( 'Submissions' ) }}
                                     @if ($sortBy === 'submissions')
                                         <x-artisanpack-icon name="o-chevron-up" class="w-4 h-4 {{ $sortDirection === 'desc' ? 'rotate-180' : '' }}" />
@@ -53,7 +53,7 @@
                             </th>
                             <th>{{ __( 'Status' ) }}</th>
                             <th>
-                                <button wire:click="sort('created_at')" class="group inline-flex items-center gap-1">
+                                <button wire:click="sort('created_at')" class="group inline-flex items-center gap-1 cursor-pointer rounded hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                                     {{ __( 'Created' ) }}
                                     @if ($sortBy === 'created_at')
                                         <x-artisanpack-icon name="o-chevron-up" class="w-4 h-4 {{ $sortDirection === 'desc' ? 'rotate-180' : '' }}" />

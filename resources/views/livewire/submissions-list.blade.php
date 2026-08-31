@@ -151,7 +151,7 @@
                                 />
                             </th>
                             <th>
-                                <button wire:click="sort('submission_number')" class="group inline-flex items-center gap-1">
+                                <button wire:click="sort('submission_number')" class="group inline-flex items-center gap-1 cursor-pointer rounded hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                                     {{ __( 'Submission' ) }}
                                     @if ($sortBy === 'submission_number')
                                         <x-artisanpack-icon name="o-chevron-up" class="w-4 h-4 {{ $sortDirection === 'desc' ? 'rotate-180' : '' }}" />
@@ -163,7 +163,7 @@
                             @endif
                             <th>{{ __( 'Summary' ) }}</th>
                             <th>
-                                <button wire:click="sort('created_at')" class="group inline-flex items-center gap-1">
+                                <button wire:click="sort('created_at')" class="group inline-flex items-center gap-1 cursor-pointer rounded hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                                     {{ __( 'Date' ) }}
                                     @if ($sortBy === 'created_at')
                                         <x-artisanpack-icon name="o-chevron-up" class="w-4 h-4 {{ $sortDirection === 'desc' ? 'rotate-180' : '' }}" />

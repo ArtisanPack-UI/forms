@@ -43,7 +43,7 @@
                             <button
                                 type="button"
                                 wire:click="selectNotification({{ $notification->id }})"
-                                class="flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors {{ $selectedNotificationId === $notification->id ? 'bg-primary/10 ring-1 ring-primary' : 'bg-base-100 hover:bg-base-300' }}"
+                                class="flex w-full cursor-pointer items-center gap-3 rounded-lg p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary {{ $selectedNotificationId === $notification->id ? 'bg-primary/10 ring-1 ring-primary' : 'bg-base-100 hover:bg-base-300' }}"
                             >
                                 {{-- Drag handle --}}
                                 <span x-sortable-handle class="cursor-grab opacity-40 hover:opacity-60">

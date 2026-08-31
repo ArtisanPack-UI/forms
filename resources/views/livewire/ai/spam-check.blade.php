@@ -10,7 +10,7 @@
 			wire:loading.attr="disabled"
 			wire:target="check"
 			@disabled( $isLoading || [] === $fields )
-			class="forms-ai-spam-check__button"
+			class="forms-ai-spam-check__button cursor-pointer hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed"
 		>
 			<span wire:loading.remove wire:target="check">
 				{{ __( 'Score for spam' ) }}

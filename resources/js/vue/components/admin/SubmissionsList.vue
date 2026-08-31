@@ -599,7 +599,7 @@ function isRowDisabled( submissionId: number ): boolean {
 						<td>
 							<button
 								type="button"
-								class="link link-primary"
+								class="link link-hover link-primary"
 								@click="emit( 'view-submission', submission )"
 							>
 								{{ submission.submission_number }}
