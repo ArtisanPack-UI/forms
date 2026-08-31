@@ -200,7 +200,11 @@ Represents a form submission.
 | `ip_address` | string\|null | Submitter IP |
 | `user_agent` | string\|null | Browser user agent |
 | `metadata` | array\|null | Additional metadata |
+| `spam_score` | float\|null | Spam score recorded by a quarantine integration (since 1.5.0) |
+| `status` | `SubmissionStatus` | Lifecycle status, cast to the enum; defaults to `Received` (since 1.5.0) |
 | `created_at` | Carbon | Submission timestamp |
+
+The `status` column is cast to the `ArtisanPackUI\Forms\Enums\SubmissionStatus` enum, which has three cases — `Received`, `Quarantined`, and `Archived` — each exposing a translatable `label()`.
 
 ### Relationships
 
@@ -208,6 +212,18 @@ Represents a form submission.
 $submission->form;     // BelongsTo<Form>
 $submission->values;   // HasMany<FormSubmissionValue>
 $submission->uploads;  // HasMany<FormUpload>
+```
+
+### Scopes
+
+```php
+use ArtisanPackUI\Forms\Enums\SubmissionStatus;
+
+// Only quarantined submissions (since 1.5.0)
+FormSubmission::quarantined()->get();
+
+// Submissions matching a given status (since 1.5.0)
+FormSubmission::withStatus(SubmissionStatus::Archived)->get();
 ```
 
 ### Methods
@@ -226,6 +242,15 @@ $values = $submission->getValuesWithLabels();
 
 // Access metadata
 $source = $submission->getMetadata('source');
+
+// Quarantine lifecycle (since 1.5.0)
+$submission->isQuarantined();     // bool
+
+// Move the submission into quarantine, optionally recording a spam score
+$submission->quarantine(0.97);
+
+// Release a quarantined submission back to the received state
+$submission->release();
 ```
 
 ---

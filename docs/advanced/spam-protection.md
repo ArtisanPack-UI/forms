@@ -239,6 +239,58 @@ addFilter('forms.spam_check', function ($isSpam, $form, $data) {
 });
 ```
 
+## Submission Quarantine
+
+*(since 1.5.0)*
+
+Rather than deleting or hard-rejecting a suspicious submission, you can hold it in **quarantine** for review. This is the contract a spam-quarantine integration writes to: every `FormSubmission` carries a lifecycle `status` and an optional `spam_score`, and quarantined submissions are excluded from the notification pipeline by default.
+
+### Lifecycle columns
+
+Two indexed columns back the workflow:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `status` | `SubmissionStatus` | Lifecycle status, defaulting to `Received`. Cast to the enum. |
+| `spam_score` | float\|null | Optional score recorded when a submission is quarantined. |
+
+`ArtisanPackUI\Forms\Enums\SubmissionStatus` has three cases — `Received`, `Quarantined`, and `Archived` — each with a translatable `label()`.
+
+### Quarantining and releasing
+
+```php
+use ArtisanPackUI\Forms\Enums\SubmissionStatus;
+use ArtisanPackUI\Forms\Models\FormSubmission;
+
+// Move a submission into quarantine, optionally recording a spam score
+$submission->quarantine(0.97);
+
+// Inspect the status
+$submission->isQuarantined(); // true
+
+// Release it back to the received state once reviewed
+$submission->release();
+
+// Query by status
+FormSubmission::quarantined()->get();
+FormSubmission::withStatus(SubmissionStatus::Archived)->get();
+```
+
+### Notification suppression
+
+The notification pipeline is suppressed for quarantined submissions by default, so a held submission does not email your team until it is released. Override the decision per submission with the `ap.forms.submission.should_send_notifications` filter:
+
+```php
+use function addFilter;
+
+// Always notify, even for quarantined submissions
+addFilter('ap.forms.submission.should_send_notifications', function (bool $shouldSend, $submission) {
+    return true;
+});
+```
+
+The filter receives `(bool $shouldSend, FormSubmission $submission)` and must return a boolean. The default value is `false` when the submission is quarantined and `true` otherwise.
+
 ## Security Logging
 
 Enable logging for security events:
