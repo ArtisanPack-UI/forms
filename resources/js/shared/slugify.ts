@@ -21,40 +21,46 @@ const EDGE_HYPHENS_PATTERN = /^-+|-+$/g;
  * cannot decompose (ligatures and stroked/barred letters have no combining
  * form to strip). Without these, `slugify` drops the letter entirely — e.g.
  * `Æther` would become `ther` — where Laravel's `Str::slug` transliterates it,
- * yielding `aether`. Keys cover both cases and map to the lowercase ASCII the
- * rest of the pipeline expects.
+ * yielding `aether`.
+ *
+ * Applied after `NFKD`, diacritic stripping and lowercasing, so keys are
+ * lowercase only and precomposed forms such as `Ǽ` or `ǿ` are covered once
+ * they reduce to `æ` / `ø`. The middle dot (U+00B7) that `NFKD` splits out of
+ * the Catalan `ŀ` is dropped, matching `Str::slug( 'coŀlegi' ) === 'collegi'`.
  */
 const TRANSLITERATIONS: Record<string, string> = {
-	'æ': 'ae', 'Æ': 'ae',
-	'œ': 'oe', 'Œ': 'oe',
+	'æ': 'ae',
+	'œ': 'oe',
 	'ß': 'ss',
-	'ø': 'o', 'Ø': 'o',
-	'đ': 'd', 'Đ': 'd', 'ð': 'd', 'Ð': 'd',
-	'þ': 'th', 'Þ': 'th',
-	'ł': 'l', 'Ł': 'l',
-	'ħ': 'h', 'Ħ': 'h',
-	'ı': 'i', 'İ': 'i',
-	'ŋ': 'ng', 'Ŋ': 'ng',
+	'ø': 'o',
+	'đ': 'd',
+	'ð': 'd',
+	'þ': 'th',
+	'ł': 'l',
+	'ħ': 'h',
+	'ı': 'i',
+	'ŋ': 'n',
 	'ĸ': 'k',
+	'ŧ': 't',
+	'ƒ': 'f',
+	'\u00b7': '',
 };
-
-const TRANSLITERATION_PATTERN = new RegExp(
-	`[${Object.keys( TRANSLITERATIONS ).join( '' )}]`,
-	'g',
-);
 
 /**
  * Replace the non-decomposable Latin letters in {@link TRANSLITERATIONS} with
  * their ASCII equivalents.
  *
- * @param value Raw string to transliterate.
+ * @param value Normalized, lowercased string to transliterate.
  * @returns The string with mapped letters replaced.
  */
 function transliterate( value: string ): string {
-	return value.replace(
-		TRANSLITERATION_PATTERN,
-		( char ) => TRANSLITERATIONS[ char ] ?? char,
-	);
+	let result = '';
+
+	for ( const char of value ) {
+		result += TRANSLITERATIONS[ char ] ?? char;
+	}
+
+	return result;
 }
 
 /**
@@ -65,10 +71,12 @@ function transliterate( value: string ): string {
  *          empty or whitespace-only input.
  */
 export function slugify( value: string ): string {
-	return transliterate( value )
+	const normalized = value
 		.normalize( 'NFKD' )
 		.replace( DIACRITICS_PATTERN, '' )
-		.toLowerCase()
+		.toLowerCase();
+
+	return transliterate( normalized )
 		.trim()
 		.replace( NON_ALPHANUM_PATTERN, '-' )
 		.replace( EDGE_HYPHENS_PATTERN, '' );
