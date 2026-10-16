@@ -27,7 +27,7 @@
 @endsection
 
 @section('content')
-    <x-artisanpack-tabs selected="fields">
+    <x-artisanpack-tabs :selected="$errors->any() ? 'settings' : 'fields'">
         {{-- Fields Tab --}}
         <x-artisanpack-tab name="fields" :label="__( 'Fields' )" icon="o-clipboard-document-list">
             <livewire:form-builder :form="$form" />
@@ -71,22 +71,22 @@
                                 <div class="space-y-4 border-t border-base-300 pt-6">
                                     <h3 class="text-sm font-medium">{{ __( 'Multi-Step Form' ) }}</h3>
 
-                                    <x-artisanpack-checkbox
-                                        :label="__( 'Enable multi-step form' )"
-                                        name="is_multi_step"
-                                        :checked="old('is_multi_step', $form->is_multi_step)"
-                                    />
+                                    <p class="text-sm text-base-content/60">{{ __( 'Turn multi-step mode on or off from the Fields tab.' ) }}</p>
 
+                                    <input type="hidden" name="show_progress_bar" value="0" />
                                     <x-artisanpack-checkbox
                                         :label="__( 'Show progress bar' )"
                                         name="show_progress_bar"
-                                        :checked="old('show_progress_bar', $form->show_progress_bar)"
+                                        value="1"
+                                        :checked="(bool) old('show_progress_bar', $form->show_progress_bar)"
                                     />
 
+                                    <input type="hidden" name="allow_step_navigation" value="0" />
                                     <x-artisanpack-checkbox
                                         :label="__( 'Allow step navigation (users can jump between steps)' )"
                                         name="allow_step_navigation"
-                                        :checked="old('allow_step_navigation', $form->allow_step_navigation)"
+                                        value="1"
+                                        :checked="(bool) old('allow_step_navigation', $form->allow_step_navigation)"
                                     />
                                 </div>
 
@@ -117,10 +117,12 @@
                                 />
 
                                 {{-- Status Toggle --}}
+                                <input type="hidden" name="is_active" value="0" />
                                 <x-artisanpack-checkbox
                                     :label="__( 'Form is active and accepting submissions' )"
                                     name="is_active"
-                                    :checked="old('is_active', $form->is_active)"
+                                    value="1"
+                                    :checked="(bool) old('is_active', $form->is_active)"
                                 />
                             </div>
 
