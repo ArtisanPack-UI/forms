@@ -22,6 +22,19 @@ php artisan vendor:publish --tag=forms-views --force
 php artisan view:clear
 ```
 
+### Settings "Save Changes" returns "The GET method is not supported"
+
+**Problem**: Saving the **Settings** tab of a form throws `MethodNotAllowedHttpException: The GET method is not supported for route admin/forms/{form}`, or the save appears to work but unticked checkboxes stay ticked.
+
+**Cause**: Versions before 1.5.1 rendered the settings form with `method="PUT"` and no `@csrf` / `@method` fields, so the browser sent a GET request. Unchecked boxes were also never submitted.
+
+**Solution**: Upgrade to 1.5.1 or later. If you published the package views, republish them (or copy the changes from `resources/views/forms/edit.blade.php` and `create.blade.php` into your published copies):
+
+```bash
+php artisan vendor:publish --tag=forms-views --force
+php artisan view:clear
+```
+
 ### Migration errors
 
 **Problem**: Migrations fail to run.
