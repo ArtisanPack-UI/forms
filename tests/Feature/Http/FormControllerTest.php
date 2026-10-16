@@ -4,6 +4,8 @@ declare( strict_types=1 );
 
 use ArtisanPackUI\Forms\Models\Form;
 use Illuminate\Foundation\Auth\User;
+use Illuminate\Support\MessageBag;
+use Illuminate\Support\ViewErrorBag;
 
 // Create a simple User model for testing authentication
 beforeEach( function (): void {
@@ -45,6 +47,14 @@ describe( 'FormController', function (): void {
 
             $response->assertStatus( 200 )
                 ->assertViewIs( 'forms::forms.create' );
+        } );
+
+        it( 'renders the create form with a CSRF token', function (): void {
+            $this->actingAs( $this->user )
+                ->get( route( 'forms.create' ) )
+                ->assertOk()
+                ->assertSee( 'action="' . route( 'forms.store' ) . '" method="POST"', false )
+                ->assertSee( 'name="_token"', false );
         } );
     } );
 
@@ -121,6 +131,69 @@ describe( 'FormController', function (): void {
                 ->assertViewHas( 'form', $form );
         } );
 
+        it( 'renders the settings form as a spoofed PUT with a CSRF token', function (): void {
+            $form = Form::factory()->create();
+
+            $this->actingAs( $this->user )
+                ->get( route( 'forms.edit', $form ) )
+                ->assertOk()
+                ->assertSee( 'action="' . route( 'forms.update', $form ) . '" method="POST"', false )
+                ->assertSee( 'name="_method" value="PUT"', false )
+                ->assertSee( 'name="_token"', false )
+                ->assertDontSee( 'method="PUT"', false );
+        } );
+
+        it( 'renders a hidden false fallback for each settings checkbox', function (): void {
+            $form = Form::factory()->create();
+
+            $response = $this->actingAs( $this->user )
+                ->get( route( 'forms.edit', $form ) )
+                ->assertOk();
+
+            foreach ( ['is_active', 'show_progress_bar', 'allow_step_navigation'] as $setting ) {
+                $response->assertSee( '<input type="hidden" name="' . $setting . '" value="0" />', false );
+            }
+        } );
+
+        it( 'leaves the multi-step toggle to the form builder', function (): void {
+            $form = Form::factory()->create();
+
+            $this->actingAs( $this->user )
+                ->get( route( 'forms.edit', $form ) )
+                ->assertOk()
+                ->assertDontSee( 'name="is_multi_step"', false );
+        } );
+
+        it( 'keeps an unticked checkbox unticked when re-rendered after a failed save', function (): void {
+            $form = Form::factory()->create( ['show_progress_bar' => true] );
+
+            $this->actingAs( $this->user )
+                ->withSession( ['_old_input' => ['show_progress_bar' => '0']] )
+                ->get( route( 'forms.edit', $form ) )
+                ->assertOk()
+                ->assertDontSee( 'name="show_progress_bar" checked', false );
+        } );
+
+        it( 'opens the settings tab when the settings form has validation errors', function (): void {
+            $form   = Form::factory()->create();
+            $errors = ( new ViewErrorBag() )->put( 'default', new MessageBag( ['slug' => 'Taken.'] ) );
+
+            $this->actingAs( $this->user )
+                ->withSession( ['errors' => $errors] )
+                ->get( route( 'forms.edit', $form ) )
+                ->assertOk()
+                ->assertSee( 'data-selected="settings"', false );
+        } );
+
+        it( 'opens the fields tab when there are no validation errors', function (): void {
+            $form = Form::factory()->create();
+
+            $this->actingAs( $this->user )
+                ->get( route( 'forms.edit', $form ) )
+                ->assertOk()
+                ->assertSee( 'data-selected="fields"', false );
+        } );
+
         it( 'returns 404 for non-existent form', function (): void {
             $response = $this->actingAs( $this->user )
                 ->get( route( 'forms.edit', 'non-existent-slug' ) );
@@ -190,6 +263,65 @@ describe( 'FormController', function (): void {
                     'name'      => $form->name,
                     'is_active' => '1',
                 ] );
+
+            expect( $form->fresh()->is_active )->toBeTrue();
+        } );
+
+        it( 'saves settings checkboxes posted by the hidden fallback and the checked box', function (): void {
+            $form = Form::factory()->create( [
+                'is_active'             => true,
+                'show_progress_bar'     => false,
+                'allow_step_navigation' => true,
+            ] );
+
+            $this->actingAs( $this->user )
+                ->put( route( 'forms.update', $form ), [
+                    'name'                  => $form->name,
+                    'is_active'             => '0',
+                    'show_progress_bar'     => '1',
+                    'allow_step_navigation' => '0',
+                ] )
+                ->assertSessionHasNoErrors();
+
+            $form->refresh();
+
+            expect( $form->is_active )->toBeFalse()
+                ->and( $form->show_progress_bar )->toBeTrue()
+                ->and( $form->allow_step_navigation )->toBeFalse();
+        } );
+
+        it( 'leaves settings that are not in the request unchanged', function (): void {
+            $form = Form::factory()->create( [
+                'is_active'             => true,
+                'is_multi_step'         => true,
+                'show_progress_bar'     => true,
+                'allow_step_navigation' => true,
+            ] );
+
+            $this->actingAs( $this->user )
+                ->put( route( 'forms.update', $form ), [
+                    'name' => 'Renamed',
+                ] )
+                ->assertSessionHasNoErrors();
+
+            $form->refresh();
+
+            expect( $form->name )->toBe( 'Renamed' )
+                ->and( $form->is_active )->toBeTrue()
+                ->and( $form->is_multi_step )->toBeTrue()
+                ->and( $form->show_progress_bar )->toBeTrue()
+                ->and( $form->allow_step_navigation )->toBeTrue();
+        } );
+
+        it( 'rejects non-boolean settings values', function (): void {
+            $form = Form::factory()->create( ['is_active' => true] );
+
+            $this->actingAs( $this->user )
+                ->put( route( 'forms.update', $form ), [
+                    'name'      => $form->name,
+                    'is_active' => 'maybe',
+                ] )
+                ->assertSessionHasErrors( 'is_active' );
 
             expect( $form->fresh()->is_active )->toBeTrue();
         } );

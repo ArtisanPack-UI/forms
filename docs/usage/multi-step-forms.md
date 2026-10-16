@@ -10,11 +10,12 @@ Break long forms into manageable steps with progress indicators and step-by-step
 
 ### Via Form Builder
 
-1. Create a new form
-2. Go to the "Steps" tab
-3. Add steps with titles and descriptions
-4. Assign fields to each step
-5. Save the form
+1. Create a new form and open it in the admin.
+2. On the **Fields** tab, turn on the **Multi-Step Form** toggle. Existing fields move into a new "Step 1".
+3. Add steps with titles and descriptions, and assign fields to each step.
+4. On the **Settings** tab, choose whether to **Show progress bar** and **Allow step navigation**, then click **Save Changes**.
+
+Multi-step mode is switched only from the Fields tab, because turning it on or off also moves fields into or out of steps. Turning it off removes the steps but keeps the fields.
 
 ### Programmatically
 

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-10-16
+
+### Fixed
+
+- The admin form **Settings** tab could not be saved. It rendered `<form method="PUT">` without `@csrf` or `@method('PUT')`, so the browser sent a GET request and **Save Changes** threw `MethodNotAllowedHttpException`. The form now posts with a CSRF token and a spoofed `PUT`. The create form was also missing `@csrf`; it only worked on Laravel 13 because of the framework's origin-based request forgery check. ([#77](https://github.com/ArtisanPack-UI/forms/issues/77)) Thanks to [@aohlrogge](https://github.com/aohlrogge) for reporting this.
+- The Settings checkboxes (**Form is active**, **Show progress bar**, **Allow step navigation**) now save in both directions. A ticked box used to submit `"on"`, which failed the `boolean` rule, and an unticked box was never submitted, so a setting could not be turned off. Each box now has a hidden `0` fallback and submits `1` when ticked, and an unticked box stays unticked when the form is re-rendered after a validation error. ([#77](https://github.com/ArtisanPack-UI/forms/issues/77))
+- The edit page now opens on the Settings tab when the settings form has validation errors, so the errors are no longer hidden behind the Fields tab. ([#77](https://github.com/ArtisanPack-UI/forms/issues/77))
+- The client-side `slugify()` used by the React form builder now converts Latin letters that Unicode normalization cannot break down (`æ`, `œ`, `ß`/`ẞ`, `ø`, `đ`, `ð`, `þ`, `ł`, `ħ`, `ı`, `ŋ`, `ĸ`, `ŧ`, `ƒ`, and Catalan `ŀ`) instead of dropping them. Accented forms such as `Ǽ` and `ǿ` are covered as well. For example, `Æther` now gives `aether` instead of `ther`, matching Laravel's `Str::slug`. ([#75](https://github.com/ArtisanPack-UI/forms/pull/75))
+- The test suite's `FakeAgentPrompter` now accepts the optional `$tools` argument that `artisanpack-ui/ai` 1.2.0 added to `AgentPrompter::prompt()`. Previously the whole suite crashed with a fatal signature error on a fresh install that pulled in ai 1.2.
+
+### Changed
+
+- The **Enable multi-step form** checkbox was removed from the Settings tab. It changed `is_multi_step` without moving fields into or out of steps, which could leave the public form showing no fields. Use the **Multi-Step Form** toggle on the Fields tab instead, which converts the form properly. ([#77](https://github.com/ArtisanPack-UI/forms/issues/77))
+
+### Upgrading
+
+- If you published the package views (`forms-views`), republish them with `php artisan vendor:publish --tag=forms-views --force`, or apply the `forms/edit.blade.php` and `forms/create.blade.php` changes to your copies. Otherwise your published settings form will keep the broken behaviour.
+
 ## [1.5.0] - 2026-08-31
 
 ### Added

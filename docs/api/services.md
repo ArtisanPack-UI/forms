@@ -183,36 +183,69 @@ use ArtisanPackUI\Forms\Services\StepService;
 $stepService = app(StepService::class);
 ```
 
-#### createStep
+#### create
 
-Create a new step.
+Create a new step. When `title` is omitted, it defaults to "Step N".
 
 ```php
-public function createStep(Form $form, array $data): FormStep
+public function create(Form $form, array $data = []): FormStep
 ```
 
-#### updateStep
+#### update
 
 Update a step.
 
 ```php
-public function updateStep(FormStep $step, array $data): FormStep
+public function update(FormStep $step, array $data): FormStep
 ```
 
-#### deleteStep
+#### delete
 
-Delete a step and reassign its fields.
+Delete a step. Its fields move to the previous step, or to no step if it was the first.
 
 ```php
-public function deleteStep(FormStep $step): bool
+public function delete(FormStep $step): bool
 ```
 
-#### reorderSteps
+#### reorder
 
-Reorder steps.
+Reorder a form's steps from an ordered array of step IDs.
 
 ```php
-public function reorderSteps(Form $form, array $stepIds): void
+public function reorder(Form $form, array $orderedIds): void
+```
+
+#### getById / getSteps / getFirstStep / getLastStep
+
+Look up a form's steps.
+
+```php
+public function getById(Form $form, int $stepId): ?FormStep
+public function getSteps(Form $form): Collection
+public function getFirstStep(Form $form): ?FormStep
+public function getLastStep(Form $form): ?FormStep
+```
+
+#### convertToMultiStep / convertToSingleStep
+
+Switch an existing form between single-step and multi-step. `convertToMultiStep()` creates a first step and moves every field into it. `convertToSingleStep()` detaches every field from its step and deletes the steps. Neither method changes `is_multi_step`, so update the flag in the same operation:
+
+```php
+public function convertToMultiStep(Form $form): FormStep
+public function convertToSingleStep(Form $form): void
+
+$stepService->convertToMultiStep($form);
+$form->update(['is_multi_step' => true]);
+```
+
+> **Note:** Changing `is_multi_step` on a form that already has fields without converting it leaves the step data inconsistent, and the renderer can then show no fields. The admin form builder's **Multi-Step Form** toggle does both for you.
+
+#### initializeMultiStep
+
+Create a default first step only if the form has no steps yet.
+
+```php
+public function initializeMultiStep(Form $form): ?FormStep
 ```
 
 ---
