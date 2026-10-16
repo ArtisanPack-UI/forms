@@ -46,6 +46,14 @@ describe( 'FormController', function (): void {
             $response->assertStatus( 200 )
                 ->assertViewIs( 'forms::forms.create' );
         } );
+
+        it( 'renders the create form with a CSRF token', function (): void {
+            $this->actingAs( $this->user )
+                ->get( route( 'forms.create' ) )
+                ->assertOk()
+                ->assertSee( 'action="' . route( 'forms.store' ) . '" method="POST"', false )
+                ->assertSee( 'name="_token"', false );
+        } );
     } );
 
     describe( 'store', function (): void {
@@ -121,6 +129,18 @@ describe( 'FormController', function (): void {
                 ->assertViewHas( 'form', $form );
         } );
 
+        it( 'renders the settings form as a spoofed PUT with a CSRF token', function (): void {
+            $form = Form::factory()->create();
+
+            $this->actingAs( $this->user )
+                ->get( route( 'forms.edit', $form ) )
+                ->assertOk()
+                ->assertSee( 'action="' . route( 'forms.update', $form ) . '" method="POST"', false )
+                ->assertSee( 'name="_method" value="PUT"', false )
+                ->assertSee( 'name="_token"', false )
+                ->assertDontSee( 'method="PUT"', false );
+        } );
+
         it( 'returns 404 for non-existent form', function (): void {
             $response = $this->actingAs( $this->user )
                 ->get( route( 'forms.edit', 'non-existent-slug' ) );
@@ -192,6 +212,53 @@ describe( 'FormController', function (): void {
                 ] );
 
             expect( $form->fresh()->is_active )->toBeTrue();
+        } );
+
+        it( 'saves checked settings checkboxes submitted as "on"', function (): void {
+            $form = Form::factory()->inactive()->create( [
+                'is_multi_step'         => false,
+                'show_progress_bar'     => false,
+                'allow_step_navigation' => false,
+            ] );
+
+            $this->actingAs( $this->user )
+                ->put( route( 'forms.update', $form ), [
+                    'name'                  => $form->name,
+                    'is_active'             => 'on',
+                    'is_multi_step'         => 'on',
+                    'show_progress_bar'     => 'on',
+                    'allow_step_navigation' => 'on',
+                ] )
+                ->assertSessionHasNoErrors();
+
+            $form->refresh();
+
+            expect( $form->is_active )->toBeTrue()
+                ->and( $form->is_multi_step )->toBeTrue()
+                ->and( $form->show_progress_bar )->toBeTrue()
+                ->and( $form->allow_step_navigation )->toBeTrue();
+        } );
+
+        it( 'saves unchecked settings checkboxes omitted from the request as false', function (): void {
+            $form = Form::factory()->create( [
+                'is_active'             => true,
+                'is_multi_step'         => true,
+                'show_progress_bar'     => true,
+                'allow_step_navigation' => true,
+            ] );
+
+            $this->actingAs( $this->user )
+                ->put( route( 'forms.update', $form ), [
+                    'name' => $form->name,
+                ] )
+                ->assertSessionHasNoErrors();
+
+            $form->refresh();
+
+            expect( $form->is_active )->toBeFalse()
+                ->and( $form->is_multi_step )->toBeFalse()
+                ->and( $form->show_progress_bar )->toBeFalse()
+                ->and( $form->allow_step_navigation )->toBeFalse();
         } );
     } );
 

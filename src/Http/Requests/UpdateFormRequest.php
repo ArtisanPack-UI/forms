@@ -119,9 +119,13 @@ class UpdateFormRequest extends FormRequest
     /**
      * Prepares the data for validation.
      *
-     * Converts empty slug to null so it gets auto-generated.
+     * Converts empty slug to null so it gets auto-generated, and normalizes
+     * the settings checkboxes to booleans. Browsers submit a checked box as
+     * "on" and omit an unchecked box entirely, so a checked box is cast to
+     * true and a missing box to false.
      *
      * @since 1.0.0
+     * @since 1.5.1 Normalizes the settings checkboxes to booleans.
      *
      * @return void
      */
@@ -133,5 +137,12 @@ class UpdateFormRequest extends FormRequest
         if ( $this->has( 'slug' ) && '' === $this->slug ) {
             $this->merge( ['slug' => null] );
         }
+
+        $this->merge( [
+            'is_active'             => $this->boolean( 'is_active' ),
+            'is_multi_step'         => $this->boolean( 'is_multi_step' ),
+            'show_progress_bar'     => $this->boolean( 'show_progress_bar' ),
+            'allow_step_navigation' => $this->boolean( 'allow_step_navigation' ),
+        ] );
     }
 }

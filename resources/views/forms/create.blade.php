@@ -17,6 +17,8 @@
 @section('content')
     <x-artisanpack-card>
         <x-artisanpack-form action="{{ route('forms.store') }}" method="POST">
+            @csrf
+
             <div class="space-y-6">
                 {{-- Form Name --}}
                 <x-artisanpack-input

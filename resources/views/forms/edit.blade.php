@@ -39,7 +39,10 @@
                 {{-- Main Settings Form --}}
                 <div class="lg:col-span-2">
                     <x-artisanpack-card :title="__( 'Form Settings' )" separator>
-                        <x-artisanpack-form action="{{ route('forms.update', $form) }}" method="PUT">
+                        <x-artisanpack-form action="{{ route('forms.update', $form) }}" method="POST">
+                            @csrf
+                            @method('PUT')
+
                             <div class="space-y-6">
                                 {{-- Form Name --}}
                                 <x-artisanpack-input
