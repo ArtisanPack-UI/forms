@@ -97,10 +97,11 @@ const WIDTH_CLASSES: Record<string, string> = {
 /**
  * Returns the wrapper class for a field in an inline row.
  *
- * A full-width field grows to fill the row but may shrink to 12rem, so the
- * submit button can share its line and wraps below it only when the row is
- * too narrow. A hidden input's wrapper is not displayed, so it can't take up
- * a slot in the row. Other widths keep their stacked classes.
+ * A full-width field grows to fill the row but may shrink to 12rem, or to
+ * the row width when that is narrower, so the submit button can share its
+ * line and wraps below it only when the row is too narrow. A hidden input's
+ * wrapper is not displayed, so it can't take up a slot in the row. Other
+ * widths keep their stacked classes.
  *
  * @since 1.5.2
  */
@@ -111,7 +112,7 @@ function getInlineWidthClass( field: FormField ): string {
 
 	const width = WIDTH_CLASSES[field.width] ? field.width : 'full';
 
-	return width === 'full' ? 'flex-1 min-w-[12rem]' : WIDTH_CLASSES[width];
+	return width === 'full' ? 'flex-1 min-w-[min(12rem,100%)]' : WIDTH_CLASSES[width];
 }
 
 /**

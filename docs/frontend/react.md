@@ -66,7 +66,7 @@ import { FormRenderer } from './vendor/artisanpack-forms/react';
 
 ### Inline Layout
 
-Set `layout="inline"` to render the submit button inside the field row instead of below it. The button is the last item in the row, doesn't grow, and is aligned to the bottom of the fields. Full-width fields shrink (down to 12rem) to share the row, so a newsletter signup with one email field sits on one line and the button wraps below the field when the row is too narrow. Hidden fields take no space in the row.
+Set `layout="inline"` to render the submit button inside the field row instead of below it. The button is the last item in the row, doesn't grow, and is aligned to the bottom of the fields. Full-width fields shrink (down to 12rem, or the row width if that is narrower) to share the row, so a newsletter signup with one email field sits on one line and the button wraps below the field when the row is too narrow. Hidden fields take no space in the row.
 
 `submitClassName` appends classes to the submit button in either layout, which lets a host style the button with its own design system:
 

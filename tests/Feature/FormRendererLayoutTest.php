@@ -88,7 +88,7 @@ describe( 'FormRenderer layout and submit class (issue #141)', function () use (
         it( 'lets a full-width field shrink and hides hidden inputs in an inline row', function (): void {
             expect( $this->fieldRenderer )
                 ->toContain( "layout = 'stacked'," )
-                ->toContain( "width === 'full' ? 'flex-1 min-w-[12rem]' : WIDTH_CLASSES[width]" )
+                ->toContain( "width === 'full' ? 'flex-1 min-w-[min(12rem,100%)]' : WIDTH_CLASSES[width]" )
                 ->toContain( "if ( field.type === 'hidden' ) {\n\t\treturn 'hidden';" );
         } );
 
@@ -149,7 +149,7 @@ describe( 'FormRenderer layout and submit class (issue #141)', function () use (
             expect( $this->fieldRenderer )
                 ->toContain( 'layout?: FormLayout;' )
                 ->toContain( "props.layout === 'inline'" )
-                ->toContain( "width === 'full' ? 'flex-1 min-w-[12rem]' : WIDTH_CLASSES[width]" )
+                ->toContain( "width === 'full' ? 'flex-1 min-w-[min(12rem,100%)]' : WIDTH_CLASSES[width]" )
                 ->toContain( "if ( field.type === 'hidden' ) {\n\t\treturn 'hidden';" );
         } );
 
