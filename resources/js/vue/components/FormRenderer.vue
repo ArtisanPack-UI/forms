@@ -10,8 +10,9 @@
   @since      1.1.0
 -->
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Button } from '@artisanpack-ui/vue/form';
-import type { SubmitFormResponse } from '../../types/artisanpack-forms';
+import type { FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
 import { useForm } from '../composables/useForm';
 import FieldRenderer from './fields/FieldRenderer.vue';
 import HoneypotField from './HoneypotField.vue';
@@ -26,9 +27,28 @@ const props = withDefaults( defineProps<{
 	clientValidation?: boolean;
 	/** Optional CSS class for the form wrapper. */
 	formClass?: string;
+	/**
+	 * How the submit button sits relative to the fields. `stacked` (the
+	 * default) renders it below the field row. `inline` renders it as the last
+	 * item in the field row, aligned to the bottom of the fields, so a short
+	 * form such as a newsletter signup sits on one line and wraps when the row
+	 * is too narrow. Multi-step forms ignore this.
+	 *
+	 * @since 1.5.2
+	 */
+	layout?: FormLayout;
+	/**
+	 * Extra CSS classes appended to the submit button's classes. Applies to
+	 * single-step forms in both layouts.
+	 *
+	 * @since 1.5.2
+	 */
+	submitClassName?: string;
 }>(), {
 	clientValidation: true,
 	formClass: undefined,
+	layout: 'stacked',
+	submitClassName: undefined,
 } );
 
 const emit = defineEmits<{
@@ -64,6 +84,9 @@ const {
 	onSuccess: ( response ) => emit( 'success', response ),
 	onError: ( error ) => emit( 'error', error ),
 } );
+
+/** Whether the single-step form renders its submit button in the field row. */
+const isInline = computed( () => props.layout === 'inline' );
 
 function handleFormSubmit( e: Event ): void {
 	e.preventDefault();
@@ -169,6 +192,7 @@ function handleFormSubmit( e: Event ): void {
 						:model-value="values[field.name]"
 						:error="errors[field.name]?.[0]"
 						:display-config="form.config.display"
+						:layout="layout"
 						@update:model-value="setValue( field.name, $event )"
 						@file-change="setFile( field.name, $event )"
 					/>
@@ -179,9 +203,20 @@ function handleFormSubmit( e: Event ): void {
 					:slug="form.slug"
 					:field-name="form.config.honeypot.field_name"
 				/>
+
+				<!-- Inline layout: the submit button is the last item in the field row -->
+				<Button
+					v-if="isInline"
+					type="submit"
+					color="primary"
+					:disabled="isSubmitting"
+					:class="['shrink-0 self-end', submitClassName]"
+				>
+					{{ isSubmitting ? 'Submitting...' : form.submit_button_text }}
+				</Button>
 			</div>
-			<div>
-				<Button type="submit" color="primary" :disabled="isSubmitting">
+			<div v-if="!isInline">
+				<Button type="submit" color="primary" :disabled="isSubmitting" :class="submitClassName">
 					{{ isSubmitting ? 'Submitting...' : form.submit_button_text }}
 				</Button>
 			</div>

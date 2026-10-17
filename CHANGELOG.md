@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `FormRenderer` (React and Vue) accepts two optional props ([#141](https://github.com/ArtisanPack-UI/forms/issues/141)):
+  - `layout` (`'stacked' | 'inline'`, default `'stacked'`). `inline` renders the submit button as the last item in the field row, aligned to the bottom of the fields and not growing, without its own wrapper `<div>`. Full-width fields shrink to a 12rem minimum so the button can share their row, and the button wraps below them when the row is too narrow. A newsletter signup with one email field and a Subscribe button now sits on one line without CSS overrides. Multi-step forms ignore `layout`. The default stacked output is unchanged.
+  - `submitClassName`, appended to the submit button's classes in both layouts so a host can apply its own design system (for example `wp-element-button`).
+  - New `FormLayout` type in the TypeScript definitions, and a matching `layout` prop on `FieldRenderer`.
+
 ## [1.5.1] - 2026-10-16
 
 ### Fixed
