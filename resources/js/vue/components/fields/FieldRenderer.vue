@@ -10,7 +10,7 @@
 -->
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { FormField, DisplayConfig } from '../../../types/artisanpack-forms';
+import type { FormField, DisplayConfig, FormLayout } from '../../../types/artisanpack-forms';
 
 import TextField from './TextField.vue';
 import ChoiceField from './ChoiceField.vue';
@@ -22,6 +22,14 @@ const props = defineProps<{
 	modelValue: unknown;
 	error?: string;
 	displayConfig: DisplayConfig;
+	/**
+	 * The layout of the row the field sits in. In `inline` mode a full-width
+	 * field shrinks to share its row with the submit button, and a hidden
+	 * field's wrapper is removed from the flow. Defaults to `stacked`.
+	 *
+	 * @since 1.5.2
+	 */
+	layout?: FormLayout;
 }>();
 
 const emit = defineEmits<{
@@ -43,7 +51,32 @@ const WIDTH_CLASSES: Record<string, string> = {
 	'two-thirds': 'w-full md:w-2/3',
 };
 
-const widthClass = computed( () => WIDTH_CLASSES[props.field.width] ?? WIDTH_CLASSES.full );
+/**
+ * Returns the wrapper class for a field in an inline row.
+ *
+ * A full-width field grows to fill the row but may shrink to 12rem, or to
+ * the row width when that is narrower, so the submit button can share its
+ * line and wraps below it only when the row is too narrow. A hidden input's
+ * wrapper is not displayed, so it can't take up a slot in the row. Other
+ * widths keep their stacked classes.
+ *
+ * @since 1.5.2
+ */
+function getInlineWidthClass( field: FormField ): string {
+	if ( field.type === 'hidden' ) {
+		return 'hidden';
+	}
+
+	const width = WIDTH_CLASSES[field.width] ? field.width : 'full';
+
+	return width === 'full' ? 'flex-1 min-w-[min(12rem,100%)]' : WIDTH_CLASSES[width];
+}
+
+const widthClass = computed( () => (
+	props.layout === 'inline'
+		? getInlineWidthClass( props.field )
+		: ( WIDTH_CLASSES[props.field.width] ?? WIDTH_CLASSES.full )
+) );
 
 const componentGroup = computed( () => {
 	if ( TEXT_TYPES.has( props.field.type ) ) {

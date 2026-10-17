@@ -13,7 +13,7 @@
 
 import { Button } from '@artisanpack-ui/react/form';
 
-import type { SubmitFormResponse } from '../../types/artisanpack-forms';
+import type { FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
 import { useForm } from '../hooks/useForm';
 import { FieldRenderer } from './fields/FieldRenderer';
 import type { FieldComponentMap } from './fields/registry';
@@ -45,6 +45,25 @@ export interface FormRendererProps {
 	 * instead of rendering nothing. Overlays the module-level registry too.
 	 */
 	fieldComponents?: FieldComponentMap;
+	/**
+	 * How the submit button sits relative to the fields. `stacked` (the
+	 * default) renders it below the field row. `inline` renders it as the last
+	 * item in the field row, aligned to the bottom of the fields, so a short
+	 * form such as a newsletter signup sits on one line and wraps when the row
+	 * is too narrow. Multi-step forms ignore this and keep their navigation
+	 * below the fields.
+	 *
+	 * @since 1.5.2
+	 */
+	layout?: FormLayout;
+	/**
+	 * Extra CSS classes appended to the submit button's classes, e.g. to hand
+	 * the button to a host design system. Applies to single-step forms in both
+	 * layouts.
+	 *
+	 * @since 1.5.2
+	 */
+	submitClassName?: string;
 }
 
 /**
@@ -104,6 +123,17 @@ function DefaultSuccess( { message }: { message: string } ) {
  *
  * @example
  * ```tsx
+ * // Newsletter signup: email field and button on one row
+ * <FormRenderer
+ *   baseUrl="/api/v1/forms"
+ *   formSlug="newsletter"
+ *   layout="inline"
+ *   submitClassName="wp-element-button"
+ * />
+ * ```
+ *
+ * @example
+ * ```tsx
  * // With custom components
  * <FormRenderer
  *   baseUrl="/api/v1/forms"
@@ -125,6 +155,8 @@ export function FormRenderer( {
 	errorComponent: ErrorComponent = DefaultError,
 	successComponent: SuccessComponent = DefaultSuccess,
 	fieldComponents,
+	layout = 'stacked',
+	submitClassName,
 }: FormRendererProps ) {
 	const {
 		form,
@@ -184,6 +216,26 @@ export function FormRenderer( {
 		);
 	}
 
+	// Multi-step forms keep their navigation below the fields, so they ignore
+	// the inline layout.
+	const isInline = layout === 'inline' && !form.is_multi_step;
+
+	// Inline: a non-growing flex item aligned to the bottom of the fields.
+	const submitClasses = [isInline ? 'shrink-0 self-end' : '', submitClassName ?? '']
+		.filter( Boolean )
+		.join( ' ' ) || undefined;
+
+	const submitButton = (
+		<Button
+			type="submit"
+			color="primary"
+			disabled={isSubmitting}
+			className={submitClasses}
+		>
+			{isSubmitting ? 'Submitting...' : form.submit_button_text}
+		</Button>
+	);
+
 	// Render form fields
 	const renderedFields = (
 		<div className="flex flex-wrap gap-4">
@@ -202,6 +254,7 @@ export function FormRenderer( {
 						onFileChange={( file ) => setFile( field.name, file )}
 						displayConfig={form.config.display}
 						fieldComponents={fieldComponents}
+						layout={isInline ? 'inline' : 'stacked'}
 					/>
 				);
 			} )}
@@ -224,6 +277,9 @@ export function FormRenderer( {
 					/>
 				</div>
 			)}
+
+			{/* Inline layout: the submit button is the last item in the field row */}
+			{isInline && submitButton}
 		</div>
 	);
 
@@ -273,15 +329,11 @@ export function FormRenderer( {
 			) : (
 				<div className="space-y-6">
 					{renderedFields}
-					<div>
-						<Button
-							type="submit"
-							color="primary"
-							disabled={isSubmitting}
-						>
-							{isSubmitting ? 'Submitting...' : form.submit_button_text}
-						</Button>
-					</div>
+					{!isInline && (
+						<div>
+							{submitButton}
+						</div>
+					)}
 				</div>
 			)}
 		</form>

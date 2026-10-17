@@ -18,6 +18,8 @@ The main component for displaying forms to users. Fetches the form definition fr
 | `formSlug` | `string` | Yes | - | Form slug or ID |
 | `clientValidation` | `boolean` | No | `true` | Enable client-side validation |
 | `formClass` | `string` | No | - | CSS class for form wrapper |
+| `layout` | `'stacked' \| 'inline'` | No | `'stacked'` | `inline` puts the submit button in the field row so a short form sits on one line. Ignored by multi-step forms. Since 1.5.2 |
+| `submitClassName` | `string` | No | - | Extra classes appended to the submit button, e.g. to apply a host design system. Since 1.5.2 |
 
 ### Events
 
