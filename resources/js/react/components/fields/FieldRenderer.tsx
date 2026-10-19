@@ -10,7 +10,7 @@
  * @since      1.1.0
  */
 
-import type { BuiltInFieldType, DisplayConfig, FormField } from '../../../types/artisanpack-forms';
+import type { BuiltInFieldType, DisplayConfig, FormField, FormLayout } from '../../../types/artisanpack-forms';
 import { DateField, FileField } from './AdvancedField';
 import {
 	CheckboxField,
@@ -53,6 +53,14 @@ export interface FieldRendererProps {
 	 * and the built-in components for the same type.
 	 */
 	fieldComponents?: FieldComponentMap;
+	/**
+	 * The layout of the row the field sits in. In `inline` mode a full-width
+	 * field shrinks to share its row with the submit button, and a hidden
+	 * field's wrapper is removed from the flow. Defaults to `stacked`.
+	 *
+	 * @since 1.5.2
+	 */
+	layout?: FormLayout;
 }
 
 /** Map of built-in field types to their React components. */
@@ -87,6 +95,27 @@ const WIDTH_CLASSES: Record<string, string> = {
 };
 
 /**
+ * Returns the wrapper class for a field in an inline row.
+ *
+ * A full-width field grows to fill the row but may shrink to 12rem, or to
+ * the row width when that is narrower, so the submit button can share its
+ * line and wraps below it only when the row is too narrow. A hidden input's
+ * wrapper is not displayed, so it can't take up a slot in the row. Other
+ * widths keep their stacked classes.
+ *
+ * @since 1.5.2
+ */
+function getInlineWidthClass( field: FormField ): string {
+	if ( field.type === 'hidden' ) {
+		return 'hidden';
+	}
+
+	const width = WIDTH_CLASSES[field.width] ? field.width : 'full';
+
+	return width === 'full' ? 'flex-1 min-w-[min(12rem,100%)]' : WIDTH_CLASSES[width];
+}
+
+/**
  * Renders a single form field based on its type.
  *
  * @example
@@ -108,6 +137,7 @@ export function FieldRenderer( {
 	onFileChange,
 	displayConfig,
 	fieldComponents,
+	layout = 'stacked',
 }: FieldRendererProps ) {
 	// Resolution order: host prop overlay, then the module-level registry,
 	// then the built-in components. This keeps built-ins working while letting
@@ -123,7 +153,9 @@ export function FieldRenderer( {
 		return null;
 	}
 
-	const widthClass = WIDTH_CLASSES[field.width] ?? WIDTH_CLASSES.full;
+	const widthClass = layout === 'inline'
+		? getInlineWidthClass( field )
+		: ( WIDTH_CLASSES[field.width] ?? WIDTH_CLASSES.full );
 
 	return (
 		<div className={widthClass}>

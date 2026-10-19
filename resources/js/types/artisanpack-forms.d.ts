@@ -115,6 +115,17 @@ export type LabelPosition = 'above' | 'beside' | 'hidden';
  */
 export type ErrorDisplay = 'below' | 'tooltip' | 'summary';
 
+/**
+ * Renderer layout options.
+ *
+ * `stacked` places the submit button below the fields. `inline` places it in
+ * the field row so a short form (e.g. an email field and a Subscribe button)
+ * sits on one line and wraps when the row is too narrow.
+ *
+ * @since 1.5.2
+ */
+export type FormLayout = 'stacked' | 'inline';
+
 // ---------------------------------------------------------------------------
 // Conditional Logic
 // ---------------------------------------------------------------------------

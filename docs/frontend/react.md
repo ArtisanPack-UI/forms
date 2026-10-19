@@ -24,6 +24,8 @@ The main component for displaying forms to users. Fetches the form definition fr
 | `errorComponent` | `ComponentType<{message}>` | No | Default | Custom error UI |
 | `successComponent` | `ComponentType<{message}>` | No | Default | Custom success UI |
 | `fieldComponents` | `FieldComponentMap` | No | - | Host components that overlay the built-ins by field type (see [Custom Field Types](#custom-field-types)) |
+| `layout` | `'stacked' \| 'inline'` | No | `'stacked'` | `inline` puts the submit button in the field row so a short form sits on one line (see [Inline Layout](#inline-layout)). Ignored by multi-step forms. Since 1.5.2 |
+| `submitClassName` | `string` | No | - | Extra classes appended to the submit button, e.g. to apply a host design system. Since 1.5.2 |
 
 ### Usage
 
@@ -61,6 +63,23 @@ import { FormRenderer } from './vendor/artisanpack-forms/react';
     successComponent={({ message }) => <MySuccessPage message={message} />}
 />
 ```
+
+### Inline Layout
+
+Set `layout="inline"` to render the submit button inside the field row instead of below it. The button is the last item in the row, doesn't grow, and is aligned to the bottom of the fields. Full-width fields shrink (down to 12rem, or the row width if that is narrower) to share the row, so a newsletter signup with one email field sits on one line and the button wraps below the field when the row is too narrow. Hidden fields take no space in the row.
+
+`submitClassName` appends classes to the submit button in either layout, which lets a host style the button with its own design system:
+
+```tsx
+<FormRenderer
+    baseUrl="/api/v1/forms"
+    formSlug="newsletter"
+    layout="inline"
+    submitClassName="wp-element-button"
+/>
+```
+
+Multi-step forms ignore `layout` and keep their step navigation below the fields. The success state and error messages are the same in both layouts. Available since 1.5.2.
 
 ## useForm Hook
 
