@@ -101,3 +101,42 @@ jobs:
             "https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}" \
             -d "{\"repository\":{\"url\":\"https://github.com/${{ github.repository }}\"}}" \
             -H "Content-Type: application/json"
+
+  sync-docs:
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    name: Import docs on docs site
+
+    steps:
+      - name: Queue documentation and changelog imports
+        env:
+          DOCS_API_TOKEN: ${{ secrets.DOCS_API_TOKEN }}
+          DOCS_PACKAGE_SLUG: ${{ vars.DOCS_PACKAGE_SLUG || github.event.repository.name }}
+        run: |
+          if [ -z "$DOCS_API_TOKEN" ]; then
+            echo "::notice::DOCS_API_TOKEN is not set; skipping docs-site import."
+            exit 0
+          fi
+
+          HEADER_FILE="$(mktemp)"
+          chmod 600 "$HEADER_FILE"
+          trap 'rm -f "$HEADER_FILE"' EXIT
+          printf 'Authorization: Bearer %s\n' "$DOCS_API_TOKEN" > "$HEADER_FILE"
+
+          FAILED=0
+
+          for IMPORT in import-docs import-changelog; do
+            echo "Triggering $IMPORT for $DOCS_PACKAGE_SLUG"
+            if ! curl --fail-with-body -sS --retry 3 -X POST \
+              "https://docs.artisanpackui.dev/api/v1/packages/${DOCS_PACKAGE_SLUG}/${IMPORT}" \
+              -H @"$HEADER_FILE" \
+              -H "Accept: application/json"; then
+              echo
+              echo "::error::$IMPORT failed for $DOCS_PACKAGE_SLUG"
+              FAILED=1
+            fi
+            echo
+          done
+
+          exit "$FAILED"
