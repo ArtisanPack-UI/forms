@@ -25,8 +25,14 @@ import type {
 	ValidationRules,
 } from '../../../types/artisanpack-forms';
 
-import { getRegisteredFieldSettings, ownEntry } from '../fields/registry';
-import type { CustomFieldSettingsComponent } from '../fields/registry';
+import {
+	buildFileSettingUpdate,
+	buildLayoutContentUpdate,
+	getFileSettingInput,
+	getLayoutContent,
+} from '../../../shared/fieldSettings';
+import { resolveFieldSettings } from '../fields/registry';
+import type { CustomFieldSettingsEntry, FieldSettingsRegistration } from '../fields/registry';
 import { ConditionalLogicEditor } from './ConditionalLogicEditor';
 
 /** Safely parse a numeric input value, returning undefined for empty or NaN. */
@@ -81,11 +87,13 @@ export interface FieldEditorProps {
 	/** Optional CSS class name. */
 	className?: string;
 	/**
-	 * Host-supplied settings panels keyed by field type. Rendered in the
-	 * General tab below the shared settings. Takes precedence over the
-	 * module-level registry (see `registerFieldSettings`) for the same type.
+	 * Host-supplied settings panels keyed by field type. An entry is either a
+	 * component (rendered last in the General tab) or `{ component, position }`
+	 * where `position: 'before-basics'` renders it above Width/CSS Classes.
+	 * Takes precedence over the module-level registry (see
+	 * `registerFieldSettings`) for the same type.
 	 */
-	customSettings?: Record<string, CustomFieldSettingsComponent>;
+	customSettings?: Record<string, CustomFieldSettingsEntry>;
 }
 
 /**
@@ -130,9 +138,12 @@ export function FieldEditor( {
 	const hasOptions = OPTION_FIELD_TYPES.has( field.type );
 
 	// Host-supplied settings panel for this field type, if any. The per-instance
-	// prop wins over a module-level registration. `ownEntry` guards the plain
+	// prop wins over a module-level registration; the resolver guards the plain
 	// object so a type such as `constructor` cannot resolve a prototype member.
-	const CustomSettings = ownEntry( customSettings, field.type ) ?? getRegisteredFieldSettings( field.type );
+	const customSettingsPanel = useMemo(
+		() => resolveFieldSettings( customSettings, field.type ),
+		[customSettings, field.type],
+	);
 
 	const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>( null );
 	const pendingUpdatesRef = useRef<UpdateFieldRequest>( {} );
@@ -227,13 +238,11 @@ export function FieldEditor( {
 						isLayoutField={isLayoutField}
 						hasOptions={hasOptions}
 						options={options}
-						validationRules={validationRules}
 						updateField={updateField}
-						updateValidation={updateValidation}
 						handleAddOption={handleAddOption}
 						handleUpdateOption={handleUpdateOption}
 						handleRemoveOption={handleRemoveOption}
-						customSettings={CustomSettings}
+						customSettings={customSettingsPanel}
 						allFields={allFields}
 					/>
 				),
@@ -273,7 +282,7 @@ export function FieldEditor( {
 		field, isLayoutField, hasOptions, options, validationRules,
 		allFields, updateField, updateValidation,
 		handleAddOption, handleUpdateOption, handleRemoveOption,
-		CustomSettings,
+		customSettingsPanel,
 	] );
 
 	return (
@@ -336,13 +345,11 @@ interface GeneralTabContentProps {
 	isLayoutField: boolean;
 	hasOptions: boolean;
 	options: FieldOption[];
-	validationRules: ValidationRules;
 	updateField: ( data: UpdateFieldRequest ) => void;
-	updateValidation: ( rules: Partial<ValidationRules> ) => void;
 	handleAddOption: () => void;
 	handleUpdateOption: ( index: number, key: 'label' | 'value', value: string ) => void;
 	handleRemoveOption: ( index: number ) => void;
-	customSettings?: CustomFieldSettingsComponent;
+	customSettings?: FieldSettingsRegistration;
 	allFields: FormField[];
 }
 
@@ -351,23 +358,35 @@ function GeneralTabContent( {
 	isLayoutField,
 	hasOptions,
 	options,
-	validationRules,
 	updateField,
-	updateValidation,
 	handleAddOption,
 	handleUpdateOption,
 	handleRemoveOption,
-	customSettings: CustomSettings,
+	customSettings,
 	allFields,
 }: GeneralTabContentProps ): React.ReactElement {
+	const CustomSettings = customSettings?.component;
+	const customSettingsPanel = CustomSettings ? (
+		<CustomSettings field={field} allFields={allFields} updateField={updateField} />
+	) : null;
+	const rendersBeforeBasics = 'before-basics' === customSettings?.position;
+
 	return (
 		<div className="space-y-4 p-4">
-			{/* Label */}
-			<Input
-				label="Label"
-				value={field.label ?? ''}
-				onChange={( e ) => updateField( { label: e.target.value } )}
-			/>
+			{/* Label (a heading's label is its text) */}
+			{field.type === 'heading' ? (
+				<Input
+					label="Heading Text"
+					value={getLayoutContent( field )}
+					onChange={( e ) => updateField( buildLayoutContentUpdate( field, e.target.value ) )}
+				/>
+			) : (
+				<Input
+					label="Label"
+					value={field.label ?? ''}
+					onChange={( e ) => updateField( { label: e.target.value } )}
+				/>
+			)}
 
 			{/* Name (machine name) */}
 			<Input
@@ -413,6 +432,14 @@ function GeneralTabContent( {
 				/>
 			)}
 
+			{/* Host-supplied settings panel placed above the generic basics */}
+			{rendersBeforeBasics && customSettingsPanel && (
+				<>
+					{customSettingsPanel}
+					<div className="divider text-xs text-base-content/50">Field Basics</div>
+				</>
+			)}
+
 			{/* Width */}
 			<Select
 				label="Width"
@@ -435,29 +462,19 @@ function GeneralTabContent( {
 				<Textarea
 					label="HTML Content"
 					rows={6}
-					value={field.default_value ?? ''}
-					onChange={( e ) => updateField( { default_value: e.target.value } )}
+					value={getLayoutContent( field )}
+					onChange={( e ) => updateField( buildLayoutContentUpdate( field, e.target.value ) )}
 				/>
 			)}
 
-			{/* Heading/Paragraph content */}
-			{( field.type === 'heading' || field.type === 'paragraph' ) && (
-				<>
-					{field.type === 'heading' ? (
-						<Input
-							label="Content"
-							value={field.default_value ?? ''}
-							onChange={( e ) => updateField( { default_value: e.target.value } )}
-						/>
-					) : (
-						<Textarea
-							label="Content"
-							rows={4}
-							value={field.default_value ?? ''}
-							onChange={( e ) => updateField( { default_value: e.target.value } )}
-						/>
-					)}
-				</>
+			{/* Paragraph content */}
+			{field.type === 'paragraph' && (
+				<Textarea
+					label="Content"
+					rows={4}
+					value={getLayoutContent( field )}
+					onChange={( e ) => updateField( buildLayoutContentUpdate( field, e.target.value ) )}
+				/>
 			)}
 
 			{/* Options editor for choice fields */}
@@ -508,27 +525,29 @@ function GeneralTabContent( {
 						label="Max File Size (KB)"
 						type="number"
 						min={0}
-						value={validationRules.max_size ?? ''}
-						onChange={( e ) => updateValidation( {
-							max_size: parseNumericInput( e.target.value ),
-						} )}
+						value={getFileSettingInput( field, 'max_size' )}
+						onChange={( e ) => updateField( buildFileSettingUpdate(
+							field,
+							'max_size',
+							parseNumericInput( e.target.value ),
+						) )}
 					/>
 					<Input
-						label="Allowed File Types (comma-separated MIME types)"
-						value={validationRules.allowed_types?.join( ', ' ) ?? ''}
-						onChange={( e ) => updateValidation( {
-							allowed_types: e.target.value
+						label="Allowed File Types (comma-separated extensions, e.g. pdf, jpg)"
+						value={getFileSettingInput( field, 'allowed_types' )}
+						onChange={( e ) => updateField( buildFileSettingUpdate(
+							field,
+							'allowed_types',
+							e.target.value
 								? e.target.value.split( ',' ).map( ( s ) => s.trim() )
 								: undefined,
-						} )}
+						) )}
 					/>
 				</div>
 			)}
 
 			{/* Host-supplied settings panel for a custom field type */}
-			{CustomSettings && (
-				<CustomSettings field={field} allFields={allFields} updateField={updateField} />
-			)}
+			{!rendersBeforeBasics && customSettingsPanel}
 		</div>
 	);
 }

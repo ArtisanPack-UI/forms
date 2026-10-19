@@ -332,6 +332,112 @@ class FormBuilder extends Component
     }
 
     /**
+     * Update a numeric validation rule (min, max or step) on the selected field.
+     *
+     * The raw input value is parsed here rather than in the `wire:change`
+     * expression: Livewire 4 rewrites bare identifiers such as `parseInt` in
+     * those expressions to `$wire` calls, which breaks the request.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $rule  The rule key: `min`, `max` or `step`.
+     * @param  float|int|string|null  $value  The raw input value; blank clears the rule.
+     */
+    public function updateValidationRule( string $rule, string|int|float|null $value ): void
+    {
+        if ( ! in_array( $rule, ['min', 'max', 'step'], true ) ) {
+            return;
+        }
+
+        $field = $this->getSelectedFieldModel();
+
+        if ( null === $field ) {
+            return;
+        }
+
+        $rules = $field->validation_rules ?? [];
+
+        if ( is_numeric( $value ) ) {
+            $rules[ $rule ] = 'step' === $rule ? (float) $value : (int) $value;
+        } else {
+            unset( $rules[ $rule ] );
+        }
+
+        $this->persistSelectedField( $field, ['validation_rules' => $rules] );
+    }
+
+    /**
+     * Update a file field's max size or allowed types on the selected field.
+     *
+     * Saves to `field_config` and drops any pre-1.6.0 copy in
+     * `validation_rules` so it no longer shadows the new value.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $setting  `max_size` (KB) or `allowed_types` (comma-separated extensions).
+     * @param  int|string|null  $value  The raw input value; blank clears the setting.
+     */
+    public function updateFileSetting( string $setting, string|int|null $value ): void
+    {
+        if ( ! in_array( $setting, ['max_size', 'allowed_types'], true ) ) {
+            return;
+        }
+
+        $field = $this->getSelectedFieldModel();
+
+        if ( null === $field ) {
+            return;
+        }
+
+        $config = $field->field_config ?? [];
+        $rules  = $field->validation_rules ?? [];
+
+        $parsed = 'max_size' === $setting
+            ? ( is_numeric( $value ) && (int) $value > 0 ? (int) $value : null )
+            : array_values( array_filter( array_map( 'trim', explode( ',', (string) $value ) ), fn ( string $type ): bool => '' !== $type ) );
+
+        if ( null === $parsed || [] === $parsed ) {
+            unset( $config[ $setting ] );
+        } else {
+            $config[ $setting ] = $parsed;
+        }
+
+        unset( $rules[ $setting ] );
+
+        $this->persistSelectedField( $field, [
+            'field_config'     => $config,
+            'validation_rules' => $rules,
+        ] );
+    }
+
+    /**
+     * Update the content of the selected heading, paragraph or HTML field.
+     *
+     * Applies the layout storage contract (heading → `label`, paragraph and
+     * HTML → `field_config.content`) and clears the legacy `default_value` copy.
+     *
+     * @since 1.6.0
+     *
+     * @param  string|null  $content  The new content.
+     */
+    public function updateLayoutContent( ?string $content ): void
+    {
+        $field = $this->getSelectedFieldModel();
+
+        if ( null === $field || ! in_array( $field->type, ['heading', 'paragraph', 'html'], true ) ) {
+            return;
+        }
+
+        $content = $content ?? '';
+
+        $data = 'heading' === $field->type
+            ? ['label' => $content]
+            : ['field_config' => array_merge( $field->field_config ?? [], ['content' => $content] )];
+
+        $this->persistSelectedField( $field, $data + ['default_value' => null] );
+    }
+
+    /**
      * Update conditional logic for the selected field.
      *
      * @param  array<string, mixed>  $logic
@@ -648,5 +754,35 @@ class FormBuilder extends Component
 
         // Trigger auto-save after a delay
         $this->dispatch( 'auto-save-trigger');
+    }
+
+    /**
+     * Get the selected field model, if a field is selected.
+     *
+     * @since 1.6.0
+     */
+    protected function getSelectedFieldModel(): ?FormField
+    {
+        if ( null === $this->selectedFieldId ) {
+            return null;
+        }
+
+        return $this->fieldService->getByUuid( $this->form, $this->selectedFieldId );
+    }
+
+    /**
+     * Save changes to the selected field and refresh the editor state.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The selected field.
+     * @param  array<string, mixed>  $data  The attributes to update.
+     */
+    protected function persistSelectedField( FormField $field, array $data ): void
+    {
+        $this->fieldService->update( $field, $data );
+        $this->markDirty();
+
+        unset( $this->fields, $this->selectedField );
     }
 }

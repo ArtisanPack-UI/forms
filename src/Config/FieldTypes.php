@@ -396,8 +396,10 @@ class FieldTypes
             'paragraph' => array_merge( self::TYPE_METADATA['paragraph'], [
                 'label'    => __( 'Paragraph Text' ),
                 'defaults' => [
-                    'label'     => __( 'Information' ),
-                    'help_text' => __( 'Add descriptive text here.' ),
+                    'label'        => __( 'Information' ),
+                    'field_config' => [
+                        'content' => __( 'Add descriptive text here.' ),
+                    ],
                 ],
             ] ),
             'divider' => array_merge( self::TYPE_METADATA['divider'], [

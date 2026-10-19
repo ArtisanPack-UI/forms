@@ -66,6 +66,33 @@ class FormField extends Model
     use HasFactory;
 
     /**
+     * Field types whose required state means "must be checked".
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const ACCEPTANCE_TYPES = ['checkbox', 'toggle'];
+
+    /**
+     * htmLawed configuration for admin-authored html field content.
+     *
+     * `safe` strips scripts, event handlers, `javascript:` URLs and embeds,
+     * which `kses()` does not do with its default configuration. Inline
+     * `style` attributes and `<style>` elements are denied as well; the
+     * bundled htmLawed also errors on CSS URL handling in `style` attributes.
+     *
+     * @since 1.6.0
+     *
+     * @var array<string, int|string>
+     */
+    public const HTML_SANITIZE_CONFIG = [
+        'safe'           => 1,
+        'deny_attribute' => 'style',
+        'elements'       => '*-style',
+    ];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @since 1.0.0
@@ -286,6 +313,122 @@ class FormField extends Model
     }
 
     /**
+     * Gets the maximum upload size in kilobytes for a file field.
+     *
+     * The builders store this in `field_config`. Fields saved before 1.6.0 kept
+     * the builder's value in `validation_rules` (with the type default left in
+     * `field_config`), so a legacy `validation_rules` value is the admin's real
+     * choice and takes precedence until the field is next saved.
+     *
+     * @since 1.6.0
+     *
+     * @return int|null The maximum size in KB, or null when unlimited.
+     */
+    public function getFileMaxSize(): ?int
+    {
+        $maxSize = $this->getValidationRule( 'max_size' ) ?? $this->getConfig( 'max_size' );
+
+        if ( ! is_numeric( $maxSize ) || (int) $maxSize <= 0 ) {
+            return null;
+        }
+
+        return (int) $maxSize;
+    }
+
+    /**
+     * Gets the allowed file extensions for a file field.
+     *
+     * Reads `field_config` with the same legacy `validation_rules` precedence as
+     * getFileMaxSize(). Accepts an array or a comma-separated string, and
+     * normalizes each entry to a lowercase extension without a leading dot.
+     * Entries that are not plain alphanumeric extensions are dropped, since
+     * the list is interpolated into a `mimes:` validation rule.
+     *
+     * @since 1.6.0
+     *
+     * @return list<string> The allowed extensions, or an empty list for any.
+     */
+    public function getFileAllowedTypes(): array
+    {
+        $types = $this->getValidationRule( 'allowed_types' ) ?? $this->getConfig( 'allowed_types' );
+
+        if ( is_string( $types ) ) {
+            $types = explode( ',', $types );
+        }
+
+        if ( ! is_array( $types ) ) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ( $types as $type ) {
+            if ( ! is_string( $type ) ) {
+                continue;
+            }
+
+            $type = strtolower( ltrim( trim( $type ), '.' ) );
+
+            if ( 1 === preg_match( '/^[a-z0-9]+$/', $type ) ) {
+                $normalized[] = $type;
+            }
+        }
+
+        return array_values( array_unique( $normalized ) );
+    }
+
+    /**
+     * Gets the display content for a heading, paragraph, or HTML layout field.
+     *
+     * Storage contract: `heading` → `label`, `paragraph` and `html` →
+     * `field_config.content`. The React and Vue builders wrote all three to
+     * `default_value` before 1.6.0 and clear it on the next save, so a non-empty
+     * `default_value` is unmigrated content and wins. Paragraphs built in the
+     * Livewire builder before 1.6.0 fall back to `help_text`, then `label`.
+     *
+     * @since 1.6.0
+     *
+     * @return string The raw (unescaped) content.
+     */
+    public function getLayoutContent(): string
+    {
+        $legacy = is_string( $this->default_value ) && '' !== trim( $this->default_value )
+            ? $this->default_value
+            : null;
+
+        $content = $this->getConfig( 'content' );
+        $content = is_string( $content ) && '' !== trim( $content ) ? $content : null;
+
+        return (string) match ( $this->type ) {
+            'heading'   => $legacy ?? $this->label,
+            'paragraph' => $legacy ?? $content ?? ( '' !== trim( (string) $this->help_text ) ? $this->help_text : $this->label ),
+            'html'      => $legacy ?? $content ?? '',
+            default     => '',
+        };
+    }
+
+    /**
+     * Sanitizes admin-authored HTML for an html layout field.
+     *
+     * Falls back to escaping the markup when artisanpack-ui/security is not
+     * loaded, so the content is shown as text rather than rendered.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $html  The raw HTML.
+     *
+     * @return string Safe HTML.
+     */
+    public static function sanitizeHtml( string $html ): string
+    {
+        if ( ! function_exists( 'security' ) ) {
+            return e( $html );
+        }
+
+        return security()->kses( $html, self::HTML_SANITIZE_CONFIG );
+    }
+
+    /**
      * Builds the Laravel validation rules array for this field.
      *
      * Applies the 'ap.forms.validationRules' filter hook to allow
@@ -305,7 +448,9 @@ class FormField extends Model
         $rules = [];
 
         if ( $this->is_required ) {
-            $rules[] = 'required';
+            // `required` treats `false` as present, so a consent checkbox that was
+            // checked and then unchecked would pass. `accepted` demands it be on.
+            $rules[] = in_array( $this->type, self::ACCEPTANCE_TYPES, true ) ? 'accepted' : 'required';
         } else {
             $rules[] = 'nullable';
         }
@@ -437,7 +582,7 @@ class FormField extends Model
             'time'                              => ['date_format:H:i'],
             'file'                              => $this->getFileValidationRules(),
             'checkbox_group', 'select_multiple' => ['array'],
-            'checkbox'                          => ['boolean'],
+            'checkbox', 'toggle'                => ['boolean'],
             default                             => null,
         };
 
@@ -470,11 +615,11 @@ class FormField extends Model
     {
         $rules = ['file'];
 
-        if ( $types = $this->getConfig( 'allowed_types' ) ) {
+        if ( $types = $this->getFileAllowedTypes() ) {
             $rules[] = 'mimes:' . implode( ',', $types );
         }
 
-        if ( $maxSize = $this->getConfig( 'max_size' ) ) {
+        if ( $maxSize = $this->getFileMaxSize() ) {
             $rules[] = "max:{$maxSize}";
         }
 

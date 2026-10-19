@@ -25,6 +25,7 @@ import type {
 	UpdateFieldRequest,
 	UpdateFormRequest,
 } from '../../../types/artisanpack-forms';
+import { getLayoutContent } from '../../../shared/fieldSettings';
 import { useApi } from '../../composables/useApi';
 import type { UseApiOptions } from '../../composables/useApi';
 import { ApiValidationError } from '../../composables/useApi';
@@ -1011,13 +1012,13 @@ function getPreviewInputType( fieldType: string ): string {
 								v-if="'heading' === field.type"
 								class="text-lg font-bold"
 							>
-								{{ field.default_value ?? field.label }}
+								{{ getLayoutContent( field ) }}
 							</h3>
 							<p
 								v-if="'paragraph' === field.type"
 								class="text-base-content/70"
 							>
-								{{ field.default_value ?? '' }}
+								{{ getLayoutContent( field ) }}
 							</p>
 							<div v-if="'divider' === field.type" class="divider" />
 							<label v-if="field.help_text" class="label">

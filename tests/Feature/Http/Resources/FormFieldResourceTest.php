@@ -5,6 +5,7 @@ declare( strict_types=1 );
 use ArtisanPackUI\Forms\Http\Resources\FormFieldResource;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
+use ArtisanPackUI\Security\SecurityServiceProvider;
 use Illuminate\Http\Request;
 
 describe( 'FormFieldResource', function (): void {
@@ -74,5 +75,46 @@ describe( 'FormFieldResource', function (): void {
         $resource = ( new FormFieldResource( $field ) )->resolve( Request::create( '/' ) );
 
         expect( $resource['conditional_logic'] )->toBeArray()->not->toBeEmpty();
+    } );
+
+    it( 'sanitizes html content stored in field_config before the React and Vue renderers inject it', function (): void {
+        $this->app->register( SecurityServiceProvider::class );
+
+        $field = FormField::factory()->create( [
+            'type'         => 'html',
+            'field_config' => ['content' => '<p>Hello</p><script>alert(1)</script>', 'extra' => 'kept'],
+        ] );
+
+        $resource = ( new FormFieldResource( $field ) )->resolve( Request::create( '/' ) );
+
+        expect( $resource['field_config']['content'] )->toContain( '<p>Hello</p>' )
+            ->not->toContain( '<script>' )
+            ->and( $resource['field_config']['extra'] )->toBe( 'kept' );
+    } );
+
+    it( 'sanitizes legacy html default_value with safe mode', function (): void {
+        $this->app->register( SecurityServiceProvider::class );
+
+        $field = FormField::factory()->create( [
+            'type'          => 'html',
+            'default_value' => '<a href="javascript:alert(1)">x</a><img src="/a.png" onerror="alert(1)"><b>ok</b>',
+        ] );
+
+        $resource = ( new FormFieldResource( $field ) )->resolve( Request::create( '/' ) );
+
+        expect( $resource['default_value'] )->toContain( '<b>ok</b>' )
+            ->not->toContain( 'onerror' )
+            ->not->toContain( 'href="javascript:' );
+    } );
+
+    it( 'leaves field_config content untouched for non-html fields', function (): void {
+        $field = FormField::factory()->create( [
+            'type'         => 'paragraph',
+            'field_config' => ['content' => 'Plain <b>text</b>'],
+        ] );
+
+        $resource = ( new FormFieldResource( $field ) )->resolve( Request::create( '/' ) );
+
+        expect( $resource['field_config']['content'] )->toBe( 'Plain <b>text</b>' );
     } );
 } );

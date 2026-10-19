@@ -272,7 +272,7 @@ class SubmissionService
             $fieldRules = $field->buildValidationRules();
 
             if ( ! empty( $fieldRules ) ) {
-                $rules[ "formData.{$field->name}" ] = $fieldRules;
+                $rules[ $this->validationKey( $field ) ] = $fieldRules;
             }
         }
 
@@ -298,11 +298,13 @@ class SubmissionService
                 continue;
             }
 
-            $fieldKey = "formData.{$field->name}";
+            $fieldKey = $this->validationKey( $field );
 
             // Required message
             if ( $field->is_required ) {
-                $messages[ "{$fieldKey}.required" ] = __( 'The :field field is required.', ['field' => $field->label] );
+                $requiredRule = in_array( $field->type, FormField::ACCEPTANCE_TYPES, true ) ? 'accepted' : 'required';
+
+                $messages[ "{$fieldKey}.{$requiredRule}" ] = __( 'The :field field is required.', ['field' => $field->label] );
             }
 
             // Type-specific messages
@@ -322,6 +324,23 @@ class SubmissionService
         }
 
         return $messages;
+    }
+
+    /**
+     * Gets the Livewire renderer property path a field's value is validated at.
+     *
+     * File inputs bind to `files.{name}`; every other input binds to
+     * `formData.{name}`.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The form field.
+     *
+     * @return string The validation key.
+     */
+    public function validationKey( FormField $field ): string
+    {
+        return ( 'file' === $field->type ? 'files.' : 'formData.' ) . $field->name;
     }
 
     /**

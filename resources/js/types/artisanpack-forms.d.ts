@@ -173,7 +173,9 @@ export interface ValidationRules {
     max_date?: string;
     min_time?: string;
     max_time?: string;
+    /** @deprecated since 1.6.0 — file fields store this in `field_config.max_size`. */
     max_size?: number;
+    /** @deprecated since 1.6.0 — file fields store this in `field_config.allowed_types`. */
     allowed_types?: string[];
 }
 
@@ -195,8 +197,18 @@ export interface OptionsFieldConfig extends BaseFieldConfig {
  * Configuration for file upload fields.
  */
 export interface FileFieldConfig extends BaseFieldConfig {
+    /** Maximum upload size in KB. */
     max_size?: number;
-    allowed_mimes?: string[];
+    /** Allowed file extensions, without a leading dot (e.g. `pdf`). */
+    allowed_types?: string[];
+}
+
+/**
+ * Configuration for paragraph and HTML layout fields. A heading's text is
+ * stored in the field `label`.
+ */
+export interface ContentFieldConfig extends BaseFieldConfig {
+    content?: string;
 }
 
 /**
@@ -206,6 +218,7 @@ export interface FileFieldConfig extends BaseFieldConfig {
 export type FieldConfig =
     | OptionsFieldConfig
     | FileFieldConfig
+    | ContentFieldConfig
     | BaseFieldConfig
     | null;
 

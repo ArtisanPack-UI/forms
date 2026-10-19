@@ -497,7 +497,14 @@ class FormRenderer extends Component
      */
     protected function initializeFormData(): void
     {
+        $this->formData = [];
+
         foreach ( $this->form->fields as $field ) {
+            // File inputs bind to $files, so seeding formData would only shadow them.
+            if ( $field->is_file_field ) {
+                continue;
+            }
+
             if ( null !== $field->default_value ) {
                 $this->formData[ $field->name ] = $field->default_value;
             } elseif ( in_array( $field->type, ['checkbox_group', 'select_multiple'] ) ) {

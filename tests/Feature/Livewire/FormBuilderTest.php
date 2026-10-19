@@ -179,6 +179,140 @@ describe( 'FormBuilder Component', function (): void {
         } );
     } );
 
+    describe( 'field storage contract (issues #79, #82)', function (): void {
+        it( 'saves file settings to field_config and enforces them', function (): void {
+            $field = FormField::factory()->for( $this->form )->file()->create( [
+                'field_config'     => ['max_size' => 5120, 'allowed_types' => ['pdf', 'png']],
+                'validation_rules' => ['max_size' => 4000, 'allowed_types' => ['png'], 'min' => 1],
+            ] );
+
+            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+                ->call( 'selectField', $field->uuid )
+                ->call( 'updateFileSetting', 'max_size', '100' )
+                ->call( 'updateFileSetting', 'allowed_types', ' pdf, ,docx ' )
+                ->assertSet( 'isDirty', true );
+
+            $field->refresh();
+
+            expect( $field->field_config )->toBe( ['max_size' => 100, 'allowed_types' => ['pdf', 'docx']] )
+                ->and( $field->validation_rules )->toBe( ['min' => 1] )
+                ->and( $field->buildValidationRules() )->toContain( 'mimes:pdf,docx', 'max:100' );
+        } );
+
+        it( 'clears a file setting when the input is blanked', function ( string $setting, string $value ): void {
+            $field = FormField::factory()->for( $this->form )->file()->create( [
+                'field_config' => ['max_size' => 100, 'allowed_types' => ['pdf']],
+            ] );
+
+            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+                ->call( 'selectField', $field->uuid )
+                ->call( 'updateFileSetting', $setting, $value );
+
+            expect( $field->fresh()->field_config )->not->toHaveKey( $setting );
+        } )->with( [
+            'max size, blank'            => ['max_size', ''],
+            'max size, zero'             => ['max_size', '0'],
+            'allowed types, only commas' => ['allowed_types', ' , '],
+        ] );
+
+        it( 'ignores unknown file settings', function (): void {
+            $field = FormField::factory()->for( $this->form )->file()->create( ['field_config' => ['max_size' => 100]] );
+
+            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+                ->call( 'selectField', $field->uuid )
+                ->call( 'updateFileSetting', 'options', 'x' )
+                ->assertSet( 'isDirty', false );
+
+            expect( $field->fresh()->field_config )->toBe( ['max_size' => 100] );
+        } );
+
+        it( 'parses numeric validation rules on the server', function (): void {
+            $field = FormField::factory()->for( $this->form )->create( [
+                'type'             => 'number',
+                'validation_rules' => ['min' => 1, 'pattern' => '/x/'],
+            ] );
+
+            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+                ->call( 'selectField', $field->uuid )
+                ->call( 'updateValidationRule', 'max', '10' )
+                ->call( 'updateValidationRule', 'step', '0.5' )
+                ->call( 'updateValidationRule', 'min', '' )
+                ->call( 'updateValidationRule', 'pattern', 'ignored' );
+
+            expect( $field->fresh()->validation_rules )->toBe( ['pattern' => '/x/', 'max' => 10, 'step' => 0.5] );
+        } );
+
+        it( 'renders editor inputs without bare JS globals that Livewire 4 would rewrite', function (): void {
+            $field = FormField::factory()->for( $this->form )->file()->create();
+
+            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+                ->call( 'selectField', $field->uuid )
+                ->assertSeeHtml( "updateFileSetting('max_size', \$event.target.value)" )
+                ->assertSeeHtml( "updateFileSetting('allowed_types', \$event.target.value)" )
+                ->assertDontSeeHtml( 'parseInt(' )
+                ->assertDontSeeHtml( 'parseFloat(' )
+                ->assertDontSeeHtml( '.map(t =>' );
+        } );
+
+        it( 'saves paragraph and html content to field_config.content', function ( string $type ): void {
+            $field = FormField::factory()->for( $this->form )->create( [
+                'type'          => $type,
+                'default_value' => 'Legacy content',
+                'field_config'  => ['level' => 'keep'],
+            ] );
+
+            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+                ->call( 'selectField', $field->uuid )
+                ->assertSeeHtml( 'id="field-content"' )
+                ->assertSee( 'Legacy content' )
+                ->assertDontSeeHtml( 'id="field-help-text"' )
+                ->call( 'updateLayoutContent', 'New content' );
+
+            $field->refresh();
+
+            expect( $field->field_config )->toBe( ['level' => 'keep', 'content' => 'New content'] )
+                ->and( $field->default_value )->toBeNull()
+                ->and( $field->getLayoutContent() )->toBe( 'New content' );
+        } )->with( ['paragraph', 'html'] );
+
+        it( 'saves heading text to the label and clears legacy content', function (): void {
+            $field = FormField::factory()->for( $this->form )->create( [
+                'type'          => 'heading',
+                'label'         => 'Section Heading',
+                'default_value' => 'Legacy heading',
+            ] );
+
+            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+                ->call( 'selectField', $field->uuid )
+                ->assertSee( 'Heading Text' )
+                ->assertSeeHtml( 'value="Legacy heading"' )
+                ->call( 'updateLayoutContent', 'New heading' );
+
+            $field->refresh();
+
+            expect( $field->label )->toBe( 'New heading' )
+                ->and( $field->default_value )->toBeNull();
+        } );
+
+        it( 'ignores layout content updates for other field types', function (): void {
+            $field = FormField::factory()->for( $this->form )->create( ['type' => 'text', 'label' => 'Name'] );
+
+            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+                ->call( 'selectField', $field->uuid )
+                ->call( 'updateLayoutContent', 'Changed' );
+
+            expect( $field->fresh()->label )->toBe( 'Name' );
+        } );
+
+        it( 'does nothing when no field is selected', function (): void {
+            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+                ->call( 'updateFileSetting', 'max_size', '100' )
+                ->call( 'updateValidationRule', 'min', '1' )
+                ->call( 'updateLayoutContent', 'x' )
+                ->assertSet( 'isDirty', false );
+        } );
+    } );
+
     describe( 'deleting fields', function (): void {
         it( 'deletes a field', function (): void {
             $field = FormField::factory()->for( $this->form )->create();

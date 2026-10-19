@@ -35,7 +35,8 @@ import type {
 	UpdateFormRequest,
 } from '../../../types/artisanpack-forms';
 import { getRegisteredFieldCardPreview, ownEntry } from '../fields/registry';
-import type { CustomFieldSettingsComponent, FieldCardPreviewComponent } from '../fields/registry';
+import type { CustomFieldSettingsEntry, FieldCardPreviewComponent } from '../fields/registry';
+import { getLayoutContent } from '../../../shared/fieldSettings';
 import { slugify } from '../../../shared/slugify';
 import { useApi } from '../../hooks/useApi';
 import type { UseApiOptions } from '../../hooks/useApi';
@@ -61,9 +62,10 @@ export interface FormBuilderProps extends UseApiOptions {
 	paletteExtraGroups?: FieldPaletteGroup[];
 	/**
 	 * Custom per-type settings panels, forwarded to the field editor. Keyed by
-	 * field type; takes precedence over module-level registrations.
+	 * field type; takes precedence over module-level registrations. An entry
+	 * is a component, or `{ component, position }` to choose its placement.
 	 */
-	fieldCustomSettings?: Record<string, CustomFieldSettingsComponent>;
+	fieldCustomSettings?: Record<string, CustomFieldSettingsEntry>;
 	/**
 	 * Custom canvas previews keyed by field type. Rendered inside the field's
 	 * card on the builder canvas; takes precedence over module-level
@@ -969,10 +971,10 @@ export function FormBuilder( {
 											<input type="file" className="file-input file-input-bordered" disabled />
 										)}
 										{'heading' === field.type && (
-											<h3 className="text-lg font-bold">{field.default_value ?? field.label}</h3>
+											<h3 className="text-lg font-bold">{getLayoutContent( field )}</h3>
 										)}
 										{'paragraph' === field.type && (
-											<p className="text-base-content/70">{field.default_value ?? ''}</p>
+											<p className="text-base-content/70">{getLayoutContent( field )}</p>
 										)}
 										{'divider' === field.type && <div className="divider" />}
 										{field.help_text && <label className="label"><span className="label-text-alt">{field.help_text}</span></label>}

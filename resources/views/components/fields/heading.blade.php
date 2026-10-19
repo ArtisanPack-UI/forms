@@ -19,5 +19,5 @@
     class="{{ $classes }} {{ $field->css_classes }}"
     id="heading-{{ $field->name }}"
 >
-    {{ $field->label }}
+    {{ $field->getLayoutContent() }}
 </{{ $tag }}>

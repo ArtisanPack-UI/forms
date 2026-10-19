@@ -7,6 +7,9 @@ use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormStep;
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Security\SecurityServiceProvider;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 describe( 'FormRenderer Component', function (): void {
@@ -544,5 +547,194 @@ describe( 'FormRenderer Default Values', function (): void {
         $component = Livewire::test( FormRenderer::class, ['form' => $form] );
 
         expect( $component->get( 'formData.interests' ) )->toBe( [] );
+    } );
+} );
+
+describe( 'FormRenderer File Fields (issues #79, #80)', function (): void {
+    beforeEach( function (): void {
+        Storage::fake( 'form-uploads' );
+
+        $this->form = Form::factory()->create();
+    } );
+
+    it( 'does not seed formData for file fields', function (): void {
+        FormField::factory()->for( $this->form )->file()->create( ['name' => 'resume'] );
+
+        $component = Livewire::test( FormRenderer::class, ['form' => $this->form] );
+
+        expect( $component->get( 'formData' ) )->not->toHaveKey( 'resume' );
+    } );
+
+    it( 'accepts a required file field once a file is uploaded', function (): void {
+        FormField::factory()->for( $this->form )->file()->required()->create( ['name' => 'resume'] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->set( 'formLoadedAt', time() - 10 )
+            ->set( 'files.resume', UploadedFile::fake()->create( 'resume.pdf', 100 ) )
+            ->call( 'submit' )
+            ->assertHasNoErrors()
+            ->assertSet( 'isSubmitted', true );
+
+        $submission = FormSubmission::where( 'form_id', $this->form->id )->first();
+
+        expect( $submission )->not->toBeNull()
+            ->and( $submission->uploads )->toHaveCount( 1 );
+    } );
+
+    it( 'reports a missing required file under files.*', function (): void {
+        FormField::factory()->for( $this->form )->file()->required()->create( ['name' => 'resume', 'label' => 'Resume'] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->set( 'formLoadedAt', time() - 10 )
+            ->call( 'submit' )
+            ->assertHasErrors( ['files.resume' => 'required'] )
+            ->assertSee( 'The Resume field is required.' );
+    } );
+
+    it( 'validates an optional file against the builder settings', function ( string $name, int $kilobytes, string $rule ): void {
+        // Settings as the 1.6.0 builders save them: field_config only.
+        FormField::factory()->for( $this->form )->create( [
+            'name'         => 'attachment',
+            'type'         => 'file',
+            'is_required'  => false,
+            'field_config' => ['max_size' => 100, 'allowed_types' => ['pdf']],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->set( 'formLoadedAt', time() - 10 )
+            ->set( 'files.attachment', UploadedFile::fake()->create( $name, $kilobytes ) )
+            ->call( 'submit' )
+            ->assertHasErrors( ['files.attachment' => $rule] )
+            ->assertSet( 'isSubmitted', false );
+    } )->with( [
+        'disallowed type' => ['photo.png', 50, 'mimes'],
+        'too large'       => ['report.pdf', 2048, 'max'],
+    ] );
+
+    it( 'enforces settings saved by a pre-1.6.0 builder in validation_rules', function (): void {
+        FormField::factory()->for( $this->form )->create( [
+            'name'             => 'attachment',
+            'type'             => 'file',
+            'field_config'     => ['max_size' => 5120, 'allowed_types' => ['pdf', 'png']],
+            'validation_rules' => ['max_size' => 100, 'allowed_types' => ['pdf']],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->set( 'formLoadedAt', time() - 10 )
+            ->set( 'files.attachment', UploadedFile::fake()->create( 'photo.png', 50 ) )
+            ->call( 'submit' )
+            ->assertHasErrors( ['files.attachment' => 'mimes'] );
+    } );
+
+    it( 'renders the accept attribute and size hint from field_config', function (): void {
+        FormField::factory()->for( $this->form )->create( [
+            'name'         => 'attachment',
+            'type'         => 'file',
+            'field_config' => ['max_size' => 100, 'allowed_types' => ['pdf', 'docx']],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->assertSeeHtml( 'accept=".pdf,.docx"' )
+            ->assertSee( 'Maximum file size: 100 KB' );
+    } );
+} );
+
+describe( 'FormRenderer Required Checkbox (issue #81)', function (): void {
+    beforeEach( function (): void {
+        $this->form = Form::factory()->create();
+        FormField::factory()->for( $this->form )->required()->create( [
+            'name'  => 'terms',
+            'label' => 'I agree to the terms',
+            'type'  => 'checkbox',
+        ] );
+    } );
+
+    it( 'rejects a required checkbox that was checked then unchecked', function (): void {
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->set( 'formLoadedAt', time() - 10 )
+            ->set( 'formData.terms', true )
+            ->set( 'formData.terms', false )
+            ->call( 'submit' )
+            ->assertHasErrors( ['formData.terms' => 'accepted'] )
+            ->assertSee( 'The I agree to the terms field is required.' );
+
+        expect( FormSubmission::where( 'form_id', $this->form->id )->count() )->toBe( 0 );
+    } );
+
+    it( 'rejects a required checkbox that was never touched', function (): void {
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->set( 'formLoadedAt', time() - 10 )
+            ->call( 'submit' )
+            ->assertHasErrors( ['formData.terms' => 'accepted'] );
+    } );
+
+    it( 'accepts a checked required checkbox', function (): void {
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->set( 'formLoadedAt', time() - 10 )
+            ->set( 'formData.terms', true )
+            ->call( 'submit' )
+            ->assertHasNoErrors()
+            ->assertSet( 'isSubmitted', true );
+    } );
+} );
+
+describe( 'FormRenderer Layout Content (issue #82)', function (): void {
+    beforeEach( function (): void {
+        // The html partial sanitizes through artisanpack-ui/security's kses().
+        $this->app->register( SecurityServiceProvider::class );
+
+        $this->form = Form::factory()->create();
+    } );
+
+    it( 'renders layout content from its canonical column', function (): void {
+        FormField::factory()->for( $this->form )->create( ['type' => 'heading', 'name' => 'h', 'label' => 'Heading From Label'] );
+        FormField::factory()->for( $this->form )->create( [
+            'type'         => 'paragraph',
+            'name'         => 'p',
+            'label'        => 'Information',
+            'field_config' => ['content' => 'Paragraph from content'],
+        ] );
+        FormField::factory()->for( $this->form )->create( [
+            'type'         => 'html',
+            'name'         => 'html_block',
+            'field_config' => ['content' => '<strong>Html from content</strong>'],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->assertSee( 'Heading From Label' )
+            ->assertSee( 'Paragraph from content' )
+            ->assertSee( 'Html from content' );
+    } );
+
+    it( 'sanitizes html content before rendering it', function (): void {
+        FormField::factory()->for( $this->form )->create( [
+            'type'         => 'html',
+            'name'         => 'html_block',
+            'field_config' => ['content' => '<b>Safe</b><script>alert("xss")</script><img src="/a.png" onerror="alert(1)">'],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->assertSeeHtml( '<b>Safe</b>' )
+            ->assertDontSeeHtml( '<script>alert("xss")</script>' )
+            ->assertDontSeeHtml( 'onerror' );
+    } );
+
+    it( 'renders legacy content saved to default_value by the React and Vue builders', function (): void {
+        FormField::factory()->for( $this->form )->create( [
+            'type'          => 'heading',
+            'name'          => 'h',
+            'label'         => 'Section Heading',
+            'default_value' => 'Legacy heading',
+        ] );
+        FormField::factory()->for( $this->form )->create( [
+            'type'          => 'html',
+            'name'          => 'html_block',
+            'default_value' => '<em>Legacy html</em>',
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->assertSee( 'Legacy heading' )
+            ->assertDontSee( 'Section Heading' )
+            ->assertSee( 'Legacy html' );
     } );
 } );

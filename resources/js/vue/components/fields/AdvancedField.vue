@@ -12,6 +12,7 @@
 import { computed } from 'vue';
 import { DatePicker, FileUpload } from '@artisanpack-ui/vue/form';
 import type { FormField, DisplayConfig } from '../../../types/artisanpack-forms';
+import { getFileAccept } from '../../../shared/fieldSettings';
 
 const props = defineProps<{
 	field: FormField;
@@ -35,9 +36,7 @@ const ariaLabel = computed( () =>
 		: undefined,
 );
 
-const allowedTypes = computed( () =>
-	props.field.validation_rules?.allowed_types?.join( ',' ) ?? undefined,
-);
+const allowedTypes = computed( () => getFileAccept( props.field ) );
 
 function handleFilesSelected( fileList: FileList | null ): void {
 	if ( !fileList || fileList.length === 0 ) {

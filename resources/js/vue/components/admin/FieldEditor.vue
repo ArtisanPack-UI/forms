@@ -24,6 +24,13 @@ import type {
 	ValidationRules,
 } from '../../../types/artisanpack-forms';
 
+import {
+	buildFileSettingUpdate,
+	buildLayoutContentUpdate,
+	getFileSettingInput,
+	getLayoutContent,
+} from '../../../shared/fieldSettings';
+
 import ConditionalLogicEditor from './ConditionalLogicEditor.vue';
 
 /** Safely parse a numeric input value, returning undefined for empty or NaN. */
@@ -103,6 +110,9 @@ function flushPendingUpdates(): void {
 		pendingUpdates.value = {};
 	}
 }
+
+/** The field with buffered edits applied, so successive edits compose. */
+const currentField = computed( (): FormField => ( { ...props.field, ...pendingUpdates.value } as FormField ) );
 
 function updateField( data: UpdateFieldRequest ): void {
 	snapshotFieldId      = props.field.id;
@@ -263,8 +273,15 @@ const isPatternField = computed( () => {
 			<!-- General Tab -->
 			<template #general>
 				<div class="space-y-4 p-4">
-					<!-- Label -->
+					<!-- Label (a heading's label is its text) -->
 					<Input
+						v-if="field.type === 'heading'"
+						label="Heading Text"
+						:model-value="getLayoutContent( field )"
+						@update:model-value="updateField( buildLayoutContentUpdate( currentField, ($event as string) ) )"
+					/>
+					<Input
+						v-else
 						label="Label"
 						:model-value="field.label ?? ''"
 						@update:model-value="updateField( { label: ($event as string) } )"
@@ -332,26 +349,18 @@ const isPatternField = computed( () => {
 						v-if="field.type === 'html'"
 						label="HTML Content"
 						:rows="6"
-						:model-value="field.default_value ?? ''"
-						@update:model-value="updateField( { default_value: ($event as string) } )"
+						:model-value="getLayoutContent( field )"
+						@update:model-value="updateField( buildLayoutContentUpdate( currentField, ($event as string) ) )"
 					/>
 
-					<!-- Heading/Paragraph content -->
-					<template v-if="field.type === 'heading' || field.type === 'paragraph'">
-						<Input
-							v-if="field.type === 'heading'"
-							label="Content"
-							:model-value="field.default_value ?? ''"
-							@update:model-value="updateField( { default_value: ($event as string) } )"
-						/>
-						<Textarea
-							v-else
-							label="Content"
-							:rows="4"
-							:model-value="field.default_value ?? ''"
-							@update:model-value="updateField( { default_value: ($event as string) } )"
-						/>
-					</template>
+					<!-- Paragraph content -->
+					<Textarea
+						v-if="field.type === 'paragraph'"
+						label="Content"
+						:rows="4"
+						:model-value="getLayoutContent( field )"
+						@update:model-value="updateField( buildLayoutContentUpdate( currentField, ($event as string) ) )"
+					/>
 
 					<!-- Options editor for choice fields -->
 					<div v-if="hasOptions" class="space-y-2">
@@ -401,17 +410,15 @@ const isPatternField = computed( () => {
 							label="Max File Size (KB)"
 							type="number"
 							:min="0"
-							:model-value="String( validationRules.max_size ?? '' )"
-							@update:model-value="updateValidation( { max_size: parseNumericInput( ($event as string) ) } )"
+							:model-value="getFileSettingInput( field, 'max_size' )"
+							@update:model-value="updateField( buildFileSettingUpdate( currentField, 'max_size', parseNumericInput( ($event as string) ) ) )"
 						/>
 						<Input
-							label="Allowed File Types (comma-separated MIME types)"
-							:model-value="validationRules.allowed_types?.join( ', ' ) ?? ''"
-							@update:model-value="updateValidation( {
-								allowed_types: ($event as string)
-									? ($event as string).split( ',' ).map( ( s: string ) => s.trim() ).filter( Boolean )
-									: undefined,
-							} )"
+							label="Allowed File Types (comma-separated extensions, e.g. pdf, jpg)"
+							:model-value="getFileSettingInput( field, 'allowed_types' )"
+							@update:model-value="updateField( buildFileSettingUpdate( currentField, 'allowed_types', ($event as string)
+								? ($event as string).split( ',' ).map( ( s: string ) => s.trim() ).filter( Boolean )
+								: undefined ) )"
 						/>
 					</div>
 				</div>

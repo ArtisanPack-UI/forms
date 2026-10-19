@@ -5,6 +5,7 @@
             $fieldConfig = \ArtisanPackUI\Forms\Config\FieldTypes::getTypeConfig($field->type);
             $hasOptions = \ArtisanPackUI\Forms\Config\FieldTypes::hasOptions($field->type);
             $validationOptions = \ArtisanPackUI\Forms\Config\FieldTypes::getValidationOptions($field->type);
+            $isContentLayoutField = in_array($field->type, ['heading', 'paragraph', 'html'], true);
         @endphp
 
         <div class="mb-4 flex items-center justify-between">
@@ -90,19 +91,39 @@
                     <div class="divider text-xs text-base-content/50">{{ __( 'Field Basics' ) }}</div>
                 @endif
 
-                {{-- Label --}}
+                {{-- Label (a heading's label is its text) --}}
                 <div class="form-control">
                     <label class="label" for="field-label">
-                        <span class="label-text text-xs">{{ __( 'Label' ) }}</span>
+                        <span class="label-text text-xs">{{ 'heading' === $field->type ? __( 'Heading Text' ) : __( 'Label' ) }}</span>
                     </label>
                     <input
                         type="text"
                         id="field-label"
                         class="input input-sm input-bordered w-full"
-                        value="{{ $field->label }}"
-                        wire:change="updateField({ label: $event.target.value })"
+                        @if ('heading' === $field->type)
+                            value="{{ $field->getLayoutContent() }}"
+                            wire:change="updateLayoutContent($event.target.value)"
+                        @else
+                            value="{{ $field->label }}"
+                            wire:change="updateField({ label: $event.target.value })"
+                        @endif
                     />
                 </div>
+
+                {{-- Paragraph / HTML content --}}
+                @if (in_array($field->type, ['paragraph', 'html'], true))
+                    <div class="form-control">
+                        <label class="label" for="field-content">
+                            <span class="label-text text-xs">{{ 'html' === $field->type ? __( 'HTML Content' ) : __( 'Content' ) }}</span>
+                        </label>
+                        <textarea
+                            id="field-content"
+                            rows="{{ 'html' === $field->type ? 6 : 4 }}"
+                            class="textarea textarea-sm textarea-bordered w-full @if ('html' === $field->type) font-mono text-xs @endif"
+                            wire:change="updateLayoutContent($event.target.value)"
+                        >{{ $field->getLayoutContent() }}</textarea>
+                    </div>
+                @endif
 
                 {{-- Placeholder (if applicable) --}}
                 @if (\ArtisanPackUI\Forms\Config\FieldTypes::supportsPlaceholder($field->type))
@@ -121,18 +142,20 @@
                 @endif
 
                 {{-- Help text --}}
-                <div class="form-control">
-                    <label class="label" for="field-help-text">
-                        <span class="label-text text-xs">{{ __( 'Help Text' ) }}</span>
-                    </label>
-                    <input
-                        type="text"
-                        id="field-help-text"
-                        class="input input-sm input-bordered w-full"
-                        value="{{ $field->help_text }}"
-                        wire:change="updateField({ help_text: $event.target.value })"
-                    />
-                </div>
+                @unless ($isContentLayoutField)
+                    <div class="form-control">
+                        <label class="label" for="field-help-text">
+                            <span class="label-text text-xs">{{ __( 'Help Text' ) }}</span>
+                        </label>
+                        <input
+                            type="text"
+                            id="field-help-text"
+                            class="input input-sm input-bordered w-full"
+                            value="{{ $field->help_text }}"
+                            wire:change="updateField({ help_text: $event.target.value })"
+                        />
+                    </div>
+                @endunless
 
                 {{-- Default value --}}
                 @if (\ArtisanPackUI\Forms\Config\FieldTypes::supportsDefaultValue($field->type))
@@ -197,7 +220,7 @@
                                     id="field-min"
                                     class="input input-sm input-bordered w-full"
                                     value="{{ $field->getValidationRule('min') }}"
-                                    wire:change="updateField({ validation_rules: { ...{{ json_encode((object) ($field->validation_rules ?? [])) }}, min: $event.target.value ? parseInt($event.target.value) : null } })"
+                                    wire:change="updateValidationRule('min', $event.target.value)"
                                 />
                             </div>
                         @endif
@@ -211,7 +234,7 @@
                                     id="field-max"
                                     class="input input-sm input-bordered w-full"
                                     value="{{ $field->getValidationRule('max') }}"
-                                    wire:change="updateField({ validation_rules: { ...{{ json_encode((object) ($field->validation_rules ?? [])) }}, max: $event.target.value ? parseInt($event.target.value) : null } })"
+                                    wire:change="updateValidationRule('max', $event.target.value)"
                                 />
                             </div>
                         @endif
@@ -248,7 +271,7 @@
                             value="{{ $field->getValidationRule('step') }}"
                             placeholder="1"
                             step="any"
-                            wire:change="updateField({ validation_rules: { ...{{ json_encode((object) ($field->validation_rules ?? [])) }}, step: $event.target.value ? parseFloat($event.target.value) : null } })"
+                            wire:change="updateValidationRule('step', $event.target.value)"
                         />
                         <label class="label">
                             <span class="label-text-alt text-xs text-base-content/50">{{ __( 'e.g., 0.01 for decimals, 1 for integers' ) }}</span>
@@ -266,10 +289,10 @@
                             type="number"
                             id="field-max-size"
                             class="input input-sm input-bordered w-full"
-                            value="{{ $field->getValidationRule('max_size') }}"
+                            value="{{ $field->getFileMaxSize() }}"
                             placeholder="5120"
                             min="1"
-                            wire:change="updateField({ validation_rules: { ...{{ json_encode((object) ($field->validation_rules ?? [])) }}, max_size: $event.target.value ? parseInt($event.target.value) : null } })"
+                            wire:change="updateFileSetting('max_size', $event.target.value)"
                         />
                         <label class="label">
                             <span class="label-text-alt text-xs text-base-content/50">{{ __( 'Default: 5120 KB (5 MB)' ) }}</span>
@@ -287,9 +310,9 @@
                             type="text"
                             id="field-allowed-types"
                             class="input input-sm input-bordered w-full font-mono text-xs"
-                            value="{{ is_array($field->getValidationRule('allowed_types')) ? implode(', ', $field->getValidationRule('allowed_types')) : $field->getValidationRule('allowed_types') }}"
+                            value="{{ implode(', ', $field->getFileAllowedTypes()) }}"
                             placeholder="pdf, doc, docx, jpg, png"
-                            wire:change="updateField({ validation_rules: { ...{{ json_encode((object) ($field->validation_rules ?? [])) }}, allowed_types: $event.target.value ? $event.target.value.split(',').map(t => t.trim()).filter(t => t) : null } })"
+                            wire:change="updateFileSetting('allowed_types', $event.target.value)"
                         />
                         <label class="label">
                             <span class="label-text-alt text-xs text-base-content/50">{{ __( 'Comma-separated file extensions' ) }}</span>
