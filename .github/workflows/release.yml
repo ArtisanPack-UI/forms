@@ -119,13 +119,18 @@ jobs:
             exit 0
           fi
 
+          HEADER_FILE="$(mktemp)"
+          chmod 600 "$HEADER_FILE"
+          trap 'rm -f "$HEADER_FILE"' EXIT
+          printf 'Authorization: Bearer %s\n' "$DOCS_API_TOKEN" > "$HEADER_FILE"
+
           FAILED=0
 
           for IMPORT in import-docs import-changelog; do
             echo "Triggering $IMPORT for $DOCS_PACKAGE_SLUG"
             if ! curl --fail-with-body -sS --retry 3 -X POST \
               "https://docs.artisanpackui.dev/api/v1/packages/${DOCS_PACKAGE_SLUG}/${IMPORT}" \
-              -H "Authorization: Bearer ${DOCS_API_TOKEN}" \
+              -H @"$HEADER_FILE" \
               -H "Accept: application/json"; then
               echo
               echo "::error::$IMPORT failed for $DOCS_PACKAGE_SLUG"
