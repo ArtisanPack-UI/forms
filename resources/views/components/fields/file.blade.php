@@ -1,8 +1,8 @@
 @props(['field', 'error' => null])
 
 @php
-    $maxSize = $field->getValidationRule('max_size');
-    $allowedTypes = $field->getValidationRule('allowed_types', []);
+    $maxSize = $field->getFileMaxSize();
+    $allowedTypes = $field->getFileAllowedTypes();
     $multiple = $field->getConfig('multiple', false);
     $accept = !empty($allowedTypes) ? implode(',', array_map(fn($type) => '.' . $type, $allowedTypes)) : null;
 

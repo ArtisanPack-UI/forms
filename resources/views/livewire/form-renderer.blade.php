@@ -159,7 +159,7 @@
                                     {!! \ArtisanPackUI\Forms\Support\FieldRenderer::render(
                                         $field,
                                         $formData[$field->name] ?? null,
-                                        $errors->first('formData.' . $field->name),
+                                        $errors->first(( $field->is_file_field ? 'files.' : 'formData.' ) . $field->name),
                                     ) !!}
                                 </div>
                             @endforeach
@@ -254,7 +254,7 @@
                             {!! \ArtisanPackUI\Forms\Support\FieldRenderer::render(
                                 $field,
                                 $formData[$field->name] ?? null,
-                                $errors->first('formData.' . $field->name),
+                                $errors->first(( $field->is_file_field ? 'files.' : 'formData.' ) . $field->name),
                             ) !!}
                         </div>
                     @endforeach

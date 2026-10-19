@@ -12,14 +12,15 @@
 
 import { DatePicker, File as FileInput } from '@artisanpack-ui/react/form';
 
+import { getFileAccept } from '../../../shared/fieldSettings';
+
 import type { FieldComponentProps } from './types';
 
 /**
  * Renders a file upload field.
  */
 export function FileField( { field, error, onFileChange, displayConfig }: FieldComponentProps ) {
-	const rules = field.validation_rules;
-	const allowedTypes = rules?.allowed_types?.join( ',' ) ?? undefined;
+	const allowedTypes = getFileAccept( field );
 
 	return (
 		<FileInput

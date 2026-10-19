@@ -51,6 +51,39 @@ export interface CustomFieldSettingsProps {
 /** A React component that renders the settings panel for a custom field type. */
 export type CustomFieldSettingsComponent = React.ComponentType<CustomFieldSettingsProps>;
 
+/**
+ * Where a custom settings panel renders in the editor's General tab.
+ *
+ * - `before-basics`: after the field's own Label/Name/Placeholder/Help Text/
+ *   Default Value/Required controls and above the generic "Field Basics"
+ *   (Width, CSS Classes) — for a type whose settings are its primary
+ *   configuration.
+ * - `after-basics` (default): last in the tab, below every built-in control.
+ *
+ * @since 1.6.0
+ */
+export type FieldSettingsPosition = 'before-basics' | 'after-basics';
+
+/** Options accepted by `registerFieldSettings`. */
+export interface FieldSettingsOptions {
+	/** Where the panel renders. Defaults to `after-basics`. */
+	position?: FieldSettingsPosition;
+}
+
+/** A settings panel together with where it renders. */
+export interface FieldSettingsRegistration {
+	component: CustomFieldSettingsComponent;
+	position: FieldSettingsPosition;
+}
+
+/**
+ * A host-supplied settings panel: either the component alone (rendered
+ * `after-basics`) or the component with options.
+ */
+export type CustomFieldSettingsEntry =
+	| CustomFieldSettingsComponent
+	| ( FieldSettingsOptions & { component: CustomFieldSettingsComponent } );
+
 /** Props passed to a custom builder-canvas preview for a field type. */
 export interface FieldCardPreviewProps {
 	/** The field being previewed on the builder canvas. */
@@ -155,16 +188,34 @@ export function clearRegisteredFieldPaletteGroups(): void {
 // Field editor settings panels
 // ---------------------------------------------------------------------------
 
-const fieldSettingsRegistry = new Map<string, CustomFieldSettingsComponent>();
+const fieldSettingsRegistry = new Map<string, FieldSettingsRegistration>();
+
+/** Coerce an unknown position to a supported one. */
+function normalizeFieldSettingsPosition( position: unknown ): FieldSettingsPosition {
+	return position === 'before-basics' ? 'before-basics' : 'after-basics';
+}
 
 /**
  * Register a custom settings panel for a field type in the admin editor.
  *
- * The panel renders in the editor's General tab, below the shared settings,
- * and receives the field plus an `updateField` callback.
+ * The panel renders in the editor's General tab and receives the field plus an
+ * `updateField` callback. Pass `{ position: 'before-basics' }` to render it
+ * above the generic Width/CSS Classes controls; it renders last by default.
+ *
+ * @example
+ * ```tsx
+ * registerFieldSettings( 'booking_slot', BookingSlotSettings, { position: 'before-basics' } );
+ * ```
  */
-export function registerFieldSettings( type: FieldType, component: CustomFieldSettingsComponent ): void {
-	fieldSettingsRegistry.set( type, component );
+export function registerFieldSettings(
+	type: FieldType,
+	component: CustomFieldSettingsComponent,
+	options: FieldSettingsOptions = {},
+): void {
+	fieldSettingsRegistry.set( type, {
+		component,
+		position: normalizeFieldSettingsPosition( options.position ),
+	} );
 }
 
 /** Remove a previously registered field settings panel. */
@@ -174,7 +225,47 @@ export function unregisterFieldSettings( type: FieldType ): boolean {
 
 /** Get the registered settings panel for a field type, if any. */
 export function getRegisteredFieldSettings( type: FieldType ): CustomFieldSettingsComponent | undefined {
-	return fieldSettingsRegistry.get( type );
+	return fieldSettingsRegistry.get( type )?.component;
+}
+
+/**
+ * Get the registered settings panel for a field type together with its
+ * position, if any.
+ *
+ * @since 1.6.0
+ */
+export function getRegisteredFieldSettingsRegistration( type: FieldType ): FieldSettingsRegistration | undefined {
+	const registration = fieldSettingsRegistry.get( type );
+
+	return registration ? { ...registration } : undefined;
+}
+
+/**
+ * Resolve the settings panel for a field type: a host-supplied entry (the
+ * `FieldEditor` `customSettings` prop) wins over a module-level registration.
+ *
+ * @since 1.6.0
+ */
+export function resolveFieldSettings(
+	overlay: Record<string, CustomFieldSettingsEntry> | undefined | null,
+	type: FieldType,
+): FieldSettingsRegistration | undefined {
+	const entry = ownEntry( overlay, type );
+
+	if ( !entry ) {
+		return getRegisteredFieldSettingsRegistration( type );
+	}
+
+	// A component may itself be an object (`memo`, `forwardRef`), so tell the
+	// options form apart by its `component` key rather than by `typeof`.
+	if ( typeof entry === 'object' && 'component' in entry ) {
+		return {
+			component: entry.component,
+			position: normalizeFieldSettingsPosition( entry.position ),
+		};
+	}
+
+	return { component: entry as CustomFieldSettingsComponent, position: 'after-basics' };
 }
 
 /** Clear all registered field settings panels (primarily for tests). */

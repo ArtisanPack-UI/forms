@@ -12,6 +12,8 @@
 
 import type { FormField, ValidationRules } from '../types/artisanpack-forms';
 
+import { ACCEPTANCE_FIELD_TYPES, getFileAllowedTypes, getFileMaxSize } from './fieldSettings';
+
 /** Layout field types that do not collect data. */
 const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );
 
@@ -46,8 +48,10 @@ export function validateField(
 
 				return errors;
 			}
-		} else if ( field.type === 'checkbox' ) {
-			if ( value !== true ) {
+		} else if ( ACCEPTANCE_FIELD_TYPES.has( field.type ) ) {
+			// Mirrors the server's `accepted` rule: an unchecked box fails even
+			// after it was checked once.
+			if ( value !== true && value !== 1 && value !== '1' && value !== 'true' && value !== 'on' && value !== 'yes' ) {
 				errors.push( `${field.label ?? field.name} is required.` );
 
 				return errors;
@@ -68,6 +72,19 @@ export function validateField(
 	// Skip further validation if value is empty and not required (except file fields)
 	if ( field.type !== 'file' && ( value === null || value === undefined || String( value ).trim() === '' ) ) {
 		return errors;
+	}
+
+	// File validation reads `field_config`, so it runs even without validation rules
+	if ( field.type === 'file' && files ) {
+		const fileValue = files[field.name];
+
+		if ( fileValue ) {
+			const fileList = Array.isArray( fileValue ) ? fileValue : [fileValue];
+
+			for ( const file of fileList ) {
+				validateFileRules( file, field, errors );
+			}
+		}
 	}
 
 	if ( !rules ) {
@@ -134,19 +151,6 @@ export function validateField(
 	// Time validation
 	if ( field.type === 'time' && typeof value === 'string' ) {
 		validateTimeRules( value, rules, errors );
-	}
-
-	// File validation
-	if ( field.type === 'file' && files ) {
-		const fileValue = files[field.name];
-
-		if ( fileValue ) {
-			const fileList = Array.isArray( fileValue ) ? fileValue : [fileValue];
-
-			for ( const file of fileList ) {
-				validateFileRules( file, rules, field, errors );
-			}
-		}
 	}
 
 	return errors;
@@ -254,25 +258,27 @@ function validateTimeRules(
 }
 
 /**
- * Validates file size and MIME type constraints.
+ * Validates file size and extension constraints.
  */
 function validateFileRules(
 	file: File,
-	rules: ValidationRules,
 	field: FormField,
 	errors: string[],
 ): void {
-	if ( rules.max_size ) {
-		const maxBytes = rules.max_size * 1024;
+	const maxSize = getFileMaxSize( field );
 
-		if ( file.size > maxBytes ) {
-			errors.push( `${field.label ?? field.name}: File must be no larger than ${rules.max_size} KB.` );
-		}
+	if ( maxSize !== undefined && file.size > maxSize * 1024 ) {
+		errors.push( `${field.label ?? field.name}: File must be no larger than ${maxSize} KB.` );
 	}
 
-	if ( rules.allowed_types && rules.allowed_types.length > 0 ) {
-		if ( !rules.allowed_types.includes( file.type ) ) {
-			errors.push( `${field.label ?? field.name}: File type "${file.type}" is not allowed.` );
+	const allowedTypes = getFileAllowedTypes( field );
+
+	if ( allowedTypes.length > 0 ) {
+		const dot = file.name.lastIndexOf( '.' );
+		const extension = dot >= 0 ? file.name.slice( dot + 1 ).toLowerCase() : '';
+
+		if ( !allowedTypes.includes( extension ) ) {
+			errors.push( `${field.label ?? field.name}: File type "${extension || file.type}" is not allowed.` );
 		}
 	}
 }

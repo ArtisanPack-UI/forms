@@ -252,8 +252,8 @@ describe( 'React Form Renderer', function (): void {
 
         it( 'validates file fields', function (): void {
             expect( $this->content )->toContain( "'file'" )
-                ->and( $this->content )->toContain( 'max_size' )
-                ->and( $this->content )->toContain( 'allowed_types' );
+                ->and( $this->content )->toContain( 'getFileMaxSize' )
+                ->and( $this->content )->toContain( 'getFileAllowedTypes' );
         } );
 
         it( 'skips layout fields', function (): void {

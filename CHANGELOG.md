@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `registerFieldSettings( type, component, { position } )` takes an optional placement for a custom settings panel in the React `FieldEditor`. `'before-basics'` renders the panel above Width and CSS Classes, under a **Field Basics** divider. `'after-basics'` (the default) keeps today's position at the end of the General tab. The `customSettings` / `fieldCustomSettings` props also accept `{ component, position }`. New exports: `resolveFieldSettings`, `getRegisteredFieldSettingsRegistration`, and the `FieldSettingsPosition`, `FieldSettingsOptions`, `FieldSettingsRegistration` and `CustomFieldSettingsEntry` types. ([#76](https://github.com/ArtisanPack-UI/forms/issues/76))
+- The Livewire builder has content editors for paragraph and HTML blocks, and edits a heading's text in a **Heading Text** field. Help Text is hidden for these three types. ([#82](https://github.com/ArtisanPack-UI/forms/issues/82))
+- `FormField::getFileMaxSize()`, `getFileAllowedTypes()`, `getLayoutContent()` and `sanitizeHtml()`, plus a shared `resources/js/shared/fieldSettings.ts` that mirrors them for the React and Vue components.
+
+### Fixed
+
+- A file field's **Max File Size** and **Allowed File Types** are now enforced on the server. All three builders save them to `field_config`, which the validation rules, the input's `accept` attribute and the size hint all read. Values saved in `validation_rules` by earlier versions still apply until the field is next saved. Allowed types are file extensions (such as `pdf`), and entries that are not plain extensions are ignored. ([#79](https://github.com/ArtisanPack-UI/forms/issues/79))
+- The Livewire renderer validates file fields against the uploaded file (`files.{name}`) instead of `formData.{name}`. A required file field now passes once a file is uploaded, and an optional one has its type and size checked. ([#80](https://github.com/ArtisanPack-UI/forms/issues/80))
+- A required single checkbox (or toggle) must now be checked. It uses the `accepted` rule, so checking and then unchecking it no longer passes. The client-side check in `validation.ts` matches. ([#81](https://github.com/ArtisanPack-UI/forms/issues/81))
+- Heading, paragraph and HTML content now renders the same in every builder and renderer. A heading's text is its `label`; paragraph and HTML content is stored in `field_config.content`. Content saved to `default_value` by the React or Vue builder before this release still renders, and moves to the new place the next time the field is edited. ([#82](https://github.com/ArtisanPack-UI/forms/issues/82))
+- The Livewire builder's min, max, step, max file size and allowed types inputs work on Livewire 4. Their `wire:change` expressions called `parseInt` and arrow functions, which Livewire 4 rewrites into server calls, so changing them caused a 500 error.
+
+### Security
+
+- HTML block content is now sanitized with htmLawed's safe mode. This removes scripts, event handlers, `javascript:` URLs and embeds, along with inline `style` attributes and `<style>` elements. `kses()` with its default configuration had let these through. The API sanitizes `field_config.content` as well as `default_value`, because the React and Vue renderers insert this content as raw HTML.
+
 ## [1.5.2] - 2026-10-18
 
 ### Added

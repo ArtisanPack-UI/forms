@@ -10,6 +10,9 @@
  */
 
 import type { JSX } from 'react';
+
+import { getLayoutContent } from '../../../shared/fieldSettings';
+
 import type { FieldComponentProps } from './types';
 
 type HeadingTag = 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
@@ -26,7 +29,7 @@ export function HeadingField( { field }: FieldComponentProps ) {
 
 	return (
 		<Tag className={`font-bold ${field.css_classes ?? ''}`}>
-			{field.label ?? ''}
+			{getLayoutContent( field )}
 		</Tag>
 	);
 }
@@ -37,7 +40,7 @@ export function HeadingField( { field }: FieldComponentProps ) {
 export function ParagraphField( { field }: FieldComponentProps ) {
 	return (
 		<p className={field.css_classes ?? undefined}>
-			{field.default_value ?? field.label ?? ''}
+			{getLayoutContent( field )}
 		</p>
 	);
 }
@@ -53,7 +56,7 @@ export function DividerField( { field }: FieldComponentProps ) {
  * Renders custom HTML content.
  */
 export function HtmlField( { field }: FieldComponentProps ) {
-	const content = field.default_value ?? '';
+	const content = getLayoutContent( field );
 
 	return (
 		<div

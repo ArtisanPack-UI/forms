@@ -1,23 +1,15 @@
 @props(['field'])
 
 @php
-    $content = $field->getConfig('content', '');
-    $hasKses = function_exists('kses');
-
-    // Sanitize HTML content using ArtisanPackUI Security's kses() function
-    // This properly cleanses both tags and attributes to prevent XSS
-    // If kses is not available, we'll escape and render as plain text
-    $sanitizedHtml = $hasKses ? kses($content) : null;
-    $escapedText = !$hasKses ? e($content) : null;
+    // Admin-authored HTML is sanitized with htmLawed's safe mode (scripts,
+    // event handlers and javascript: URLs removed), or escaped when
+    // artisanpack-ui/security is not installed.
+    $sanitizedHtml = \ArtisanPackUI\Forms\Models\FormField::sanitizeHtml($field->getLayoutContent());
 @endphp
 
 <div
     class="html-content prose prose-sm max-w-none {{ $field->css_classes }}"
     id="html-{{ $field->name }}"
 >
-    @if($hasKses)
-        {!! $sanitizedHtml !!}
-    @else
-        {{ $escapedText }}
-    @endif
+    {!! $sanitizedHtml !!}
 </div>

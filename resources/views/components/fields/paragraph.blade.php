@@ -1,7 +1,7 @@
 @props(['field'])
 
 @php
-    $text = $field->help_text ?? $field->label;
+    $text = $field->getLayoutContent();
 @endphp
 
 <div

@@ -10,6 +10,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { FormField } from '../../../types/artisanpack-forms';
+import { getLayoutContent } from '../../../shared/fieldSettings';
 
 const props = defineProps<{
 	field: FormField;
@@ -28,8 +29,7 @@ const headingLevel = computed( () => {
 } );
 
 const headingTag = computed( () => `h${headingLevel.value}` );
-const paragraphText = computed( () => props.field.default_value ?? props.field.label ?? '' );
-const htmlContent = computed( () => props.field.default_value ?? '' );
+const layoutContent = computed( () => getLayoutContent( props.field ) );
 </script>
 
 <template>
@@ -39,7 +39,7 @@ const htmlContent = computed( () => props.field.default_value ?? '' );
 		:is="headingTag"
 		:class="['font-bold', field.css_classes ?? '']"
 	>
-		{{ field.label ?? '' }}
+		{{ layoutContent }}
 	</component>
 
 	<!-- Paragraph -->
@@ -47,7 +47,7 @@ const htmlContent = computed( () => props.field.default_value ?? '' );
 		v-else-if="field.type === 'paragraph'"
 		:class="field.css_classes ?? undefined"
 	>
-		{{ paragraphText }}
+		{{ layoutContent }}
 	</p>
 
 	<!-- Divider -->
@@ -61,7 +61,7 @@ const htmlContent = computed( () => props.field.default_value ?? '' );
 	<div
 		v-else-if="field.type === 'html'"
 		:class="field.css_classes ?? undefined"
-		v-html="htmlContent"
+		v-html="layoutContent"
 	/>
 	<!-- eslint-enable vue/no-v-html -->
 </template>

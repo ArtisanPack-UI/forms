@@ -322,6 +322,17 @@ describe( 'SubmissionService', function (): void {
 
             expect( $rules['formData.email'] )->toContain( 'email' );
         } );
+
+        it( 'keys file fields under files.* to match the renderer binding', function (): void {
+            $form  = Form::factory()->create();
+            $field = FormField::factory()->for( $form )->file()->required()->create( ['name' => 'resume'] );
+
+            $rules = $this->service->buildValidationRules( $form->fields );
+
+            expect( $rules )->toHaveKey( 'files.resume' )
+                ->and( $rules )->not->toHaveKey( 'formData.resume' )
+                ->and( $this->service->validationKey( $field ) )->toBe( 'files.resume' );
+        } );
     } );
 
     describe( 'validation messages', function (): void {
@@ -354,9 +365,23 @@ describe( 'SubmissionService', function (): void {
 
             $messages = $this->service->buildValidationMessages( $form->fields );
 
-            expect( $messages )->toHaveKey( 'formData.resume.file' )
-                ->and( $messages )->toHaveKey( 'formData.resume.mimes' )
-                ->and( $messages )->toHaveKey( 'formData.resume.max' );
+            expect( $messages )->toHaveKey( 'files.resume.file' )
+                ->and( $messages )->toHaveKey( 'files.resume.mimes' )
+                ->and( $messages )->toHaveKey( 'files.resume.max' );
+        } );
+
+        it( 'keys the required message on accepted for a required checkbox', function (): void {
+            $form = Form::factory()->create();
+            FormField::factory()->for( $form )->required()->create( [
+                'name'  => 'terms',
+                'label' => 'Terms',
+                'type'  => 'checkbox',
+            ] );
+
+            $messages = $this->service->buildValidationMessages( $form->fields );
+
+            expect( $messages )->toHaveKey( 'formData.terms.accepted' )
+                ->and( $messages )->not->toHaveKey( 'formData.terms.required' );
         } );
 
         it( 'excludes layout fields from messages', function (): void {
