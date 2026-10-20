@@ -35,6 +35,13 @@ export interface UseFormOptions {
 	onError?: ( error: Error ) => void;
 	/** Whether to validate on the client before submitting. Defaults to true. */
 	clientValidation?: boolean;
+	/**
+	 * Values for fields with dynamic population on, keyed by parameter name.
+	 * Takes precedence over the page's query string and the field's default.
+	 *
+	 * @since 1.6.0
+	 */
+	prefill?: Record<string, unknown>;
 }
 
 /** Return type of the useForm hook. */
@@ -110,6 +117,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		onSuccess,
 		onError,
 		clientValidation = true,
+		prefill,
 	} = options;
 
 	const [form, setForm] = useState<FormRenderData | null>( null );
@@ -123,6 +131,10 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 	const [loadError, setLoadError] = useState<string | null>( null );
 
 	const formLoadedAt = useRef<number>( 0 );
+
+	// Kept in a ref so a new prefill object on each render does not refetch the form.
+	const prefillRef = useRef( prefill );
+	prefillRef.current = prefill;
 
 	// Fetch the form definition
 	useEffect( () => {
@@ -157,7 +169,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 						continue;
 					}
 
-					defaults[field.name] = getInitialFieldValue( field );
+					defaults[field.name] = getInitialFieldValue( field, { prefill: prefillRef.current } );
 				}
 
 				setValues( defaults );
@@ -518,7 +530,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				continue;
 			}
 
-			defaults[field.name] = getInitialFieldValue( field );
+			defaults[field.name] = getInitialFieldValue( field, { prefill: prefillRef.current } );
 		}
 
 		setValues( defaults );

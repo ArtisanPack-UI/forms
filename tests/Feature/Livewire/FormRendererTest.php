@@ -802,7 +802,7 @@ describe( 'FormRenderer date field', function (): void {
 
     it( 'marks the date input invalid when it has an error', function (): void {
         $form = Form::factory()->create();
-        FormField::factory()->for( $form )->required()->create( ['type' => 'date', 'name' => 'starts'] );
+        FormField::factory()->for( $form )->required()->create( ['type' => 'date', 'name' => 'starts', 'help_text' => 'Pick a day'] );
 
         Livewire::test( FormRenderer::class, ['form' => $form] )
             ->set( 'formLoadedAt', time() - 10 )

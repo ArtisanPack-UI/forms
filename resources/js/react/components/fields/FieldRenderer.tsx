@@ -19,6 +19,7 @@ import {
 	RadioField,
 	SelectField,
 	SelectMultipleField,
+	ToggleField,
 } from './ChoiceField';
 import { DividerField, HeadingField, HtmlField, ParagraphField } from './LayoutField';
 import {
@@ -76,6 +77,7 @@ const FIELD_COMPONENTS: Record<BuiltInFieldType, FieldComponent> = {
 	select: SelectField,
 	radio: RadioField,
 	checkbox: CheckboxField,
+	toggle: ToggleField,
 	checkbox_group: CheckboxGroupField,
 	select_multiple: SelectMultipleField,
 	file: FileField,

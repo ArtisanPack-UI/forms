@@ -1,7 +1,7 @@
 <!--
   Choice-based field components wrapper.
 
-  Renders select, radio, checkbox, checkbox_group, and select_multiple
+  Renders select, radio, checkbox, toggle, checkbox_group, and select_multiple
   fields using @artisanpack-ui/vue components.
 
   @package    ArtisanPack_UI
@@ -10,9 +10,10 @@
 -->
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Checkbox, Radio, Select } from '@artisanpack-ui/vue/form';
+import { Checkbox, Radio, Select, Toggle } from '@artisanpack-ui/vue/form';
 import type { FormField, DisplayConfig, FieldOption, OptionsFieldConfig } from '../../../types/artisanpack-forms';
-import { isReadOnlyField } from '../../../shared/fieldSettings';
+import { getToggleColor, getToggleSizeClass, isReadOnlyField } from '../../../shared/fieldSettings';
+import { vAutocomplete } from './autocomplete';
 
 const props = defineProps<{
 	field: FormField;
@@ -103,6 +104,7 @@ function handleMultiSelectChange( event: Event ): void {
 	<!-- Select -->
 	<Select
 		v-if="field.type === 'select'"
+		v-autocomplete="field.autocomplete"
 		:label="showLabel ? labelText : undefined"
 		:aria-label="ariaLabel"
 		:name="field.name"
@@ -155,6 +157,24 @@ function handleMultiSelectChange( event: Event ): void {
 		:error="error"
 		:required="field.is_required"
 		:class="field.css_classes ?? undefined"
+		:disabled="readOnly"
+		:aria-readonly="readOnly ? 'true' : undefined"
+		right
+		@update:model-value="emit( 'update:modelValue', $event )"
+	/>
+
+	<!-- Toggle: a checkbox with role="switch", sized and colored by the field's settings -->
+	<Toggle
+		v-else-if="field.type === 'toggle'"
+		:label="showLabel ? labelText : undefined"
+		:aria-label="ariaLabel"
+		:name="field.name"
+		:model-value="isChecked"
+		:hint="field.help_text ?? undefined"
+		:error="error"
+		:required="field.is_required"
+		:color="getToggleColor( field )"
+		:class="[getToggleSizeClass( field ), field.css_classes ?? '']"
 		:disabled="readOnly"
 		:aria-readonly="readOnly ? 'true' : undefined"
 		right

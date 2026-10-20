@@ -983,6 +983,13 @@ function getPreviewInputType( fieldType: string ): string {
 								<input type="checkbox" class="checkbox" disabled />
 								<span class="label-text">{{ field.label }}</span>
 							</label>
+							<label
+								v-if="'toggle' === field.type"
+								class="label cursor-pointer justify-start gap-2"
+							>
+								<input type="checkbox" role="switch" class="toggle" disabled />
+								<span class="label-text">{{ field.label }}</span>
+							</label>
 							<input
 								v-if="'file' === field.type"
 								type="file"

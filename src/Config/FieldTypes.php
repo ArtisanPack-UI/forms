@@ -38,6 +38,7 @@ use ArtisanPackUI\Forms\FieldTypes\SelectMultipleFieldType;
 use ArtisanPackUI\Forms\FieldTypes\TextareaFieldType;
 use ArtisanPackUI\Forms\FieldTypes\TextFieldType;
 use ArtisanPackUI\Forms\FieldTypes\TimeFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ToggleFieldType;
 use ArtisanPackUI\Forms\FieldTypes\UrlFieldType;
 use Illuminate\Support\Facades\Log;
 use WeakMap;
@@ -62,7 +63,7 @@ class FieldTypes
      */
     public const CATEGORY_FIELDS = [
         'basic'    => ['text', 'email', 'phone', 'number', 'url', 'textarea', 'hidden'],
-        'choice'   => ['select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple'],
+        'choice'   => ['select', 'radio', 'checkbox', 'toggle', 'checkbox_group', 'select_multiple'],
         'advanced' => ['file', 'date', 'time', 'rating'],
         'layout'   => ['heading', 'paragraph', 'divider', 'html'],
     ];
@@ -78,6 +79,9 @@ class FieldTypes
      *     has_options: bool,
      *     supports_placeholder: bool,
      *     supports_default_value: bool,
+     *     supports_autocomplete?: bool,
+     *     autocomplete?: string,
+     *     supports_dynamic_population?: bool,
      *     validation_options: array<string>
      * }>
      */
@@ -88,6 +92,7 @@ class FieldTypes
             'has_options'            => false,
             'supports_placeholder'   => true,
             'supports_default_value' => true,
+            'supports_autocomplete'  => true,
             'validation_options'     => ['min', 'max', 'pattern'],
         ],
         'email' => [
@@ -96,6 +101,8 @@ class FieldTypes
             'has_options'            => false,
             'supports_placeholder'   => true,
             'supports_default_value' => true,
+            'supports_autocomplete'  => true,
+            'autocomplete'           => 'email',
             'validation_options'     => ['min', 'max'],
         ],
         'number' => [
@@ -104,6 +111,7 @@ class FieldTypes
             'has_options'            => false,
             'supports_placeholder'   => true,
             'supports_default_value' => true,
+            'supports_autocomplete'  => true,
             'validation_options'     => ['min', 'max', 'step'],
         ],
         'url' => [
@@ -112,6 +120,8 @@ class FieldTypes
             'has_options'            => false,
             'supports_placeholder'   => true,
             'supports_default_value' => true,
+            'supports_autocomplete'  => true,
+            'autocomplete'           => 'url',
             'validation_options'     => ['min', 'max'],
         ],
         'textarea' => [
@@ -120,6 +130,7 @@ class FieldTypes
             'has_options'            => false,
             'supports_placeholder'   => true,
             'supports_default_value' => true,
+            'supports_autocomplete'  => true,
             'validation_options'     => ['min', 'max'],
         ],
         'hidden' => [
@@ -136,6 +147,7 @@ class FieldTypes
             'has_options'            => true,
             'supports_placeholder'   => true,
             'supports_default_value' => true,
+            'supports_autocomplete'  => true,
             'validation_options'     => [],
         ],
         'radio' => [
@@ -148,6 +160,14 @@ class FieldTypes
         ],
         'checkbox' => [
             'icon'                   => 'o-check-circle',
+            'category'               => 'choice',
+            'has_options'            => false,
+            'supports_placeholder'   => false,
+            'supports_default_value' => true,
+            'validation_options'     => [],
+        ],
+        'toggle' => [
+            'icon'                   => 'o-power',
             'category'               => 'choice',
             'has_options'            => false,
             'supports_placeholder'   => false,
@@ -171,12 +191,13 @@ class FieldTypes
             'validation_options'     => ['min', 'max'],
         ],
         'file' => [
-            'icon'                   => 'o-paper-clip',
-            'category'               => 'advanced',
-            'has_options'            => false,
-            'supports_placeholder'   => false,
-            'supports_default_value' => false,
-            'validation_options'     => ['max_size', 'allowed_types'],
+            'icon'                        => 'o-paper-clip',
+            'category'                    => 'advanced',
+            'has_options'                 => false,
+            'supports_placeholder'        => false,
+            'supports_default_value'      => false,
+            'supports_dynamic_population' => false,
+            'validation_options'          => ['max_size', 'allowed_types'],
         ],
         'date' => [
             'icon'                   => 'o-calendar',
@@ -184,6 +205,7 @@ class FieldTypes
             'has_options'            => false,
             'supports_placeholder'   => false,
             'supports_default_value' => true,
+            'supports_autocomplete'  => true,
             'validation_options'     => ['min_date', 'max_date'],
         ],
         'phone' => [
@@ -192,6 +214,8 @@ class FieldTypes
             'has_options'            => false,
             'supports_placeholder'   => true,
             'supports_default_value' => true,
+            'supports_autocomplete'  => true,
+            'autocomplete'           => 'tel',
             'validation_options'     => ['pattern'],
         ],
         'time' => [
@@ -265,6 +289,7 @@ class FieldTypes
         'select'          => SelectFieldType::class,
         'radio'           => RadioFieldType::class,
         'checkbox'        => CheckboxFieldType::class,
+        'toggle'          => ToggleFieldType::class,
         'checkbox_group'  => CheckboxGroupFieldType::class,
         'select_multiple' => SelectMultipleFieldType::class,
         'file'            => FileFieldType::class,
@@ -281,16 +306,13 @@ class FieldTypes
     /**
      * Handlers that give a type built-in behaviour without registering it.
      *
-     * A `toggle` field has validated and displayed like a checkbox since 1.0,
-     * though the type is not offered in the builders.
+     * Empty since `toggle`, the only entry, became a registered type.
      *
      * @since 1.6.0
      *
      * @var array<string, class-string<AbstractFieldType>>
      */
-    public const BEHAVIOUR_HANDLERS = [
-        'toggle' => CheckboxFieldType::class,
-    ];
+    public const BEHAVIOUR_HANDLERS = [];
 
     /**
      * Width option CSS classes.

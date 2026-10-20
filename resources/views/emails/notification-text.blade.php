@@ -14,7 +14,7 @@
 {{ __( 'SUBMISSION DETAILS' ) }}
 ------------------
 @foreach($submission->values as $value)
-{{ $value->field?->label ?? $value->field_name }}: {{ $value->display_value ?? '' }}
+{{ $value->getNotificationLabel( $useAdminLabels ?? true ) }}: {{ $value->display_value ?? '' }}
 @endforeach
 
 @endif

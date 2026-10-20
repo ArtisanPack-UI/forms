@@ -77,7 +77,7 @@ class FormRenderResource extends JsonResource
     {
         $fields = FormFieldResource::collection( $this->resource->fields );
 
-        $fields->collection->each( fn ( FormFieldResource $field ): FormFieldResource => $field->withoutSettingsSchema() );
+        $fields->collection->each( fn ( FormFieldResource $field ): FormFieldResource => $field->withoutSettingsSchema()->withResolvedDefault() );
 
         return $fields;
     }
@@ -93,7 +93,7 @@ class FormRenderResource extends JsonResource
     {
         $steps = FormStepResource::collection( $this->resource->steps );
 
-        $steps->collection->each( fn ( FormStepResource $step ): FormStepResource => $step->withoutSettingsSchema() );
+        $steps->collection->each( fn ( FormStepResource $step ): FormStepResource => $step->withoutSettingsSchema()->withResolvedDefaults() );
 
         return $steps;
     }

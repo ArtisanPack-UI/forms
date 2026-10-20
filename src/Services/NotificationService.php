@@ -385,12 +385,13 @@ class NotificationService
      *
      * @since 1.0.0
      *
-     * @param string         $template   The template string with placeholders.
-     * @param FormSubmission $submission The form submission data.
+     * @param string         $template         The template string with placeholders.
+     * @param FormSubmission $submission       The form submission data.
+     * @param bool           $useAdminLabels   Whether `{all_fields}` labels fields by their admin label (since 1.6.0).
      *
      * @return string The parsed template with placeholders replaced.
      */
-    public function parseTemplate( string $template, FormSubmission $submission ): string
+    public function parseTemplate( string $template, FormSubmission $submission, bool $useAdminLabels = true ): string
     {
         $parsed = $template;
 
@@ -408,7 +409,7 @@ class NotificationService
             '{submission_time}'   => $submission->created_at->format( 'g:i A' ),
             '{page_url}'          => $submission->page_url ?? '',
             '{ip_address}'        => $submission->ip_address ?? '',
-            '{all_fields}'        => $this->formatAllFieldsPlainText( $submission ),
+            '{all_fields}'        => $this->formatAllFieldsPlainText( $submission, $useAdminLabels ),
         ];
 
         foreach ( $replacements as $placeholder => $value ) {
@@ -427,16 +428,20 @@ class NotificationService
      *
      * @since 1.0.0
      *
-     * @param FormSubmission $submission The form submission.
+     * Fields are labelled by their admin label when one is set, unless
+     * `$useAdminLabels` is false (as for an autoresponder, which the visitor reads).
+     *
+     * @param FormSubmission $submission     The form submission.
+     * @param bool           $useAdminLabels Whether to label fields by their admin label (since 1.6.0).
      *
      * @return string The formatted plain-text field list.
      */
-    public function formatAllFieldsPlainText( FormSubmission $submission ): string
+    public function formatAllFieldsPlainText( FormSubmission $submission, bool $useAdminLabels = true ): string
     {
         $lines = [];
 
         foreach ( $submission->values as $value ) {
-            $label        = $value->field?->label ?? $value->field_name;
+            $label        = $value->getNotificationLabel( $useAdminLabels );
             $displayValue = $value->display_value ?? '';
 
             $lines[] = "{$label}: {$displayValue}";
@@ -450,16 +455,20 @@ class NotificationService
      *
      * @since 1.0.0
      *
-     * @param FormSubmission $submission The form submission.
+     * Fields are labelled by their admin label when one is set, unless
+     * `$useAdminLabels` is false (as for an autoresponder, which the visitor reads).
+     *
+     * @param FormSubmission $submission     The form submission.
+     * @param bool           $useAdminLabels Whether to label fields by their admin label (since 1.6.0).
      *
      * @return string The HTML table string.
      */
-    public function formatAllFieldsAsTable( FormSubmission $submission ): string
+    public function formatAllFieldsAsTable( FormSubmission $submission, bool $useAdminLabels = true ): string
     {
         $rows = [];
 
         foreach ( $submission->values as $value ) {
-            $label        = e( $value->field?->label ?? $value->field_name );
+            $label        = e( $value->getNotificationLabel( $useAdminLabels ) );
             $displayValue = e( $value->display_value ?? '' );
 
             $rows[] = "<tr><td style=\"padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: 500;\">{$label}</td><td style=\"padding: 8px; border-bottom: 1px solid #e5e7eb;\">{$displayValue}</td></tr>";

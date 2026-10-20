@@ -79,6 +79,15 @@ class FormSubmissionNotification extends Mailable
     public string $submissionDataTable;
 
     /**
+     * Whether fields are labelled by their admin label.
+     *
+     * Off for autoresponders, which the visitor reads.
+     *
+     * @since 1.6.0
+     */
+    public bool $useAdminLabels;
+
+    /**
      * Whether to show IP address in the email.
      *
      * @since 1.0.0
@@ -117,9 +126,10 @@ class FormSubmissionNotification extends Mailable
         $this->submission   = $submission;
 
         // Pre-parse templates
-        $notificationService = app( NotificationService::class );
-        $this->parsedSubject = $notificationService->parseTemplate( $notification->subject, $submission );
-        $this->parsedMessage = $notificationService->parseTemplate( $notification->message, $submission );
+        $notificationService  = app( NotificationService::class );
+        $this->useAdminLabels = FormNotification::TYPE_AUTORESPONDER !== $notification->type;
+        $this->parsedSubject  = $notificationService->parseTemplate( $notification->subject, $submission, $this->useAdminLabels );
+        $this->parsedMessage  = $notificationService->parseTemplate( $notification->message, $submission, $this->useAdminLabels );
 
         // Apply filter hooks to allow modifying the message
         $this->parsedMessage = applyFilters(
@@ -143,7 +153,7 @@ class FormSubmissionNotification extends Mailable
             $submission,
         );
 
-        $this->submissionDataTable = $notificationService->formatAllFieldsAsTable( $submission );
+        $this->submissionDataTable = $notificationService->formatAllFieldsAsTable( $submission, $this->useAdminLabels );
 
         // Get CC/BCC recipients upfront
         $this->ccEmails  = $notificationService->getCcEmails( $notification );

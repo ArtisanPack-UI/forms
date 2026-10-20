@@ -23,6 +23,7 @@ namespace ArtisanPackUI\Forms\Livewire;
 
 use ArtisanPackUI\Forms\Config\ConditionalLogic;
 use ArtisanPackUI\Forms\Models\Form;
+use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormNotification;
 use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\NotificationService;
@@ -156,7 +157,7 @@ class NotificationEditor extends Component
     /**
      * Get available email fields from the form.
      *
-     * @return Collection<int, \ArtisanPackUI\Forms\Models\FormField>
+     * @return Collection<int, FormField>
      */
     #[Computed]
     public function emailFields(): Collection
@@ -178,15 +179,16 @@ class NotificationEditor extends Component
     /**
      * Get fields that can be used as condition targets.
      *
-     * @return Collection<int, \ArtisanPackUI\Forms\Models\FormField>
+     * @return Collection<int, FormField>
      */
     #[Computed]
     public function availableConditionFields(): Collection
     {
         return $this->form->fields()
-            ->whereNotIn( 'type', ['heading', 'paragraph', 'divider', 'spacer', 'html'] )
             ->orderBy( 'sort_order' )
-            ->get();
+            ->get()
+            ->reject( fn ( FormField $field ): bool => $field->isLayoutField() )
+            ->values();
     }
 
     /**

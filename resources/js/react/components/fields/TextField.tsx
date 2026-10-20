@@ -3,7 +3,8 @@
  *
  * Renders text, email, phone, number, url, textarea, hidden,
  * and time input fields using @artisanpack-ui/react components. A read-only
- * field keeps its value focusable and announced via `readOnly`.
+ * field keeps its value focusable and announced via `readOnly`. Inputs expose
+ * the field's `autocomplete` token (WCAG 1.3.5).
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -32,6 +33,7 @@ export function TextField( { field, value, error, onChange, displayConfig }: Fie
 			hint={field.help_text ?? undefined}
 			error={error}
 			required={field.is_required}
+			autoComplete={field.autocomplete ?? undefined}
 			readOnly={isReadOnlyField( field )}
 			className={field.css_classes ?? undefined}
 			onChange={( e ) => onChange( e.target.value )}
@@ -58,6 +60,7 @@ export function EmailField( { field, value, error, onChange, displayConfig }: Fi
 			hint={field.help_text ?? undefined}
 			error={error}
 			required={field.is_required}
+			autoComplete={field.autocomplete ?? undefined}
 			readOnly={isReadOnlyField( field )}
 			className={field.css_classes ?? undefined}
 			onChange={( e ) => onChange( e.target.value )}
@@ -81,6 +84,7 @@ export function PhoneField( { field, value, error, onChange, displayConfig }: Fi
 			hint={field.help_text ?? undefined}
 			error={error}
 			required={field.is_required}
+			autoComplete={field.autocomplete ?? undefined}
 			readOnly={isReadOnlyField( field )}
 			className={field.css_classes ?? undefined}
 			onChange={( e ) => onChange( e.target.value )}
@@ -105,6 +109,7 @@ export function NumberField( { field, value, error, onChange, displayConfig }: F
 			hint={field.help_text ?? undefined}
 			error={error}
 			required={field.is_required}
+			autoComplete={field.autocomplete ?? undefined}
 			readOnly={isReadOnlyField( field )}
 			className={field.css_classes ?? undefined}
 			onChange={( e ) => onChange( e.target.value )}
@@ -131,6 +136,7 @@ export function UrlField( { field, value, error, onChange, displayConfig }: Fiel
 			hint={field.help_text ?? undefined}
 			error={error}
 			required={field.is_required}
+			autoComplete={field.autocomplete ?? undefined}
 			readOnly={isReadOnlyField( field )}
 			className={field.css_classes ?? undefined}
 			onChange={( e ) => onChange( e.target.value )}
@@ -153,6 +159,7 @@ export function TextareaField( { field, value, error, onChange, displayConfig }:
 			hint={field.help_text ?? undefined}
 			error={error}
 			required={field.is_required}
+			autoComplete={field.autocomplete ?? undefined}
 			readOnly={isReadOnlyField( field )}
 			className={field.css_classes ?? undefined}
 			onChange={( e ) => onChange( e.target.value )}

@@ -29,6 +29,7 @@ import {
 	getLayoutContent,
 	getSettingsForTab,
 } from '../../../shared/fieldSettings';
+import { MERGE_TAGS } from '../../../shared/dynamicPopulation';
 import { getFieldTypeLabel } from '../../../shared/fieldTypeLabels';
 import { t } from '../../../shared/i18n';
 
@@ -44,7 +45,7 @@ const OPTION_FIELD_TYPES = new Set<FieldType>( [
 ] );
 
 /** Field types without a placeholder. */
-const NO_PLACEHOLDER_TYPES = new Set<FieldType>( ['checkbox', 'radio', 'rating'] );
+const NO_PLACEHOLDER_TYPES = new Set<FieldType>( ['checkbox', 'toggle', 'radio', 'rating'] );
 
 /** Field types that don't collect user data. */
 const LAYOUT_FIELD_TYPES = new Set<FieldType>( [
@@ -316,6 +317,7 @@ function confirmDelete(): void {
 						v-if="!isLayoutField && field.type !== 'file'"
 						:label="t( 'Default Value' )"
 						:model-value="field.default_value ?? ''"
+						:hint="t( 'Merge tags: :tags', { tags: MERGE_TAGS.join( ', ' ) } )"
 						@update:model-value="updateField( { default_value: ($event as string) || null } )"
 					/>
 

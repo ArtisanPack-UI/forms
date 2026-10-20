@@ -167,8 +167,14 @@
                             id="field-default"
                             class="input input-sm input-bordered w-full"
                             value="{{ $field->default_value }}"
+                            aria-describedby="field-default-hint"
                             wire:change="updateField({ default_value: $event.target.value })"
                         />
+                        <label class="label" id="field-default-hint">
+                            <span class="label-text-alt text-xs text-base-content/50">
+                                {{ __( 'Merge tags: :tags', ['tags' => implode( ', ', \ArtisanPackUI\Forms\Support\MergeTags::available() )] ) }}
+                            </span>
+                        </label>
                     </div>
                 @endif
 

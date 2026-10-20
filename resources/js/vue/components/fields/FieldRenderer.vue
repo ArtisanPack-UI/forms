@@ -41,7 +41,7 @@ const emit = defineEmits<{
 
 /** Field types handled by each component group. */
 const TEXT_TYPES = new Set( ['text', 'email', 'phone', 'number', 'url', 'textarea', 'hidden', 'time'] );
-const CHOICE_TYPES = new Set( ['select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple'] );
+const CHOICE_TYPES = new Set( ['select', 'radio', 'checkbox', 'toggle', 'checkbox_group', 'select_multiple'] );
 const ADVANCED_TYPES = new Set( ['file', 'date'] );
 const RATING_TYPES = new Set( ['rating'] );
 const LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'divider', 'html'] );

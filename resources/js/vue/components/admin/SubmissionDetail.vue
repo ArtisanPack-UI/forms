@@ -395,7 +395,7 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 				>
 					<template v-for="value in submission.values" :key="value.id">
 						<dt class="font-medium text-base-content/70">
-							{{ value.field_label || value.field_name }}
+							{{ value.field_admin_label || value.field_label || value.field_name }}
 						</dt>
 						<dd>
 							<!-- File value -->

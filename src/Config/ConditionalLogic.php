@@ -94,12 +94,12 @@ class ConditionalLogic
         'is_empty' => [
             'needs_value'    => false,
             'value_type'     => 'none',
-            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'textarea', 'select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple', 'file', 'date', 'time', 'hidden', 'rating'],
+            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'textarea', 'select', 'radio', 'checkbox', 'toggle', 'checkbox_group', 'select_multiple', 'file', 'date', 'time', 'hidden', 'rating'],
         ],
         'is_not_empty' => [
             'needs_value'    => false,
             'value_type'     => 'none',
-            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'textarea', 'select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple', 'file', 'date', 'time', 'hidden', 'rating'],
+            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'textarea', 'select', 'radio', 'checkbox', 'toggle', 'checkbox_group', 'select_multiple', 'file', 'date', 'time', 'hidden', 'rating'],
         ],
         'greater_than' => [
             'needs_value'    => true,
@@ -134,12 +134,12 @@ class ConditionalLogic
         'checked' => [
             'needs_value'    => false,
             'value_type'     => 'none',
-            'supports_types' => ['checkbox'],
+            'supports_types' => ['checkbox', 'toggle'],
         ],
         'unchecked' => [
             'needs_value'    => false,
             'value_type'     => 'none',
-            'supports_types' => ['checkbox'],
+            'supports_types' => ['checkbox', 'toggle'],
         ],
         'includes' => [
             'needs_value'    => true,

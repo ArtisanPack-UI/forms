@@ -45,7 +45,7 @@ class CheckboxFieldType extends AbstractFieldType
      */
     public function readOnlyValue( FormField $field ): mixed
     {
-        return filter_var( $field->default_value, FILTER_VALIDATE_BOOLEAN );
+        return filter_var( $field->getResolvedDefaultValue(), FILTER_VALIDATE_BOOLEAN );
     }
 
     /**

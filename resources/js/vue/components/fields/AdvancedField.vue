@@ -13,6 +13,7 @@ import { computed } from 'vue';
 import { DatePicker, FileUpload, Input } from '@artisanpack-ui/vue/form';
 import type { FormField, DisplayConfig } from '../../../types/artisanpack-forms';
 import { getFileAccept, isReadOnlyField } from '../../../shared/fieldSettings';
+import { vAutocomplete } from './autocomplete';
 
 const props = defineProps<{
 	field: FormField;
@@ -75,6 +76,7 @@ function handleFilesSelected( fileList: FileList | null ): void {
 	<!-- Date, read-only: DatePicker has no readonly state, so use a plain date input -->
 	<Input
 		v-else-if="field.type === 'date' && readOnly"
+		v-autocomplete="field.autocomplete"
 		type="date"
 		:label="showLabel ? labelText : undefined"
 		:aria-label="ariaLabel"
@@ -91,6 +93,7 @@ function handleFilesSelected( fileList: FileList | null ): void {
 	<!-- Date -->
 	<DatePicker
 		v-else-if="field.type === 'date'"
+		v-autocomplete="field.autocomplete"
 		:label="showLabel ? labelText : undefined"
 		:aria-label="ariaLabel"
 		:name="field.name"

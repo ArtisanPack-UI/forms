@@ -24,11 +24,14 @@ use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormStep;
 use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\SubmissionService;
+use ArtisanPackUI\Forms\Support\DynamicPopulation;
+use ArtisanPackUI\Forms\Support\PopulationContext;
 use Exception;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -59,6 +62,19 @@ class FormRenderer extends Component
      * @var array<string, mixed>
      */
     public array $formData = [];
+
+    /**
+     * The values the form starts with, kept so resetForm() restores them.
+     *
+     * Worked out once on mount, from the page request's query string and the
+     * `prefill` passed to the component (see DynamicPopulation).
+     *
+     * @since 1.6.0
+     *
+     * @var array<string, mixed>
+     */
+    #[Locked]
+    public array $initialFormData = [];
 
     /**
      * Uploaded files keyed by field name.
@@ -120,11 +136,16 @@ class FormRenderer extends Component
 
     /**
      * Mount the component.
+     *
+     * @param  Form  $form  The form to render.
+     * @param  array<string, mixed>  $prefill  Values for fields with dynamic population on, keyed by
+     *                                          parameter name (since 1.6.0).
      */
-    public function mount( Form $form ): void
+    public function mount( Form $form, array $prefill = [] ): void
     {
-        $this->form         = $form->load( ['fields', 'steps.fields'] );
-        $this->formLoadedAt = time();
+        $this->form            = $form->load( ['fields', 'steps.fields'] );
+        $this->formLoadedAt    = time();
+        $this->initialFormData = $this->buildInitialFormData( PopulationContext::fromPageRequest( request() ), $prefill );
         $this->initializeFormData();
         $this->evaluateConditionalLogic();
     }
@@ -493,11 +514,30 @@ class FormRenderer extends Component
     }
 
     /**
-     * Initialize form data with default values.
+     * Initialize form data with the values the form starts with.
      */
     protected function initializeFormData(): void
     {
-        $this->formData = [];
+        $this->formData = $this->initialFormData;
+    }
+
+    /**
+     * Works out the value each field starts with.
+     *
+     * Read-only fields start with their read-only value; other fields with
+     * their default value (merge tags replaced) or, when dynamic population
+     * is on, the prefill, query string or filter value.
+     *
+     * @since 1.6.0
+     *
+     * @param  PopulationContext  $context  The visitor and page.
+     * @param  array<string, mixed>  $prefill  Values passed to the component, keyed by parameter name.
+     *
+     * @return array<string, mixed> The values keyed by field name.
+     */
+    protected function buildInitialFormData( PopulationContext $context, array $prefill ): array
+    {
+        $data = [];
 
         foreach ( $this->form->fields as $field ) {
             // File inputs bind to $files, so seeding formData would only shadow them.
@@ -505,16 +545,10 @@ class FormRenderer extends Component
                 continue;
             }
 
-            if ( $field->isReadOnly() ) {
-                $this->formData[ $field->name ] = $field->getReadOnlyValue();
-            } elseif ( null !== $field->default_value ) {
-                $this->formData[ $field->name ] = $field->default_value;
-            } elseif ( in_array( $field->type, ['checkbox_group', 'select_multiple'] ) ) {
-                $this->formData[ $field->name ] = [];
-            } else {
-                $this->formData[ $field->name ] = '';
-            }
+            $data[ $field->name ] = DynamicPopulation::initialValue( $field, $context, $prefill );
         }
+
+        return $data;
     }
 
     // =========================================

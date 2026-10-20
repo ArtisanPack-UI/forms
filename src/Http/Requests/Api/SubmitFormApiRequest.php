@@ -111,6 +111,39 @@ class SubmitFormApiRequest extends FormRequest
     }
 
     /**
+     * Gets the validation messages for the form's fields.
+     *
+     * The field types' messages, with each field's custom error and required
+     * messages applied (see FormField::buildValidationMessages()).
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, string> The messages.
+     */
+    public function messages(): array
+    {
+        $form = $this->route( 'form' );
+
+        if ( ! $form instanceof Form ) {
+            return [];
+        }
+
+        $form->loadMissing( 'fields' );
+
+        $messages = [];
+
+        foreach ( $form->fields as $field ) {
+            $prefix = ( $field->is_file_field ? 'files.' : 'data.' ) . $field->name;
+
+            foreach ( $field->buildValidationMessages() as $key => $message ) {
+                $messages[ "{$prefix}.{$key}" ] = $message;
+            }
+        }
+
+        return $messages;
+    }
+
+    /**
      * Gets the sanitized form data with hidden fields removed.
      *
      * @since 1.1.0

@@ -123,8 +123,8 @@ describe( 'FieldSettings schema', function (): void {
 
         expect( FieldSettings::find( $text, 'pattern' ) )->not->toBeNull()
             ->and( FieldSettings::find( $text, 'rows' ) )->toBeNull()
-            ->and( array_column( FieldSettings::forTab( $text, 'validation' ), 'key' ) )->toBe( ['min', 'max', 'pattern'] )
-            ->and( array_column( FieldSettings::forTab( $text, 'advanced' ), 'key' ) )->toBe( ['read_only'] );
+            ->and( array_column( FieldSettings::forTab( $text, 'validation' ), 'key' ) )->toBe( ['min', 'max', 'pattern', 'error_message', 'required_message'] )
+            ->and( array_column( FieldSettings::forTab( $text, 'advanced' ), 'key' ) )->toBe( ['read_only', 'autocomplete', 'admin_label', 'dynamic_population', 'dynamic_parameter'] );
     } );
 } );
 

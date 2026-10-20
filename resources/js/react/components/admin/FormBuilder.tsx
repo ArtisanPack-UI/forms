@@ -970,6 +970,12 @@ export function FormBuilder( {
 												<span className="label-text">{field.label}</span>
 											</label>
 										)}
+										{'toggle' === field.type && (
+											<label className="label cursor-pointer justify-start gap-2">
+												<input type="checkbox" role="switch" className="toggle" disabled />
+												<span className="label-text">{field.label}</span>
+											</label>
+										)}
 										{'file' === field.type && (
 											<input type="file" className="file-input file-input-bordered" disabled />
 										)}

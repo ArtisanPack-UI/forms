@@ -35,6 +35,7 @@ import {
 	getSettingsForTab,
 	isDraftStored,
 } from '../../../shared/fieldSettings';
+import { MERGE_TAGS } from '../../../shared/dynamicPopulation';
 import { getFieldTypeLabel } from '../../../shared/fieldTypeLabels';
 import { t } from '../../../shared/i18n';
 import { resolveFieldSettings } from '../fields/registry';
@@ -58,7 +59,7 @@ const LAYOUT_FIELD_TYPES: Set<FieldType> = new Set( [
 ] );
 
 /** Field types without a placeholder. */
-const NO_PLACEHOLDER_TYPES: Set<FieldType> = new Set( ['checkbox', 'radio', 'rating'] );
+const NO_PLACEHOLDER_TYPES: Set<FieldType> = new Set( ['checkbox', 'toggle', 'radio', 'rating'] );
 
 /** Get the width options, translated at render. */
 function getWidthOptions(): Array<{ value: FieldWidth; label: string }> {
@@ -430,6 +431,7 @@ function GeneralTabContent( {
 					label={t( 'Default Value' )}
 					value={field.default_value ?? ''}
 					onChange={( e ) => updateField( { default_value: e.target.value || null } )}
+					hint={t( 'Merge tags: :tags', { tags: MERGE_TAGS.join( ', ' ) } )}
 				/>
 			)}
 

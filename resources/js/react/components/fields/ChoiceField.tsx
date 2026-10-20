@@ -1,7 +1,7 @@
 /**
  * Choice-based field components.
  *
- * Renders select, radio, checkbox, checkbox_group, and select_multiple
+ * Renders select, radio, checkbox, toggle, checkbox_group, and select_multiple
  * fields using @artisanpack-ui/react components. A read-only choice is marked
  * `aria-readonly` and its native inputs are disabled.
  *
@@ -13,7 +13,7 @@
 
 import { Checkbox, Radio, Select, Toggle } from '@artisanpack-ui/react/form';
 
-import { isReadOnlyField } from '../../../shared/fieldSettings';
+import { getToggleColor, getToggleSizeClass, isReadOnlyField } from '../../../shared/fieldSettings';
 import type { FieldOption, OptionsFieldConfig } from '../../../types/artisanpack-forms';
 import type { FieldComponentProps } from './types';
 
@@ -71,6 +71,7 @@ export function SelectField( { field, value, error, onChange, displayConfig }: F
 			inline={displayConfig.label_position === 'beside'}
 			disabled={readOnly}
 			aria-readonly={readOnly ? 'true' : undefined}
+			autoComplete={field.autocomplete ?? undefined}
 		/>
 	);
 }
@@ -240,10 +241,17 @@ export function SelectMultipleField( { field, value, error, onChange, displayCon
 }
 
 /**
- * Renders a toggle switch field (alias for checkbox with toggle styling).
+ * Renders a toggle (switch) field.
+ *
+ * A checkbox with `role="switch"`, whose checked state is announced as on or
+ * off. Size and color come from the field's settings. A read-only toggle is
+ * marked `aria-readonly` and disabled.
+ *
+ * @since 1.6.0
  */
 export function ToggleField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
 	const checked = isChecked( value );
+	const readOnly = isReadOnlyField( field );
 
 	return (
 		<Toggle
@@ -254,8 +262,11 @@ export function ToggleField( { field, value, error, onChange, displayConfig }: F
 			hint={field.help_text ?? undefined}
 			error={error}
 			required={field.is_required}
-			className={field.css_classes ?? undefined}
+			color={getToggleColor( field )}
+			className={[getToggleSizeClass( field ), field.css_classes ?? ''].filter( Boolean ).join( ' ' ) || undefined}
 			onChange={( e ) => onChange( e.target.checked )}
+			disabled={readOnly}
+			aria-readonly={readOnly ? 'true' : undefined}
 			right
 		/>
 	);

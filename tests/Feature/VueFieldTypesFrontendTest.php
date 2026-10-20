@@ -174,7 +174,7 @@ describe( 'Vue read-only fields (issue #99)', function () use ( $resource, $betw
         expect( $choice )->toContain( 'const readOnly = computed( () => isReadOnlyField( props.field ) );' )
             ->toContain( ':options="radioOptions"' )
             ->toContain( ':disabled="readOnly"' )
-            ->and( substr_count( $choice, ":aria-readonly=\"readOnly ? 'true' : undefined\"" ) )->toBe( 5 )
+            ->and( substr_count( $choice, ":aria-readonly=\"readOnly ? 'true' : undefined\"" ) )->toBe( 6 )
             ->and( $resource( 'vue/components/fields/RatingField.vue' ) )
             ->toContain( ":aria-readonly=\"readOnly ? 'true' : undefined\"" )
             ->toContain( ':disabled="readOnly"' );
@@ -192,7 +192,7 @@ describe( 'Vue read-only fields (issue #99)', function () use ( $resource, $betw
     it( 'seeds a read-only field from the value the server stores', function () use ( $resource ): void {
         expect( $resource( 'vue/composables/useForm.ts' ) )
             ->toContain( "import { getInitialFieldValue } from '../../shared/fieldSettings';" )
-            ->toContain( 'defaults[field.name] = getInitialFieldValue( field );' );
+            ->toContain( 'defaults[field.name] = getInitialFieldValue( field, { prefill } );' );
     } );
 } );
 
@@ -231,9 +231,9 @@ describe( 'Vue builder review fixes', function () use ( $resource, $between ): v
             ->and( $this->editor )->not->toContain( 'This field type has no validation settings.' );
     } );
 
-    it( 'hides the placeholder for checkbox, radio and rating fields', function (): void {
+    it( 'hides the placeholder for checkbox, toggle, radio and rating fields', function (): void {
         expect( $this->editor )
-            ->toContain( "const NO_PLACEHOLDER_TYPES = new Set<FieldType>( ['checkbox', 'radio', 'rating'] );" )
+            ->toContain( "const NO_PLACEHOLDER_TYPES = new Set<FieldType>( ['checkbox', 'toggle', 'radio', 'rating'] );" )
             ->toContain( 'v-if="!isLayoutField && !NO_PLACEHOLDER_TYPES.has( field.type )"' );
     } );
 
