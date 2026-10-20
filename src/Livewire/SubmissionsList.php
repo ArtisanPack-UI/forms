@@ -343,11 +343,11 @@ class SubmissionsList extends Component
         // Both paths apply ownership scope via getFilteredQuery or getOwnedSelectedQuery
         if ( ! empty( $this->selected ) ) {
             $submissions = $this->getOwnedSelectedQuery()
-                ->with( 'values' )
+                ->with( 'values.field' )
                 ->get();
         } else {
             $submissions = $this->getFilteredQuery()
-                ->with( 'values' )
+                ->with( 'values.field' )
                 ->get();
         }
 
@@ -367,7 +367,7 @@ class SubmissionsList extends Component
     public function submissions(): LengthAwarePaginator
     {
         return $this->getFilteredQuery()
-            ->with( ['form', 'values'] )
+            ->with( ['form', 'values.field'] )
             ->paginate( config( 'artisanpack.forms.admin.per_page', 15 ) );
     }
 

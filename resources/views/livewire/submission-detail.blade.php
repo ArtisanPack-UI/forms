@@ -97,11 +97,11 @@
                                     @elseif ($value->value_array)
                                         <!-- Array Value (checkbox groups, multi-select) -->
                                         <ul class="list-disc list-inside space-y-1">
-                                            @foreach ($value->value_array as $item)
+                                            @foreach ($value->display_values as $item)
                                                 <li>{{ $item }}</li>
                                             @endforeach
                                         </ul>
-                                    @elseif ($value->value !== null && $value->value !== '')
+                                    @elseif (in_array($value->field_type, \ArtisanPackUI\Forms\Models\FormField::ACCEPTANCE_TYPES, true) || ($value->value !== null && $value->value !== ''))
                                         <!-- Regular Value -->
                                         @if ($value->field_type === 'textarea')
                                             <div class="whitespace-pre-wrap">{{ $value->value }}</div>
@@ -112,7 +112,7 @@
                                         @elseif ($value->field_type === 'phone')
                                             <a href="tel:{{ $value->value }}" class="link link-primary">{{ $value->value }}</a>
                                         @else
-                                            {{ $value->value }}
+                                            {{ $value->display_value }}
                                         @endif
                                     @else
                                         <span class="italic opacity-40">{{ __( 'No response' ) }}</span>

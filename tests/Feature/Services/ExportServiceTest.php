@@ -112,6 +112,31 @@ describe( 'ExportService', function (): void {
             expect( $row )->not->toContain( '192.168.1.1' );
         } );
 
+        it( 'exports option labels and checkbox text instead of raw values (issue #85)', function (): void {
+            $form   = Form::factory()->create();
+            $select = FormField::factory()->for( $form )->select()->create( ['name' => 'choice', 'sort_order' => 1] );
+            $agree  = FormField::factory()->for( $form )->create( ['name' => 'agree', 'type' => 'checkbox', 'sort_order' => 2] );
+
+            $submission = FormSubmission::factory()->for( $form )->create();
+            FormSubmissionValue::factory()->for( $submission, 'submission' )->create( [
+                'field_id'   => $select->id,
+                'field_name' => 'choice',
+                'field_type' => 'select',
+                'value'      => 'option2',
+            ] );
+            FormSubmissionValue::factory()->for( $submission, 'submission' )->create( [
+                'field_id'   => $agree->id,
+                'field_name' => 'agree',
+                'field_type' => 'checkbox',
+                'value'      => '1',
+            ] );
+
+            $fields = $form->fields()->orderBy( 'sort_order' )->get();
+            $row    = $this->service->buildRow( $form, $submission->load( 'values.field' ), $fields );
+
+            expect( array_slice( $row, 3, 2 ) )->toBe( ['Option 2', 'Yes'] );
+        } );
+
         it( 'includes ip address when privacy setting is enabled', function (): void {
             config( ['artisanpack.forms.privacy.include_ip_address' => true] );
 

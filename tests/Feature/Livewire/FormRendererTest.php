@@ -738,3 +738,85 @@ describe( 'FormRenderer Layout Content (issue #82)', function (): void {
             ->assertSee( 'Legacy html' );
     } );
 } );
+
+describe( 'FormRenderer unsupported multiple flags (issue #84)', function (): void {
+    it( 'renders a single-value input even when field_config.multiple is set', function ( string $type ): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->create( [
+            'type'         => $type,
+            'name'         => 'pick',
+            'field_config' => [
+                'multiple' => true,
+                'options'  => [['value' => 'a', 'label' => 'A']],
+            ],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->assertSeeHtml( 'id="field-pick"' )
+            ->assertDontSeeHtml( 'multiple' );
+    } )->with( ['select', 'file'] );
+
+    it( 'stores one value for a select whose config still has multiple set', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->create( [
+            'type'         => 'select',
+            'name'         => 'pick',
+            'field_config' => [
+                'multiple' => true,
+                'options'  => [['value' => 'a', 'label' => 'A'], ['value' => 'b', 'label' => 'B']],
+            ],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->set( 'formData.pick', 'b' )
+            ->set( 'formLoadedAt', time() - 10 )
+            ->call( 'submit' )
+            ->assertHasNoErrors();
+
+        expect( FormSubmission::query()->firstOrFail()->values->first()->value )->toBe( 'b' );
+    } );
+} );
+
+describe( 'FormRenderer date field', function (): void {
+    it( 'renders the date input as the .input element itself so its text is centred', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->required()->create( [
+            'type'             => 'date',
+            'name'             => 'starts',
+            'label'            => 'Start Date',
+            'help_text'        => 'Pick a day',
+            'validation_rules' => ['min_date' => '2026-01-01', 'max_date' => '2026-12-31'],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->assertSeeHtml( 'type="date"' )
+            ->assertSeeHtml( 'wire:model.live="formData.starts"' )
+            ->assertSeeHtml( 'class="input input-bordered w-full' )
+            ->assertSeeHtml( 'min="2026-01-01"' )
+            ->assertSeeHtml( 'max="2026-12-31"' )
+            ->assertSeeHtml( 'aria-describedby="hint-starts"' )
+            ->assertDontSeeHtml( 'aria-invalid' )
+            ->assertDontSeeHtml( 'aria-label="Starts"' )
+            ->assertSee( 'Start Date' );
+    } );
+
+    it( 'marks the date input invalid when it has an error', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->required()->create( ['type' => 'date', 'name' => 'starts'] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->set( 'formLoadedAt', time() - 10 )
+            ->call( 'submit' )
+            ->assertHasErrors( ['formData.starts' => 'required'] )
+            ->assertSeeHtml( 'aria-invalid="true"' )
+            ->assertSeeHtml( 'aria-describedby="error-starts hint-starts"' );
+    } );
+
+    it( 'gives an unlabelled date input an accessible name', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->create( ['type' => 'date', 'name' => 'start_date', 'label' => ''] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->assertSeeHtml( 'aria-label="Start Date"' );
+    } );
+} );

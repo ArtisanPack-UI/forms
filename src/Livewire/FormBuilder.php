@@ -53,6 +53,22 @@ use Livewire\Component;
 class FormBuilder extends Component
 {
     /**
+     * The `field_config` settings updateFieldConfig() may change, by field type.
+     *
+     * @since 1.6.0
+     *
+     * @var array<string, list<string>>
+     */
+    protected const CONFIG_SETTINGS = [
+        'textarea' => ['rows'],
+        'heading'  => ['level'],
+        'divider'  => ['style', 'spacing'],
+        'time'     => ['step'],
+        'checkbox' => ['checked_label', 'unchecked_label'],
+        'toggle'   => ['checked_label', 'unchecked_label'],
+    ];
+
+    /**
      * The form being edited.
      */
     public Form $form;
@@ -411,6 +427,72 @@ class FormBuilder extends Component
     }
 
     /**
+     * Update a type-specific display setting in the selected field's `field_config`.
+     *
+     * Covers textarea `rows`, heading `level`, divider `style` / `spacing`,
+     * time `step` (seconds) and checkbox / toggle `checked_label` /
+     * `unchecked_label`. Settings that do not apply to the field's type are
+     * ignored; a blank or invalid value clears the setting so the renderer
+     * falls back to its default.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $setting  The `field_config` key.
+     * @param  int|string|null  $value  The raw input value.
+     */
+    public function updateFieldConfig( string $setting, string|int|null $value ): void
+    {
+        $field = $this->getSelectedFieldModel();
+
+        if ( null === $field || ! in_array( $setting, self::CONFIG_SETTINGS[ $field->type ] ?? [], true ) ) {
+            return;
+        }
+
+        $config = $field->field_config ?? [];
+        $parsed = $this->parseFieldConfigSetting( $setting, $value );
+
+        if ( null === $parsed ) {
+            unset( $config[ $setting ] );
+        } else {
+            $config[ $setting ] = $parsed;
+        }
+
+        $this->persistSelectedField( $field, ['field_config' => $config] );
+    }
+
+    /**
+     * Update the earliest or latest allowed time on the selected time field.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $rule  `min_time` or `max_time`.
+     * @param  string|null  $value  An `H:i` or `H:i:s` time; blank or invalid clears the rule.
+     */
+    public function updateTimeLimit( string $rule, ?string $value ): void
+    {
+        if ( ! in_array( $rule, ['min_time', 'max_time'], true ) ) {
+            return;
+        }
+
+        $field = $this->getSelectedFieldModel();
+
+        if ( null === $field || 'time' !== $field->type ) {
+            return;
+        }
+
+        $rules = $field->validation_rules ?? [];
+        $value = trim( (string) $value );
+
+        if ( 1 === preg_match( FormField::TIME_FORMAT_PATTERN, $value ) ) {
+            $rules[ $rule ] = FormField::normalizeTimeValue( $value );
+        } else {
+            unset( $rules[ $rule ] );
+        }
+
+        $this->persistSelectedField( $field, ['validation_rules' => $rules] );
+    }
+
+    /**
      * Update the content of the selected heading, paragraph or HTML field.
      *
      * Applies the layout storage contract (heading → `label`, paragraph and
@@ -753,7 +835,7 @@ class FormBuilder extends Component
         $this->isDirty = true;
 
         // Trigger auto-save after a delay
-        $this->dispatch( 'auto-save-trigger');
+        $this->dispatch( 'auto-save-trigger' );
     }
 
     /**
@@ -784,5 +866,29 @@ class FormBuilder extends Component
         $this->markDirty();
 
         unset( $this->fields, $this->selectedField );
+    }
+
+    /**
+     * Parse a raw `field_config` setting value from the field editor.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $setting  The `field_config` key.
+     * @param  int|string|null  $value  The raw input value.
+     *
+     * @return int|string|null The value to store, or null to clear the setting.
+     */
+    protected function parseFieldConfigSetting( string $setting, string|int|null $value ): int|string|null
+    {
+        $value = trim( (string) $value );
+
+        return match ( $setting ) {
+            'rows'    => ctype_digit( $value ) && (int) $value >= 1 && (int) $value <= 50 ? (int) $value : null,
+            'step'    => ctype_digit( $value ) && (int) $value >= 1 ? (int) $value : null,
+            'level'   => in_array( $value, FormField::HEADING_LEVELS, true ) ? $value : null,
+            'style'   => in_array( $value, FormField::DIVIDER_STYLES, true ) ? $value : null,
+            'spacing' => in_array( $value, FormField::DIVIDER_SPACINGS, true ) ? $value : null,
+            default   => '' === $value ? null : mb_substr( $value, 0, 255 ),
+        };
     }
 }

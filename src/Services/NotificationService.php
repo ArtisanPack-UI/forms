@@ -234,7 +234,7 @@ class NotificationService
      */
     public function sendNotifications( FormSubmission $submission ): int
     {
-        $submission->loadMissing( ['form', 'values'] );
+        $submission->loadMissing( ['form', 'values.field'] );
 
         if ( ! $this->shouldSendNotifications( $submission ) ) {
             return 0;

@@ -339,7 +339,7 @@ export function SubmissionDetail( {
 											/>
 										) : value.value_array ? (
 											<ul className="list-disc list-inside">
-												{value.value_array.map( ( v, i ) => (
+												{( value.display_values ?? value.value_array ).map( ( v, i ) => (
 													<li key={i}>{v}</li>
 												) )}
 											</ul>

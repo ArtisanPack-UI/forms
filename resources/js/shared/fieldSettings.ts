@@ -12,6 +12,9 @@
  *   `field_config.content`. The React and Vue builders wrote all three to
  *   `default_value` before 1.6.0, so a non-empty `default_value` is unmigrated
  *   content and wins until the field is next saved (the builders clear it).
+ * - Display settings — textarea `rows`, heading `level`, divider `style` /
+ *   `spacing`, time `step` and checkbox `checked_label` / `unchecked_label` —
+ *   live in `field_config`.
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -158,4 +161,100 @@ export function buildLayoutContentUpdate( field: FormField, content: string ): U
 		field_config: { ...( field.field_config ?? {} ), content } as FormField['field_config'],
 		default_value: null,
 	};
+}
+
+/** Heading levels the renderers accept, mirroring `FormField::HEADING_LEVELS`. */
+export const HEADING_LEVELS = ['h2', 'h3', 'h4', 'h5', 'h6'] as const;
+
+export type HeadingLevel = typeof HEADING_LEVELS[number];
+
+/** Divider line styles, mirroring `FormField::DIVIDER_STYLES`. */
+export const DIVIDER_STYLES = ['solid', 'dashed', 'dotted'] as const;
+
+/** Divider spacing sizes, mirroring `FormField::DIVIDER_SPACINGS`. */
+export const DIVIDER_SPACINGS = ['small', 'normal', 'large'] as const;
+
+/** Read a `field_config` entry. */
+function readConfig( field: FormField, key: string ): unknown {
+	return ( field.field_config as Record<string, unknown> | null | undefined )?.[key];
+}
+
+/**
+ * Get a heading's tag. The builders store `h2`–`h6`; a bare level number
+ * (from an API write) is accepted too. Anything else falls back to `h3`, as
+ * the Blade renderer does.
+ */
+export function getHeadingLevel( field: FormField ): HeadingLevel {
+	const raw = readConfig( field, 'level' );
+	const tag = typeof raw === 'number' || ( typeof raw === 'string' && /^\d$/.test( raw ) )
+		? `h${raw}`
+		: String( raw ?? '' ).toLowerCase();
+
+	return ( HEADING_LEVELS as readonly string[] ).includes( tag ) ? tag as HeadingLevel : 'h3';
+}
+
+/** Get a textarea's row count, defaulting to 4. */
+export function getTextareaRows( field: FormField ): number {
+	const rows = Number( readConfig( field, 'rows' ) );
+
+	return Number.isInteger( rows ) && rows >= 1 ? rows : 4;
+}
+
+/** Get a time field's step in seconds, or undefined for the browser default (60). */
+export function getTimeStep( field: FormField ): number | undefined {
+	const step = Number( readConfig( field, 'step' ) );
+
+	return Number.isFinite( step ) && step > 0 ? step : undefined;
+}
+
+/** Get the border style and spacing classes for a divider, as the Blade renderer applies them. */
+export function getDividerClasses( field: FormField ): string {
+	const style = readConfig( field, 'style' );
+	const spacing = readConfig( field, 'spacing' );
+
+	const borderClass = style === 'dashed' ? 'border-dashed' : style === 'dotted' ? 'border-dotted' : 'border-solid';
+	const spacingClass = spacing === 'small' ? 'my-2' : spacing === 'large' ? 'my-8' : 'my-4';
+
+	return `${borderClass} ${spacingClass}`;
+}
+
+/**
+ * Parse a builder input as a whole number from 1 to `max`, or undefined to
+ * clear the setting. Mirrors the Livewire builder's `rows` and `step` parsing.
+ */
+export function parsePositiveInteger( value: string, max = Number.MAX_SAFE_INTEGER ): number | undefined {
+	if ( !/^\d+$/.test( value.trim() ) ) {
+		return undefined;
+	}
+
+	const num = Number( value.trim() );
+
+	return num >= 1 && num <= max ? num : undefined;
+}
+
+/** Get a `field_config` setting as the builder's input shows it. */
+export function getFieldConfigInput( field: FormField, key: string ): string {
+	const value = readConfig( field, key );
+
+	return typeof value === 'string' || typeof value === 'number' ? String( value ) : '';
+}
+
+/**
+ * Build the update that sets one `field_config` entry, or removes it when the
+ * value is undefined so the renderer falls back to its default.
+ */
+export function buildFieldConfigUpdate(
+	field: FormField,
+	key: string,
+	value: string | number | undefined,
+): UpdateFieldRequest {
+	const fieldConfig: Record<string, unknown> = { ...( field.field_config ?? {} ) };
+
+	if ( value === undefined || value === '' ) {
+		delete fieldConfig[key];
+	} else {
+		fieldConfig[key] = value;
+	}
+
+	return { field_config: fieldConfig as FormField['field_config'] };
 }

@@ -147,3 +147,111 @@ describe( 'Client-side required acceptance (issue #81)', function () use ( $reso
             ->and( $required )->toContain( 'ACCEPTANCE_FIELD_TYPES.has( field.type )' );
     } );
 } );
+
+describe( 'React and Vue display settings (issue #83)', function () use ( $resource, $between ): void {
+    beforeEach( function () use ( $resource ): void {
+        $this->settings    = $resource( 'shared/fieldSettings.ts' );
+        $this->reactEditor = $resource( 'react/components/admin/FieldEditor.tsx' );
+        $this->vueEditor   = $resource( 'vue/components/admin/FieldEditor.vue' );
+    } );
+
+    it( 'mirrors the server-side allowed values', function (): void {
+        expect( $this->settings )
+            ->toContain( "export const HEADING_LEVELS = ['h2', 'h3', 'h4', 'h5', 'h6'] as const;" )
+            ->toContain( "export const DIVIDER_STYLES = ['solid', 'dashed', 'dotted'] as const;" )
+            ->toContain( "export const DIVIDER_SPACINGS = ['small', 'normal', 'large'] as const;" );
+    } );
+
+    it( 'reads stored h-tags and bare numbers as heading levels, defaulting to h3', function () use ( $between ): void {
+        $getter = $between( $this->settings, 'export function getHeadingLevel(', "\n}\n" );
+
+        expect( $getter )->toContain( '? `h${raw}`' )
+            ->and( $getter )->toContain( ": 'h3';" );
+    } );
+
+    it( 'accepts only whole numbers from 1 to the maximum for rows and step', function () use ( $between ): void {
+        $parser = $between( $this->settings, 'export function parsePositiveInteger(', "\n}\n" );
+
+        expect( $parser )->toContain( 'if ( !/^\\d+$/.test( value.trim() ) ) {' )
+            ->and( $parser )->toContain( 'return num >= 1 && num <= max ? num : undefined;' );
+    } );
+
+    it( 'removes a cleared field_config entry instead of storing a blank', function () use ( $between ): void {
+        $builder = $between( $this->settings, 'export function buildFieldConfigUpdate(', "\n}\n" );
+
+        expect( $builder )->toContain( "if ( value === undefined || value === '' ) {" )
+            ->and( $builder )->toContain( 'delete fieldConfig[key];' );
+    } );
+
+    it( 'adds the controls to the React editor', function () use ( $between ): void {
+        $general    = $between( $this->reactEditor, 'function GeneralTabContent(', '// ValidationTabContent' );
+        $validation = $between( $this->reactEditor, 'function ValidationTabContent(', "\n}\n" );
+
+        expect( $general )->toContain( "buildFieldConfigUpdate( field, 'rows', parsePositiveInteger( e.target.value, 50 ) )" )
+            ->and( $general )->toContain( "buildFieldConfigUpdate( field, 'level', e.target.value )" )
+            ->and( $general )->toContain( "buildFieldConfigUpdate( field, 'style', e.target.value )" )
+            ->and( $general )->toContain( "buildFieldConfigUpdate( field, 'spacing', e.target.value )" )
+            ->and( $general )->toContain( "buildFieldConfigUpdate( field, 'checked_label', e.target.value )" )
+            ->and( $general )->toContain( "buildFieldConfigUpdate( field, 'unchecked_label', e.target.value )" )
+            ->and( $validation )->toContain( "buildFieldConfigUpdate( field, 'step', parsePositiveInteger( e.target.value ) )" );
+    } );
+
+    it( 'adds the controls to the Vue editor', function (): void {
+        expect( $this->vueEditor )
+            ->toContain( "buildFieldConfigUpdate( currentField, 'rows', parsePositiveInteger( (\$event as string), 50 ) )" )
+            ->toContain( "buildFieldConfigUpdate( currentField, 'level', (\$event as string) )" )
+            ->toContain( "buildFieldConfigUpdate( currentField, 'style', (\$event as string) )" )
+            ->toContain( "buildFieldConfigUpdate( currentField, 'spacing', (\$event as string) )" )
+            ->toContain( "buildFieldConfigUpdate( currentField, 'checked_label', (\$event as string) )" )
+            ->toContain( "buildFieldConfigUpdate( currentField, 'unchecked_label', (\$event as string) )" )
+            ->toContain( "buildFieldConfigUpdate( currentField, 'step', parsePositiveInteger( (\$event as string) ) )" );
+    } );
+
+    it( 'applies the settings in the React and Vue renderers', function () use ( $resource ): void {
+        $reactText   = $resource( 'react/components/fields/TextField.tsx' );
+        $reactLayout = $resource( 'react/components/fields/LayoutField.tsx' );
+        $vueText     = $resource( 'vue/components/fields/TextField.vue' );
+        $vueLayout   = $resource( 'vue/components/fields/LayoutField.vue' );
+
+        expect( $reactText )->toContain( 'rows={getTextareaRows( field )}' )
+            ->toContain( 'step={getTimeStep( field )}' )
+            ->and( $reactLayout )->toContain( 'const Tag = getHeadingLevel( field );' )
+            ->toContain( '${getDividerClasses( field )}' )
+            ->and( $vueText )->toContain( ':rows="getTextareaRows( field )"' )
+            ->toContain( ':step="getTimeStep( field )"' )
+            ->and( $vueLayout )->toContain( 'getHeadingLevel( props.field )' )
+            ->toContain( 'getDividerClasses( field )' );
+    } );
+} );
+
+describe( 'Client validation limits of zero (issue #86)', function () use ( $resource, $between ): void {
+    beforeEach( function () use ( $resource ): void {
+        $this->validation = $resource( 'shared/validation.ts' );
+    } );
+
+    it( 'treats 0 as a set limit and null or blank as unset', function () use ( $between ): void {
+        $limit = $between( $this->validation, 'function numericLimit(', "\n}\n" );
+
+        expect( $limit )->toContain( "if ( value === null || value === undefined || value === '' ) {" )
+            ->and( $limit )->toContain( 'Number.isFinite( num ) ? num : undefined' );
+    } );
+
+    it( 'reads every limit through the helpers', function (): void {
+        expect( $this->validation )
+            ->toContain( 'const minLength = numericLimit( rules.min );' )
+            ->toContain( 'const min = numericLimit( rules.min );' )
+            ->toContain( 'const step = numericLimit( rules.step );' )
+            ->toContain( 'const minDate = stringLimit( rules.min_date );' )
+            ->toContain( 'const maxTime = stringLimit( rules.max_time );' )
+            ->not->toContain( 'rules.min !== undefined' )
+            ->not->toContain( 'if ( rules.min_date )' );
+    } );
+} );
+
+describe( 'React and Vue submission labels (issue #85)', function () use ( $resource ): void {
+    it( 'lists option labels for array values', function () use ( $resource ): void {
+        expect( $resource( 'types/artisanpack-forms.d.ts' ) )->toContain( 'display_values: string[];' )
+            ->and( $resource( 'react/components/admin/SubmissionDetail.tsx' ) )->toContain( '( value.display_values ?? value.value_array ).map(' )
+            ->and( $resource( 'vue/components/admin/SubmissionDetail.vue' ) )->toContain( 'in ( value.display_values ?? value.value_array )' );
+    } );
+} );

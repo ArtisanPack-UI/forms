@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `registerFieldSettings( type, component, { position } )` takes an optional placement for a custom settings panel in the React `FieldEditor`. `'before-basics'` renders the panel above Width and CSS Classes, under a **Field Basics** divider. `'after-basics'` (the default) keeps today's position at the end of the General tab. The `customSettings` / `fieldCustomSettings` props also accept `{ component, position }`. New exports: `resolveFieldSettings`, `getRegisteredFieldSettingsRegistration`, and the `FieldSettingsPosition`, `FieldSettingsOptions`, `FieldSettingsRegistration` and `CustomFieldSettingsEntry` types. ([#76](https://github.com/ArtisanPack-UI/forms/issues/76))
 - The Livewire builder has content editors for paragraph and HTML blocks, and edits a heading's text in a **Heading Text** field. Help Text is hidden for these three types. ([#82](https://github.com/ArtisanPack-UI/forms/issues/82))
 - `FormField::getFileMaxSize()`, `getFileAllowedTypes()`, `getLayoutContent()` and `sanitizeHtml()`, plus a shared `resources/js/shared/fieldSettings.ts` that mirrors them for the React and Vue components.
+- All three builders can set a text area's **Rows**, a heading's **Heading Level** (H2–H6), a divider's **Line Style** and **Spacing**, and a time field's **Min Time**, **Max Time** and **Step (seconds)**. The React and Vue renderers now apply rows, time step and divider style, and read the stored `h2`–`h6` heading level (they rendered every heading as an `h2` before). ([#83](https://github.com/ArtisanPack-UI/forms/issues/83))
+- Single checkboxes and toggles have **Checked Text** and **Unchecked Text** settings (default "Yes" / "No") for how the answer is shown in submissions, notifications and exports. ([#85](https://github.com/ArtisanPack-UI/forms/issues/85))
+- `FormSubmissionValue::$display_values` (also `display_values` in the API) lists the option labels for an array value, and `FormSubmissionValue::getRawValue()` returns the stored value without label mapping. ([#85](https://github.com/ArtisanPack-UI/forms/issues/85))
 
 ### Fixed
 
@@ -20,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A required single checkbox (or toggle) must now be checked. It uses the `accepted` rule, so checking and then unchecking it no longer passes. The client-side check in `validation.ts` matches. ([#81](https://github.com/ArtisanPack-UI/forms/issues/81))
 - Heading, paragraph and HTML content now renders the same in every builder and renderer. A heading's text is its `label`; paragraph and HTML content is stored in `field_config.content`. Content saved to `default_value` by the React or Vue builder before this release still renders, and moves to the new place the next time the field is edited. ([#82](https://github.com/ArtisanPack-UI/forms/issues/82))
 - The Livewire builder's min, max, step, max file size and allowed types inputs work on Livewire 4. Their `wire:change` expressions called `parseInt` and arrow functions, which Livewire 4 rewrites into server calls, so changing them caused a 500 error.
+- Submission details, `{field}` merge tags, notification emails and the CSV export show the label of the option a person picked instead of its stored value, and a single checkbox shows "Yes" / "No" instead of `1`. The stored value is shown when the field or option has since been deleted. Notification conditions, webhooks and the JSON export still receive the stored values. ([#85](https://github.com/ArtisanPack-UI/forms/issues/85))
+- A validation limit of `0` (min, max, min/max date and time) is now applied. Before, a Number field with a minimum of 0 accepted negative numbers. The client-side check in `validation.ts` matches. ([#86](https://github.com/ArtisanPack-UI/forms/issues/86))
+- Time fields accept `H:i:s` as well as `H:i`, so a time with seconds (sent by browsers when the step is under 60) no longer fails validation, and min/max time compare correctly in both formats. A zero seconds part is dropped when the value is stored. ([#87](https://github.com/ArtisanPack-UI/forms/issues/87))
+- The Livewire date field's text is vertically centred in its box.
+
+### Removed
+
+- The `field_config.multiple` flag on `select` and `file` fields no longer renders a multi-value input, since validation and storage only handle one value. Use the Multi-Select field type for several choices. ([#84](https://github.com/ArtisanPack-UI/forms/issues/84))
 
 ### Security
 

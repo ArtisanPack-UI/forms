@@ -3,7 +3,6 @@
 @php
     $maxSize = $field->getFileMaxSize();
     $allowedTypes = $field->getFileAllowedTypes();
-    $multiple = $field->getConfig('multiple', false);
     $accept = !empty($allowedTypes) ? implode(',', array_map(fn($type) => '.' . $type, $allowedTypes)) : null;
 
     // Build aria-describedby with both hint and error IDs when applicable
@@ -35,7 +34,6 @@
         id="field-{{ $field->name }}"
         class="file-input file-input-bordered w-full {{ $field->css_classes }} @error('files.' . $field->name) file-input-error @enderror"
         @if($accept) accept="{{ $accept }}" @endif
-        @if($multiple) multiple @endif
         @if($field->is_required) required aria-required="true" @endif
         @if($ariaDescribedBy) aria-describedby="{{ $ariaDescribedBy }}" @endif
     />

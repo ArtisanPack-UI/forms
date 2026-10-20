@@ -136,3 +136,107 @@ describe( 'FormSubmissionValue Model', function (): void {
         } );
     } );
 } );
+
+describe( 'FormSubmissionValue display labels (issue #85)', function (): void {
+    beforeEach( function (): void {
+        $this->submission = FormSubmission::factory()->create();
+        $this->radio      = FormField::factory()->for( $this->submission->form )->create( [
+            'type'         => 'radio',
+            'name'         => 'state',
+            'field_config' => ['options' => [
+                ['value' => 'ca', 'label' => 'California'],
+                ['value' => 'ny', 'label' => 'New York'],
+            ]],
+        ] );
+    } );
+
+    it( 'shows the chosen option label for a choice field', function (): void {
+        $value = FormSubmissionValue::factory()->for( $this->submission, 'submission' )->create( [
+            'field_id'   => $this->radio->id,
+            'field_name' => 'state',
+            'field_type' => 'radio',
+            'value'      => 'ca',
+        ] );
+
+        expect( $value->display_value )->toBe( 'California' )
+            ->and( $value->getRawValue() )->toBe( 'ca' );
+    } );
+
+    it( 'shows one label per item for an array value', function (): void {
+        $field = FormField::factory()->for( $this->submission->form )->selectMultiple()->create();
+        $value = FormSubmissionValue::factory()->for( $this->submission, 'submission' )->create( [
+            'field_id'    => $field->id,
+            'field_type'  => 'select_multiple',
+            'value'       => null,
+            'value_array' => ['option1', 'option3', 'removed'],
+        ] );
+
+        expect( $value->display_values )->toBe( ['Option 1', 'Option 3', 'removed'] )
+            ->and( $value->display_value )->toBe( 'Option 1, Option 3, removed' )
+            ->and( $value->getRawValue() )->toBe( 'option1, option3, removed' );
+    } );
+
+    it( 'falls back to the raw value when the field was deleted', function (): void {
+        $value = FormSubmissionValue::factory()->for( $this->submission, 'submission' )->create( [
+            'field_id'   => null,
+            'field_type' => 'radio',
+            'value'      => 'ca',
+        ] );
+
+        expect( $value->display_value )->toBe( 'ca' );
+    } );
+
+    it( 'does not map values of non-choice fields', function (): void {
+        $value = FormSubmissionValue::factory()->for( $this->submission, 'submission' )->create( [
+            'field_id'   => $this->radio->id,
+            'field_type' => 'text',
+            'value'      => 'ca',
+        ] );
+
+        expect( $value->display_value )->toBe( 'ca' );
+    } );
+
+    it( 'shows checked / unchecked text for a checkbox', function ( ?string $stored, array $config, string $expected ): void {
+        $field = FormField::factory()->for( $this->submission->form )->create( [
+            'type'         => 'checkbox',
+            'field_config' => $config,
+        ] );
+        $value = FormSubmissionValue::factory()->for( $this->submission, 'submission' )->create( [
+            'field_id'   => $field->id,
+            'field_type' => 'checkbox',
+            'value'      => $stored,
+        ] );
+
+        expect( $value->display_value )->toBe( $expected );
+    } )->with( [
+        'checked, default'    => ['1', [], 'Yes'],
+        'unchecked, default'  => ['', [], 'No'],
+        'null, default'       => [null, [], 'No'],
+        'checked, custom'     => ['1', ['checked_label' => 'Subscribed'], 'Subscribed'],
+        'unchecked, custom'   => ['0', ['unchecked_label' => 'Not subscribed'], 'Not subscribed'],
+    ] );
+
+    it( 'shows Yes / No for a checkbox whose field was deleted', function (): void {
+        $value = FormSubmissionValue::factory()->for( $this->submission, 'submission' )->create( [
+            'field_id'   => null,
+            'field_type' => 'checkbox',
+            'value'      => '1',
+        ] );
+
+        expect( $value->display_value )->toBe( 'Yes' );
+    } );
+
+    it( 'keeps raw values in submission data for conditions and webhooks', function (): void {
+        FormSubmissionValue::factory()->for( $this->submission, 'submission' )->create( [
+            'field_id'   => $this->radio->id,
+            'field_name' => 'state',
+            'field_type' => 'radio',
+            'value'      => 'ny',
+        ] );
+
+        $submission = $this->submission->fresh( ['values.field'] );
+
+        expect( $submission->data_array )->toBe( ['state' => 'ny'] )
+            ->and( $submission->getValue( 'state' ) )->toBe( 'New York' );
+    } );
+} );

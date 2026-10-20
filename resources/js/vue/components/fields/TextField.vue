@@ -12,6 +12,7 @@
 import { computed } from 'vue';
 import { Input, Textarea } from '@artisanpack-ui/vue/form';
 import type { FormField, DisplayConfig } from '../../../types/artisanpack-forms';
+import { getTextareaRows, getTimeStep } from '../../../shared/fieldSettings';
 
 const props = defineProps<{
 	field: FormField;
@@ -143,6 +144,7 @@ const ariaLabel = computed( () =>
 		:class="field.css_classes ?? undefined"
 		:minlength="field.validation_rules?.min"
 		:maxlength="field.validation_rules?.max"
+		:rows="getTextareaRows( field )"
 		:inline="isInline"
 		@update:model-value="emit( 'update:modelValue', $event )"
 	/>
@@ -170,6 +172,7 @@ const ariaLabel = computed( () =>
 		:class="field.css_classes ?? undefined"
 		:min="field.validation_rules?.min_time ?? undefined"
 		:max="field.validation_rules?.max_time ?? undefined"
+		:step="getTimeStep( field )"
 		:inline="isInline"
 		@update:model-value="emit( 'update:modelValue', $event )"
 	/>

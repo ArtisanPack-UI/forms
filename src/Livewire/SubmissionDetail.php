@@ -67,7 +67,7 @@ class SubmissionDetail extends Component
     #[Computed]
     public function submission(): ?FormSubmission
     {
-        return FormSubmission::with( ['form', 'values', 'uploads'] )
+        return FormSubmission::with( ['form', 'values.field', 'uploads'] )
             ->find( $this->submissionId );
     }
 
