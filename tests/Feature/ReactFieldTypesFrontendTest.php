@@ -55,6 +55,20 @@ describe( 'React schema-driven field settings (issue #91)', function () use ( $r
             ->toContain( "label: t( 'Advanced' )," );
     } );
 
+    it( 'resyncs a setting draft when the stored value moves away from it', function () use ( $between ): void {
+        $control = $between( $this->editor, 'function SettingControl(', "\n}\n" );
+
+        expect( $control )->toContain( 'setDraft( ( current ) => ( isDraftStored( field, setting, current ) ? current : storedText ) );' )
+            ->and( $control )->toContain( '}, [storedText] );' );
+    } );
+
+    it( 'compares a draft with the stored value after parsing it', function () use ( $resource ): void {
+        $settings = $resource( 'shared/fieldSettings.ts' );
+
+        expect( $settings )->toContain( 'export function isDraftStored( field: FormField, setting: FieldSettingDefinition, draft: string ): boolean {' )
+            ->and( $settings )->toContain( 'const drafted = { ...field, ...buildSettingUpdate( field, setting, draft ) } as FormField;' );
+    } );
+
     it( 'maps each schema input to a control in one SettingControl component', function () use ( $between ): void {
         $control = $between( $this->editor, 'function SettingControl(', "\n}\n" );
 

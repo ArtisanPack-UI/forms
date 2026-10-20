@@ -244,6 +244,17 @@ describe( 'field type registry', function (): void {
         expect( $field->fieldType()->key() )->toBe( 'url' );
     } );
 
+    it( 'leaves the cached handler out when the field is serialized', function (): void {
+        $field = FormField::factory()->make( ['type' => 'email'] );
+        $field->fieldType();
+
+        $restored = unserialize( serialize( $field ) );
+
+        expect( ( fn (): mixed => $this->resolvedFieldType )->call( $restored ) )->toBeNull()
+            ->and( $restored->fieldType() )->toBeInstanceOf( FieldType::class )
+            ->and( $restored->type )->toBe( 'email' );
+    } );
+
     it( 'builds definitions in the translator locale', function (): void {
         app( 'translator' )->addLines( ['*.Email' => 'Courriel'], 'fr' );
 

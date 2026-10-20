@@ -450,6 +450,21 @@ export function buildSettingUpdate(
 	return update as UpdateFieldRequest;
 }
 
+/**
+ * Whether a setting's typed draft is what the field holds.
+ *
+ * Compares the draft as it would be stored with the stored value, so a draft
+ * that only differs in formatting (`pdf,` for `pdf`) counts as stored, while
+ * one the builder reverted or the server changed does not.
+ *
+ * @since 1.6.0
+ */
+export function isDraftStored( field: FormField, setting: FieldSettingDefinition, draft: string ): boolean {
+	const drafted = { ...field, ...buildSettingUpdate( field, setting, draft ) } as FormField;
+
+	return String( getSettingInput( drafted, setting ) ) === String( getSettingInput( field, setting ) );
+}
+
 // ---------------------------------------------------------------------------
 // Read-only and rating fields
 // ---------------------------------------------------------------------------

@@ -33,6 +33,7 @@ import {
 	getLayoutContent,
 	getSettingInput,
 	getSettingsForTab,
+	isDraftStored,
 } from '../../../shared/fieldSettings';
 import { getFieldTypeLabel } from '../../../shared/fieldTypeLabels';
 import { t } from '../../../shared/i18n';
@@ -620,6 +621,15 @@ function SettingControl( { field, setting, updateField }: SettingControlProps ):
 		setDraft( typeof current === 'string' ? current : '' );
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [field.id, setting.key] );
+
+	// Follow the stored value when it moves away from the draft (a rejected
+	// update was reverted, or the server stored something else).
+	const storedText = typeof stored === 'string' ? stored : '';
+
+	useEffect( () => {
+		setDraft( ( current ) => ( isDraftStored( field, setting, current ) ? current : storedText ) );
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [storedText] );
 
 	if ( setting.input === 'toggle' ) {
 		return (

@@ -175,6 +175,23 @@ class FormField extends Model
      */
     protected ?FieldType $resolvedFieldType = null;
 
+    /**
+     * Leaves the cached field type handler out when the model is serialized.
+     *
+     * The handler holds locale-specific labels and may come from a filter, so
+     * it is resolved again after unserializing rather than restored.
+     *
+     * @since 1.6.0
+     *
+     * @return array<int, string> The property names to serialize.
+     */
+    public function __sleep(): array
+    {
+        $this->resolvedFieldType = null;
+
+        return parent::__sleep();
+    }
+
     // =========================================
     // Relationships
     // =========================================

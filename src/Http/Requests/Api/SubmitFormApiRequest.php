@@ -192,7 +192,7 @@ class SubmitFormApiRequest extends FormRequest
     }
 
     /**
-     * Replaces submitted read-only field values before validation.
+     * Fires the before-validate hook and replaces submitted read-only field values.
      *
      * A read-only field keeps its own value whatever the client sent, so that
      * value is what gets validated and stored.
@@ -201,6 +201,8 @@ class SubmitFormApiRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        $this->fireBeforeValidate();
+
         $form = $this->route( 'form' );
         $data = $this->input( 'data' );
 

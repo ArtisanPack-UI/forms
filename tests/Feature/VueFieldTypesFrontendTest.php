@@ -76,7 +76,7 @@ describe( 'Vue schema-driven field settings (issue #91)', function () use ( $res
 
     it( 'stores every setting through buildSettingUpdate', function (): void {
         expect( $this->control )
-            ->toContain( "import { buildSettingUpdate, getSettingInput } from '../../../shared/fieldSettings';" )
+            ->toContain( "import { buildSettingUpdate, getSettingInput, isDraftStored } from '../../../shared/fieldSettings';" )
             ->toContain( "emit( 'update', buildSettingUpdate( props.field, props.setting, draft.value ) );" )
             ->toContain( "emit( 'update', buildSettingUpdate( props.field, props.setting, value ) );" );
     } );
@@ -200,6 +200,13 @@ describe( 'Vue builder review fixes', function () use ( $resource, $between ): v
     beforeEach( function () use ( $resource ): void {
         $this->editor  = $resource( 'vue/components/admin/FieldEditor.vue' );
         $this->builder = $resource( 'vue/components/admin/FormBuilder.vue' );
+    } );
+
+    it( 'resyncs a setting draft when the stored value moves away from it', function () use ( $resource ): void {
+        $control = $resource( 'vue/components/admin/FieldSettingControl.vue' );
+
+        expect( $control )->toContain( 'watch( () => String( getSettingInput( props.field, props.setting ) ), ( stored ) => {' )
+            ->and( $control )->toContain( 'if ( ! isDraftStored( props.field, props.setting, draft.value ) ) {' );
     } );
 
     it( 'keeps pending settings when options are edited', function (): void {

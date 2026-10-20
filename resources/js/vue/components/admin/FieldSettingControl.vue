@@ -22,7 +22,7 @@ import type {
 	UpdateFieldRequest,
 } from '../../../types/artisanpack-forms';
 
-import { buildSettingUpdate, getSettingInput } from '../../../shared/fieldSettings';
+import { buildSettingUpdate, getSettingInput, isDraftStored } from '../../../shared/fieldSettings';
 
 const props = defineProps<{
 	/** The field being edited, with buffered edits applied. */
@@ -64,6 +64,14 @@ const draft = ref<string>( String( getSettingInput( props.field, props.setting )
 // Reset the draft when a different field or setting is shown.
 watch( [() => props.field.id, () => props.setting.key], () => {
 	draft.value = String( getSettingInput( props.field, props.setting ) );
+} );
+
+// Follow the stored value when it moves away from the draft (a rejected
+// update was reverted, or the server stored something else).
+watch( () => String( getSettingInput( props.field, props.setting ) ), ( stored ) => {
+	if ( ! isDraftStored( props.field, props.setting, draft.value ) ) {
+		draft.value = stored;
+	}
 } );
 
 const checked = computed( (): boolean => getSettingInput( props.field, props.setting ) === true );
