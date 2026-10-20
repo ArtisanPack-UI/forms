@@ -20,6 +20,7 @@ export { default as TextField } from './components/fields/TextField.vue';
 export { default as ChoiceField } from './components/fields/ChoiceField.vue';
 export { default as AdvancedField } from './components/fields/AdvancedField.vue';
 export { default as LayoutField } from './components/fields/LayoutField.vue';
+export { default as RatingField } from './components/fields/RatingField.vue';
 
 // Composables
 export { useForm } from './composables/useForm';
@@ -37,6 +38,7 @@ export {
 	FormBuilder,
 	FieldEditor,
 	FieldPalette,
+	FieldSettingControl,
 	ConditionalLogicEditor,
 	NotificationEditor,
 	SubmissionsList,
@@ -55,3 +57,12 @@ export {
 	validateField,
 	validateFields,
 } from '../shared/validation';
+
+// Translations for the admin components (since 1.6.0)
+export {
+	t,
+	setTranslations,
+	getTranslations,
+	clearTranslations,
+} from '../shared/i18n';
+export type { TranslationReplacements } from '../shared/i18n';

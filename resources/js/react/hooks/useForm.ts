@@ -20,6 +20,7 @@ import type {
 	SubmitFormResponse,
 } from '../../types/artisanpack-forms';
 import { getHiddenFields } from '../../shared/conditionalLogic';
+import { getInitialFieldValue } from '../../shared/fieldSettings';
 import { validateFields } from '../../shared/validation';
 
 /** Configuration options for the useForm hook. */
@@ -156,15 +157,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 						continue;
 					}
 
-					if ( field.type === 'checkbox_group' || field.type === 'select_multiple' ) {
-						defaults[field.name] = typeof field.default_value === 'string' && field.default_value
-							? field.default_value.split( ',' ).map( ( v ) => v.trim() )
-							: [];
-					} else if ( field.type === 'checkbox' ) {
-						defaults[field.name] = field.default_value === '1' || field.default_value === 'true';
-					} else {
-						defaults[field.name] = field.default_value ?? '';
-					}
+					defaults[field.name] = getInitialFieldValue( field );
 				}
 
 				setValues( defaults );
@@ -525,15 +518,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				continue;
 			}
 
-			if ( field.type === 'checkbox_group' || field.type === 'select_multiple' ) {
-				defaults[field.name] = field.default_value
-					? field.default_value.split( ',' ).map( ( v ) => v.trim() )
-					: [];
-			} else if ( field.type === 'checkbox' ) {
-				defaults[field.name] = field.default_value === '1' || field.default_value === 'true';
-			} else {
-				defaults[field.name] = field.default_value ?? '';
-			}
+			defaults[field.name] = getInitialFieldValue( field );
 		}
 
 		setValues( defaults );

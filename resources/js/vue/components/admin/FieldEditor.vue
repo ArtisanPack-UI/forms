@@ -17,40 +17,23 @@ import { Button, Checkbox, Input, Select, Tabs, Textarea } from '@artisanpack-ui
 
 import type {
 	FieldOption,
+	FieldSettingDefinition,
 	FieldType,
 	FieldWidth,
 	FormField,
 	UpdateFieldRequest,
-	ValidationRules,
 } from '../../../types/artisanpack-forms';
 
 import {
-	ACCEPTANCE_FIELD_TYPES,
-	buildFieldConfigUpdate,
-	buildFileSettingUpdate,
 	buildLayoutContentUpdate,
-	DIVIDER_SPACINGS,
-	DIVIDER_STYLES,
-	getFieldConfigInput,
-	getFileSettingInput,
-	getHeadingLevel,
 	getLayoutContent,
-	HEADING_LEVELS,
-	parsePositiveInteger,
+	getSettingsForTab,
 } from '../../../shared/fieldSettings';
+import { getFieldTypeLabel } from '../../../shared/fieldTypeLabels';
+import { t } from '../../../shared/i18n';
 
 import ConditionalLogicEditor from './ConditionalLogicEditor.vue';
-
-/** Safely parse a numeric input value, returning undefined for empty or NaN. */
-function parseNumericInput( value: string ): number | undefined {
-	if ( !value ) {
-		return undefined;
-	}
-
-	const num = Number( value );
-
-	return Number.isNaN( num ) ? undefined : num;
-}
+import FieldSettingControl from './FieldSettingControl.vue';
 
 /** Field types that support an options list. */
 const OPTION_FIELD_TYPES = new Set<FieldType>( [
@@ -60,6 +43,9 @@ const OPTION_FIELD_TYPES = new Set<FieldType>( [
 	'select_multiple',
 ] );
 
+/** Field types without a placeholder. */
+const NO_PLACEHOLDER_TYPES = new Set<FieldType>( ['checkbox', 'radio', 'rating'] );
+
 /** Field types that don't collect user data. */
 const LAYOUT_FIELD_TYPES = new Set<FieldType>( [
 	'heading',
@@ -68,28 +54,13 @@ const LAYOUT_FIELD_TYPES = new Set<FieldType>( [
 	'html',
 ] );
 
-/** Heading level options. */
-const HEADING_LEVEL_OPTIONS = HEADING_LEVELS.map( ( level ) => ( { value: level, label: level.toUpperCase() } ) );
-
-/** Divider line style options. */
-const DIVIDER_STYLE_OPTIONS = DIVIDER_STYLES.map( ( style ) => ( {
-	value: style,
-	label: style.charAt( 0 ).toUpperCase() + style.slice( 1 ),
-} ) );
-
-/** Divider spacing options. */
-const DIVIDER_SPACING_OPTIONS = DIVIDER_SPACINGS.map( ( spacing ) => ( {
-	value: spacing,
-	label: spacing.charAt( 0 ).toUpperCase() + spacing.slice( 1 ),
-} ) );
-
-/** Available width options. */
-const WIDTH_OPTIONS: Array<{ value: FieldWidth; label: string }> = [
-	{ value: 'full', label: 'Full Width' },
-	{ value: 'half', label: 'Half (1/2)' },
-	{ value: 'third', label: 'Third (1/3)' },
-	{ value: 'two-thirds', label: 'Two-Thirds (2/3)' },
-];
+/** Available width options, translated at render. */
+const widthOptions = computed( (): Array<{ value: FieldWidth; label: string }> => [
+	{ value: 'full', label: t( 'Full Width' ) },
+	{ value: 'half', label: t( 'Half (1/2)' ) },
+	{ value: 'third', label: t( 'Third (1/3)' ) },
+	{ value: 'two-thirds', label: t( 'Two-Thirds (2/3)' ) },
+] );
 
 const props = defineProps<{
 	/** The field being edited. */
@@ -203,36 +174,30 @@ function handleAddOption(): void {
 	const nextSuffix = maxSuffix + 1;
 	const newOptions = [
 		...options.value,
-		{ label: `Option ${nextSuffix}`, value: `option_${nextSuffix}` },
+		{ label: t( 'Option :number', { number: nextSuffix } ), value: `option_${nextSuffix}` },
 	];
-	updateField( { field_config: { ...( props.field.field_config ?? {} ), options: newOptions } } );
+	updateField( { field_config: { ...( currentField.value.field_config ?? {} ), options: newOptions } } );
 }
 
 function handleUpdateOption( index: number, key: 'label' | 'value', value: string ): void {
 	const newOptions = options.value.map( ( opt, i ) =>
 		i === index ? { ...opt, [key]: value } : opt,
 	);
-	updateField( { field_config: { ...( props.field.field_config ?? {} ), options: newOptions } } );
+	updateField( { field_config: { ...( currentField.value.field_config ?? {} ), options: newOptions } } );
 }
 
 function handleRemoveOption( index: number ): void {
 	const newOptions = options.value.filter( ( _, i ) => i !== index );
-	updateField( { field_config: { ...( props.field.field_config ?? {} ), options: newOptions } } );
+	updateField( { field_config: { ...( currentField.value.field_config ?? {} ), options: newOptions } } );
 }
 
 // ---------------------------------------------------------------------------
-// Validation rules
+// Type-specific settings, rendered from the field's settings schema
 // ---------------------------------------------------------------------------
 
-const validationRules = computed(
-	(): ValidationRules => props.field.validation_rules ?? {},
-);
-
-function updateValidation( rules: Partial<ValidationRules> ): void {
-	const buffered = pendingUpdates.value.validation_rules as ValidationRules | undefined;
-	const base = buffered ?? validationRules.value;
-	updateField( { validation_rules: { ...base, ...rules } } );
-}
+const generalSettings = computed( (): FieldSettingDefinition[] => getSettingsForTab( currentField.value, 'general' ) );
+const validationSettings = computed( (): FieldSettingDefinition[] => getSettingsForTab( currentField.value, 'validation' ) );
+const advancedSettings = computed( (): FieldSettingDefinition[] => getSettingsForTab( currentField.value, 'advanced' ) );
 
 // ---------------------------------------------------------------------------
 // Tabs
@@ -240,32 +205,44 @@ function updateValidation( rules: Partial<ValidationRules> ): void {
 
 const tabs = computed( () => {
 	const items = [
-		{ name: 'general', label: 'General' },
+		{ name: 'general', label: t( 'General' ) },
 	];
 
+	if ( validationSettings.value.length > 0 ) {
+		items.push( { name: 'validation', label: t( 'Validation' ) } );
+	}
+
 	if ( !isLayoutField.value ) {
-		items.push( { name: 'validation', label: 'Validation' } );
-		items.push( { name: 'conditional', label: 'Conditional' } );
+		items.push( { name: 'conditional', label: t( 'Conditional' ) } );
+	}
+
+	if ( advancedSettings.value.length > 0 ) {
+		items.push( { name: 'advanced', label: t( 'Advanced' ) } );
 	}
 
 	return items;
 } );
 
-// ---------------------------------------------------------------------------
-// Helpers for text field type checks used in validation tab
-// ---------------------------------------------------------------------------
-
-const isTextField = computed( () => {
-	const textTypes: FieldType[] = ['text', 'email', 'url', 'textarea', 'phone'];
-
-	return textTypes.includes( props.field.type );
+// Fall back to the General tab when the selected field has no such tab.
+watch( tabs, ( items ) => {
+	if ( !items.some( ( item ) => item.name === activeTab.value ) ) {
+		activeTab.value = 'general';
+	}
 } );
 
-const isPatternField = computed( () => {
-	const patternTypes: FieldType[] = ['text', 'phone'];
+function confirmDelete(): void {
+	if ( window.confirm( t( 'Are you sure you want to delete this field?' ) ) ) {
+		deleteInProgress = true;
+		pendingUpdates.value = {};
 
-	return patternTypes.includes( props.field.type );
-} );
+		if ( updateTimer.value ) {
+			clearTimeout( updateTimer.value );
+			updateTimer.value = null;
+		}
+
+		emit( 'delete', props.field.id );
+	}
+}
 </script>
 
 <template>
@@ -273,13 +250,13 @@ const isPatternField = computed( () => {
 		<!-- Header -->
 		<div class="flex items-center justify-between p-3 border-b border-base-300">
 			<h3 class="text-sm font-semibold">
-				Edit {{ field.type.replace( '_', ' ' ) }} Field
+				{{ t( 'Edit :type Field', { type: getFieldTypeLabel( field.type ) } ) }}
 			</h3>
 			<Button
 				color="ghost"
 				size="sm"
 				class="btn-circle"
-				aria-label="Close field editor"
+				:aria-label="t( 'Close field editor' )"
 				@click="emit( 'close' )"
 			>
 				&times;
@@ -299,29 +276,29 @@ const isPatternField = computed( () => {
 					<!-- Label (a heading's label is its text) -->
 					<Input
 						v-if="field.type === 'heading'"
-						label="Heading Text"
+						:label="t( 'Heading Text' )"
 						:model-value="getLayoutContent( field )"
 						@update:model-value="updateField( buildLayoutContentUpdate( currentField, ($event as string) ) )"
 					/>
 					<Input
 						v-else
-						label="Label"
+						:label="t( 'Label' )"
 						:model-value="field.label ?? ''"
 						@update:model-value="updateField( { label: ($event as string) } )"
 					/>
 
 					<!-- Name (machine name) -->
 					<Input
-						label="Name"
+						:label="t( 'Name' )"
 						:model-value="field.name"
-						hint="Machine-readable name. Used as the form data key."
+						:hint="t( 'Machine-readable name. Used as the form data key.' )"
 						@update:model-value="updateField( { name: ($event as string) } )"
 					/>
 
 					<!-- Placeholder (non-layout only) -->
 					<Input
-						v-if="!isLayoutField && field.type !== 'checkbox' && field.type !== 'radio'"
-						label="Placeholder"
+						v-if="!isLayoutField && !NO_PLACEHOLDER_TYPES.has( field.type )"
+						:label="t( 'Placeholder' )"
 						:model-value="field.placeholder ?? ''"
 						@update:model-value="updateField( { placeholder: ($event as string) || null } )"
 					/>
@@ -329,7 +306,7 @@ const isPatternField = computed( () => {
 					<!-- Help text -->
 					<Input
 						v-if="!isLayoutField"
-						label="Help Text"
+						:label="t( 'Help Text' )"
 						:model-value="field.help_text ?? ''"
 						@update:model-value="updateField( { help_text: ($event as string) || null } )"
 					/>
@@ -337,7 +314,7 @@ const isPatternField = computed( () => {
 					<!-- Default value -->
 					<Input
 						v-if="!isLayoutField && field.type !== 'file'"
-						label="Default Value"
+						:label="t( 'Default Value' )"
 						:model-value="field.default_value ?? ''"
 						@update:model-value="updateField( { default_value: ($event as string) || null } )"
 					/>
@@ -345,16 +322,16 @@ const isPatternField = computed( () => {
 					<!-- Required toggle -->
 					<Checkbox
 						v-if="!isLayoutField"
-						label="Required"
+						:label="t( 'Required' )"
 						:model-value="field.is_required"
 						@update:model-value="updateField( { is_required: ($event as boolean) } )"
 					/>
 
 					<!-- Width -->
 					<Select
-						label="Width"
+						:label="t( 'Width' )"
 						:model-value="field.width"
-						:options="WIDTH_OPTIONS"
+						:options="widthOptions"
 						option-value="value"
 						option-label="label"
 						@update:model-value="updateField( { width: ($event as FieldWidth) } )"
@@ -362,75 +339,24 @@ const isPatternField = computed( () => {
 
 					<!-- CSS Classes -->
 					<Input
-						label="CSS Classes"
+						:label="t( 'CSS Classes' )"
 						:model-value="field.css_classes ?? ''"
 						@update:model-value="updateField( { css_classes: ($event as string) || null } )"
 					/>
 
-					<!-- Text area rows -->
-					<Input
-						v-if="field.type === 'textarea'"
-						label="Rows"
-						type="number"
-						:min="1"
-						:max="50"
-						placeholder="4"
-						:model-value="getFieldConfigInput( currentField, 'rows' )"
-						@update:model-value="updateField( buildFieldConfigUpdate( currentField, 'rows', parsePositiveInteger( ($event as string), 50 ) ) )"
+					<!-- Type-specific settings from the field's settings schema -->
+					<FieldSettingControl
+						v-for="setting in generalSettings"
+						:key="`${field.id}-${setting.key}`"
+						:field="currentField"
+						:setting="setting"
+						@update="updateField( $event )"
 					/>
-
-					<!-- Heading level -->
-					<Select
-						v-if="field.type === 'heading'"
-						label="Heading Level"
-						:model-value="getHeadingLevel( currentField )"
-						:options="HEADING_LEVEL_OPTIONS"
-						option-value="value"
-						option-label="label"
-						@update:model-value="updateField( buildFieldConfigUpdate( currentField, 'level', ($event as string) ) )"
-					/>
-
-					<!-- Divider style and spacing -->
-					<template v-if="field.type === 'divider'">
-						<Select
-							label="Line Style"
-							:model-value="getFieldConfigInput( currentField, 'style' ) || 'solid'"
-							:options="DIVIDER_STYLE_OPTIONS"
-							option-value="value"
-							option-label="label"
-							@update:model-value="updateField( buildFieldConfigUpdate( currentField, 'style', ($event as string) ) )"
-						/>
-						<Select
-							label="Spacing"
-							:model-value="getFieldConfigInput( currentField, 'spacing' ) || 'normal'"
-							:options="DIVIDER_SPACING_OPTIONS"
-							option-value="value"
-							option-label="label"
-							@update:model-value="updateField( buildFieldConfigUpdate( currentField, 'spacing', ($event as string) ) )"
-						/>
-					</template>
-
-					<!-- Checked / unchecked display text -->
-					<template v-if="ACCEPTANCE_FIELD_TYPES.has( field.type )">
-						<Input
-							label="Checked Text"
-							placeholder="Yes"
-							hint="Shown in submissions, notifications and exports."
-							:model-value="getFieldConfigInput( currentField, 'checked_label' )"
-							@update:model-value="updateField( buildFieldConfigUpdate( currentField, 'checked_label', ($event as string) ) )"
-						/>
-						<Input
-							label="Unchecked Text"
-							placeholder="No"
-							:model-value="getFieldConfigInput( currentField, 'unchecked_label' )"
-							@update:model-value="updateField( buildFieldConfigUpdate( currentField, 'unchecked_label', ($event as string) ) )"
-						/>
-					</template>
 
 					<!-- HTML Content (for html field type) -->
 					<Textarea
 						v-if="field.type === 'html'"
-						label="HTML Content"
+						:label="t( 'HTML Content' )"
 						:rows="6"
 						:model-value="getLayoutContent( field )"
 						@update:model-value="updateField( buildLayoutContentUpdate( currentField, ($event as string) ) )"
@@ -439,7 +365,7 @@ const isPatternField = computed( () => {
 					<!-- Paragraph content -->
 					<Textarea
 						v-if="field.type === 'paragraph'"
-						label="Content"
+						:label="t( 'Content' )"
 						:rows="4"
 						:model-value="getLayoutContent( field )"
 						@update:model-value="updateField( buildLayoutContentUpdate( currentField, ($event as string) ) )"
@@ -448,7 +374,7 @@ const isPatternField = computed( () => {
 					<!-- Options editor for choice fields -->
 					<div v-if="hasOptions" class="space-y-2">
 						<label class="label">
-							<span class="label-text font-medium">Options</span>
+							<span class="label-text font-medium">{{ t( 'Options' ) }}</span>
 						</label>
 						<div
 							v-for="( option, index ) in options"
@@ -456,13 +382,15 @@ const isPatternField = computed( () => {
 							class="flex items-center gap-2"
 						>
 							<Input
-								placeholder="Label"
+								:placeholder="t( 'Label' )"
+								:aria-label="t( 'Option :number label', { number: index + 1 } )"
 								:model-value="option.label"
 								class="flex-1"
 								@update:model-value="handleUpdateOption( index, 'label', ($event as string) )"
 							/>
 							<Input
-								placeholder="Value"
+								:placeholder="t( 'Value' )"
+								:aria-label="t( 'Option :number value', { number: index + 1 } )"
 								:model-value="option.value"
 								class="flex-1"
 								@update:model-value="handleUpdateOption( index, 'value', ($event as string) )"
@@ -471,8 +399,8 @@ const isPatternField = computed( () => {
 								color="ghost"
 								size="sm"
 								class="btn-circle"
-								title="Remove option"
-								aria-label="Remove option"
+								:title="t( 'Remove option' )"
+								:aria-label="t( 'Remove option' )"
 								@click="handleRemoveOption( index )"
 							>
 								&times;
@@ -483,26 +411,8 @@ const isPatternField = computed( () => {
 							size="sm"
 							@click="handleAddOption"
 						>
-							Add Option
+							{{ t( 'Add Option' ) }}
 						</Button>
-					</div>
-
-					<!-- File field config -->
-					<div v-if="field.type === 'file'" class="space-y-4">
-						<Input
-							label="Max File Size (KB)"
-							type="number"
-							:min="0"
-							:model-value="getFileSettingInput( field, 'max_size' )"
-							@update:model-value="updateField( buildFileSettingUpdate( currentField, 'max_size', parseNumericInput( ($event as string) ) ) )"
-						/>
-						<Input
-							label="Allowed File Types (comma-separated extensions, e.g. pdf, jpg)"
-							:model-value="getFileSettingInput( field, 'allowed_types' )"
-							@update:model-value="updateField( buildFileSettingUpdate( currentField, 'allowed_types', ($event as string)
-								? ($event as string).split( ',' ).map( ( s: string ) => s.trim() ).filter( Boolean )
-								: undefined ) )"
-						/>
 					</div>
 				</div>
 			</template>
@@ -510,96 +420,25 @@ const isPatternField = computed( () => {
 			<!-- Validation Tab -->
 			<template #validation>
 				<div class="space-y-4 p-4">
-					<!-- Min/Max for text fields -->
-					<template v-if="isTextField">
-						<Input
-							label="Min Length"
-							type="number"
-							:min="0"
-							:model-value="String( validationRules.min ?? '' )"
-							@update:model-value="updateValidation( { min: parseNumericInput( ($event as string) ) } )"
-						/>
-						<Input
-							label="Max Length"
-							type="number"
-							:min="0"
-							:model-value="String( validationRules.max ?? '' )"
-							@update:model-value="updateValidation( { max: parseNumericInput( ($event as string) ) } )"
-						/>
-					</template>
+					<FieldSettingControl
+						v-for="setting in validationSettings"
+						:key="`${field.id}-${setting.key}`"
+						:field="currentField"
+						:setting="setting"
+						@update="updateField( $event )"
+					/>
+				</div>
+			</template>
 
-					<!-- Min/Max/Step for number -->
-					<template v-if="field.type === 'number'">
-						<Input
-							label="Minimum"
-							type="number"
-							:model-value="String( validationRules.min ?? '' )"
-							@update:model-value="updateValidation( { min: parseNumericInput( ($event as string) ) } )"
-						/>
-						<Input
-							label="Maximum"
-							type="number"
-							:model-value="String( validationRules.max ?? '' )"
-							@update:model-value="updateValidation( { max: parseNumericInput( ($event as string) ) } )"
-						/>
-						<Input
-							label="Step"
-							type="number"
-							:min="0"
-							:model-value="String( validationRules.step ?? '' )"
-							@update:model-value="updateValidation( { step: parseNumericInput( ($event as string) ) } )"
-						/>
-					</template>
-
-					<!-- Date range -->
-					<template v-if="field.type === 'date'">
-						<Input
-							label="Min Date"
-							type="date"
-							:model-value="validationRules.min_date ?? ''"
-							@update:model-value="updateValidation( { min_date: ($event as string) || undefined } )"
-						/>
-						<Input
-							label="Max Date"
-							type="date"
-							:model-value="validationRules.max_date ?? ''"
-							@update:model-value="updateValidation( { max_date: ($event as string) || undefined } )"
-						/>
-					</template>
-
-					<!-- Time range -->
-					<template v-if="field.type === 'time'">
-						<Input
-							label="Min Time"
-							type="time"
-							:model-value="validationRules.min_time ?? ''"
-							@update:model-value="updateValidation( { min_time: ($event as string) || undefined } )"
-						/>
-						<Input
-							label="Max Time"
-							type="time"
-							:model-value="validationRules.max_time ?? ''"
-							@update:model-value="updateValidation( { max_time: ($event as string) || undefined } )"
-						/>
-						<Input
-							label="Step (seconds)"
-							type="number"
-							:min="1"
-							placeholder="60"
-							hint="e.g. 900 for 15-minute intervals; under 60 lets users pick seconds."
-							:model-value="getFieldConfigInput( currentField, 'step' )"
-							@update:model-value="updateField( buildFieldConfigUpdate( currentField, 'step', parsePositiveInteger( ($event as string) ) ) )"
-						/>
-					</template>
-
-					<!-- Pattern -->
-					<Input
-						v-if="isPatternField"
-						label="Pattern (RegExp)"
-						:model-value="validationRules.pattern ?? ''"
-						placeholder="e.g. ^[A-Z]{2}[0-9]{4}$"
-						hint="Regular expression pattern for input validation."
-						@update:model-value="updateValidation( { pattern: ($event as string) || undefined } )"
+			<!-- Advanced Tab (e.g. read-only) -->
+			<template #advanced>
+				<div class="space-y-4 p-4">
+					<FieldSettingControl
+						v-for="setting in advancedSettings"
+						:key="`${field.id}-${setting.key}`"
+						:field="currentField"
+						:setting="setting"
+						@update="updateField( $event )"
 					/>
 				</div>
 			</template>
@@ -622,21 +461,14 @@ const isPatternField = computed( () => {
 				size="sm"
 				@click="() => { flushPendingUpdates(); emit( 'duplicate', field.id ); }"
 			>
-				Duplicate
+				{{ t( 'Duplicate' ) }}
 			</Button>
 			<Button
 				color="error"
 				size="sm"
-				@click="() => {
-					if ( window.confirm( 'Are you sure you want to delete this field?' ) ) {
-						deleteInProgress = true;
-						pendingUpdates.value = {};
-						if ( updateTimer.value ) { clearTimeout( updateTimer.value ); updateTimer.value = null; }
-						emit( 'delete', field.id );
-					}
-				}"
+				@click="confirmDelete"
 			>
-				Delete
+				{{ t( 'Delete' ) }}
 			</Button>
 		</div>
 	</div>

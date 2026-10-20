@@ -19,6 +19,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Http\Resources;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
@@ -53,8 +54,8 @@ class FormRenderResource extends JsonResource
             'is_multi_step'         => $this->is_multi_step,
             'show_progress_bar'     => $this->show_progress_bar,
             'allow_step_navigation' => $this->allow_step_navigation,
-            'fields'                => FormFieldResource::collection( $this->resource->fields ),
-            'steps'                 => FormStepResource::collection( $this->resource->steps ),
+            'fields'                => $this->renderFields(),
+            'steps'                 => $this->renderSteps(),
             'config'                => [
                 'honeypot' => [
                     'enabled'    => config( 'artisanpack.forms.spam_protection.honeypot.enabled', true ),
@@ -63,5 +64,37 @@ class FormRenderResource extends JsonResource
                 'display' => config( 'artisanpack.forms.display', [] ),
             ],
         ];
+    }
+
+    /**
+     * Gets the field resources without the builder-only settings schema.
+     *
+     * @since 1.6.0
+     *
+     * @return AnonymousResourceCollection The field resources.
+     */
+    protected function renderFields(): AnonymousResourceCollection
+    {
+        $fields = FormFieldResource::collection( $this->resource->fields );
+
+        $fields->collection->each( fn ( FormFieldResource $field ): FormFieldResource => $field->withoutSettingsSchema() );
+
+        return $fields;
+    }
+
+    /**
+     * Gets the step resources without the builder-only settings schema.
+     *
+     * @since 1.6.0
+     *
+     * @return AnonymousResourceCollection The step resources.
+     */
+    protected function renderSteps(): AnonymousResourceCollection
+    {
+        $steps = FormStepResource::collection( $this->resource->steps );
+
+        $steps->collection->each( fn ( FormStepResource $step ): FormStepResource => $step->withoutSettingsSchema() );
+
+        return $steps;
     }
 }

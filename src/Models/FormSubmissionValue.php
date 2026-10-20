@@ -18,6 +18,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Models;
 
+use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Database\Factories\FormSubmissionValueFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -131,10 +132,12 @@ class FormSubmissionValue extends Model
     /**
      * Gets the human-readable display value.
      *
-     * Choice fields show the chosen option labels (falling back to the raw
-     * value when the field or option no longer exists), checkboxes and
-     * toggles show their checked / unchecked text, and file fields show the
-     * uploaded file name. Use getRawValue() where the stored value matters.
+     * Asks the field type's handler, which by default shows array values as
+     * their option labels and file values as the uploaded file name. Choice
+     * fields show the chosen option label (falling back to the raw value when
+     * the field or option no longer exists) and checkboxes and toggles show
+     * their checked / unchecked text. Use getRawValue() where the stored value
+     * matters.
      *
      * @since 1.0.0
      *
@@ -142,28 +145,7 @@ class FormSubmissionValue extends Model
      */
     public function getDisplayValueAttribute(): string
     {
-        // Handle array values (checkbox groups, multi-select)
-        if ( ! empty( $this->value_array ) ) {
-            return implode( ', ', $this->display_values );
-        }
-
-        // Handle file uploads
-        if ( $this->upload_id && $this->upload ) {
-            return $this->upload->original_name;
-        }
-
-        if ( in_array( $this->field_type, FormField::ACCEPTANCE_TYPES, true ) ) {
-            $checked = filter_var( $this->value, FILTER_VALIDATE_BOOLEAN );
-            $field   = $this->getSourceField();
-
-            if ( null !== $field ) {
-                return $field->getCheckedDisplayText( $checked );
-            }
-
-            return $checked ? __( 'Yes' ) : __( 'No' );
-        }
-
-        return $this->getChoiceLabel( $this->value ?? '' );
+        return FieldTypes::handler( (string) $this->field_type )->display( $this );
     }
 
     /**

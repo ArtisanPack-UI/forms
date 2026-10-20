@@ -20,6 +20,7 @@ import type {
 	FormUpload,
 	UpdateSubmissionRequest,
 } from '../../../types/artisanpack-forms';
+import { t } from '../../../shared/i18n';
 import { useApi } from '../../hooks/useApi';
 import type { UseApiOptions } from '../../hooks/useApi';
 
@@ -107,7 +108,7 @@ export function SubmissionDetail( {
 				}
 			}
 		} catch ( err ) {
-			setError( err instanceof Error ? err.message : 'Failed to load submission.' );
+			setError( err instanceof Error ? err.message : t( 'Failed to load submission.' ) );
 			setSubmission( null );
 			setAdminNotes( '' );
 		} finally {
@@ -131,7 +132,7 @@ export function SubmissionDetail( {
 			);
 			setSubmission( response.data );
 		} catch ( err ) {
-			setError( err instanceof Error ? err.message : 'Failed to update submission.' );
+			setError( err instanceof Error ? err.message : t( 'Failed to update submission.' ) );
 		}
 	}, [put, form.id, submissionId] );
 
@@ -182,7 +183,7 @@ export function SubmissionDetail( {
 	}, [adminNotes, updateSubmission] );
 
 	const deleteSubmission = useCallback( async () => {
-		if ( !window.confirm( 'Are you sure you want to delete this submission?' ) ) {
+		if ( !window.confirm( t( 'Are you sure you want to delete this submission?' ) ) ) {
 			return;
 		}
 
@@ -190,7 +191,7 @@ export function SubmissionDetail( {
 			await del( `/${form.id}/submissions/${submissionId}` );
 			onBack?.();
 		} catch ( err ) {
-			setError( err instanceof Error ? err.message : 'Failed to delete submission.' );
+			setError( err instanceof Error ? err.message : t( 'Failed to delete submission.' ) );
 		}
 	}, [del, form.id, submissionId, onBack] );
 
@@ -201,7 +202,7 @@ export function SubmissionDetail( {
 				upload.original_name,
 			);
 		} catch ( err ) {
-			setError( err instanceof Error ? err.message : 'Failed to download file.' );
+			setError( err instanceof Error ? err.message : t( 'Failed to download file.' ) );
 		}
 	}, [download, submissionId] );
 
@@ -233,7 +234,7 @@ export function SubmissionDetail( {
 		return (
 			<div className={`flex items-center justify-center p-8 ${className ?? ''}`} role="status">
 				<Loading size="md" />
-				<span className="ml-2">Loading submission...</span>
+				<span className="ml-2">{t( 'Loading submission...' )}</span>
 			</div>
 		);
 	}
@@ -243,8 +244,8 @@ export function SubmissionDetail( {
 			<div className={`space-y-4 ${className ?? ''}`} role="alert">
 				<Alert color="error">{error}</Alert>
 				<div className="flex gap-2">
-					<Button color="outline" size="sm" onClick={loadSubmission}>Retry</Button>
-					{onBack && <Button color="ghost" size="sm" onClick={onBack}>Back</Button>}
+					<Button color="outline" size="sm" onClick={loadSubmission}>{t( 'Retry' )}</Button>
+					{onBack && <Button color="ghost" size="sm" onClick={onBack}>{t( 'Back' )}</Button>}
 				</div>
 			</div>
 		);
@@ -253,7 +254,7 @@ export function SubmissionDetail( {
 	if ( !submission ) {
 		return (
 			<div className={`text-center py-12 text-base-content/50 ${className ?? ''}`}>
-				Submission not found.
+				{t( 'Submission not found.' )}
 			</div>
 		);
 	}
@@ -264,24 +265,27 @@ export function SubmissionDetail( {
 			<div className="flex flex-wrap items-center justify-between gap-4">
 				<div className="flex items-center gap-3">
 					{onBack && (
-						<Button color="ghost" size="sm" onClick={onBack}>&larr; Back</Button>
+						<Button color="ghost" size="sm" onClick={onBack}>&larr; {t( 'Back' )}</Button>
 					)}
-					<h1 className="text-xl font-bold">Submission {submission.submission_number}</h1>
+					<h1 className="text-xl font-bold">{t( 'Submission :number', { number: submission.submission_number } )}</h1>
 					{submission.is_spam && (
-						<Badge color="error" value="Spam" />
+						<Badge color="error" value={t( 'Spam' )} />
 					)}
 				</div>
 				<div>
 					{onNavigate && submissionIds && submissionIds.length > 1 && (
 						<div className="join">
 							<Button size="sm" className="join-item" disabled={!hasPrev} onClick={goToPrev}>
-								&larr; Prev
+								&larr; {t( 'Prev' )}
 							</Button>
 							<Button size="sm" className="join-item" disabled>
-								{currentIndex === -1 ? '\u2014' : String( currentIndex + 1 )} of {submissionIds.length}
+								{t( ':current of :total', {
+									current: currentIndex === -1 ? '\u2014' : String( currentIndex + 1 ),
+									total: submissionIds.length,
+								} )}
 							</Button>
 							<Button size="sm" className="join-item" disabled={!hasNext} onClick={goToNext}>
-								Next &rarr;
+								{t( 'Next' )} &rarr;
 							</Button>
 						</div>
 					)}
@@ -304,13 +308,13 @@ export function SubmissionDetail( {
 					onClick={toggleStar}
 					disabled={isUpdating}
 				>
-					{submission.is_starred ? '\u2605 Starred' : '\u2606 Star'}
+					{submission.is_starred ? `\u2605 ${t( 'Starred' )}` : `\u2606 ${t( 'Star' )}`}
 				</Button>
 				<Button color="ghost" size="sm" onClick={toggleRead} disabled={isUpdating}>
-					{submission.is_read ? 'Mark Unread' : 'Mark Read'}
+					{submission.is_read ? t( 'Mark Unread' ) : t( 'Mark Read' )}
 				</Button>
 				<Button color="ghost" size="sm" onClick={toggleSpam} disabled={isUpdating}>
-					{submission.is_spam ? 'Not Spam' : 'Mark Spam'}
+					{submission.is_spam ? t( 'Not Spam' ) : t( 'Mark Spam' )}
 				</Button>
 				<Button
 					color="error"
@@ -318,13 +322,13 @@ export function SubmissionDetail( {
 					onClick={deleteSubmission}
 					disabled={isUpdating}
 				>
-					Delete
+					{t( 'Delete' )}
 				</Button>
 			</div>
 
 			<div className="space-y-6">
 				{/* Field values */}
-				<Card title="Submitted Data" bordered>
+				<Card title={t( 'Submitted Data' )} bordered>
 					{submission.values && submission.values.length > 0 ? (
 						<dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3">
 							{submission.values.map( ( value: FormSubmissionValue ) => (
@@ -351,13 +355,13 @@ export function SubmissionDetail( {
 							) )}
 						</dl>
 					) : (
-						<p className="text-base-content/50">No submission data available.</p>
+						<p className="text-base-content/50">{t( 'No submission data available.' )}</p>
 					)}
 				</Card>
 
 				{/* File uploads */}
 				{submission.uploads && submission.uploads.length > 0 && (
-					<Card title="File Uploads" bordered>
+					<Card title={t( 'File Uploads' )} bordered>
 						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 							{submission.uploads.map( ( upload: FormUpload ) => (
 								<div key={upload.id} className="card card-bordered bg-base-200">
@@ -379,7 +383,7 @@ export function SubmissionDetail( {
 												size="sm"
 												onClick={() => downloadFile( upload )}
 											>
-												Download
+												{t( 'Download' )}
 											</Button>
 										</div>
 									</div>
@@ -390,13 +394,13 @@ export function SubmissionDetail( {
 				)}
 
 				{/* Admin notes */}
-				<Card title="Admin Notes" bordered>
+				<Card title={t( 'Admin Notes' )} bordered>
 					<Textarea
 						className="w-full"
 						rows={4}
 						value={adminNotes}
 						onChange={( e ) => setAdminNotes( e.target.value )}
-						placeholder="Add notes about this submission..."
+						placeholder={t( 'Add notes about this submission...' )}
 					/>
 					<div className="card-actions justify-end mt-2">
 						<Button
@@ -405,20 +409,20 @@ export function SubmissionDetail( {
 							onClick={saveNotes}
 							disabled={isSavingNotes || adminNotes === ( submission.admin_notes ?? '' )}
 						>
-							{isSavingNotes ? 'Saving...' : 'Save Notes'}
+							{isSavingNotes ? t( 'Saving...' ) : t( 'Save Notes' )}
 						</Button>
 					</div>
 				</Card>
 
 				{/* Metadata */}
-				<Card title="Submission Details" bordered>
+				<Card title={t( 'Submission Details' )} bordered>
 					<dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3">
-						<dt className="font-medium text-base-content/70">Submitted</dt>
+						<dt className="font-medium text-base-content/70">{t( 'Submitted' )}</dt>
 						<dd>{new Date( submission.created_at ).toLocaleString()}</dd>
 
 						{submission.page_url && (
 							<>
-								<dt className="font-medium text-base-content/70">Page URL</dt>
+								<dt className="font-medium text-base-content/70">{t( 'Page URL' )}</dt>
 								<dd>
 									{isSafeUrl( submission.page_url ) ? (
 										<a href={submission.page_url} target="_blank" rel="noopener noreferrer" className="link link-primary">
@@ -432,19 +436,19 @@ export function SubmissionDetail( {
 						)}
 						{submission.referrer_url && (
 							<>
-								<dt className="font-medium text-base-content/70">Referrer</dt>
+								<dt className="font-medium text-base-content/70">{t( 'Referrer' )}</dt>
 								<dd>{submission.referrer_url}</dd>
 							</>
 						)}
 						{submission.ip_address && (
 							<>
-								<dt className="font-medium text-base-content/70">IP Address</dt>
+								<dt className="font-medium text-base-content/70">{t( 'IP Address' )}</dt>
 								<dd>{submission.ip_address}</dd>
 							</>
 						)}
 						{submission.user_agent && (
 							<>
-								<dt className="font-medium text-base-content/70">User Agent</dt>
+								<dt className="font-medium text-base-content/70">{t( 'User Agent' )}</dt>
 								<dd className="text-sm break-all">{submission.user_agent}</dd>
 							</>
 						)}
@@ -469,7 +473,7 @@ function FileValue( { value, uploads, onDownload }: FileValueProps ): React.Reac
 	const upload = uploads.find( ( u ) => u.id === value.upload_id );
 
 	if ( !upload ) {
-		return <span>{value.display_value || 'File not found'}</span>;
+		return <span>{value.display_value || t( 'File not found' )}</span>;
 	}
 
 	return (
@@ -483,7 +487,7 @@ function FileValue( { value, uploads, onDownload }: FileValueProps ): React.Reac
 			)}
 			<span className="text-sm">{upload.original_name} ({upload.human_size})</span>
 			<Button color="ghost" size="xs" onClick={() => onDownload( upload )}>
-				Download
+				{t( 'Download' )}
 			</Button>
 		</div>
 	);

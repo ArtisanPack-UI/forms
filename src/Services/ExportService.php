@@ -100,14 +100,9 @@ class ExportService
             $localizeHeaders ? __( 'Submitted At' ) : 'Submitted At',
         ];
 
-        // Add field headers
+        // Add field headers; each field type decides its own columns
         foreach ( $form->fields()->orderBy( 'sort_order' )->get() as $field ) {
-            // Skip layout fields
-            if ( $field->isLayoutField() ) {
-                continue;
-            }
-
-            $headers[] = $field->label;
+            array_push( $headers, ...$field->fieldType()->exportColumns( $field ) );
         }
 
         // Add metadata headers
@@ -173,15 +168,11 @@ class ExportService
             $submission->created_at->format( 'Y-m-d H:i:s' ),
         ];
 
-        // Add field values
+        // Add field values, one cell per column the field type exports
         foreach ( $fields as $field ) {
-            // Skip layout fields
-            if ( $field->isLayoutField() ) {
-                continue;
-            }
+            $value = $submission->values->firstWhere( 'field_name', $field->name );
 
-            $value = $submission->getValue( $field->name );
-            $row[] = $value ?? '';
+            array_push( $row, ...$field->fieldType()->exportValues( $field, $value ) );
         }
 
         // Add metadata

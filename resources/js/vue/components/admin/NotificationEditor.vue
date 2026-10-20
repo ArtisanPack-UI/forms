@@ -24,26 +24,33 @@ import type {
 } from '../../../types/artisanpack-forms';
 import { useApi, ApiValidationError } from '../../composables/useApi';
 import type { UseApiOptions } from '../../composables/useApi';
+import { t } from '../../../shared/i18n';
 import ConditionalLogicEditor from './ConditionalLogicEditor.vue';
 
-/** Notification type metadata. */
-const NOTIFICATION_TYPES: NotificationTypeInfo[] = [
+/** Notification type metadata, translated at render. */
+const NOTIFICATION_TYPES = computed( (): NotificationTypeInfo[] => [
 	{
 		type: 'admin',
-		label: 'Admin Notification',
-		description: 'Send a notification to site administrators when a form is submitted.',
+		label: t( 'Admin Notification' ),
+		description: t( 'Send a notification to site administrators when a form is submitted.' ),
 	},
 	{
 		type: 'autoresponder',
-		label: 'Auto-Responder',
-		description: 'Send an automatic reply to the person who submitted the form.',
+		label: t( 'Auto-Responder' ),
+		description: t( 'Send an automatic reply to the person who submitted the form.' ),
 	},
 	{
 		type: 'custom',
-		label: 'Custom Notification',
-		description: 'Send a notification to custom recipients with custom logic.',
+		label: t( 'Custom Notification' ),
+		description: t( 'Send a notification to custom recipients with custom logic.' ),
 	},
-];
+] );
+
+/** Actions offered by the conditional sending editor. */
+const SEND_ACTIONS = computed( () => [
+	{ value: 'send', label: t( 'Send' ) },
+	{ value: 'skip', label: t( 'Skip' ) },
+] );
 
 const props = defineProps<{
 	/** Base URL for the forms API (e.g. "/api/v1/forms"). */
@@ -112,7 +119,7 @@ async function loadNotifications(): Promise<void> {
 		notifications.value = response.data;
 	} catch ( err ) {
 		notifications.value = [];
-		error.value = err instanceof Error ? err.message : 'Failed to load notifications.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to load notifications.' );
 	} finally {
 		isLoading.value = false;
 	}
@@ -135,12 +142,12 @@ watch( () => props.form.slug, () => {
 
 async function addNotification( type: NotificationType ): Promise<void> {
 	try {
-		const typeInfo = NOTIFICATION_TYPES.find( ( t ) => t.type === type );
+		const typeInfo = NOTIFICATION_TYPES.value.find( ( info ) => info.type === type );
 		const request: StoreNotificationRequest = {
 			type,
-			name: typeInfo?.label ?? 'New Notification',
-			subject: `New submission: ${props.form.name}`,
-			message: 'A new form submission has been received.',
+			name: typeInfo?.label ?? t( 'New Notification' ),
+			subject: t( 'New submission: :form', { form: props.form.name } ),
+			message: t( 'A new form submission has been received.' ),
 			is_active: true,
 		};
 
@@ -156,7 +163,7 @@ async function addNotification( type: NotificationType ): Promise<void> {
 			const messages = Object.values( err.errors ).flat();
 			error.value = messages.join( ' ' );
 		} else {
-			error.value = err instanceof Error ? err.message : 'Failed to add notification.';
+			error.value = err instanceof Error ? err.message : t( 'Failed to add notification.' );
 		}
 	}
 }
@@ -193,14 +200,14 @@ async function updateNotification( id: number, data: UpdateNotificationRequest )
 			} else {
 				// Revert to server state on non-validation errors
 				await loadNotifications();
-				error.value = err instanceof Error ? err.message : 'Failed to update notification.';
+				error.value = err instanceof Error ? err.message : t( 'Failed to update notification.' );
 			}
 		}
 	}
 }
 
 async function deleteNotification( id: number ): Promise<void> {
-	if ( !window.confirm( 'Are you sure you want to delete this notification?' ) ) {
+	if ( !window.confirm( t( 'Are you sure you want to delete this notification?' ) ) ) {
 		return;
 	}
 
@@ -212,7 +219,7 @@ async function deleteNotification( id: number ): Promise<void> {
 			selectedId.value = null;
 		}
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to delete notification.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to delete notification.' );
 	}
 }
 
@@ -275,7 +282,7 @@ function isNestedButton( event: Event ): boolean {
 		role="status"
 	>
 		<Loading size="md" />
-		<span class="ml-2">Loading notifications...</span>
+		<span class="ml-2">{{ t( 'Loading notifications...' ) }}</span>
 	</div>
 
 	<!-- Main content -->
@@ -285,7 +292,7 @@ function isNestedButton( event: Event ): boolean {
 	>
 		<!-- Header -->
 		<div class="flex flex-wrap items-center justify-between gap-4">
-			<h2 class="text-xl font-bold">Email Notifications</h2>
+			<h2 class="text-xl font-bold">{{ t( 'Email Notifications' ) }}</h2>
 			<div class="flex flex-wrap gap-2">
 				<Button
 					v-for="typeInfo in NOTIFICATION_TYPES"
@@ -318,7 +325,7 @@ function isNestedButton( event: Event ): boolean {
 					v-if="notifications.length === 0"
 					class="text-sm text-base-content/50 p-4"
 				>
-					No notifications configured. Add one to get started.
+					{{ t( 'No notifications configured. Add one to get started.' ) }}
 				</p>
 
 				<div
@@ -358,18 +365,18 @@ function isNestedButton( event: Event ): boolean {
 								color="ghost"
 								size="xs"
 								:class="notification.is_active ? 'text-success' : 'text-base-content/40'"
-								:title="notification.is_active ? 'Disable' : 'Enable'"
-								:aria-label="`${ notification.is_active ? 'Disable' : 'Enable' } notification ${ notification.name }`"
+								:title="notification.is_active ? t( 'Disable' ) : t( 'Enable' )"
+								:aria-label="notification.is_active ? t( 'Disable notification :name', { name: notification.name } ) : t( 'Enable notification :name', { name: notification.name } )"
 								@click.stop="toggleActive( notification.id )"
 							>
-								{{ notification.is_active ? 'On' : 'Off' }}
+								{{ notification.is_active ? t( 'On' ) : t( 'Off' ) }}
 							</Button>
 							<Button
 								color="ghost"
 								size="xs"
 								class="text-error"
-								title="Delete"
-								:aria-label="`Delete notification ${ notification.name }`"
+								:title="t( 'Delete' )"
+								:aria-label="t( 'Delete notification :name', { name: notification.name } )"
 								@click.stop="deleteNotification( notification.id )"
 							>
 								&times;
@@ -406,18 +413,18 @@ function isNestedButton( event: Event ): boolean {
 
 				<!-- Basic settings -->
 				<div class="space-y-4">
-					<h3 class="text-lg font-semibold">Basic Settings</h3>
+					<h3 class="text-lg font-semibold">{{ t( 'Basic Settings' ) }}</h3>
 
 					<Input
 						id="notif-name"
-						label="Name"
+						:label="t( 'Name' )"
 						size="sm"
 						:model-value="selectedNotification.name"
 						@update:model-value="updateNotification( selectedNotification!.id, { name: $event } )"
 					/>
 
 					<Checkbox
-						label="Active"
+						:label="t( 'Active' )"
 						size="sm"
 						:model-value="selectedNotification.is_active"
 						@update:model-value="updateNotification( selectedNotification!.id, { is_active: $event } )"
@@ -426,16 +433,16 @@ function isNestedButton( event: Event ): boolean {
 
 				<!-- Recipients -->
 				<div class="space-y-4">
-					<h3 class="text-lg font-semibold">Recipients</h3>
+					<h3 class="text-lg font-semibold">{{ t( 'Recipients' ) }}</h3>
 
 					<Select
 						v-if="selectedNotification.type === 'autoresponder'"
 						id="notif-to-field"
-						label="Send To (Email Field)"
+						:label="t( 'Send To (Email Field)' )"
 						size="sm"
 						:model-value="selectedNotification.to_field ?? ''"
 						:options="[
-							{ value: '', label: 'Select an email field...' },
+							{ value: '', label: t( 'Select an email field...' ) },
 							...emailFields.map( ( f ) => ( {
 								value: f.name,
 								label: f.label || f.name,
@@ -450,11 +457,11 @@ function isNestedButton( event: Event ): boolean {
 					<Input
 						v-else
 						id="notif-to-email"
-						label="To Email(s)"
+						:label="t( 'To Email(s)' )"
 						size="sm"
 						:model-value="selectedNotification.to_email ?? ''"
 						placeholder="email@example.com, admin@example.com"
-						hint="Comma-separated email addresses"
+						:hint="t( 'Comma-separated email addresses' )"
 						@update:model-value="updateNotification( selectedNotification!.id, {
 							to_email: $event || null,
 						} )"
@@ -462,7 +469,7 @@ function isNestedButton( event: Event ): boolean {
 
 					<Input
 						id="notif-cc"
-						label="CC Emails"
+						:label="t( 'CC Emails' )"
 						size="sm"
 						:model-value="selectedNotification.cc_emails ?? ''"
 						placeholder="cc@example.com"
@@ -473,7 +480,7 @@ function isNestedButton( event: Event ): boolean {
 
 					<Input
 						id="notif-bcc"
-						label="BCC Emails"
+						:label="t( 'BCC Emails' )"
 						size="sm"
 						:model-value="selectedNotification.bcc_emails ?? ''"
 						placeholder="bcc@example.com"
@@ -485,11 +492,11 @@ function isNestedButton( event: Event ): boolean {
 
 				<!-- Sender -->
 				<div class="space-y-4">
-					<h3 class="text-lg font-semibold">Sender</h3>
+					<h3 class="text-lg font-semibold">{{ t( 'Sender' ) }}</h3>
 
 					<Input
 						id="notif-from-name"
-						label="From Name"
+						:label="t( 'From Name' )"
 						size="sm"
 						:model-value="selectedNotification.from_name ?? ''"
 						@update:model-value="updateNotification( selectedNotification!.id, {
@@ -499,7 +506,7 @@ function isNestedButton( event: Event ): boolean {
 
 					<Input
 						id="notif-from-email"
-						label="From Email"
+						:label="t( 'From Email' )"
 						type="email"
 						size="sm"
 						:model-value="selectedNotification.from_email ?? ''"
@@ -510,7 +517,7 @@ function isNestedButton( event: Event ): boolean {
 
 					<Input
 						id="notif-reply-to"
-						label="Reply-To Email"
+						:label="t( 'Reply-To Email' )"
 						size="sm"
 						:model-value="selectedNotification.reply_to_email ?? ''"
 						@update:model-value="updateNotification( selectedNotification!.id, {
@@ -521,11 +528,11 @@ function isNestedButton( event: Event ): boolean {
 					<Select
 						v-if="emailFields.length > 0"
 						id="notif-reply-to-field"
-						label="Reply-To Field"
+						:label="t( 'Reply-To Field' )"
 						size="sm"
 						:model-value="selectedNotification.reply_to_field ?? ''"
 						:options="[
-							{ value: '', label: 'None' },
+							{ value: '', label: t( 'None' ) },
 							...emailFields.map( ( f ) => ( {
 								value: f.name,
 								label: f.label || f.name,
@@ -541,11 +548,11 @@ function isNestedButton( event: Event ): boolean {
 
 				<!-- Message -->
 				<div class="space-y-4">
-					<h3 class="text-lg font-semibold">Message</h3>
+					<h3 class="text-lg font-semibold">{{ t( 'Message' ) }}</h3>
 
 					<Input
 						id="notif-subject"
-						label="Subject"
+						:label="t( 'Subject' )"
 						size="sm"
 						:model-value="selectedNotification.subject"
 						@update:model-value="updateNotification( selectedNotification!.id, {
@@ -556,7 +563,7 @@ function isNestedButton( event: Event ): boolean {
 					<Textarea
 						id="notif-message"
 						ref="messageRef"
-						label="Message Body"
+						:label="t( 'Message Body' )"
 						:rows="8"
 						:model-value="selectedNotification.message"
 						@update:model-value="updateNotification( selectedNotification!.id, {
@@ -570,7 +577,7 @@ function isNestedButton( event: Event ): boolean {
 						class="space-y-2"
 					>
 						<label class="label">
-							<span class="label-text font-medium">Available Placeholders:</span>
+							<span class="label-text font-medium">{{ t( 'Available Placeholders:' ) }}</span>
 						</label>
 						<div class="flex flex-wrap gap-1">
 							<Button
@@ -578,7 +585,7 @@ function isNestedButton( event: Event ): boolean {
 								:key="p.name"
 								color="ghost"
 								size="xs"
-								:title="'Insert {' + p.name + '}'"
+								:title="t( 'Insert :placeholder', { placeholder: '{' + p.name + '}' } )"
 								@click="insertPlaceholder( p.name )"
 							>
 								{{ '{' + p.name + '}' }} - {{ p.label }}
@@ -587,7 +594,7 @@ function isNestedButton( event: Event ): boolean {
 					</div>
 
 					<Checkbox
-						label="Include all submission data in email"
+						:label="t( 'Include all submission data in email' )"
 						size="sm"
 						:model-value="selectedNotification.include_submission_data"
 						@update:model-value="updateNotification( selectedNotification!.id, {
@@ -598,18 +605,15 @@ function isNestedButton( event: Event ): boolean {
 
 				<!-- Conditional sending -->
 				<div class="space-y-4">
-					<h3 class="text-lg font-semibold">Conditional Sending</h3>
+					<h3 class="text-lg font-semibold">{{ t( 'Conditional Sending' ) }}</h3>
 					<p class="text-sm text-base-content/60">
-						Only send this notification when certain conditions are met.
+						{{ t( 'Only send this notification when certain conditions are met.' ) }}
 					</p>
 					<ConditionalLogicEditor
 						:value="selectedNotification.conditional_logic"
 						:fields="fields"
-						:actions="[
-							{ value: 'send', label: 'Send' },
-							{ value: 'skip', label: 'Skip' },
-						]"
-						action-label="this notification"
+						:actions="SEND_ACTIONS"
+						:action-label="t( 'this notification' )"
 						@update:value="updateNotification( selectedNotification!.id, {
 							conditional_logic: $event,
 						} )"
@@ -623,7 +627,7 @@ function isNestedButton( event: Event ): boolean {
 						size="sm"
 						@click="deleteNotification( selectedNotification!.id )"
 					>
-						Delete Notification
+						{{ t( 'Delete Notification' ) }}
 					</Button>
 				</div>
 			</div>

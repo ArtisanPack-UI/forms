@@ -4,7 +4,6 @@
             $field = $this->selectedField;
             $fieldConfig = \ArtisanPackUI\Forms\Config\FieldTypes::getTypeConfig($field->type);
             $hasOptions = \ArtisanPackUI\Forms\Config\FieldTypes::hasOptions($field->type);
-            $validationOptions = \ArtisanPackUI\Forms\Config\FieldTypes::getValidationOptions($field->type);
             $isContentLayoutField = in_array($field->type, ['heading', 'paragraph', 'html'], true);
         @endphp
 
@@ -173,114 +172,10 @@
                     </div>
                 @endif
 
-                {{-- Text area rows --}}
-                @if ('textarea' === $field->type)
-                    <div class="form-control">
-                        <label class="label" for="field-rows">
-                            <span class="label-text text-xs">{{ __( 'Rows' ) }}</span>
-                        </label>
-                        <input
-                            type="number"
-                            id="field-rows"
-                            class="input input-sm input-bordered w-full"
-                            value="{{ $field->getConfig('rows', 4) }}"
-                            min="1"
-                            max="50"
-                            wire:change="updateFieldConfig('rows', $event.target.value)"
-                        />
-                    </div>
-                @endif
-
-                {{-- Heading level --}}
-                @if ('heading' === $field->type)
-                    <div class="form-control">
-                        <label class="label" for="field-level">
-                            <span class="label-text text-xs">{{ __( 'Heading Level' ) }}</span>
-                        </label>
-                        <select
-                            id="field-level"
-                            class="select select-sm select-bordered w-full"
-                            wire:change="updateFieldConfig('level', $event.target.value)"
-                        >
-                            @foreach (\ArtisanPackUI\Forms\Models\FormField::HEADING_LEVELS as $level)
-                                <option value="{{ $level }}" {{ $field->getConfig('level', 'h3') === $level ? 'selected' : '' }}>
-                                    {{ strtoupper($level) }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                @endif
-
-                {{-- Divider style and spacing --}}
-                @if ('divider' === $field->type)
-                    <div class="grid grid-cols-2 gap-2">
-                        <div class="form-control">
-                            <label class="label" for="field-divider-style">
-                                <span class="label-text text-xs">{{ __( 'Line Style' ) }}</span>
-                            </label>
-                            <select
-                                id="field-divider-style"
-                                class="select select-sm select-bordered w-full"
-                                wire:change="updateFieldConfig('style', $event.target.value)"
-                            >
-                                @foreach (['solid' => __( 'Solid' ), 'dashed' => __( 'Dashed' ), 'dotted' => __( 'Dotted' )] as $style => $styleLabel)
-                                    <option value="{{ $style }}" {{ $field->getConfig('style', 'solid') === $style ? 'selected' : '' }}>
-                                        {{ $styleLabel }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="form-control">
-                            <label class="label" for="field-divider-spacing">
-                                <span class="label-text text-xs">{{ __( 'Spacing' ) }}</span>
-                            </label>
-                            <select
-                                id="field-divider-spacing"
-                                class="select select-sm select-bordered w-full"
-                                wire:change="updateFieldConfig('spacing', $event.target.value)"
-                            >
-                                @foreach (['small' => __( 'Small' ), 'normal' => __( 'Normal' ), 'large' => __( 'Large' )] as $spacing => $spacingLabel)
-                                    <option value="{{ $spacing }}" {{ $field->getConfig('spacing', 'normal') === $spacing ? 'selected' : '' }}>
-                                        {{ $spacingLabel }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                @endif
-
-                {{-- Checked / unchecked display text --}}
-                @if (in_array($field->type, \ArtisanPackUI\Forms\Models\FormField::ACCEPTANCE_TYPES, true))
-                    <div class="grid grid-cols-2 gap-2">
-                        <div class="form-control">
-                            <label class="label" for="field-checked-label">
-                                <span class="label-text text-xs">{{ __( 'Checked Text' ) }}</span>
-                            </label>
-                            <input
-                                type="text"
-                                id="field-checked-label"
-                                class="input input-sm input-bordered w-full"
-                                value="{{ $field->getConfig('checked_label') }}"
-                                placeholder="{{ __( 'Yes' ) }}"
-                                wire:change="updateFieldConfig('checked_label', $event.target.value)"
-                            />
-                        </div>
-                        <div class="form-control">
-                            <label class="label" for="field-unchecked-label">
-                                <span class="label-text text-xs">{{ __( 'Unchecked Text' ) }}</span>
-                            </label>
-                            <input
-                                type="text"
-                                id="field-unchecked-label"
-                                class="input input-sm input-bordered w-full"
-                                value="{{ $field->getConfig('unchecked_label') }}"
-                                placeholder="{{ __( 'No' ) }}"
-                                wire:change="updateFieldConfig('unchecked_label', $event.target.value)"
-                            />
-                        </div>
-                    </div>
-                    <p class="text-xs text-base-content/50">{{ __( 'Shown in submissions, notifications and exports.' ) }}</p>
-                @endif
+                {{-- Type-specific settings from the field type's settings schema --}}
+                @foreach (\ArtisanPackUI\Forms\Support\FieldSettings::forTab($field, 'general') as $setting)
+                    @include('forms::livewire.form-builder.field-setting', ['field' => $field, 'setting' => $setting])
+                @endforeach
 
                 {{-- Width --}}
                 <div class="form-control">
@@ -316,199 +211,10 @@
                     </label>
                 </div>
 
-                {{-- Min/Max for text fields --}}
-                @if (in_array('min', $validationOptions) || in_array('max', $validationOptions))
-                    <div class="grid grid-cols-2 gap-2">
-                        @if (in_array('min', $validationOptions))
-                            <div class="form-control">
-                                <label class="label" for="field-min">
-                                    <span class="label-text text-xs">{{ __( $field->type === 'number' ? 'Min Value' : 'Min Length' ) }}</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    id="field-min"
-                                    class="input input-sm input-bordered w-full"
-                                    value="{{ $field->getValidationRule('min') }}"
-                                    wire:change="updateValidationRule('min', $event.target.value)"
-                                />
-                            </div>
-                        @endif
-                        @if (in_array('max', $validationOptions))
-                            <div class="form-control">
-                                <label class="label" for="field-max">
-                                    <span class="label-text text-xs">{{ __( $field->type === 'number' ? 'Max Value' : 'Max Length' ) }}</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    id="field-max"
-                                    class="input input-sm input-bordered w-full"
-                                    value="{{ $field->getValidationRule('max') }}"
-                                    wire:change="updateValidationRule('max', $event.target.value)"
-                                />
-                            </div>
-                        @endif
-                    </div>
-                @endif
-
-                {{-- Pattern for text fields --}}
-                @if (in_array('pattern', $validationOptions))
-                    <div class="form-control">
-                        <label class="label" for="field-pattern">
-                            <span class="label-text text-xs">{{ __( 'Pattern (Regex)' ) }}</span>
-                        </label>
-                        <input
-                            type="text"
-                            id="field-pattern"
-                            class="input input-sm input-bordered w-full font-mono text-xs"
-                            value="{{ $field->getValidationRule('pattern') }}"
-                            placeholder="/^[a-z]+$/i"
-                            wire:change="updateField({ validation_rules: { ...{{ json_encode((object) ($field->validation_rules ?? [])) }}, pattern: $event.target.value || null } })"
-                        />
-                    </div>
-                @endif
-
-                {{-- Step for number fields --}}
-                @if (in_array('step', $validationOptions))
-                    <div class="form-control">
-                        <label class="label" for="field-step">
-                            <span class="label-text text-xs">{{ __( 'Step Increment' ) }}</span>
-                        </label>
-                        <input
-                            type="number"
-                            id="field-step"
-                            class="input input-sm input-bordered w-full"
-                            value="{{ $field->getValidationRule('step') }}"
-                            placeholder="1"
-                            step="any"
-                            wire:change="updateValidationRule('step', $event.target.value)"
-                        />
-                        <label class="label">
-                            <span class="label-text-alt text-xs text-base-content/50">{{ __( 'e.g., 0.01 for decimals, 1 for integers' ) }}</span>
-                        </label>
-                    </div>
-                @endif
-
-                {{-- Max size for file fields --}}
-                @if (in_array('max_size', $validationOptions))
-                    <div class="form-control">
-                        <label class="label" for="field-max-size">
-                            <span class="label-text text-xs">{{ __( 'Max File Size (KB)' ) }}</span>
-                        </label>
-                        <input
-                            type="number"
-                            id="field-max-size"
-                            class="input input-sm input-bordered w-full"
-                            value="{{ $field->getFileMaxSize() }}"
-                            placeholder="5120"
-                            min="1"
-                            wire:change="updateFileSetting('max_size', $event.target.value)"
-                        />
-                        <label class="label">
-                            <span class="label-text-alt text-xs text-base-content/50">{{ __( 'Default: 5120 KB (5 MB)' ) }}</span>
-                        </label>
-                    </div>
-                @endif
-
-                {{-- Allowed types for file fields --}}
-                @if (in_array('allowed_types', $validationOptions))
-                    <div class="form-control">
-                        <label class="label" for="field-allowed-types">
-                            <span class="label-text text-xs">{{ __( 'Allowed File Types' ) }}</span>
-                        </label>
-                        <input
-                            type="text"
-                            id="field-allowed-types"
-                            class="input input-sm input-bordered w-full font-mono text-xs"
-                            value="{{ implode(', ', $field->getFileAllowedTypes()) }}"
-                            placeholder="pdf, doc, docx, jpg, png"
-                            wire:change="updateFileSetting('allowed_types', $event.target.value)"
-                        />
-                        <label class="label">
-                            <span class="label-text-alt text-xs text-base-content/50">{{ __( 'Comma-separated file extensions' ) }}</span>
-                        </label>
-                    </div>
-                @endif
-
-                {{-- Min/Max date for date fields --}}
-                @if (in_array('min_date', $validationOptions) || in_array('max_date', $validationOptions))
-                    <div class="grid grid-cols-2 gap-2">
-                        @if (in_array('min_date', $validationOptions))
-                            <div class="form-control">
-                                <label class="label" for="field-min-date">
-                                    <span class="label-text text-xs">{{ __( 'Min Date' ) }}</span>
-                                </label>
-                                <input
-                                    type="date"
-                                    id="field-min-date"
-                                    class="input input-sm input-bordered w-full"
-                                    value="{{ $field->getValidationRule('min_date') }}"
-                                    wire:change="updateField({ validation_rules: { ...{{ json_encode((object) ($field->validation_rules ?? [])) }}, min_date: $event.target.value || null } })"
-                                />
-                            </div>
-                        @endif
-                        @if (in_array('max_date', $validationOptions))
-                            <div class="form-control">
-                                <label class="label" for="field-max-date">
-                                    <span class="label-text text-xs">{{ __( 'Max Date' ) }}</span>
-                                </label>
-                                <input
-                                    type="date"
-                                    id="field-max-date"
-                                    class="input input-sm input-bordered w-full"
-                                    value="{{ $field->getValidationRule('max_date') }}"
-                                    wire:change="updateField({ validation_rules: { ...{{ json_encode((object) ($field->validation_rules ?? [])) }}, max_date: $event.target.value || null } })"
-                                />
-                            </div>
-                        @endif
-                    </div>
-                @endif
-
-                {{-- Min/Max time and step for time fields --}}
-                @if ('time' === $field->type)
-                    <div class="grid grid-cols-2 gap-2">
-                        <div class="form-control">
-                            <label class="label" for="field-min-time">
-                                <span class="label-text text-xs">{{ __( 'Min Time' ) }}</span>
-                            </label>
-                            <input
-                                type="time"
-                                id="field-min-time"
-                                class="input input-sm input-bordered w-full"
-                                value="{{ $field->getValidationRule('min_time') }}"
-                                wire:change="updateTimeLimit('min_time', $event.target.value)"
-                            />
-                        </div>
-                        <div class="form-control">
-                            <label class="label" for="field-max-time">
-                                <span class="label-text text-xs">{{ __( 'Max Time' ) }}</span>
-                            </label>
-                            <input
-                                type="time"
-                                id="field-max-time"
-                                class="input input-sm input-bordered w-full"
-                                value="{{ $field->getValidationRule('max_time') }}"
-                                wire:change="updateTimeLimit('max_time', $event.target.value)"
-                            />
-                        </div>
-                    </div>
-                    <div class="form-control">
-                        <label class="label" for="field-time-step">
-                            <span class="label-text text-xs">{{ __( 'Step (seconds)' ) }}</span>
-                        </label>
-                        <input
-                            type="number"
-                            id="field-time-step"
-                            class="input input-sm input-bordered w-full"
-                            value="{{ $field->getConfig('step', 60) }}"
-                            min="1"
-                            placeholder="60"
-                            wire:change="updateFieldConfig('step', $event.target.value)"
-                        />
-                        <label class="label">
-                            <span class="label-text-alt text-xs text-base-content/50">{{ __( 'e.g., 900 for 15-minute intervals; under 60 lets users pick seconds' ) }}</span>
-                        </label>
-                    </div>
-                @endif
+                {{-- Type-specific validation settings from the field type's settings schema --}}
+                @foreach (\ArtisanPackUI\Forms\Support\FieldSettings::forTab($field, 'validation') as $setting)
+                    @include('forms::livewire.form-builder.field-setting', ['field' => $field, 'setting' => $setting])
+                @endforeach
             </div>
 
             {{-- Options tab (for select, radio, checkbox_group) --}}
@@ -550,6 +256,11 @@
                         wire:change="updateField({ css_classes: $event.target.value })"
                     />
                 </div>
+
+                {{-- Type-specific advanced settings, such as read-only --}}
+                @foreach (\ArtisanPackUI\Forms\Support\FieldSettings::forTab($field, 'advanced') as $setting)
+                    @include('forms::livewire.form-builder.field-setting', ['field' => $field, 'setting' => $setting])
+                @endforeach
 
                 {{-- Conditional Logic --}}
                 @if(!\ArtisanPackUI\Forms\Config\FieldTypes::isLayoutField($field->type))

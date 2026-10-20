@@ -2,7 +2,8 @@
  * Choice-based field components.
  *
  * Renders select, radio, checkbox, checkbox_group, and select_multiple
- * fields using @artisanpack-ui/react components.
+ * fields using @artisanpack-ui/react components. A read-only choice is marked
+ * `aria-readonly` and its native inputs are disabled.
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -12,6 +13,7 @@
 
 import { Checkbox, Radio, Select, Toggle } from '@artisanpack-ui/react/form';
 
+import { isReadOnlyField } from '../../../shared/fieldSettings';
 import type { FieldOption, OptionsFieldConfig } from '../../../types/artisanpack-forms';
 import type { FieldComponentProps } from './types';
 
@@ -49,6 +51,7 @@ function isChecked( value: unknown ): boolean {
  */
 export function SelectField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
 	const options = mapOptions( field );
+	const readOnly = isReadOnlyField( field );
 
 	return (
 		<Select
@@ -66,6 +69,8 @@ export function SelectField( { field, value, error, onChange, displayConfig }: F
 			optionLabel="label"
 			onChange={( e ) => onChange( e.target.value )}
 			inline={displayConfig.label_position === 'beside'}
+			disabled={readOnly}
+			aria-readonly={readOnly ? 'true' : undefined}
 		/>
 	);
 }
@@ -75,8 +80,9 @@ export function SelectField( { field, value, error, onChange, displayConfig }: F
  */
 export function RadioField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
 	const options = mapOptions( field );
+	const readOnly = isReadOnlyField( field );
 
-	return (
+	const radio = (
 		<Radio
 			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
 			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
@@ -90,8 +96,14 @@ export function RadioField( { field, value, error, onChange, displayConfig }: Fi
 			optionValue="value"
 			optionLabel="label"
 			onChange={( e ) => onChange( e.target.value )}
+			disabled={readOnly}
 		/>
 	);
+
+	// The Radio component renders its own radiogroup, so a read-only group is
+	// wrapped in an element that carries `aria-readonly`; `disabled` reaches
+	// every native radio.
+	return readOnly ? <div role="group" aria-readonly="true">{radio}</div> : radio;
 }
 
 /**
@@ -99,6 +111,7 @@ export function RadioField( { field, value, error, onChange, displayConfig }: Fi
  */
 export function CheckboxField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
 	const checked = isChecked( value );
+	const readOnly = isReadOnlyField( field );
 
 	return (
 		<Checkbox
@@ -111,6 +124,8 @@ export function CheckboxField( { field, value, error, onChange, displayConfig }:
 			required={field.is_required}
 			className={field.css_classes ?? undefined}
 			onChange={( e ) => onChange( e.target.checked )}
+			disabled={readOnly}
+			aria-readonly={readOnly ? 'true' : undefined}
 			right
 		/>
 	);
@@ -122,6 +137,7 @@ export function CheckboxField( { field, value, error, onChange, displayConfig }:
 export function CheckboxGroupField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
 	const options = mapOptions( field );
 	const selectedValues = Array.isArray( value ) ? value.map( String ) : [];
+	const readOnly = isReadOnlyField( field );
 
 	const handleChange = ( optionValue: string, checked: boolean ) => {
 		const updated = checked
@@ -136,7 +152,7 @@ export function CheckboxGroupField( { field, value, error, onChange, displayConf
 	const describedBy = [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
 
 	return (
-		<fieldset className="fieldset" aria-describedby={describedBy}>
+		<fieldset className="fieldset" aria-describedby={describedBy} aria-readonly={readOnly ? 'true' : undefined}>
 			{field.label && (
 				<legend className={`fieldset-legend ${displayConfig.label_position === 'hidden' ? 'sr-only' : ''}`}>
 					{field.label}
@@ -151,6 +167,7 @@ export function CheckboxGroupField( { field, value, error, onChange, displayConf
 						name={`${field.name}[]`}
 						checked={selectedValues.includes( option.value )}
 						onChange={( e ) => handleChange( option.value, e.target.checked )}
+						disabled={readOnly}
 						right
 					/>
 				) )}
@@ -171,6 +188,7 @@ export function CheckboxGroupField( { field, value, error, onChange, displayConf
 export function SelectMultipleField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
 	const options = mapOptions( field );
 	const selectedValues = Array.isArray( value ) ? value.map( String ) : [];
+	const readOnly = isReadOnlyField( field );
 	const legendId = field.label ? `${field.name}-label` : undefined;
 	const hintId = field.help_text && !error ? `${field.name}-hint` : undefined;
 	const errorId = error ? `${field.name}-error` : undefined;
@@ -202,6 +220,8 @@ export function SelectMultipleField( { field, value, error, onChange, displayCon
 				aria-invalid={error ? true : undefined}
 				aria-labelledby={legendId}
 				aria-describedby={describedBy}
+				disabled={readOnly}
+				aria-readonly={readOnly ? 'true' : undefined}
 			>
 				{options.map( ( option ) => (
 					<option key={option.value} value={option.value}>

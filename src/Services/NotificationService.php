@@ -372,9 +372,9 @@ class NotificationService
             '{ip_address}'        => __( "Submitter's IP address" ),
         ];
 
-        // Add field-specific placeholders
+        // Add field-specific placeholders; each field type decides its own tags
         foreach ( $form->fields()->orderBy( 'sort_order' )->get() as $field ) {
-            $placeholders[ '{' . $field->name . '}' ] = $field->label;
+            $placeholders = array_merge( $placeholders, $field->fieldType()->mergeTags( $field ) );
         }
 
         return $placeholders;

@@ -36,14 +36,15 @@ import type {
 } from '../../../types/artisanpack-forms';
 import { getRegisteredFieldCardPreview, ownEntry } from '../fields/registry';
 import type { CustomFieldSettingsEntry, FieldCardPreviewComponent } from '../fields/registry';
-import { getLayoutContent } from '../../../shared/fieldSettings';
+import { getLayoutContent, getWidthClass } from '../../../shared/fieldSettings';
+import { t } from '../../../shared/i18n';
 import { slugify } from '../../../shared/slugify';
 import { useApi } from '../../hooks/useApi';
 import type { UseApiOptions } from '../../hooks/useApi';
 import { ApiValidationError } from '../../hooks/useApi';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { FieldEditor } from './FieldEditor';
-import { FieldPalette } from './FieldPalette';
+import { FieldPalette, getFieldPalette } from './FieldPalette';
 
 /** Props for the FormBuilder component. */
 export interface FormBuilderProps extends UseApiOptions {
@@ -205,7 +206,7 @@ export function FormBuilder( {
 				setActiveStepId( sorted[0].id );
 			}
 		} catch ( err ) {
-			const message = err instanceof Error ? err.message : 'Failed to load form.';
+			const message = err instanceof Error ? err.message : t( 'Failed to load form.' );
 			setError( message );
 		} finally {
 			setIsLoading( false );
@@ -264,7 +265,9 @@ export function FormBuilder( {
 			const request: StoreFieldRequest = {
 				name: `${type}_${Date.now()}`,
 				type,
-				label: type.replace( '_', ' ' ).replace( /\b\w/g, ( c ) => c.toUpperCase() ),
+				// The palette's translated label, or the type key in title case.
+				label: getFieldPalette().flatMap( ( group ) => group.fields ).find( ( item ) => item.type === type )?.label
+					?? type.replace( '_', ' ' ).replace( /\b\w/g, ( c ) => c.toUpperCase() ),
 				sort_order: currentFields.length,
 				step_id: form.is_multi_step ? activeStepId : null,
 			};
@@ -281,7 +284,7 @@ export function FormBuilder( {
 			if ( err instanceof ApiValidationError ) {
 				setValidationErrors( err.errors );
 			} else {
-				setError( err instanceof Error ? err.message : 'Failed to add field.' );
+				setError( err instanceof Error ? err.message : t( 'Failed to add field.' ) );
 			}
 		}
 	}, [post, form, currentFields.length, activeStepId] );
@@ -320,7 +323,7 @@ export function FormBuilder( {
 			if ( err instanceof ApiValidationError ) {
 				setValidationErrors( err.errors );
 			} else {
-				setError( err instanceof Error ? err.message : 'Failed to update field.' );
+				setError( err instanceof Error ? err.message : t( 'Failed to update field.' ) );
 			}
 		}
 	}, [put, form, fields] );
@@ -339,7 +342,7 @@ export function FormBuilder( {
 				setActivePanel( 'palette' );
 			}
 		} catch ( err ) {
-			setError( err instanceof Error ? err.message : 'Failed to delete field.' );
+			setError( err instanceof Error ? err.message : t( 'Failed to delete field.' ) );
 		}
 	}, [del, form, selectedFieldId] );
 
@@ -358,7 +361,7 @@ export function FormBuilder( {
 			const request: StoreFieldRequest = {
 				name: `${field.name}_copy`,
 				type: field.type,
-				label: field.label ? `${field.label} (Copy)` : null,
+				label: field.label ? t( ':label (Copy)', { label: field.label } ) : null,
 				placeholder: field.placeholder,
 				help_text: field.help_text,
 				is_required: field.is_required,
@@ -379,7 +382,7 @@ export function FormBuilder( {
 			setFields( ( prev ) => [...prev, response.data] );
 			setSelectedFieldId( response.data.id );
 		} catch ( err ) {
-			setError( err instanceof Error ? err.message : 'Failed to duplicate field.' );
+			setError( err instanceof Error ? err.message : t( 'Failed to duplicate field.' ) );
 		}
 	}, [post, form, fields] );
 
@@ -424,7 +427,7 @@ export function FormBuilder( {
 				step_id: form.is_multi_step ? activeStepId : null,
 			} );
 		} catch ( err ) {
-			setError( err instanceof Error ? err.message : 'Failed to reorder fields.' );
+			setError( err instanceof Error ? err.message : t( 'Failed to reorder fields.' ) );
 			await loadForm();
 		}
 	}, [post, form, dragState, currentFields, activeStepId, loadForm] );
@@ -455,7 +458,7 @@ export function FormBuilder( {
 
 		try {
 			const request: StoreStepRequest = {
-				title: `Step ${steps.length + 1}`,
+				title: t( 'Step :number', { number: steps.length + 1 } ),
 				sort_order: steps.length,
 			};
 
@@ -467,7 +470,7 @@ export function FormBuilder( {
 			setSteps( ( prev ) => [...prev, response.data] );
 			setActiveStepId( response.data.id );
 		} catch ( err ) {
-			setError( err instanceof Error ? err.message : 'Failed to add step.' );
+			setError( err instanceof Error ? err.message : t( 'Failed to add step.' ) );
 		}
 	}, [post, form, steps.length] );
 
@@ -494,7 +497,7 @@ export function FormBuilder( {
 					s.id === stepId ? previousStep : s,
 				) );
 			}
-			setError( err instanceof Error ? err.message : 'Failed to update step.' );
+			setError( err instanceof Error ? err.message : t( 'Failed to update step.' ) );
 		}
 	}, [put, form, steps] );
 
@@ -503,7 +506,7 @@ export function FormBuilder( {
 			return;
 		}
 
-		if ( !window.confirm( 'Are you sure you want to delete this step? Fields will be unassigned.' ) ) {
+		if ( !window.confirm( t( 'Are you sure you want to delete this step? Fields will be unassigned.' ) ) ) {
 			return;
 		}
 
@@ -519,7 +522,7 @@ export function FormBuilder( {
 				setActiveStepId( remaining[0]?.id ?? null );
 			}
 		} catch ( err ) {
-			setError( err instanceof Error ? err.message : 'Failed to delete step.' );
+			setError( err instanceof Error ? err.message : t( 'Failed to delete step.' ) );
 		}
 	}, [del, form, steps, activeStepId] );
 
@@ -554,7 +557,7 @@ export function FormBuilder( {
 		} catch ( err ) {
 			// Rollback
 			setSteps( sorted );
-			setError( err instanceof Error ? err.message : 'Failed to reorder steps.' );
+			setError( err instanceof Error ? err.message : t( 'Failed to reorder steps.' ) );
 		}
 	}, [form, steps, post] );
 
@@ -570,13 +573,13 @@ export function FormBuilder( {
 
 			// Create first step if none exist
 			if ( steps.length === 0 ) {
-				const request = { title: 'Step 1', sort_order: 0 };
+				const request = { title: t( 'Step :number', { number: 1 } ), sort_order: 0 };
 				const response = await post<{ data: FormStep }>( `/${form.id}/steps`, request );
 				setSteps( ( prev ) => [...prev, response.data] );
 				setActiveStepId( response.data.id );
 			}
 		} catch ( err ) {
-			setError( err instanceof Error ? err.message : 'Failed to enable multi-step.' );
+			setError( err instanceof Error ? err.message : t( 'Failed to enable multi-step.' ) );
 		}
 	}, [form, put, post, steps.length] );
 
@@ -590,7 +593,7 @@ export function FormBuilder( {
 			setForm( ( prev ) => prev ? { ...prev, is_multi_step: false } : prev );
 			setActiveStepId( null );
 		} catch ( err ) {
-			setError( err instanceof Error ? err.message : 'Failed to disable multi-step.' );
+			setError( err instanceof Error ? err.message : t( 'Failed to disable multi-step.' ) );
 		}
 	}, [put, form] );
 
@@ -602,7 +605,7 @@ export function FormBuilder( {
 		return (
 			<div className={`flex items-center justify-center gap-2 p-8 ${className ?? ''}`} role="status">
 				<Loading size="md" />
-				<span>Loading form builder...</span>
+				<span>{t( 'Loading form builder...' )}</span>
 			</div>
 		);
 	}
@@ -613,8 +616,8 @@ export function FormBuilder( {
 				<Alert color="error">
 					<p>{error}</p>
 					<div className="flex gap-2">
-						<Button size="sm" color="outline" onClick={loadForm}>Retry</Button>
-						{onBack && <Button size="sm" color="ghost" onClick={onBack}>Back to Forms</Button>}
+						<Button size="sm" color="outline" onClick={loadForm}>{t( 'Retry' )}</Button>
+						{onBack && <Button size="sm" color="ghost" onClick={onBack}>{t( 'Back to Forms' )}</Button>}
 					</div>
 				</Alert>
 			</div>
@@ -622,7 +625,7 @@ export function FormBuilder( {
 	}
 
 	if ( !form ) {
-		return <div className={`p-8 text-center text-base-content/60 ${className ?? ''}`}>Form not found.</div>;
+		return <div className={`p-8 text-center text-base-content/60 ${className ?? ''}`}>{t( 'Form not found.' )}</div>;
 	}
 
 	return (
@@ -632,23 +635,23 @@ export function FormBuilder( {
 				<div className="flex items-center gap-3">
 					{onBack && (
 						<Button size="sm" color="ghost" onClick={onBack}>
-							&larr; Back
+							&larr; {t( 'Back' )}
 						</Button>
 					)}
 					<h1 className="text-lg font-bold">{form.name}</h1>
-					<Badge color={form.is_active ? 'success' : 'warning'} value={form.is_active ? 'Active' : 'Draft'} />
+					<Badge color={form.is_active ? 'success' : 'warning'} value={form.is_active ? t( 'Active' ) : t( 'Draft' )} />
 				</div>
 				<div className="flex items-center gap-3">
-					{isDirty && <span className="text-sm text-warning">Unsaved changes</span>}
+					{isDirty && <span className="text-sm text-warning">{t( 'Unsaved changes' )}</span>}
 					{isSaving && (
 						<span className="flex items-center gap-1 text-sm text-info">
 							<Loading size="xs" />
-							Saving...
+							{t( 'Saving...' )}
 						</span>
 					)}
 					{lastSavedAt && !isSaving && !isDirty && (
 						<span className="text-sm text-success">
-							Saved {lastSavedAt.toLocaleTimeString()}
+							{t( 'Saved :time', { time: lastSavedAt.toLocaleTimeString() } )}
 						</span>
 					)}
 					{saveError && <span className="text-sm text-error">{saveError}</span>}
@@ -657,7 +660,7 @@ export function FormBuilder( {
 						color="outline"
 						onClick={() => setShowPreview( !showPreview )}
 					>
-						{showPreview ? 'Edit' : 'Preview'}
+						{showPreview ? t( 'Edit' ) : t( 'Preview' )}
 					</Button>
 					<Button
 						size="sm"
@@ -665,7 +668,7 @@ export function FormBuilder( {
 						onClick={saveNow}
 						disabled={isSaving}
 					>
-						{isSaving ? 'Saving...' : 'Save'}
+						{isSaving ? t( 'Saving...' ) : t( 'Save' )}
 					</Button>
 				</div>
 			</div>
@@ -674,7 +677,7 @@ export function FormBuilder( {
 			{error && (
 				<Alert color="error" className="mx-4 mt-3">
 					<span>{error}</span>
-					<Button size="sm" color="ghost" onClick={() => setError( null )}>Dismiss</Button>
+					<Button size="sm" color="ghost" onClick={() => setError( null )}>{t( 'Dismiss' )}</Button>
 				</Alert>
 			)}
 
@@ -702,14 +705,14 @@ export function FormBuilder( {
 							className={`tab ${activePanel === 'palette' ? 'tab-active' : ''}`}
 							onClick={() => setActivePanel( 'palette' )}
 						>
-							Fields
+							{t( 'Fields' )}
 						</button>
 						<button
 							type="button"
 							className={`tab ${activePanel === 'settings' ? 'tab-active' : ''}`}
 							onClick={() => setActivePanel( 'settings' )}
 						>
-							Settings
+							{t( 'Settings' )}
 						</button>
 					</div>
 
@@ -723,11 +726,11 @@ export function FormBuilder( {
 						{/* Form settings */}
 						{activePanel === 'settings' && (
 							<div className="space-y-4">
-								<h3 className="text-base font-semibold">Form Settings</h3>
+								<h3 className="text-base font-semibold">{t( 'Form Settings' )}</h3>
 
 								<Input
 									id="form-name"
-									label="Form Name"
+									label={t( 'Form Name' )}
 									value={form.name}
 									onChange={( e ) => {
 										const name = e.target.value;
@@ -741,7 +744,7 @@ export function FormBuilder( {
 
 								<Input
 									id="form-slug"
-									label="Slug"
+									label={t( 'Slug' )}
 									value={form.slug ?? ''}
 									onChange={( e ) => {
 										if ( !slugIsManual ) {
@@ -751,14 +754,14 @@ export function FormBuilder( {
 									}}
 									hint={
 										slugIsManual
-											? 'URL-friendly identifier for the form.'
-											: 'Derived from the form name — edit to override.'
+											? t( 'URL-friendly identifier for the form.' )
+											: t( 'Derived from the form name — edit to override.' )
 									}
 								/>
 
 								<Textarea
 									id="form-description"
-									label="Description"
+									label={t( 'Description' )}
 									rows={3}
 									value={form.description ?? ''}
 									onChange={( e ) => updateFormSetting( { description: e.target.value || null } )}
@@ -766,14 +769,14 @@ export function FormBuilder( {
 
 								<Input
 									id="form-submit-text"
-									label="Submit Button Text"
+									label={t( 'Submit Button Text' )}
 									value={form.submit_button_text}
 									onChange={( e ) => updateFormSetting( { submit_button_text: e.target.value } )}
 								/>
 
 								<Textarea
 									id="form-success-msg"
-									label="Success Message"
+									label={t( 'Success Message' )}
 									rows={2}
 									value={form.success_message ?? ''}
 									onChange={( e ) => updateFormSetting( { success_message: e.target.value || null } )}
@@ -781,23 +784,23 @@ export function FormBuilder( {
 
 								<Input
 									id="form-redirect"
-									label="Redirect URL"
+									label={t( 'Redirect URL' )}
 									type="url"
 									value={form.redirect_url ?? ''}
 									onChange={( e ) => updateFormSetting( { redirect_url: e.target.value || null } )}
 								/>
 
 								<Checkbox
-									label="Active (Published)"
+									label={t( 'Active (Published)' )}
 									checked={form.is_active}
 									onChange={( e ) => updateFormSetting( { is_active: e.target.checked } )}
 								/>
 
 								<Divider />
-								<h4 className="text-sm font-semibold">Multi-Step</h4>
+								<h4 className="text-sm font-semibold">{t( 'Multi-Step' )}</h4>
 
 								<Checkbox
-									label="Enable Multi-Step"
+									label={t( 'Enable Multi-Step' )}
 									checked={form.is_multi_step}
 									onChange={( e ) => {
 										if ( e.target.checked ) {
@@ -811,12 +814,12 @@ export function FormBuilder( {
 								{form.is_multi_step && (
 									<>
 										<Checkbox
-											label="Show Progress Bar"
+											label={t( 'Show Progress Bar' )}
 											checked={form.show_progress_bar}
 											onChange={( e ) => updateFormSetting( { show_progress_bar: e.target.checked } )}
 										/>
 										<Checkbox
-											label="Allow Step Navigation"
+											label={t( 'Allow Step Navigation' )}
 											checked={form.allow_step_navigation}
 											onChange={( e ) => updateFormSetting( { allow_step_navigation: e.target.checked } )}
 										/>
@@ -840,7 +843,7 @@ export function FormBuilder( {
 											className={`tab ${step.id === activeStepId ? 'tab-active' : ''}`}
 											onClick={() => setActiveStepId( step.id )}
 										>
-											<span>{step.title || `Step ${index + 1}`}</span>
+											<span>{step.title || t( 'Step :number', { number: index + 1 } )}</span>
 											<span className="ml-1 badge badge-sm badge-ghost">
 												{fields.filter( ( f ) => f.step_id === step.id ).length}
 											</span>
@@ -851,8 +854,8 @@ export function FormBuilder( {
 													type="button"
 													className="btn btn-ghost btn-xs px-0.5 py-0 h-auto min-h-0 text-xs"
 													onClick={() => reorderSteps( step.id, 'up' )}
-													title="Move step left"
-													aria-label={`Move ${step.title || `Step ${index + 1}`} left`}
+													title={t( 'Move step left' )}
+													aria-label={t( 'Move :step left', { step: step.title || t( 'Step :number', { number: index + 1 } ) } )}
 												>
 													&#8249;
 												</button>
@@ -862,8 +865,8 @@ export function FormBuilder( {
 													type="button"
 													className="btn btn-ghost btn-xs px-0.5 py-0 h-auto min-h-0 text-xs"
 													onClick={() => reorderSteps( step.id, 'down' )}
-													title="Move step right"
-													aria-label={`Move ${step.title || `Step ${index + 1}`} right`}
+													title={t( 'Move step right' )}
+													aria-label={t( 'Move :step right', { step: step.title || t( 'Step :number', { number: index + 1 } ) } )}
 												>
 													&#8250;
 												</button>
@@ -877,7 +880,7 @@ export function FormBuilder( {
 										className={`tab ${null === activeStepId ? 'tab-active' : ''}`}
 										onClick={() => setActiveStepId( null )}
 									>
-										Unassigned
+										{t( 'Unassigned' )}
 										<span className="ml-1 badge badge-sm badge-warning">
 											{fields.filter( ( f ) => null === f.step_id ).length}
 										</span>
@@ -889,7 +892,7 @@ export function FormBuilder( {
 								color="ghost"
 								className="btn-circle"
 								onClick={addStep}
-								title="Add Step"
+								title={t( 'Add Step' )}
 							>
 								+
 							</Button>
@@ -905,18 +908,18 @@ export function FormBuilder( {
 									<div key={step.id} className="flex items-center gap-2">
 										<Input
 											id={`step-title-${step.id}`}
-											label="Step title"
+											label={t( 'Step title' )}
 											value={step.title ?? ''}
 											onChange={( e ) => updateStep( step.id, { title: e.target.value } )}
-											placeholder="Step title"
+											placeholder={t( 'Step title' )}
 											className="flex-1"
 										/>
 										<Input
 											id={`step-desc-${step.id}`}
-											label="Step description"
+											label={t( 'Step description' )}
 											value={step.description ?? ''}
 											onChange={( e ) => updateStep( step.id, { description: e.target.value || null } )}
-											placeholder="Step description (optional)"
+											placeholder={t( 'Step description (optional)' )}
 											className="flex-1"
 										/>
 										{steps.length > 1 && (
@@ -924,9 +927,9 @@ export function FormBuilder( {
 												size="sm"
 												color="error"
 												onClick={() => deleteStep( step.id )}
-												title="Delete step"
+												title={t( 'Delete step' )}
 											>
-												Delete Step
+												{t( 'Delete Step' )}
 											</Button>
 										)}
 									</div>
@@ -958,7 +961,7 @@ export function FormBuilder( {
 										)}
 										{'select' === field.type && (
 											<select className="select select-bordered" disabled>
-												<option>{field.placeholder ?? 'Select...'}</option>
+												<option>{field.placeholder ?? t( 'Select...' )}</option>
 											</select>
 										)}
 										{'checkbox' === field.type && (
@@ -994,7 +997,7 @@ export function FormBuilder( {
 						>
 							{0 === currentFields.length && (
 								<div className="flex items-center justify-center h-full border-2 border-dashed border-base-300 rounded-lg p-8">
-									<p className="text-base-content/50">Drag fields here or click a field type to add it.</p>
+									<p className="text-base-content/50">{t( 'Drag fields here or click a field type to add it.' )}</p>
 								</div>
 							)}
 
@@ -1009,11 +1012,11 @@ export function FormBuilder( {
 												? 'border-t-2 border-t-primary'
 												: ''
 										} ${
-											'full' === field.width ? 'w-full' : 'half' === field.width ? 'w-1/2' : 'third' === field.width ? 'w-1/3' : 'two-thirds' === field.width ? 'w-2/3' : 'w-full'
+											getWidthClass( field.width )
 										}`}
 										tabIndex={0}
 										role="button"
-										aria-label={`Edit ${field.label || field.name} field`}
+										aria-label={t( 'Edit :field field', { field: field.label || field.name } )}
 										draggable
 										onDragStart={() => handleDragStart( index )}
 										onDragOver={( e ) => {
@@ -1037,7 +1040,7 @@ export function FormBuilder( {
 										}}
 									>
 										<div className="card-body flex-row items-center gap-3">
-											<div className="cursor-grab text-base-content/40 hover:text-base-content/70" title="Drag to reorder">
+											<div className="cursor-grab text-base-content/40 hover:text-base-content/70" title={t( 'Drag to reorder' )}>
 												&#x2630;
 											</div>
 											<div className="flex flex-col flex-1 min-w-0">
@@ -1055,7 +1058,7 @@ export function FormBuilder( {
 														e.stopPropagation();
 														duplicateField( field.id );
 													}}
-													title="Duplicate"
+													title={t( 'Duplicate' )}
 												>
 													&#x2398;
 												</Button>
@@ -1066,11 +1069,11 @@ export function FormBuilder( {
 													onClick={( e ) => {
 														e.stopPropagation();
 
-														if ( window.confirm( 'Delete this field?' ) ) {
+														if ( window.confirm( t( 'Delete this field?' ) ) ) {
 															deleteField( field.id );
 														}
 													}}
-													title="Delete"
+													title={t( 'Delete' )}
 												>
 													&times;
 												</Button>

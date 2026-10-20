@@ -19,6 +19,7 @@ namespace ArtisanPackUI\Forms\Http\Resources;
 
 use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Models\FormField;
+use ArtisanPackUI\Forms\Support\FieldSettings;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -32,6 +33,27 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class FormFieldResource extends JsonResource
 {
+    /**
+     * Whether to include the field type's settings schema.
+     *
+     * @since 1.6.0
+     */
+    protected bool $includeSettingsSchema = true;
+
+    /**
+     * Leaves the settings schema out, for payloads that only render the form.
+     *
+     * @since 1.6.0
+     *
+     * @return static The resource.
+     */
+    public function withoutSettingsSchema(): static
+    {
+        $this->includeSettingsSchema = false;
+
+        return $this;
+    }
+
     /**
      * Transforms the resource into an array.
      *
@@ -64,6 +86,9 @@ class FormFieldResource extends JsonResource
             'css_classes'       => $this->css_classes,
             'sort_order'        => $this->sort_order,
             'options'           => $this->when( FieldTypes::hasOptions( $this->type ) && ! empty( $this->options ), $this->options ),
+            'is_read_only'      => $this->resource->isReadOnly(),
+            'read_only_value'   => $this->when( $this->resource->isReadOnly(), fn (): mixed => $this->resource->getReadOnlyValue() ),
+            'settings_schema'   => $this->when( $this->includeSettingsSchema, fn (): array => FieldSettings::schema( $this->resource ) ),
             'created_at'        => $this->created_at?->toIso8601String(),
             'updated_at'        => $this->updated_at?->toIso8601String(),
         ];

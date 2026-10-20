@@ -41,7 +41,7 @@ class FieldRenderer
      */
     public static function render( FormField $field, mixed $value = null, ?string $error = null ): string
     {
-        $view = 'forms::components.fields.' . $field->type;
+        $view = $field->fieldType()->view();
 
         if ( ! View::exists( $view ) ) {
             // A custom field type registered via `ap.forms.fieldTypes` may not ship a blade

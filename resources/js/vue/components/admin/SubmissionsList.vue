@@ -25,6 +25,7 @@ import type {
 } from '../../../types/artisanpack-forms';
 import { useApi } from '../../composables/useApi';
 import type { UseApiOptions } from '../../composables/useApi';
+import { t } from '../../../shared/i18n';
 
 type SortColumn = 'submission_number' | 'created_at';
 
@@ -93,13 +94,13 @@ const selectAll = computed(
 
 const statusOptions: SubmissionStatusFilter[] = ['all', 'unread', 'read', 'starred', 'spam'];
 
-const dateRangeOptions = [
-	{ value: 'all', label: 'All Time' },
-	{ value: 'today', label: 'Today' },
-	{ value: 'week', label: 'This Week' },
-	{ value: 'month', label: 'This Month' },
-	{ value: 'year', label: 'This Year' },
-];
+const dateRangeOptions = computed( () => [
+	{ value: 'all', label: t( 'All Time' ) },
+	{ value: 'today', label: t( 'Today' ) },
+	{ value: 'week', label: t( 'This Week' ) },
+	{ value: 'month', label: t( 'This Month' ) },
+	{ value: 'year', label: t( 'This Year' ) },
+] );
 
 // ---------------------------------------------------------------------------
 // Pending row helpers
@@ -157,7 +158,7 @@ async function fetchSubmissions(): Promise<void> {
 		submissions.value = data;
 	} catch ( err ) {
 		submissions.value = null;
-		error.value       = err instanceof Error ? err.message : 'Failed to load submissions.';
+		error.value       = err instanceof Error ? err.message : t( 'Failed to load submissions.' );
 	} finally {
 		isLoading.value = false;
 	}
@@ -216,7 +217,7 @@ async function markAsRead( id: number ): Promise<void> {
 		await put( `/${props.form.slug}/submissions/${id}`, { is_read: true } );
 		await fetchSubmissions();
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to update submission.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to update submission.' );
 	} finally {
 		removePendingRow( id );
 	}
@@ -228,7 +229,7 @@ async function markAsUnread( id: number ): Promise<void> {
 		await put( `/${props.form.slug}/submissions/${id}`, { is_read: false } );
 		await fetchSubmissions();
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to update submission.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to update submission.' );
 	} finally {
 		removePendingRow( id );
 	}
@@ -242,7 +243,7 @@ async function toggleStar( submission: FormSubmission ): Promise<void> {
 		} );
 		await fetchSubmissions();
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to update submission.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to update submission.' );
 	} finally {
 		removePendingRow( submission.id );
 	}
@@ -256,14 +257,14 @@ async function toggleSpam( submission: FormSubmission ): Promise<void> {
 		} );
 		await fetchSubmissions();
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to update submission.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to update submission.' );
 	} finally {
 		removePendingRow( submission.id );
 	}
 }
 
 async function deleteSubmission( id: number ): Promise<void> {
-	if ( !window.confirm( 'Are you sure you want to delete this submission?' ) ) {
+	if ( !window.confirm( t( 'Are you sure you want to delete this submission?' ) ) ) {
 		return;
 	}
 
@@ -272,7 +273,7 @@ async function deleteSubmission( id: number ): Promise<void> {
 		await del( `/${props.form.slug}/submissions/${id}` );
 		await fetchSubmissions();
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to delete submission.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to delete submission.' );
 	} finally {
 		removePendingRow( id );
 	}
@@ -288,7 +289,7 @@ async function executeBulkAction( action: BulkSubmissionRequest['action'] ): Pro
 	}
 
 	const confirmMessage = action === 'delete'
-		? `Are you sure you want to delete ${selected.value.size} submission(s)?`
+		? t( 'Are you sure you want to delete :count submission(s)?', { count: selected.value.size } )
 		: null;
 
 	if ( confirmMessage && !window.confirm( confirmMessage ) ) {
@@ -305,7 +306,7 @@ async function executeBulkAction( action: BulkSubmissionRequest['action'] ): Pro
 		selected.value = new Set();
 		await fetchSubmissions();
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Bulk action failed.';
+		error.value = err instanceof Error ? err.message : t( 'Bulk action failed.' );
 	} finally {
 		isBulkProcessing.value = false;
 	}
@@ -324,7 +325,7 @@ async function handleExport(): Promise<void> {
 			`${props.form.slug}-submissions.csv`,
 		);
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Export failed.';
+		error.value = err instanceof Error ? err.message : t( 'Export failed.' );
 	} finally {
 		isExporting.value = false;
 	}
@@ -394,8 +395,19 @@ function handlePageChange( page: number ): void {
 	selected.value    = new Set();
 }
 
-function capitalize( str: string ): string {
-	return str.charAt( 0 ).toUpperCase() + str.slice( 1 );
+function statusLabel( status: SubmissionStatusFilter ): string {
+	switch ( status ) {
+		case 'unread':
+			return t( 'Unread' );
+		case 'read':
+			return t( 'Read' );
+		case 'starred':
+			return t( 'Starred' );
+		case 'spam':
+			return t( 'Spam' );
+		default:
+			return t( 'All' );
+	}
 }
 
 function isRowDisabled( submissionId: number ): boolean {
@@ -413,9 +425,9 @@ function isRowDisabled( submissionId: number ): boolean {
 					size="sm"
 					@click="emit( 'back' )"
 				>
-					&larr; Back
+					&larr; {{ t( 'Back' ) }}
 				</Button>
-				<h1 class="text-xl font-bold">Submissions: {{ form.name }}</h1>
+				<h1 class="text-xl font-bold">{{ t( 'Submissions: :form', { form: form.name } ) }}</h1>
 			</div>
 			<div>
 				<Button
@@ -424,7 +436,7 @@ function isRowDisabled( submissionId: number ): boolean {
 					:disabled="isExporting"
 					@click="handleExport"
 				>
-					{{ isExporting ? 'Exporting...' : 'Export CSV' }}
+					{{ isExporting ? t( 'Exporting...' ) : t( 'Export CSV' ) }}
 				</Button>
 			</div>
 		</div>
@@ -435,13 +447,13 @@ function isRowDisabled( submissionId: number ): boolean {
 				type="search"
 				size="sm"
 				class="w-64"
-				placeholder="Search submissions..."
+				:placeholder="t( 'Search submissions...' )"
 				:model-value="searchInput"
 				@input="handleSearchInput"
 			/>
 
 			<!-- Status filter buttons -->
-			<div class="tabs tabs-bordered" role="group" aria-label="Submission status filter">
+			<div class="tabs tabs-bordered" role="group" :aria-label="t( 'Submission status filter' )">
 				<button
 					v-for="status in statusOptions"
 					:key="status"
@@ -450,7 +462,7 @@ function isRowDisabled( submissionId: number ): boolean {
 					:class="['tab', { 'tab-active': statusFilter === status }]"
 					@click="handleStatusChange( status )"
 				>
-					{{ capitalize( status ) }}
+					{{ statusLabel( status ) }}
 				</button>
 			</div>
 
@@ -469,14 +481,14 @@ function isRowDisabled( submissionId: number ): boolean {
 			v-if="selected.size > 0"
 			class="bg-base-200 p-3 rounded-lg flex flex-wrap gap-2 items-center"
 		>
-			<span class="text-sm font-medium">{{ selected.size }} selected</span>
+			<span class="text-sm font-medium">{{ t( ':count selected', { count: selected.size } ) }}</span>
 			<Button
 				color="ghost"
 				size="sm"
 				:disabled="isBulkProcessing"
 				@click="executeBulkAction( 'mark_read' )"
 			>
-				Mark Read
+				{{ t( 'Mark Read' ) }}
 			</Button>
 			<Button
 				color="ghost"
@@ -484,7 +496,7 @@ function isRowDisabled( submissionId: number ): boolean {
 				:disabled="isBulkProcessing"
 				@click="executeBulkAction( 'mark_unread' )"
 			>
-				Mark Unread
+				{{ t( 'Mark Unread' ) }}
 			</Button>
 			<Button
 				color="ghost"
@@ -492,7 +504,7 @@ function isRowDisabled( submissionId: number ): boolean {
 				:disabled="isBulkProcessing"
 				@click="executeBulkAction( 'mark_spam' )"
 			>
-				Mark Spam
+				{{ t( 'Mark Spam' ) }}
 			</Button>
 			<Button
 				color="ghost"
@@ -500,7 +512,7 @@ function isRowDisabled( submissionId: number ): boolean {
 				:disabled="isBulkProcessing"
 				@click="executeBulkAction( 'mark_not_spam' )"
 			>
-				Not Spam
+				{{ t( 'Not Spam' ) }}
 			</Button>
 			<Button
 				color="error"
@@ -508,7 +520,7 @@ function isRowDisabled( submissionId: number ): boolean {
 				:disabled="isBulkProcessing"
 				@click="executeBulkAction( 'delete' )"
 			>
-				Delete
+				{{ t( 'Delete' ) }}
 			</Button>
 		</div>
 
@@ -525,7 +537,7 @@ function isRowDisabled( submissionId: number ): boolean {
 		<!-- Loading -->
 		<div v-if="isLoading" class="flex items-center justify-center p-8" role="status">
 			<Loading size="md" />
-			<span class="ml-2">Loading submissions...</span>
+			<span class="ml-2">{{ t( 'Loading submissions...' ) }}</span>
 		</div>
 
 		<!-- Table -->
@@ -538,11 +550,11 @@ function isRowDisabled( submissionId: number ): boolean {
 								type="checkbox"
 								class="checkbox checkbox-sm"
 								:checked="selectAll"
-								aria-label="Select all submissions"
+								:aria-label="t( 'Select all submissions' )"
 								@change="handleSelectAll( ( $event.target as HTMLInputElement ).checked )"
 							/>
 						</th>
-						<th>Star</th>
+						<th>{{ t( 'Star' ) }}</th>
 						<th :aria-sort="getAriaSortValue( 'submission_number' )">
 							<button
 								type="button"
@@ -552,18 +564,18 @@ function isRowDisabled( submissionId: number ): boolean {
 								#{{ sortIndicator( 'submission_number' ) }}
 							</button>
 						</th>
-						<th>Status</th>
-						<th>Summary</th>
+						<th>{{ t( 'Status' ) }}</th>
+						<th>{{ t( 'Summary' ) }}</th>
 						<th :aria-sort="getAriaSortValue( 'created_at' )">
 							<button
 								type="button"
 								class="link link-hover"
 								@click="handleSort( 'created_at' )"
 							>
-								Date{{ sortIndicator( 'created_at' ) }}
+								{{ t( 'Date' ) }}{{ sortIndicator( 'created_at' ) }}
 							</button>
 						</th>
-						<th>Actions</th>
+						<th>{{ t( 'Actions' ) }}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -580,7 +592,7 @@ function isRowDisabled( submissionId: number ): boolean {
 								type="checkbox"
 								class="checkbox checkbox-sm"
 								:checked="selected.has( submission.id )"
-								:aria-label="`Select submission ${submission.submission_number}`"
+								:aria-label="t( 'Select submission :number', { number: submission.submission_number } )"
 								@change="handleSelectOne( submission.id, ( $event.target as HTMLInputElement ).checked )"
 							/>
 						</td>
@@ -589,7 +601,7 @@ function isRowDisabled( submissionId: number ): boolean {
 								color="ghost"
 								size="sm"
 								:class="['btn-circle', submission.is_starred ? 'text-yellow-500' : 'text-base-content/30']"
-								:aria-label="submission.is_starred ? 'Unstar' : 'Star'"
+								:aria-label="submission.is_starred ? t( 'Unstar' ) : t( 'Star' )"
 								:disabled="isRowDisabled( submission.id )"
 								@click="toggleStar( submission )"
 							>
@@ -610,13 +622,13 @@ function isRowDisabled( submissionId: number ): boolean {
 								v-if="submission.is_spam"
 								color="error"
 								size="sm"
-								value="Spam"
+								:value="t( 'Spam' )"
 							/>
 							<Badge
 								v-if="!submission.is_read && !submission.is_spam"
 								color="info"
 								size="sm"
-								value="New"
+								:value="t( 'New' )"
 							/>
 						</td>
 						<td>
@@ -635,50 +647,50 @@ function isRowDisabled( submissionId: number ): boolean {
 								<Button
 									color="ghost"
 									size="xs"
-									title="View"
+									:title="t( 'View' )"
 									:disabled="isRowDisabled( submission.id )"
 									@click="emit( 'view-submission', submission )"
 								>
-									View
+									{{ t( 'View' ) }}
 								</Button>
 								<Button
 									v-if="submission.is_read"
 									color="ghost"
 									size="xs"
-									title="Mark as unread"
+									:title="t( 'Mark as unread' )"
 									:disabled="isRowDisabled( submission.id )"
 									@click="markAsUnread( submission.id )"
 								>
-									Unread
+									{{ t( 'Unread' ) }}
 								</Button>
 								<Button
 									v-else
 									color="ghost"
 									size="xs"
-									title="Mark as read"
+									:title="t( 'Mark as read' )"
 									:disabled="isRowDisabled( submission.id )"
 									@click="markAsRead( submission.id )"
 								>
-									Read
+									{{ t( 'Read' ) }}
 								</Button>
 								<Button
 									color="ghost"
 									size="xs"
-									:title="submission.is_spam ? 'Not spam' : 'Mark as spam'"
+									:title="submission.is_spam ? t( 'Not spam' ) : t( 'Mark as spam' )"
 									:disabled="isRowDisabled( submission.id )"
 									@click="toggleSpam( submission )"
 								>
-									{{ submission.is_spam ? 'Not Spam' : 'Spam' }}
+									{{ submission.is_spam ? t( 'Not Spam' ) : t( 'Spam' ) }}
 								</Button>
 								<Button
 									color="ghost"
 									size="xs"
 									class="text-error"
-									title="Delete"
+									:title="t( 'Delete' )"
 									:disabled="isRowDisabled( submission.id )"
 									@click="deleteSubmission( submission.id )"
 								>
-									Delete
+									{{ t( 'Delete' ) }}
 								</Button>
 							</div>
 						</td>
@@ -692,7 +704,7 @@ function isRowDisabled( submissionId: number ): boolean {
 			v-if="!isLoading && submissionsList.length === 0 && !error"
 			class="text-center py-12 text-base-content/50"
 		>
-			<p>No submissions found.</p>
+			<p>{{ t( 'No submissions found.' ) }}</p>
 		</div>
 
 		<!-- Pagination -->

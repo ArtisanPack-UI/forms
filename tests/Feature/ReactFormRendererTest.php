@@ -325,7 +325,7 @@ describe( 'React Form Renderer', function (): void {
         } );
 
         it( 'initializes default values from field definitions', function (): void {
-            expect( $this->content )->toContain( 'default_value' )
+            expect( $this->content )->toContain( 'getInitialFieldValue( field )' )
                 ->and( $this->content )->toContain( 'defaults' );
         } );
     } );
@@ -398,6 +398,7 @@ describe( 'React Form Renderer', function (): void {
                 'file',
                 'date',
                 'time',
+                'rating',
                 'heading',
                 'paragraph',
                 'divider',
@@ -409,11 +410,15 @@ describe( 'React Form Renderer', function (): void {
             }
         } );
 
-        it( 'supports field width classes', function (): void {
-            expect( $this->content )->toContain( 'full' )
-                ->and( $this->content )->toContain( 'half' )
-                ->and( $this->content )->toContain( 'third' )
-                ->and( $this->content )->toContain( 'two-thirds' );
+        it( 'supports field width classes from the shared map (issue #89)', function (): void {
+            $shared = file_get_contents( __DIR__ . '/../../resources/js/shared/fieldSettings.ts' );
+
+            expect( $this->content )->toContain( "import { getWidthClass, WIDTH_CLASSES } from '../../../shared/fieldSettings';" )
+                ->and( $this->content )->toContain( ': getWidthClass( field.width );' )
+                ->and( $this->content )->not->toContain( "half: 'w-full md:w-1/2'," )
+                ->and( $shared )->toContain( "half: 'w-full md:w-1/2'," )
+                ->and( $shared )->toContain( "third: 'w-full md:w-1/3'," )
+                ->and( $shared )->toContain( "'two-thirds': 'w-full md:w-2/3'," );
         } );
     } );
 } );

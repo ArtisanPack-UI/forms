@@ -17,6 +17,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Models;
 
 use ArtisanPackUI\Forms\Config\FieldTypes;
+use ArtisanPackUI\Forms\Contracts\FieldType;
 use ArtisanPackUI\Forms\Database\Factories\FormFieldFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -167,6 +168,13 @@ class FormField extends Model
         'sort_order',
     ];
 
+    /**
+     * The handler resolved for the field's type, kept by fieldType().
+     *
+     * @since 1.6.0
+     */
+    protected ?FieldType $resolvedFieldType = null;
+
     // =========================================
     // Relationships
     // =========================================
@@ -313,18 +321,15 @@ class FormField extends Model
     /**
      * Gets the Tailwind CSS width class for this field.
      *
+     * Reads FieldTypes::WIDTH_CLASSES, falling back to full width.
+     *
      * @since 1.0.0
      *
      * @return string The CSS width class.
      */
     public function getWidthClassAttribute(): string
     {
-        return match ( $this->width ) {
-            'half'       => 'w-full md:w-1/2',
-            'third'      => 'w-full md:w-1/3',
-            'two-thirds' => 'w-full md:w-2/3',
-            default      => 'w-full',
-        };
+        return FieldTypes::WIDTH_CLASSES[ $this->width ] ?? FieldTypes::WIDTH_CLASSES['full'];
     }
 
     // =========================================
@@ -558,12 +563,13 @@ class FormField extends Model
     /**
      * Builds the Laravel validation rules array for this field.
      *
+     * Asks the field type's handler for the rules of the field's own value.
      * Applies the 'ap.forms.validationRules' filter hook to allow
      * third-party packages to modify validation rules for a field.
      *
      * @since 1.0.0
      *
-     * @return array<int, string> The validation rules array.
+     * @return array<int, mixed> The validation rules array.
      */
     public function buildValidationRules(): array
     {
@@ -572,55 +578,88 @@ class FormField extends Model
             return [];
         }
 
-        $rules = [];
+        return $this->filterValidationRules( $this->fieldType()->rules( $this )[''] ?? [] );
+    }
 
-        if ( $this->is_required ) {
-            // `required` treats `false` as present, so a consent checkbox that was
-            // checked and then unchecked would pass. `accepted` demands it be on.
-            $rules[] = in_array( $this->type, self::ACCEPTANCE_TYPES, true ) ? 'accepted' : 'required';
-        } else {
-            $rules[] = 'nullable';
+    /**
+     * Builds the validation rules for this field and any inputs nested under it.
+     *
+     * Keyed like FieldType::rules(): `''` for the field's own value (after the
+     * `ap.forms.validationRules` filter), a sub-key for a nested input.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, array<int, mixed>> The rules by input key.
+     */
+    public function buildKeyedValidationRules(): array
+    {
+        if ( $this->isLayoutField() ) {
+            return [];
         }
 
-        // Type-specific rules
-        $rules = array_merge( $rules, $this->getTypeValidationRules() );
+        $rules     = $this->fieldType()->rules( $this );
+        $rules[''] = $this->filterValidationRules( $rules[''] ?? [] );
 
-        // Custom validation rules. Limits are checked against null rather than
-        // truthiness so a limit of 0 is still applied.
-        if ( null !== ( $min = $this->getValidationLimit( 'min' ) ) ) {
-            $rules[] = "min:{$min}";
+        return array_filter( $rules, fn ( array $inputRules ): bool => [] !== $inputRules );
+    }
+
+    /**
+     * Gets the handler for this field's type.
+     *
+     * The handler is kept on the model for as long as its type stays the same,
+     * since views, validation and exports ask for it many times per field.
+     *
+     * @since 1.6.0
+     *
+     * @return FieldType The handler.
+     */
+    public function fieldType(): FieldType
+    {
+        if ( null === $this->resolvedFieldType || $this->resolvedFieldType->key() !== $this->type ) {
+            $this->resolvedFieldType = FieldTypes::handler( (string) $this->type );
         }
 
-        if ( null !== ( $max = $this->getValidationLimit( 'max' ) ) ) {
-            $rules[] = "max:{$max}";
+        return $this->resolvedFieldType;
+    }
+
+    /**
+     * Checks whether the field is shown but not editable.
+     *
+     * Only types that offer the `read_only` setting can be read-only.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when read-only.
+     */
+    public function isReadOnly(): bool
+    {
+        if ( true !== filter_var( $this->getConfig( 'read_only', false ), FILTER_VALIDATE_BOOLEAN ) ) {
+            return false;
         }
 
-        if ( $pattern = $this->getValidationRule( 'pattern' ) ) {
-            $rules[] = "regex:{$pattern}";
+        foreach ( $this->fieldType()->definition()['settings'] ?? [] as $setting ) {
+            if ( 'read_only' === ( $setting['key'] ?? null ) ) {
+                return true;
+            }
         }
 
-        // Date range validation
-        if ( null !== ( $minDate = $this->getValidationLimit( 'min_date' ) ) ) {
-            $rules[] = "after_or_equal:{$minDate}";
-        }
+        return false;
+    }
 
-        if ( null !== ( $maxDate = $this->getValidationLimit( 'max_date' ) ) ) {
-            $rules[] = "before_or_equal:{$maxDate}";
-        }
-
-        // Time range validation
-        if ( null !== ( $minTime = $this->getValidationLimit( 'min_time' ) ) ) {
-            $rules[] = "after_or_equal:{$minTime}";
-        }
-
-        if ( null !== ( $maxTime = $this->getValidationLimit( 'max_time' ) ) ) {
-            $rules[] = "before_or_equal:{$maxTime}";
-        }
-
-        // Apply filter hook for extensibility
-        $rules = applyFilters( 'ap.forms.validationRules', $rules, $this );
-
-        return $rules;
+    /**
+     * Gets the value a read-only field is submitted with, whatever the client sent.
+     *
+     * The field's default value, in the shape its type accepts (see
+     * FieldType::readOnlyValue()), passed through the 'ap.forms.readOnlyValue'
+     * filter so a package that populates fields dynamically can supply it.
+     *
+     * @since 1.6.0
+     *
+     * @return mixed The value.
+     */
+    public function getReadOnlyValue(): mixed
+    {
+        return applyFilters( 'ap.forms.readOnlyValue', $this->fieldType()->readOnlyValue( $this ), $this );
     }
 
     /**
@@ -635,6 +674,20 @@ class FormField extends Model
     public function isLayoutField(): bool
     {
         return FieldTypes::isLayoutField( $this->type );
+    }
+
+    /**
+     * Passes the rules for the field's own value through the 'ap.forms.validationRules' filter.
+     *
+     * @since 1.6.0
+     *
+     * @param  array<int, mixed>  $rules  The rules.
+     *
+     * @return array<int, mixed> The filtered rules.
+     */
+    protected function filterValidationRules( array $rules ): array
+    {
+        return applyFilters( 'ap.forms.validationRules', $rules, $this );
     }
 
     /**
@@ -686,95 +739,5 @@ class FormField extends Model
                 $field->uuid = Str::uuid()->toString();
             }
         } );
-    }
-
-    /**
-     * Gets validation rules specific to the field type.
-     *
-     * Supports custom field types registered via the 'ap.forms.fieldTypes'
-     * filter hook by checking for a 'type_validation' key in the field type config.
-     *
-     * @since 1.0.0
-     *
-     * @return array<int, string> The type-specific validation rules.
-     */
-    protected function getTypeValidationRules(): array
-    {
-        // Check for built-in types first
-        $builtInRules = match ( $this->type ) {
-            'email'                             => ['email'],
-            'url'                               => ['url'],
-            'number'                            => ['numeric'],
-            'phone'                             => ['string'],
-            'date'                              => ['date'],
-            'time'                              => ['regex:' . self::TIME_FORMAT_PATTERN],
-            'file'                              => $this->getFileValidationRules(),
-            'checkbox_group', 'select_multiple' => ['array'],
-            'checkbox', 'toggle'                => ['boolean'],
-            default                             => null,
-        };
-
-        if ( null !== $builtInRules ) {
-            return $builtInRules;
-        }
-
-        // Check for custom type validation rules from the filter hook
-        $typeConfig = FieldTypes::getTypeConfig( $this->type );
-
-        if ( null !== $typeConfig && isset( $typeConfig['type_validation'] ) ) {
-            $customRules = $typeConfig['type_validation'];
-
-            // Support both array of rules and single rule string
-            return is_array( $customRules ) ? $customRules : [$customRules];
-        }
-
-        // Default to string validation for unknown types
-        return ['string'];
-    }
-
-    /**
-     * Gets a validation limit as a rule parameter, or null when it is not set.
-     *
-     * `0` and `'0'` count as set; null, blank strings and non-scalars do not.
-     *
-     * @since 1.6.0
-     *
-     * @param  string  $key  The validation rule key.
-     *
-     * @return string|null The limit, or null when unset.
-     */
-    protected function getValidationLimit( string $key ): ?string
-    {
-        $value = $this->getValidationRule( $key );
-
-        if ( ! is_scalar( $value ) || is_bool( $value ) ) {
-            return null;
-        }
-
-        $value = trim( (string) $value );
-
-        return '' === $value ? null : $value;
-    }
-
-    /**
-     * Gets validation rules specific to file uploads.
-     *
-     * @since 1.0.0
-     *
-     * @return array<int, string> The file validation rules.
-     */
-    protected function getFileValidationRules(): array
-    {
-        $rules = ['file'];
-
-        if ( $types = $this->getFileAllowedTypes() ) {
-            $rules[] = 'mimes:' . implode( ',', $types );
-        }
-
-        if ( $maxSize = $this->getFileMaxSize() ) {
-            $rules[] = "max:{$maxSize}";
-        }
-
-        return $rules;
     }
 }

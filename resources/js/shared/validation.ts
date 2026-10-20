@@ -12,7 +12,7 @@
 
 import type { FormField, ValidationRules } from '../types/artisanpack-forms';
 
-import { ACCEPTANCE_FIELD_TYPES, getFileAllowedTypes, getFileMaxSize } from './fieldSettings';
+import { ACCEPTANCE_FIELD_TYPES, getFileAllowedTypes, getFileMaxSize, getRatingMax, ratingAllowsHalf } from './fieldSettings';
 
 /** Layout field types that do not collect data. */
 const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );
@@ -75,6 +75,13 @@ export function validateField(
 
 				return errors;
 			}
+		} else if ( field.type === 'rating' ) {
+			// 0 is the "no rating" choice, so a required rating must be above it.
+			if ( !( Number( value ) > 0 ) ) {
+				errors.push( `${field.label ?? field.name} is required.` );
+
+				return errors;
+			}
 		} else if ( field.type === 'checkbox_group' || field.type === 'select_multiple' ) {
 			if ( !Array.isArray( value ) || value.length === 0 ) {
 				errors.push( `${field.label ?? field.name} is required.` );
@@ -90,6 +97,13 @@ export function validateField(
 
 	// Skip further validation if value is empty and not required (except file fields)
 	if ( field.type !== 'file' && ( value === null || value === undefined || String( value ).trim() === '' ) ) {
+		return errors;
+	}
+
+	// Rating validation reads `field_config`, so it runs even without validation rules
+	if ( field.type === 'rating' ) {
+		validateRating( field, value, errors );
+
 		return errors;
 	}
 
@@ -277,6 +291,27 @@ function validateTimeRules(
 
 	if ( maxTime !== undefined && TIME_FORMAT_REGEX.test( maxTime ) && normalized > normalizeTime( maxTime ) ) {
 		errors.push( `Time must be on or before ${maxTime}.` );
+	}
+}
+
+/**
+ * Validates a rating: a number from 0 to the field's max, in whole or half
+ * stars. Mirrors `RatingFieldType::typeRules()`.
+ */
+function validateRating( field: FormField, value: unknown, errors: string[] ): void {
+	const rating = Number( value );
+	const max = getRatingMax( field );
+
+	if ( !Number.isFinite( rating ) || rating < 0 || rating > max ) {
+		errors.push( `Please choose a rating from 0 to ${max}.` );
+
+		return;
+	}
+
+	const step = ratingAllowsHalf( field ) ? 0.5 : 1;
+
+	if ( Math.abs( rating / step - Math.round( rating / step ) ) > 1e-9 ) {
+		errors.push( step === 1 ? 'Please choose a whole star.' : 'Please choose a whole or half star.' );
 	}
 }
 

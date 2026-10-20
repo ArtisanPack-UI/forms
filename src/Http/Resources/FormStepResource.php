@@ -18,6 +18,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Http\Resources;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
@@ -30,6 +31,27 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class FormStepResource extends JsonResource
 {
+    /**
+     * Whether the step's fields include the builder settings schema.
+     *
+     * @since 1.6.0
+     */
+    protected bool $includeSettingsSchema = true;
+
+    /**
+     * Leaves the settings schema out of the step's fields, for payloads that only render the form.
+     *
+     * @since 1.6.0
+     *
+     * @return static The resource.
+     */
+    public function withoutSettingsSchema(): static
+    {
+        $this->includeSettingsSchema = false;
+
+        return $this;
+    }
+
     /**
      * Transforms the resource into an array.
      *
@@ -51,7 +73,25 @@ class FormStepResource extends JsonResource
             'prev_button_text' => $this->prev_button_text,
             'created_at'       => $this->created_at?->toIso8601String(),
             'updated_at'       => $this->updated_at?->toIso8601String(),
-            'fields'           => FormFieldResource::collection( $this->whenLoaded( 'fields' ) ),
+            'fields'           => $this->whenLoaded( 'fields', fn (): AnonymousResourceCollection => $this->fieldResources() ),
         ];
+    }
+
+    /**
+     * Gets the step's field resources.
+     *
+     * @since 1.6.0
+     *
+     * @return AnonymousResourceCollection The field resources.
+     */
+    protected function fieldResources(): AnonymousResourceCollection
+    {
+        $fields = FormFieldResource::collection( $this->resource->fields );
+
+        if ( ! $this->includeSettingsSchema ) {
+            $fields->collection->each( fn ( FormFieldResource $field ): FormFieldResource => $field->withoutSettingsSchema() );
+        }
+
+        return $fields;
     }
 }

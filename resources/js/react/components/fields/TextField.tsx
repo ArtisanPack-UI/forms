@@ -2,7 +2,8 @@
  * Text-based field components.
  *
  * Renders text, email, phone, number, url, textarea, hidden,
- * and time input fields using @artisanpack-ui/react components.
+ * and time input fields using @artisanpack-ui/react components. A read-only
+ * field keeps its value focusable and announced via `readOnly`.
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -12,7 +13,7 @@
 
 import { Input, Textarea } from '@artisanpack-ui/react/form';
 
-import { getTextareaRows, getTimeStep } from '../../../shared/fieldSettings';
+import { getTextareaRows, getTimeStep, isReadOnlyField } from '../../../shared/fieldSettings';
 
 import type { FieldComponentProps } from './types';
 
@@ -31,6 +32,7 @@ export function TextField( { field, value, error, onChange, displayConfig }: Fie
 			hint={field.help_text ?? undefined}
 			error={error}
 			required={field.is_required}
+			readOnly={isReadOnlyField( field )}
 			className={field.css_classes ?? undefined}
 			onChange={( e ) => onChange( e.target.value )}
 			minLength={field.validation_rules?.min}
@@ -56,6 +58,7 @@ export function EmailField( { field, value, error, onChange, displayConfig }: Fi
 			hint={field.help_text ?? undefined}
 			error={error}
 			required={field.is_required}
+			readOnly={isReadOnlyField( field )}
 			className={field.css_classes ?? undefined}
 			onChange={( e ) => onChange( e.target.value )}
 			inline={displayConfig.label_position === 'beside'}
@@ -78,6 +81,7 @@ export function PhoneField( { field, value, error, onChange, displayConfig }: Fi
 			hint={field.help_text ?? undefined}
 			error={error}
 			required={field.is_required}
+			readOnly={isReadOnlyField( field )}
 			className={field.css_classes ?? undefined}
 			onChange={( e ) => onChange( e.target.value )}
 			pattern={field.validation_rules?.pattern ?? undefined}
@@ -101,6 +105,7 @@ export function NumberField( { field, value, error, onChange, displayConfig }: F
 			hint={field.help_text ?? undefined}
 			error={error}
 			required={field.is_required}
+			readOnly={isReadOnlyField( field )}
 			className={field.css_classes ?? undefined}
 			onChange={( e ) => onChange( e.target.value )}
 			min={field.validation_rules?.min}
@@ -126,6 +131,7 @@ export function UrlField( { field, value, error, onChange, displayConfig }: Fiel
 			hint={field.help_text ?? undefined}
 			error={error}
 			required={field.is_required}
+			readOnly={isReadOnlyField( field )}
 			className={field.css_classes ?? undefined}
 			onChange={( e ) => onChange( e.target.value )}
 			inline={displayConfig.label_position === 'beside'}
@@ -147,6 +153,7 @@ export function TextareaField( { field, value, error, onChange, displayConfig }:
 			hint={field.help_text ?? undefined}
 			error={error}
 			required={field.is_required}
+			readOnly={isReadOnlyField( field )}
 			className={field.css_classes ?? undefined}
 			onChange={( e ) => onChange( e.target.value )}
 			minLength={field.validation_rules?.min}
@@ -185,6 +192,7 @@ export function TimeField( { field, value, error, onChange, displayConfig }: Fie
 			hint={field.help_text ?? undefined}
 			error={error}
 			required={field.is_required}
+			readOnly={isReadOnlyField( field )}
 			className={field.css_classes ?? undefined}
 			onChange={( e ) => onChange( e.target.value )}
 			min={field.validation_rules?.min_time ?? undefined}

@@ -18,6 +18,7 @@ import type {
 	FieldPaletteItem,
 	FieldType,
 } from '../../../types/artisanpack-forms';
+import { t } from '../../../shared/i18n';
 import { getRegisteredFieldPaletteGroups, ownEntry } from '../fields/registry';
 
 /** SVG icon helper for inline field icons. */
@@ -49,51 +50,67 @@ const ICON_PATHS: Record<string, string> = {
 	heading: 'M2 2h3v5h6V2h3v12h-3V9H5v5H2V2z',
 	paragraph: 'M6 1h8v2h-2v11h-2V3H8v11H6V9a4 4 0 010-8z',
 	divider: 'M1 7h14v2H1V7z',
+	rating: 'M8 1l2.1 4.3 4.7.7-3.4 3.3.8 4.7L8 11.8 3.8 14l.8-4.7L1.2 6l4.7-.7L8 1z',
 	html: 'M4.5 4L1 8l3.5 4 1.4-1.2L3.2 8l2.7-2.8L4.5 4zm7 0l-1.4 1.2L12.8 8l-2.7 2.8L11.5 12 15 8l-3.5-4z',
 };
 
-/** Default field palette organized by category. */
-const FIELD_PALETTE: FieldPaletteGroup[] = [
-	{
-		label: 'Basic Fields',
-		fields: [
-			{ type: 'text', label: 'Text', icon: 'text', category: 'basic' },
-			{ type: 'email', label: 'Email', icon: 'email', category: 'basic' },
-			{ type: 'phone', label: 'Phone', icon: 'phone', category: 'basic' },
-			{ type: 'number', label: 'Number', icon: 'number', category: 'basic' },
-			{ type: 'url', label: 'URL', icon: 'url', category: 'basic' },
-			{ type: 'textarea', label: 'Textarea', icon: 'textarea', category: 'basic' },
-			{ type: 'hidden', label: 'Hidden', icon: 'hidden', category: 'basic' },
-		],
-	},
-	{
-		label: 'Choice Fields',
-		fields: [
-			{ type: 'select', label: 'Select', icon: 'select', category: 'choice' },
-			{ type: 'radio', label: 'Radio', icon: 'radio', category: 'choice' },
-			{ type: 'checkbox', label: 'Checkbox', icon: 'checkbox', category: 'choice' },
-			{ type: 'checkbox_group', label: 'Checkbox Group', icon: 'checkbox_group', category: 'choice' },
-			{ type: 'select_multiple', label: 'Multi-Select', icon: 'select_multiple', category: 'choice' },
-		],
-	},
-	{
-		label: 'Advanced Fields',
-		fields: [
-			{ type: 'file', label: 'File Upload', icon: 'file', category: 'advanced' },
-			{ type: 'date', label: 'Date', icon: 'date', category: 'advanced' },
-			{ type: 'time', label: 'Time', icon: 'time', category: 'advanced' },
-		],
-	},
-	{
-		label: 'Layout',
-		fields: [
-			{ type: 'heading', label: 'Heading', icon: 'heading', category: 'layout' },
-			{ type: 'paragraph', label: 'Paragraph', icon: 'paragraph', category: 'layout' },
-			{ type: 'divider', label: 'Divider', icon: 'divider', category: 'layout' },
-			{ type: 'html', label: 'HTML', icon: 'html', category: 'layout' },
-		],
-	},
-];
+/**
+ * Get the default field palette, organized by category, with labels in the
+ * current translation. Called at render so translations registered after
+ * import still apply.
+ *
+ * @since 1.6.0
+ */
+function getFieldPalette(): FieldPaletteGroup[] {
+	return [
+		{
+			label: t( 'Basic Fields' ),
+			fields: [
+				{ type: 'text', label: t( 'Text' ), icon: 'text', category: 'basic' },
+				{ type: 'email', label: t( 'Email' ), icon: 'email', category: 'basic' },
+				{ type: 'phone', label: t( 'Phone' ), icon: 'phone', category: 'basic' },
+				{ type: 'number', label: t( 'Number' ), icon: 'number', category: 'basic' },
+				{ type: 'url', label: t( 'URL' ), icon: 'url', category: 'basic' },
+				{ type: 'textarea', label: t( 'Textarea' ), icon: 'textarea', category: 'basic' },
+				{ type: 'hidden', label: t( 'Hidden' ), icon: 'hidden', category: 'basic' },
+			],
+		},
+		{
+			label: t( 'Choice Fields' ),
+			fields: [
+				{ type: 'select', label: t( 'Select' ), icon: 'select', category: 'choice' },
+				{ type: 'radio', label: t( 'Radio' ), icon: 'radio', category: 'choice' },
+				{ type: 'checkbox', label: t( 'Checkbox' ), icon: 'checkbox', category: 'choice' },
+				{ type: 'checkbox_group', label: t( 'Checkbox Group' ), icon: 'checkbox_group', category: 'choice' },
+				{ type: 'select_multiple', label: t( 'Multi-Select' ), icon: 'select_multiple', category: 'choice' },
+			],
+		},
+		{
+			label: t( 'Advanced Fields' ),
+			fields: [
+				{ type: 'file', label: t( 'File Upload' ), icon: 'file', category: 'advanced' },
+				{ type: 'date', label: t( 'Date' ), icon: 'date', category: 'advanced' },
+				{ type: 'time', label: t( 'Time' ), icon: 'time', category: 'advanced' },
+				{ type: 'rating', label: t( 'Rating' ), icon: 'rating', category: 'advanced' },
+			],
+		},
+		{
+			label: t( 'Layout' ),
+			fields: [
+				{ type: 'heading', label: t( 'Heading' ), icon: 'heading', category: 'layout' },
+				{ type: 'paragraph', label: t( 'Paragraph' ), icon: 'paragraph', category: 'layout' },
+				{ type: 'divider', label: t( 'Divider' ), icon: 'divider', category: 'layout' },
+				{ type: 'html', label: t( 'HTML' ), icon: 'html', category: 'layout' },
+			],
+		},
+	];
+}
+
+/**
+ * Default field palette organized by category, with the labels translated at
+ * import time. The palette component calls `getFieldPalette()` at render.
+ */
+const FIELD_PALETTE: FieldPaletteGroup[] = getFieldPalette();
 
 /** Props for the FieldPalette component. */
 export interface FieldPaletteProps {
@@ -130,7 +147,7 @@ export function FieldPalette( {
 
 	// Built-ins first, then module-registered groups, then per-instance extras.
 	const allGroups = useMemo(
-		() => [...FIELD_PALETTE, ...getRegisteredFieldPaletteGroups(), ...( extraGroups ?? [] )],
+		() => [...getFieldPalette(), ...getRegisteredFieldPaletteGroups(), ...( extraGroups ?? [] )],
 		[extraGroups],
 	);
 
@@ -154,12 +171,12 @@ export function FieldPalette( {
 
 	return (
 		<div className={`space-y-4 ${className ?? ''}`}>
-			<h3 className="text-lg font-semibold">Add Field</h3>
+			<h3 className="text-lg font-semibold">{t( 'Add Field' )}</h3>
 
 			{externalSearch === undefined && (
 				<Input
 					type="search"
-					placeholder="Search fields..."
+					placeholder={t( 'Search fields...' )}
 					value={internalSearch}
 					onChange={( e ) => setInternalSearch( e.target.value )}
 					className="input-sm w-full"
@@ -183,7 +200,7 @@ export function FieldPalette( {
 										e.dataTransfer.setData( 'application/x-field-type', field.type );
 										e.dataTransfer.effectAllowed = 'copy';
 									}}
-									title={`Add ${field.label} field`}
+									title={t( 'Add :field field', { field: field.label } )}
 								>
 									<span className="text-base-content/50 w-5 text-center shrink-0">
 										<PaletteIcon d={field.iconPath ?? ownEntry( ICON_PATHS, field.icon ) ?? ''} />
@@ -200,12 +217,12 @@ export function FieldPalette( {
 
 			{filteredGroups.length === 0 && (
 				<p className="text-sm text-base-content/50 text-center py-4">
-					No fields match your search.
+					{t( 'No fields match your search.' )}
 				</p>
 			)}
 		</div>
 	);
 }
 
-export { FIELD_PALETTE };
+export { FIELD_PALETTE, getFieldPalette };
 export type { FieldPaletteItem };

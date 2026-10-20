@@ -22,6 +22,7 @@ import type {
 } from '../../../types/artisanpack-forms';
 import { useApi } from '../../composables/useApi';
 import type { UseApiOptions } from '../../composables/useApi';
+import { t } from '../../../shared/i18n';
 
 /** Check whether a URL uses a safe protocol (http or https). */
 function isSafeUrl( url: string ): boolean {
@@ -120,7 +121,7 @@ async function loadSubmission(): Promise<void> {
 			return;
 		}
 
-		error.value      = err instanceof Error ? err.message : 'Failed to load submission.';
+		error.value      = err instanceof Error ? err.message : t( 'Failed to load submission.' );
 		submission.value = null;
 		adminNotes.value = '';
 	} finally {
@@ -148,7 +149,7 @@ async function updateSubmission( data: UpdateSubmissionRequest ): Promise<void> 
 		);
 		submission.value = response.data;
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to update submission.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to update submission.' );
 	}
 }
 
@@ -199,7 +200,7 @@ async function saveNotes(): Promise<void> {
 }
 
 async function deleteSubmission(): Promise<void> {
-	if ( !window.confirm( 'Are you sure you want to delete this submission?' ) ) {
+	if ( !window.confirm( t( 'Are you sure you want to delete this submission?' ) ) ) {
 		return;
 	}
 
@@ -207,7 +208,7 @@ async function deleteSubmission(): Promise<void> {
 		await del( `/${props.form.slug}/submissions/${props.submissionId}` );
 		emit( 'back' );
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to delete submission.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to delete submission.' );
 	}
 }
 
@@ -218,7 +219,7 @@ async function downloadFile( upload: FormUpload ): Promise<void> {
 			upload.original_name,
 		);
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to download file.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to download file.' );
 	}
 }
 
@@ -271,7 +272,7 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 		role="status"
 	>
 		<Loading size="md" />
-		<span class="ml-2">Loading submission...</span>
+		<span class="ml-2">{{ t( 'Loading submission...' ) }}</span>
 	</div>
 
 	<!-- Error without submission -->
@@ -282,8 +283,8 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 	>
 		<Alert color="error">{{ error }}</Alert>
 		<div class="flex gap-2">
-			<Button color="outline" size="sm" @click="loadSubmission">Retry</Button>
-			<Button color="ghost" size="sm" @click="emit( 'back' )">Back</Button>
+			<Button color="outline" size="sm" @click="loadSubmission">{{ t( 'Retry' ) }}</Button>
+			<Button color="ghost" size="sm" @click="emit( 'back' )">{{ t( 'Back' ) }}</Button>
 		</div>
 	</div>
 
@@ -292,7 +293,7 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 		v-else-if="!submission"
 		:class="['text-center py-12 text-base-content/50', className]"
 	>
-		Submission not found.
+		{{ t( 'Submission not found.' ) }}
 	</div>
 
 	<!-- Submission detail -->
@@ -301,13 +302,13 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 		<div class="flex flex-wrap items-center justify-between gap-4">
 			<div class="flex items-center gap-3">
 				<Button color="ghost" size="sm" @click="emit( 'back' )">
-					&larr; Back
+					&larr; {{ t( 'Back' ) }}
 				</Button>
-				<h1 class="text-xl font-bold">Submission {{ submission.submission_number }}</h1>
+				<h1 class="text-xl font-bold">{{ t( 'Submission :number', { number: submission.submission_number } ) }}</h1>
 				<Badge
 					v-if="submission.is_spam"
 					color="error"
-					value="Spam"
+					:value="t( 'Spam' )"
 				/>
 			</div>
 			<div>
@@ -321,10 +322,10 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 						:disabled="!hasPrev"
 						@click="goToPrev"
 					>
-						&larr; Prev
+						&larr; {{ t( 'Prev' ) }}
 					</Button>
 					<Button size="sm" class="join-item" disabled>
-						{{ currentIndex === -1 ? '\u2014' : String( currentIndex + 1 ) }} of {{ submissionIds.length }}
+						{{ t( ':current of :total', { current: currentIndex === -1 ? '\u2014' : String( currentIndex + 1 ), total: submissionIds.length } ) }}
 					</Button>
 					<Button
 						size="sm"
@@ -332,7 +333,7 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 						:disabled="!hasNext"
 						@click="goToNext"
 					>
-						Next &rarr;
+						{{ t( 'Next' ) }} &rarr;
 					</Button>
 				</div>
 			</div>
@@ -357,7 +358,7 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 				:disabled="isUpdating"
 				@click="toggleStar"
 			>
-				{{ submission.is_starred ? '\u2605 Starred' : '\u2606 Star' }}
+				{{ submission.is_starred ? '\u2605 ' + t( 'Starred' ) : '\u2606 ' + t( 'Star' ) }}
 			</Button>
 			<Button
 				color="ghost"
@@ -365,7 +366,7 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 				:disabled="isUpdating"
 				@click="toggleRead"
 			>
-				{{ submission.is_read ? 'Mark Unread' : 'Mark Read' }}
+				{{ submission.is_read ? t( 'Mark Unread' ) : t( 'Mark Read' ) }}
 			</Button>
 			<Button
 				color="ghost"
@@ -373,7 +374,7 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 				:disabled="isUpdating"
 				@click="toggleSpam"
 			>
-				{{ submission.is_spam ? 'Not Spam' : 'Mark Spam' }}
+				{{ submission.is_spam ? t( 'Not Spam' ) : t( 'Mark Spam' ) }}
 			</Button>
 			<Button
 				color="error"
@@ -381,13 +382,13 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 				:disabled="isUpdating"
 				@click="deleteSubmission"
 			>
-				Delete
+				{{ t( 'Delete' ) }}
 			</Button>
 		</div>
 
 		<div class="space-y-6">
 			<!-- Field values -->
-			<Card title="Submitted Data" bordered>
+			<Card :title="t( 'Submitted Data' )" bordered>
 				<dl
 					v-if="submission.values && submission.values.length > 0"
 					class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3"
@@ -415,11 +416,11 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 											size="xs"
 											@click="downloadFile( findUpload( value )! )"
 										>
-											Download
+											{{ t( 'Download' ) }}
 										</Button>
 									</div>
 								</template>
-								<span v-else>{{ value.display_value || 'File not found' }}</span>
+								<span v-else>{{ value.display_value || t( 'File not found' ) }}</span>
 							</template>
 							<!-- Array value -->
 							<ul v-else-if="value.value_array" class="list-disc list-inside">
@@ -430,13 +431,13 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 						</dd>
 					</template>
 				</dl>
-				<p v-else class="text-base-content/50">No submission data available.</p>
+				<p v-else class="text-base-content/50">{{ t( 'No submission data available.' ) }}</p>
 			</Card>
 
 			<!-- File uploads -->
 			<Card
 				v-if="submission.uploads && submission.uploads.length > 0"
-				title="File Uploads"
+				:title="t( 'File Uploads' )"
 				bordered
 			>
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -461,7 +462,7 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 									size="sm"
 									@click="downloadFile( upload )"
 								>
-									Download
+									{{ t( 'Download' ) }}
 								</Button>
 							</div>
 						</div>
@@ -470,12 +471,12 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 			</Card>
 
 			<!-- Admin notes -->
-			<Card title="Admin Notes" bordered>
+			<Card :title="t( 'Admin Notes' )" bordered>
 				<Textarea
 					class="w-full"
 					:rows="4"
 					:model-value="adminNotes"
-					placeholder="Add notes about this submission..."
+					:placeholder="t( 'Add notes about this submission...' )"
 					@input="adminNotes = ( $event.target as HTMLTextAreaElement ).value"
 				/>
 				<div class="card-actions justify-end mt-2">
@@ -485,19 +486,19 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 						:disabled="isSavingNotes || !isNotesDirty"
 						@click="saveNotes"
 					>
-						{{ isSavingNotes ? 'Saving...' : 'Save Notes' }}
+						{{ isSavingNotes ? t( 'Saving...' ) : t( 'Save Notes' ) }}
 					</Button>
 				</div>
 			</Card>
 
 			<!-- Metadata -->
-			<Card title="Submission Details" bordered>
+			<Card :title="t( 'Submission Details' )" bordered>
 				<dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3">
-					<dt class="font-medium text-base-content/70">Submitted</dt>
+					<dt class="font-medium text-base-content/70">{{ t( 'Submitted' ) }}</dt>
 					<dd>{{ new Date( submission.created_at ).toLocaleString() }}</dd>
 
 					<template v-if="submission.page_url">
-						<dt class="font-medium text-base-content/70">Page URL</dt>
+						<dt class="font-medium text-base-content/70">{{ t( 'Page URL' ) }}</dt>
 						<dd>
 							<a
 								v-if="isSafeUrl( submission.page_url )"
@@ -513,17 +514,17 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 					</template>
 
 					<template v-if="submission.referrer_url">
-						<dt class="font-medium text-base-content/70">Referrer</dt>
+						<dt class="font-medium text-base-content/70">{{ t( 'Referrer' ) }}</dt>
 						<dd>{{ submission.referrer_url }}</dd>
 					</template>
 
 					<template v-if="submission.ip_address">
-						<dt class="font-medium text-base-content/70">IP Address</dt>
+						<dt class="font-medium text-base-content/70">{{ t( 'IP Address' ) }}</dt>
 						<dd>{{ submission.ip_address }}</dd>
 					</template>
 
 					<template v-if="submission.user_agent">
-						<dt class="font-medium text-base-content/70">User Agent</dt>
+						<dt class="font-medium text-base-content/70">{{ t( 'User Agent' ) }}</dt>
 						<dd class="text-sm break-all">{{ submission.user_agent }}</dd>
 					</template>
 				</dl>
