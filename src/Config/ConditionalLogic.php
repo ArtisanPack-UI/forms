@@ -64,12 +64,12 @@ class ConditionalLogic
         'equals' => [
             'needs_value'    => true,
             'value_type'     => 'text',
-            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden', 'date', 'time'],
+            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden', 'date', 'time', 'rating'],
         ],
         'not_equals' => [
             'needs_value'    => true,
             'value_type'     => 'text',
-            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden', 'date', 'time'],
+            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden', 'date', 'time', 'rating'],
         ],
         'contains' => [
             'needs_value'    => true,
@@ -94,42 +94,42 @@ class ConditionalLogic
         'is_empty' => [
             'needs_value'    => false,
             'value_type'     => 'none',
-            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'textarea', 'select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple', 'file', 'date', 'time', 'hidden'],
+            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'textarea', 'select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple', 'file', 'date', 'time', 'hidden', 'rating'],
         ],
         'is_not_empty' => [
             'needs_value'    => false,
             'value_type'     => 'none',
-            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'textarea', 'select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple', 'file', 'date', 'time', 'hidden'],
+            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'textarea', 'select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple', 'file', 'date', 'time', 'hidden', 'rating'],
         ],
         'greater_than' => [
             'needs_value'    => true,
             'value_type'     => 'number',
-            'supports_types' => ['number'],
+            'supports_types' => ['number', 'rating'],
         ],
         'less_than' => [
             'needs_value'    => true,
             'value_type'     => 'number',
-            'supports_types' => ['number'],
+            'supports_types' => ['number', 'rating'],
         ],
         'greater_or_equal' => [
             'needs_value'    => true,
             'value_type'     => 'number',
-            'supports_types' => ['number'],
+            'supports_types' => ['number', 'rating'],
         ],
         'less_or_equal' => [
             'needs_value'    => true,
             'value_type'     => 'number',
-            'supports_types' => ['number'],
+            'supports_types' => ['number', 'rating'],
         ],
         'in' => [
             'needs_value'    => true,
             'value_type'     => 'list',
-            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden'],
+            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden', 'rating'],
         ],
         'not_in' => [
             'needs_value'    => true,
             'value_type'     => 'list',
-            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden'],
+            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden', 'rating'],
         ],
         'checked' => [
             'needs_value'    => false,

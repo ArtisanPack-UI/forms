@@ -10,9 +10,9 @@
 -->
 <script setup lang="ts">
 import { computed } from 'vue';
-import { DatePicker, FileUpload } from '@artisanpack-ui/vue/form';
+import { DatePicker, FileUpload, Input } from '@artisanpack-ui/vue/form';
 import type { FormField, DisplayConfig } from '../../../types/artisanpack-forms';
-import { getFileAccept } from '../../../shared/fieldSettings';
+import { getFileAccept, isReadOnlyField } from '../../../shared/fieldSettings';
 
 const props = defineProps<{
 	field: FormField;
@@ -37,6 +37,9 @@ const ariaLabel = computed( () =>
 );
 
 const allowedTypes = computed( () => getFileAccept( props.field ) );
+
+/** Read-only dates stay focusable and announced, but cannot be edited. */
+const readOnly = computed( () => isReadOnlyField( props.field ) );
 
 function handleFilesSelected( fileList: FileList | null ): void {
 	if ( !fileList || fileList.length === 0 ) {
@@ -67,6 +70,22 @@ function handleFilesSelected( fileList: FileList | null ): void {
 		:class="field.css_classes ?? undefined"
 		with-drag-drop
 		@files-selected="handleFilesSelected"
+	/>
+
+	<!-- Date, read-only: DatePicker has no readonly state, so use a plain date input -->
+	<Input
+		v-else-if="field.type === 'date' && readOnly"
+		type="date"
+		:label="showLabel ? labelText : undefined"
+		:aria-label="ariaLabel"
+		:name="field.name"
+		:model-value="stringValue"
+		:hint="field.help_text ?? undefined"
+		:error="error"
+		:required="field.is_required"
+		:class="field.css_classes ?? undefined"
+		readonly
+		:inline="displayConfig.label_position === 'beside'"
 	/>
 
 	<!-- Date -->

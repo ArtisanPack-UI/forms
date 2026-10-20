@@ -188,8 +188,8 @@ describe( 'FormBuilder Component', function (): void {
 
             Livewire::test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
-                ->call( 'updateFileSetting', 'max_size', '100' )
-                ->call( 'updateFileSetting', 'allowed_types', ' pdf, ,docx ' )
+                ->call( 'updateSetting', 'max_size', '100' )
+                ->call( 'updateSetting', 'allowed_types', ' pdf, ,docx ' )
                 ->assertSet( 'isDirty', true );
 
             $field->refresh();
@@ -206,7 +206,7 @@ describe( 'FormBuilder Component', function (): void {
 
             Livewire::test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
-                ->call( 'updateFileSetting', $setting, $value );
+                ->call( 'updateSetting', $setting, $value );
 
             expect( $field->fresh()->field_config )->not->toHaveKey( $setting );
         } )->with( [
@@ -220,7 +220,7 @@ describe( 'FormBuilder Component', function (): void {
 
             Livewire::test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
-                ->call( 'updateFileSetting', 'options', 'x' )
+                ->call( 'updateSetting', 'options', 'x' )
                 ->assertSet( 'isDirty', false );
 
             expect( $field->fresh()->field_config )->toBe( ['max_size' => 100] );
@@ -234,10 +234,10 @@ describe( 'FormBuilder Component', function (): void {
 
             Livewire::test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
-                ->call( 'updateValidationRule', 'max', '10' )
-                ->call( 'updateValidationRule', 'step', '0.5' )
-                ->call( 'updateValidationRule', 'min', '' )
-                ->call( 'updateValidationRule', 'pattern', 'ignored' );
+                ->call( 'updateSetting', 'max', '10' )
+                ->call( 'updateSetting', 'step', '0.5' )
+                ->call( 'updateSetting', 'min', '' )
+                ->call( 'updateSetting', 'pattern', 'ignored' );
 
             expect( $field->fresh()->validation_rules )->toBe( ['pattern' => '/x/', 'max' => 10, 'step' => 0.5] );
         } );
@@ -247,8 +247,8 @@ describe( 'FormBuilder Component', function (): void {
 
             Livewire::test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
-                ->assertSeeHtml( "updateFileSetting('max_size', \$event.target.value)" )
-                ->assertSeeHtml( "updateFileSetting('allowed_types', \$event.target.value)" )
+                ->assertSeeHtml( "updateSetting('max_size', \$event.target.value)" )
+                ->assertSeeHtml( "updateSetting('allowed_types', \$event.target.value)" )
                 ->assertDontSeeHtml( 'parseInt(' )
                 ->assertDontSeeHtml( 'parseFloat(' )
                 ->assertDontSeeHtml( '.map(t =>' );
@@ -306,8 +306,8 @@ describe( 'FormBuilder Component', function (): void {
 
         it( 'does nothing when no field is selected', function (): void {
             Livewire::test( FormBuilder::class, ['form' => $this->form] )
-                ->call( 'updateFileSetting', 'max_size', '100' )
-                ->call( 'updateValidationRule', 'min', '1' )
+                ->call( 'updateSetting', 'max_size', '100' )
+                ->call( 'updateSetting', 'min', '1' )
                 ->call( 'updateLayoutContent', 'x' )
                 ->assertSet( 'isDirty', false );
         } );
@@ -549,7 +549,7 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
 
         Livewire::test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
-            ->call( 'updateFieldConfig', $setting, $input )
+            ->call( 'updateSetting', $setting, $input )
             ->assertSet( 'isDirty', true );
 
         expect( $field->fresh()->field_config )->toBe( ['keep' => 'me', $setting => $stored] );
@@ -571,7 +571,7 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
 
         Livewire::test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
-            ->call( 'updateFieldConfig', $setting, $input );
+            ->call( 'updateSetting', $setting, $input );
 
         expect( $field->fresh()->field_config )->not->toHaveKey( $setting );
     } )->with( [
@@ -591,13 +591,13 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
 
         Livewire::test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
-            ->call( 'updateFieldConfig', $setting, '5' )
+            ->call( 'updateSetting', $setting, '5' )
             ->assertSet( 'isDirty', false );
 
         expect( $field->fresh()->field_config )->toBe( [] );
     } )->with( [
         'rows on a text field'      => ['text', 'rows'],
-        'step on a number field'    => ['number', 'step'],
+        'rows on a number field'    => ['number', 'rows'],
         'options on a textarea'     => ['textarea', 'options'],
         'level on a divider'        => ['divider', 'level'],
     ] );
@@ -609,9 +609,9 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
 
         Livewire::test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
-            ->call( 'updateTimeLimit', 'min_time', '09:00:00' )
-            ->call( 'updateTimeLimit', 'max_time', '' )
-            ->call( 'updateTimeLimit', 'pattern', '12:00' );
+            ->call( 'updateSetting', 'min_time', '09:00:00' )
+            ->call( 'updateSetting', 'max_time', '' )
+            ->call( 'updateSetting', 'pattern', '12:00' );
 
         expect( $field->fresh()->validation_rules )->toBe( ['min_time' => '09:00'] );
     } );
@@ -623,7 +623,7 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
 
         Livewire::test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
-            ->call( 'updateTimeLimit', 'min_time', '25:00' );
+            ->call( 'updateSetting', 'min_time', '25:00' );
 
         expect( $field->fresh()->validation_rules )->toBe( [] );
     } );
@@ -633,7 +633,7 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
 
         Livewire::test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
-            ->call( 'updateTimeLimit', 'min_time', '09:00' )
+            ->call( 'updateSetting', 'min_time', '09:00' )
             ->assertSet( 'isDirty', false );
     } );
 
@@ -647,17 +647,17 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
             $test->assertSeeHtml( $html );
         }
     } )->with( [
-        'textarea' => ['textarea', ["updateFieldConfig('rows', \$event.target.value)"]],
-        'heading'  => ['heading', ["updateFieldConfig('level', \$event.target.value)", '<option value="h6"']],
-        'divider'  => ['divider', ["updateFieldConfig('style', \$event.target.value)", "updateFieldConfig('spacing', \$event.target.value)"]],
+        'textarea' => ['textarea', ["updateSetting('rows', \$event.target.value)"]],
+        'heading'  => ['heading', ["updateSetting('level', \$event.target.value)", '<option value="h6"']],
+        'divider'  => ['divider', ["updateSetting('style', \$event.target.value)", "updateSetting('spacing', \$event.target.value)"]],
         'time'     => ['time', [
-            "updateTimeLimit('min_time', \$event.target.value)",
-            "updateTimeLimit('max_time', \$event.target.value)",
-            "updateFieldConfig('step', \$event.target.value)",
+            "updateSetting('min_time', \$event.target.value)",
+            "updateSetting('max_time', \$event.target.value)",
+            "updateSetting('step', \$event.target.value)",
         ]],
         'checkbox' => ['checkbox', [
-            "updateFieldConfig('checked_label', \$event.target.value)",
-            "updateFieldConfig('unchecked_label', \$event.target.value)",
+            "updateSetting('checked_label', \$event.target.value)",
+            "updateSetting('unchecked_label', \$event.target.value)",
         ]],
     ] );
 
@@ -666,7 +666,8 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
 
         Livewire::test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
-            ->assertDontSeeHtml( 'updateFieldConfig(' )
-            ->assertDontSeeHtml( 'updateTimeLimit(' );
+            ->assertDontSeeHtml( "updateSetting('rows'" )
+            ->assertDontSeeHtml( "updateSetting('min_time'" )
+            ->assertDontSeeHtml( "updateSetting('checked_label'" );
     } );
 } );

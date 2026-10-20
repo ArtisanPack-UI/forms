@@ -40,6 +40,7 @@ export type BuiltInFieldType =
     | 'file'
     | 'date'
     | 'time'
+    | 'rating'
     | 'heading'
     | 'paragraph'
     | 'divider'
@@ -204,6 +205,20 @@ export interface FileFieldConfig extends BaseFieldConfig {
 }
 
 /**
+ * Configuration for rating fields.
+ *
+ * @since 1.6.0
+ */
+export interface RatingFieldConfig extends BaseFieldConfig {
+    /** Number of stars, from 1 to 10. Defaults to 5. */
+    max_rating?: number;
+    /** Whether half stars can be chosen. */
+    allow_half?: boolean;
+    /** Star size. Defaults to `md`. */
+    size?: 'xs' | 'sm' | 'md' | 'lg';
+}
+
+/**
  * Configuration for paragraph and HTML layout fields. A heading's text is
  * stored in the field `label`.
  */
@@ -218,9 +233,48 @@ export interface ContentFieldConfig extends BaseFieldConfig {
 export type FieldConfig =
     | OptionsFieldConfig
     | FileFieldConfig
+    | RatingFieldConfig
     | ContentFieldConfig
     | BaseFieldConfig
     | null;
+
+/**
+ * How a field setting is edited in the builder.
+ *
+ * @since 1.6.0
+ */
+export type FieldSettingInput = 'text' | 'integer' | 'number' | 'select' | 'toggle' | 'date' | 'time' | 'list';
+
+/**
+ * One type-specific setting from a field type's settings schema
+ * (`ArtisanPackUI\Forms\Support\FieldSettings` on the server). The builders
+ * render a field's settings from its `settings_schema`.
+ *
+ * @since 1.6.0
+ */
+export interface FieldSettingDefinition {
+    /** The storage key. */
+    key: string;
+    /** Builder label, already translated. */
+    label: string;
+    input: FieldSettingInput;
+    /** The column the value is stored in. */
+    store: 'field_config' | 'validation_rules';
+    /** A column an older copy may still live in; read first, cleared on write. */
+    legacy_store?: 'field_config' | 'validation_rules';
+    /** The builder tab the setting belongs to. */
+    tab: 'general' | 'validation' | 'advanced';
+    hint?: string;
+    placeholder?: string;
+    /** The value the renderer falls back to when the setting is unset. */
+    default?: string | number | boolean;
+    min?: number;
+    max?: number;
+    max_length?: number;
+    step?: number | 'any';
+    options?: Array<{ value: string; label: string }>;
+    monospace?: boolean;
+}
 
 // ---------------------------------------------------------------------------
 // Model Types (API Resource Shapes)
@@ -249,6 +303,18 @@ export interface FormField {
     sort_order: number;
     /** Present only when the field type supports options and options are non-empty. */
     options?: FieldOption[];
+    /** Whether the field is shown but not editable (since 1.6.0). */
+    is_read_only?: boolean;
+    /**
+     * The value a read-only field submits, after the `ap.forms.readOnlyValue`
+     * filter (since 1.6.0). Present only when `is_read_only` is true.
+     */
+    read_only_value?: unknown;
+    /**
+     * The field type's settings schema (since 1.6.0). Left out of the public
+     * render payload.
+     */
+    settings_schema?: FieldSettingDefinition[];
     created_at: string;
     updated_at: string;
 }

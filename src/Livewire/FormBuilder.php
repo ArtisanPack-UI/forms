@@ -29,6 +29,7 @@ use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\FieldService;
 use ArtisanPackUI\Forms\Services\StepService;
+use ArtisanPackUI\Forms\Support\FieldSettings;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
@@ -52,22 +53,6 @@ use Livewire\Component;
  */
 class FormBuilder extends Component
 {
-    /**
-     * The `field_config` settings updateFieldConfig() may change, by field type.
-     *
-     * @since 1.6.0
-     *
-     * @var array<string, list<string>>
-     */
-    protected const CONFIG_SETTINGS = [
-        'textarea' => ['rows'],
-        'heading'  => ['level'],
-        'divider'  => ['style', 'spacing'],
-        'time'     => ['step'],
-        'checkbox' => ['checked_label', 'unchecked_label'],
-        'toggle'   => ['checked_label', 'unchecked_label'],
-    ];
-
     /**
      * The form being edited.
      */
@@ -348,148 +333,35 @@ class FormBuilder extends Component
     }
 
     /**
-     * Update a numeric validation rule (min, max or step) on the selected field.
+     * Update one of the selected field's type-specific settings.
      *
-     * The raw input value is parsed here rather than in the `wire:change`
-     * expression: Livewire 4 rewrites bare identifiers such as `parseInt` in
-     * those expressions to `$wire` calls, which breaks the request.
+     * The setting must be in the field type's settings schema (see
+     * FieldSettings); its schema entry decides how the raw input is parsed and
+     * where it is stored. A blank or invalid value clears the setting so the
+     * renderer falls back to its default. The value is parsed here rather than
+     * in the `wire:change` expression: Livewire 4 rewrites bare identifiers
+     * such as `parseInt` in those expressions to `$wire` calls.
      *
      * @since 1.6.0
      *
-     * @param  string  $rule  The rule key: `min`, `max` or `step`.
-     * @param  float|int|string|null  $value  The raw input value; blank clears the rule.
+     * @param  string  $key  The setting key.
+     * @param  mixed  $value  The raw input value.
      */
-    public function updateValidationRule( string $rule, string|int|float|null $value ): void
+    public function updateSetting( string $key, mixed $value ): void
     {
-        if ( ! in_array( $rule, ['min', 'max', 'step'], true ) ) {
-            return;
-        }
-
         $field = $this->getSelectedFieldModel();
 
         if ( null === $field ) {
             return;
         }
 
-        $rules = $field->validation_rules ?? [];
+        $setting = FieldSettings::find( $field, $key );
 
-        if ( is_numeric( $value ) ) {
-            $rules[ $rule ] = 'step' === $rule ? (float) $value : (int) $value;
-        } else {
-            unset( $rules[ $rule ] );
-        }
-
-        $this->persistSelectedField( $field, ['validation_rules' => $rules] );
-    }
-
-    /**
-     * Update a file field's max size or allowed types on the selected field.
-     *
-     * Saves to `field_config` and drops any pre-1.6.0 copy in
-     * `validation_rules` so it no longer shadows the new value.
-     *
-     * @since 1.6.0
-     *
-     * @param  string  $setting  `max_size` (KB) or `allowed_types` (comma-separated extensions).
-     * @param  int|string|null  $value  The raw input value; blank clears the setting.
-     */
-    public function updateFileSetting( string $setting, string|int|null $value ): void
-    {
-        if ( ! in_array( $setting, ['max_size', 'allowed_types'], true ) ) {
+        if ( null === $setting ) {
             return;
         }
 
-        $field = $this->getSelectedFieldModel();
-
-        if ( null === $field ) {
-            return;
-        }
-
-        $config = $field->field_config ?? [];
-        $rules  = $field->validation_rules ?? [];
-
-        $parsed = 'max_size' === $setting
-            ? ( is_numeric( $value ) && (int) $value > 0 ? (int) $value : null )
-            : array_values( array_filter( array_map( 'trim', explode( ',', (string) $value ) ), fn ( string $type ): bool => '' !== $type ) );
-
-        if ( null === $parsed || [] === $parsed ) {
-            unset( $config[ $setting ] );
-        } else {
-            $config[ $setting ] = $parsed;
-        }
-
-        unset( $rules[ $setting ] );
-
-        $this->persistSelectedField( $field, [
-            'field_config'     => $config,
-            'validation_rules' => $rules,
-        ] );
-    }
-
-    /**
-     * Update a type-specific display setting in the selected field's `field_config`.
-     *
-     * Covers textarea `rows`, heading `level`, divider `style` / `spacing`,
-     * time `step` (seconds) and checkbox / toggle `checked_label` /
-     * `unchecked_label`. Settings that do not apply to the field's type are
-     * ignored; a blank or invalid value clears the setting so the renderer
-     * falls back to its default.
-     *
-     * @since 1.6.0
-     *
-     * @param  string  $setting  The `field_config` key.
-     * @param  int|string|null  $value  The raw input value.
-     */
-    public function updateFieldConfig( string $setting, string|int|null $value ): void
-    {
-        $field = $this->getSelectedFieldModel();
-
-        if ( null === $field || ! in_array( $setting, self::CONFIG_SETTINGS[ $field->type ] ?? [], true ) ) {
-            return;
-        }
-
-        $config = $field->field_config ?? [];
-        $parsed = $this->parseFieldConfigSetting( $setting, $value );
-
-        if ( null === $parsed ) {
-            unset( $config[ $setting ] );
-        } else {
-            $config[ $setting ] = $parsed;
-        }
-
-        $this->persistSelectedField( $field, ['field_config' => $config] );
-    }
-
-    /**
-     * Update the earliest or latest allowed time on the selected time field.
-     *
-     * @since 1.6.0
-     *
-     * @param  string  $rule  `min_time` or `max_time`.
-     * @param  string|null  $value  An `H:i` or `H:i:s` time; blank or invalid clears the rule.
-     */
-    public function updateTimeLimit( string $rule, ?string $value ): void
-    {
-        if ( ! in_array( $rule, ['min_time', 'max_time'], true ) ) {
-            return;
-        }
-
-        $field = $this->getSelectedFieldModel();
-
-        if ( null === $field || 'time' !== $field->type ) {
-            return;
-        }
-
-        $rules = $field->validation_rules ?? [];
-        $value = trim( (string) $value );
-
-        if ( 1 === preg_match( FormField::TIME_FORMAT_PATTERN, $value ) ) {
-            $rules[ $rule ] = FormField::normalizeTimeValue( $value );
-        } else {
-            unset( $rules[ $rule ] );
-        }
-
-        $this->persistSelectedField( $field, ['validation_rules' => $rules] );
+        $this->persistSelectedField( $field, FieldSettings::update( $field, $setting, $value ) );
     }
 
     /**
@@ -866,29 +738,5 @@ class FormBuilder extends Component
         $this->markDirty();
 
         unset( $this->fields, $this->selectedField );
-    }
-
-    /**
-     * Parse a raw `field_config` setting value from the field editor.
-     *
-     * @since 1.6.0
-     *
-     * @param  string  $setting  The `field_config` key.
-     * @param  int|string|null  $value  The raw input value.
-     *
-     * @return int|string|null The value to store, or null to clear the setting.
-     */
-    protected function parseFieldConfigSetting( string $setting, string|int|null $value ): int|string|null
-    {
-        $value = trim( (string) $value );
-
-        return match ( $setting ) {
-            'rows'    => ctype_digit( $value ) && (int) $value >= 1 && (int) $value <= 50 ? (int) $value : null,
-            'step'    => ctype_digit( $value ) && (int) $value >= 1 ? (int) $value : null,
-            'level'   => in_array( $value, FormField::HEADING_LEVELS, true ) ? $value : null,
-            'style'   => in_array( $value, FormField::DIVIDER_STYLES, true ) ? $value : null,
-            'spacing' => in_array( $value, FormField::DIVIDER_SPACINGS, true ) ? $value : null,
-            default   => '' === $value ? null : mb_substr( $value, 0, 255 ),
-        };
     }
 }

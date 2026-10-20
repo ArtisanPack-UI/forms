@@ -36,6 +36,7 @@
         @if($minTime) min="{{ $minTime }}" @endif
         @if($maxTime) max="{{ $maxTime }}" @endif
         @if($step) step="{{ $step }}" @endif
+        @if($field->isReadOnly()) readonly @endif
         @if($field->is_required) required aria-required="true" @endif
         @if($ariaDescribedBy) aria-describedby="{{ $ariaDescribedBy }}" @endif
     />

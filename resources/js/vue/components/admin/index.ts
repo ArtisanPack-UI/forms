@@ -21,3 +21,4 @@ export { default as ConditionalLogicEditor } from './ConditionalLogicEditor.vue'
 export { default as NotificationEditor } from './NotificationEditor.vue';
 export { default as SubmissionsList } from './SubmissionsList.vue';
 export { default as SubmissionDetail } from './SubmissionDetail.vue';
+export { default as FieldSettingControl } from './FieldSettingControl.vue';

@@ -23,6 +23,7 @@ import type {
 } from '../../../types/artisanpack-forms';
 import { useApi } from '../../composables/useApi';
 import type { UseApiOptions } from '../../composables/useApi';
+import { t } from '../../../shared/i18n';
 
 type SortColumn = 'name' | 'created_at';
 
@@ -92,11 +93,11 @@ const togglingId = ref<number | null>( null );
 // Computed
 const formsList = computed( () => forms.value?.data ?? [] );
 
-const statusOptions = [
-	{ id: 'all', name: 'All Status' },
-	{ id: 'active', name: 'Active' },
-	{ id: 'inactive', name: 'Inactive' },
-];
+const statusOptions = computed( () => [
+	{ id: 'all', name: t( 'All Status' ) },
+	{ id: 'active', name: t( 'Active' ) },
+	{ id: 'inactive', name: t( 'Inactive' ) },
+] );
 
 // Fetch forms
 async function fetchForms(): Promise<void> {
@@ -121,7 +122,7 @@ async function fetchForms(): Promise<void> {
 		const data = await get<PaginatedResponse<Form>>( '/', params );
 		forms.value = data;
 	} catch ( err ) {
-		const message = err instanceof Error ? err.message : 'Failed to load forms.';
+		const message = err instanceof Error ? err.message : t( 'Failed to load forms.' );
 		error.value = message;
 	} finally {
 		isLoading.value = false;
@@ -165,7 +166,7 @@ function getAriaSortValue( column: SortColumn ): 'ascending' | 'descending' | 'n
 
 // Action handlers
 async function handleDelete( form: Form ): Promise<void> {
-	if ( !window.confirm( `Are you sure you want to delete "${form.name}"?` ) ) {
+	if ( !window.confirm( t( 'Are you sure you want to delete ":name"?', { name: form.name } ) ) ) {
 		return;
 	}
 
@@ -175,7 +176,7 @@ async function handleDelete( form: Form ): Promise<void> {
 		await del( `/${form.slug}` );
 		await fetchForms();
 	} catch ( err ) {
-		const message = err instanceof Error ? err.message : 'Failed to delete form.';
+		const message = err instanceof Error ? err.message : t( 'Failed to delete form.' );
 		error.value = message;
 	} finally {
 		deletingId.value = null;
@@ -190,7 +191,7 @@ async function handleDuplicate( form: Form ): Promise<void> {
 
 	try {
 		const duplicateData: StoreFormRequest = {
-			name: `${form.name} (Copy)`,
+			name: t( ':name (Copy)', { name: form.name } ),
 			description: form.description,
 			submit_button_text: form.submit_button_text,
 			success_message: form.success_message,
@@ -204,7 +205,7 @@ async function handleDuplicate( form: Form ): Promise<void> {
 		await post<{ data: Form }>( '/', duplicateData );
 		await fetchForms();
 	} catch ( err ) {
-		const message = err instanceof Error ? err.message : 'Failed to duplicate form.';
+		const message = err instanceof Error ? err.message : t( 'Failed to duplicate form.' );
 		error.value = message;
 	} finally {
 		duplicatingId.value = null;
@@ -218,7 +219,7 @@ async function handleTogglePublish( form: Form ): Promise<void> {
 		await put( `/${form.slug}`, { is_active: !form.is_active } );
 		await fetchForms();
 	} catch ( err ) {
-		const message = err instanceof Error ? err.message : 'Failed to update form status.';
+		const message = err instanceof Error ? err.message : t( 'Failed to update form status.' );
 		error.value = message;
 	} finally {
 		togglingId.value = null;
@@ -254,12 +255,12 @@ function isRowProcessing( form: Form ): boolean {
 	<div :class="['space-y-6', className]">
 		<!-- Header -->
 		<div class="flex items-center justify-between">
-			<h1 class="text-2xl font-bold">Forms</h1>
+			<h1 class="text-2xl font-bold">{{ t( 'Forms' ) }}</h1>
 			<Button
 				color="primary"
 				@click="emit( 'create-form' )"
 			>
-				Create Form
+				{{ t( 'Create Form' ) }}
 			</Button>
 		</div>
 
@@ -268,7 +269,7 @@ function isRowProcessing( form: Form ): boolean {
 			<Input
 				type="search"
 				class="w-full max-w-xs"
-				placeholder="Search forms..."
+				:placeholder="t( 'Search forms...' )"
 				:value="search"
 				@input="onSearchInput"
 			/>
@@ -299,7 +300,7 @@ function isRowProcessing( form: Form ): boolean {
 			role="status"
 		>
 			<Loading size="md" />
-			<span>Loading forms...</span>
+			<span>{{ t( 'Loading forms...' ) }}</span>
 		</div>
 
 		<!-- Table -->
@@ -316,21 +317,21 @@ function isRowProcessing( form: Form ): boolean {
 								size="sm"
 								@click="handleSort( 'name' )"
 							>
-								Name{{ sortIndicator( 'name' ) }}
+								{{ t( 'Name' ) }}{{ sortIndicator( 'name' ) }}
 							</Button>
 						</th>
-						<th>Status</th>
-						<th>Submissions</th>
+						<th>{{ t( 'Status' ) }}</th>
+						<th>{{ t( 'Submissions' ) }}</th>
 						<th :aria-sort="getAriaSortValue( 'created_at' )">
 							<Button
 								color="ghost"
 								size="sm"
 								@click="handleSort( 'created_at' )"
 							>
-								Created{{ sortIndicator( 'created_at' ) }}
+								{{ t( 'Created' ) }}{{ sortIndicator( 'created_at' ) }}
 							</Button>
 						</th>
-						<th>Actions</th>
+						<th>{{ t( 'Actions' ) }}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -358,7 +359,7 @@ function isRowProcessing( form: Form ): boolean {
 						<td>
 							<Badge
 								:color="form.is_active ? 'success' : 'warning'"
-								:value="form.is_active ? 'Active' : 'Inactive'"
+								:value="form.is_active ? t( 'Active' ) : t( 'Inactive' )"
 							/>
 						</td>
 						<td>
@@ -374,7 +375,7 @@ function isRowProcessing( form: Form ): boolean {
 									color="info"
 									size="sm"
 									class="ml-1"
-									:value="`${form.unread_submissions_count} new`"
+									:value="t( ':count new', { count: form.unread_submissions_count ?? 0 } )"
 								/>
 							</Button>
 							<span v-else>
@@ -384,7 +385,7 @@ function isRowProcessing( form: Form ): boolean {
 									color="info"
 									size="sm"
 									class="ml-1"
-									:value="`${form.unread_submissions_count} new`"
+									:value="t( ':count new', { count: form.unread_submissions_count ?? 0 } )"
 								/>
 							</span>
 						</td>
@@ -396,44 +397,44 @@ function isRowProcessing( form: Form ): boolean {
 								<Button
 									color="ghost"
 									size="sm"
-									title="Edit"
+									:title="t( 'Edit' )"
 									:disabled="isRowProcessing( form )"
 									@click="emit( 'edit-form', form )"
 								>
-									Edit
+									{{ t( 'Edit' ) }}
 								</Button>
 								<Button
 									color="ghost"
 									size="sm"
-									title="Duplicate"
+									:title="t( 'Duplicate' )"
 									:disabled="isRowProcessing( form )"
 									@click="handleDuplicate( form )"
 								>
-									{{ duplicatingId === form.id ? 'Duplicating...' : 'Duplicate' }}
+									{{ duplicatingId === form.id ? t( 'Duplicating...' ) : t( 'Duplicate' ) }}
 								</Button>
 								<Button
 									color="outline"
 									size="sm"
-									:title="form.is_active ? 'Unpublish' : 'Publish'"
+									:title="form.is_active ? t( 'Unpublish' ) : t( 'Publish' )"
 									:disabled="isRowProcessing( form )"
 									@click="handleTogglePublish( form )"
 								>
 									{{
 										togglingId === form.id
-											? 'Updating...'
+											? t( 'Updating...' )
 											: form.is_active
-												? 'Unpublish'
-												: 'Publish'
+												? t( 'Unpublish' )
+												: t( 'Publish' )
 									}}
 								</Button>
 								<Button
 									color="error"
 									size="sm"
-									title="Delete"
+									:title="t( 'Delete' )"
 									:disabled="isRowProcessing( form )"
 									@click="handleDelete( form )"
 								>
-									{{ deletingId === form.id ? 'Deleting...' : 'Delete' }}
+									{{ deletingId === form.id ? t( 'Deleting...' ) : t( 'Delete' ) }}
 								</Button>
 							</div>
 						</td>
@@ -447,12 +448,12 @@ function isRowProcessing( form: Form ): boolean {
 			v-if="!isLoading && formsList.length === 0 && !error"
 			class="flex flex-col items-center justify-center gap-4 py-16 text-base-content/60"
 		>
-			<p class="text-lg">No forms found.</p>
+			<p class="text-lg">{{ t( 'No forms found.' ) }}</p>
 			<Button
 				color="primary"
 				@click="emit( 'create-form' )"
 			>
-				Create your first form
+				{{ t( 'Create your first form' ) }}
 			</Button>
 		</div>
 

@@ -12,7 +12,7 @@
 import { computed } from 'vue';
 import { Input, Textarea } from '@artisanpack-ui/vue/form';
 import type { FormField, DisplayConfig } from '../../../types/artisanpack-forms';
-import { getTextareaRows, getTimeStep } from '../../../shared/fieldSettings';
+import { getTextareaRows, getTimeStep, isReadOnlyField } from '../../../shared/fieldSettings';
 
 const props = defineProps<{
 	field: FormField;
@@ -26,6 +26,9 @@ const emit = defineEmits<{
 }>();
 
 const stringValue = computed( () => String( props.modelValue ?? '' ) );
+
+/** Read-only fields stay focusable and announced, but cannot be edited. */
+const readOnly = computed( () => isReadOnlyField( props.field ) );
 
 const showLabel = computed( () => props.displayConfig.label_position !== 'hidden' );
 const isInline = computed( () => props.displayConfig.label_position === 'beside' );
@@ -50,6 +53,7 @@ const ariaLabel = computed( () =>
 		:hint="field.help_text ?? undefined"
 		:error="error"
 		:required="field.is_required"
+		:readonly="readOnly"
 		:class="field.css_classes ?? undefined"
 		:minlength="field.validation_rules?.min"
 		:maxlength="field.validation_rules?.max"
@@ -70,6 +74,7 @@ const ariaLabel = computed( () =>
 		:hint="field.help_text ?? undefined"
 		:error="error"
 		:required="field.is_required"
+		:readonly="readOnly"
 		:class="field.css_classes ?? undefined"
 		:inline="isInline"
 		@update:model-value="emit( 'update:modelValue', $event )"
@@ -87,6 +92,7 @@ const ariaLabel = computed( () =>
 		:hint="field.help_text ?? undefined"
 		:error="error"
 		:required="field.is_required"
+		:readonly="readOnly"
 		:class="field.css_classes ?? undefined"
 		:pattern="field.validation_rules?.pattern ?? undefined"
 		:inline="isInline"
@@ -105,6 +111,7 @@ const ariaLabel = computed( () =>
 		:hint="field.help_text ?? undefined"
 		:error="error"
 		:required="field.is_required"
+		:readonly="readOnly"
 		:class="field.css_classes ?? undefined"
 		:min="field.validation_rules?.min"
 		:max="field.validation_rules?.max"
@@ -125,6 +132,7 @@ const ariaLabel = computed( () =>
 		:hint="field.help_text ?? undefined"
 		:error="error"
 		:required="field.is_required"
+		:readonly="readOnly"
 		:class="field.css_classes ?? undefined"
 		:inline="isInline"
 		@update:model-value="emit( 'update:modelValue', $event )"
@@ -141,6 +149,7 @@ const ariaLabel = computed( () =>
 		:hint="field.help_text ?? undefined"
 		:error="error"
 		:required="field.is_required"
+		:readonly="readOnly"
 		:class="field.css_classes ?? undefined"
 		:minlength="field.validation_rules?.min"
 		:maxlength="field.validation_rules?.max"
@@ -169,6 +178,7 @@ const ariaLabel = computed( () =>
 		:hint="field.help_text ?? undefined"
 		:error="error"
 		:required="field.is_required"
+		:readonly="readOnly"
 		:class="field.css_classes ?? undefined"
 		:min="field.validation_rules?.min_time ?? undefined"
 		:max="field.validation_rules?.max_time ?? undefined"

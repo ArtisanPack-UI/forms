@@ -20,6 +20,7 @@ namespace ArtisanPackUI\Forms\Http\Requests\Api;
 
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Services\ConditionalLogicService;
+use ArtisanPackUI\Forms\Services\SubmissionService;
 use ArtisanPackUI\Forms\Support\FiresValidationHooks;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -98,11 +99,11 @@ class SubmitFormApiRequest extends FormRequest
                 continue;
             }
 
-            $fieldRules = $field->buildValidationRules();
+            $prefix = $field->is_file_field ? 'files' : 'data';
 
-            if ( ! empty( $fieldRules ) ) {
-                $prefix                              = 'file' === $field->type ? 'files' : 'data';
-                $rules[ "{$prefix}.{$field->name}" ] = $fieldRules;
+            foreach ( $field->buildKeyedValidationRules() as $inputKey => $fieldRules ) {
+                $key           = '' === $inputKey ? "{$prefix}.{$field->name}" : "{$prefix}.{$field->name}.{$inputKey}";
+                $rules[ $key ] = $fieldRules;
             }
         }
 
@@ -188,5 +189,31 @@ class SubmitFormApiRequest extends FormRequest
         }
 
         return $files;
+    }
+
+    /**
+     * Fires the before-validate hook and replaces submitted read-only field values.
+     *
+     * A read-only field keeps its own value whatever the client sent, so that
+     * value is what gets validated and stored.
+     *
+     * @since 1.6.0
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->fireBeforeValidate();
+
+        $form = $this->route( 'form' );
+        $data = $this->input( 'data' );
+
+        if ( ! $form instanceof Form || ! is_array( $data ) ) {
+            return;
+        }
+
+        $form->loadMissing( 'fields' );
+
+        $this->merge( [
+            'data' => app( SubmissionService::class )->applyReadOnlyValues( $form->fields, $data ),
+        ] );
     }
 }

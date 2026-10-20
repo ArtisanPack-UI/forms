@@ -1,9 +1,11 @@
 /**
  * FieldEditor component for per-field settings.
  *
- * Adapts its UI based on the selected field type, showing relevant
- * configuration options like validation rules, options editor for
- * choice fields, file upload settings, and conditional logic.
+ * The settings every field shares (label, name, placeholder, help text,
+ * default value, required, width, CSS classes, options, conditional logic)
+ * are built in. Type-specific settings are rendered from the field's
+ * `settings_schema`, which the server builds from the field type's handler,
+ * so a new type's settings need no editor changes.
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -18,41 +20,26 @@ import { Button, Checkbox, Input, Select, Tabs, Textarea } from '@artisanpack-ui
 import type {
 	ConditionalLogic,
 	FieldOption,
+	FieldSettingDefinition,
 	FieldType,
 	FieldWidth,
 	FormField,
 	UpdateFieldRequest,
-	ValidationRules,
 } from '../../../types/artisanpack-forms';
 
 import {
-	ACCEPTANCE_FIELD_TYPES,
-	buildFieldConfigUpdate,
-	buildFileSettingUpdate,
 	buildLayoutContentUpdate,
-	DIVIDER_SPACINGS,
-	DIVIDER_STYLES,
-	getFieldConfigInput,
-	getFileSettingInput,
-	getHeadingLevel,
+	buildSettingUpdate,
 	getLayoutContent,
-	HEADING_LEVELS,
-	parsePositiveInteger,
+	getSettingInput,
+	getSettingsForTab,
+	isDraftStored,
 } from '../../../shared/fieldSettings';
+import { getFieldTypeLabel } from '../../../shared/fieldTypeLabels';
+import { t } from '../../../shared/i18n';
 import { resolveFieldSettings } from '../fields/registry';
 import type { CustomFieldSettingsEntry, FieldSettingsRegistration } from '../fields/registry';
 import { ConditionalLogicEditor } from './ConditionalLogicEditor';
-
-/** Safely parse a numeric input value, returning undefined for empty or NaN. */
-function parseNumericInput( value: string ): number | undefined {
-	if ( !value ) {
-		return undefined;
-	}
-
-	const num = Number( value );
-
-	return Number.isNaN( num ) ? undefined : num;
-}
 
 /** Field types that support an options list. */
 const OPTION_FIELD_TYPES: Set<FieldType> = new Set( [
@@ -70,28 +57,18 @@ const LAYOUT_FIELD_TYPES: Set<FieldType> = new Set( [
 	'html',
 ] );
 
-/** Heading level options. */
-const HEADING_LEVEL_OPTIONS = HEADING_LEVELS.map( ( level ) => ( { value: level, label: level.toUpperCase() } ) );
+/** Field types without a placeholder. */
+const NO_PLACEHOLDER_TYPES: Set<FieldType> = new Set( ['checkbox', 'radio', 'rating'] );
 
-/** Divider line style options. */
-const DIVIDER_STYLE_OPTIONS = DIVIDER_STYLES.map( ( style ) => ( {
-	value: style,
-	label: style.charAt( 0 ).toUpperCase() + style.slice( 1 ),
-} ) );
-
-/** Divider spacing options. */
-const DIVIDER_SPACING_OPTIONS = DIVIDER_SPACINGS.map( ( spacing ) => ( {
-	value: spacing,
-	label: spacing.charAt( 0 ).toUpperCase() + spacing.slice( 1 ),
-} ) );
-
-/** Available width options. */
-const WIDTH_OPTIONS: Array<{ value: FieldWidth; label: string }> = [
-	{ value: 'full', label: 'Full Width' },
-	{ value: 'half', label: 'Half (1/2)' },
-	{ value: 'third', label: 'Third (1/3)' },
-	{ value: 'two-thirds', label: 'Two-Thirds (2/3)' },
-];
+/** Get the width options, translated at render. */
+function getWidthOptions(): Array<{ value: FieldWidth; label: string }> {
+	return [
+		{ value: 'full', label: t( 'Full Width' ) },
+		{ value: 'half', label: t( 'Half (1/2)' ) },
+		{ value: 'third', label: t( 'Third (1/3)' ) },
+		{ value: 'two-thirds', label: t( 'Two-Thirds (2/3)' ) },
+	];
+}
 
 /** Props for the FieldEditor component. */
 export interface FieldEditorProps {
@@ -213,48 +190,38 @@ export function FieldEditor( {
 	const handleAddOption = useCallback( () => {
 		const newOptions = [
 			...options,
-			{ label: `Option ${options.length + 1}`, value: `option_${options.length + 1}` },
+			{ label: t( 'Option :number', { number: options.length + 1 } ), value: `option_${options.length + 1}` },
 		];
-		updateField( { field_config: { options: newOptions } } );
-	}, [options, updateField] );
+		updateField( { field_config: { ...( field.field_config ?? {} ), options: newOptions } } );
+	}, [field.field_config, options, updateField] );
 
 	const handleUpdateOption = useCallback(
 		( index: number, key: 'label' | 'value', value: string ) => {
 			const newOptions = options.map( ( opt, i ) =>
 				i === index ? { ...opt, [key]: value } : opt,
 			);
-			updateField( { field_config: { options: newOptions } } );
+			updateField( { field_config: { ...( field.field_config ?? {} ), options: newOptions } } );
 		},
-		[options, updateField],
+		[field.field_config, options, updateField],
 	);
 
 	const handleRemoveOption = useCallback(
 		( index: number ) => {
 			const newOptions = options.filter( ( _, i ) => i !== index );
-			updateField( { field_config: { options: newOptions } } );
+			updateField( { field_config: { ...( field.field_config ?? {} ), options: newOptions } } );
 		},
-		[options, updateField],
+		[field.field_config, options, updateField],
 	);
 
-	// Validation rules
-	const validationRules = useMemo(
-		(): ValidationRules => field.validation_rules ?? {},
-		[field.validation_rules],
-	);
-
-	const updateValidation = useCallback(
-		( rules: Partial<ValidationRules> ) => {
-			updateField( { validation_rules: { ...validationRules, ...rules } } );
-		},
-		[validationRules, updateField],
-	);
+	const validationSettings = useMemo( () => getSettingsForTab( field, 'validation' ), [field] );
+	const advancedSettings = useMemo( () => getSettingsForTab( field, 'advanced' ), [field] );
 
 	// Build tabs array — Tabs component uses `name` (not `id`) as the key
 	const tabs = useMemo( () => {
 		const tabItems = [
 			{
 				name: 'general',
-				label: 'General',
+				label: t( 'General' ),
 				content: (
 					<GeneralTabContent
 						field={field}
@@ -272,22 +239,24 @@ export function FieldEditor( {
 			},
 		];
 
-		if ( !isLayoutField ) {
+		if ( validationSettings.length > 0 ) {
 			tabItems.push( {
 				name: 'validation',
-				label: 'Validation',
+				label: t( 'Validation' ),
 				content: (
-					<ValidationTabContent
+					<SettingsTabContent
 						field={field}
-						validationRules={validationRules}
-						updateValidation={updateValidation}
+						settings={validationSettings}
 						updateField={updateField}
 					/>
 				),
 			} );
+		}
+
+		if ( !isLayoutField ) {
 			tabItems.push( {
 				name: 'conditional',
-				label: 'Conditional',
+				label: t( 'Conditional' ),
 				content: (
 					<ConditionalLogicEditor
 						value={field.conditional_logic}
@@ -301,27 +270,44 @@ export function FieldEditor( {
 			} );
 		}
 
+		if ( advancedSettings.length > 0 ) {
+			tabItems.push( {
+				name: 'advanced',
+				label: t( 'Advanced' ),
+				content: (
+					<SettingsTabContent
+						field={field}
+						settings={advancedSettings}
+						updateField={updateField}
+					/>
+				),
+			} );
+		}
+
 		return tabItems;
 	}, [
-		field, isLayoutField, hasOptions, options, validationRules,
-		allFields, updateField, updateValidation,
+		field, isLayoutField, hasOptions, options, validationSettings, advancedSettings,
+		allFields, updateField,
 		handleAddOption, handleUpdateOption, handleRemoveOption,
 		customSettingsPanel,
 	] );
+
+	// Fall back to the General tab when the active tab does not apply to the field.
+	const resolvedTab = tabs.some( ( tab ) => tab.name === activeTab ) ? activeTab : 'general';
 
 	return (
 		<div className={`flex flex-col gap-0 ${className ?? ''}`}>
 			{/* Header */}
 			<div className="flex items-center justify-between p-3 border-b border-base-300">
 				<h3 className="text-sm font-semibold">
-					Edit {field.type.replace( '_', ' ' )} Field
+					{t( 'Edit :type Field', { type: getFieldTypeLabel( field.type ) } )}
 				</h3>
 				<Button
 					color="ghost"
 					size="sm"
 					className="btn-circle"
 					onClick={onClose}
-					aria-label="Close field editor"
+					aria-label={t( 'Close field editor' )}
 				>
 					&times;
 				</Button>
@@ -331,7 +317,7 @@ export function FieldEditor( {
 			<Tabs
 				variant="bordered"
 				tabs={tabs}
-				activeTab={activeTab}
+				activeTab={resolvedTab}
 				onChange={setActiveTab}
 			/>
 
@@ -342,18 +328,18 @@ export function FieldEditor( {
 					size="sm"
 					onClick={() => onDuplicate( field.id )}
 				>
-					Duplicate
+					{t( 'Duplicate' )}
 				</Button>
 				<Button
 					color="error"
 					size="sm"
 					onClick={() => {
-						if ( window.confirm( 'Are you sure you want to delete this field?' ) ) {
+						if ( window.confirm( t( 'Are you sure you want to delete this field?' ) ) ) {
 							onDelete( field.id );
 						}
 					}}
 				>
-					Delete
+					{t( 'Delete' )}
 				</Button>
 			</div>
 		</div>
@@ -400,13 +386,13 @@ function GeneralTabContent( {
 			{/* Label (a heading's label is its text) */}
 			{field.type === 'heading' ? (
 				<Input
-					label="Heading Text"
+					label={t( 'Heading Text' )}
 					value={getLayoutContent( field )}
 					onChange={( e ) => updateField( buildLayoutContentUpdate( field, e.target.value ) )}
 				/>
 			) : (
 				<Input
-					label="Label"
+					label={t( 'Label' )}
 					value={field.label ?? ''}
 					onChange={( e ) => updateField( { label: e.target.value } )}
 				/>
@@ -414,16 +400,16 @@ function GeneralTabContent( {
 
 			{/* Name (machine name) */}
 			<Input
-				label="Name"
+				label={t( 'Name' )}
 				value={field.name}
 				onChange={( e ) => updateField( { name: e.target.value } )}
-				hint="Machine-readable name. Used as the form data key."
+				hint={t( 'Machine-readable name. Used as the form data key.' )}
 			/>
 
 			{/* Placeholder (non-layout only) */}
-			{!isLayoutField && field.type !== 'checkbox' && field.type !== 'radio' && (
+			{!isLayoutField && !NO_PLACEHOLDER_TYPES.has( field.type ) && (
 				<Input
-					label="Placeholder"
+					label={t( 'Placeholder' )}
 					value={field.placeholder ?? ''}
 					onChange={( e ) => updateField( { placeholder: e.target.value || null } )}
 				/>
@@ -432,7 +418,7 @@ function GeneralTabContent( {
 			{/* Help text */}
 			{!isLayoutField && (
 				<Input
-					label="Help Text"
+					label={t( 'Help Text' )}
 					value={field.help_text ?? ''}
 					onChange={( e ) => updateField( { help_text: e.target.value || null } )}
 				/>
@@ -441,7 +427,7 @@ function GeneralTabContent( {
 			{/* Default value */}
 			{!isLayoutField && field.type !== 'file' && (
 				<Input
-					label="Default Value"
+					label={t( 'Default Value' )}
 					value={field.default_value ?? ''}
 					onChange={( e ) => updateField( { default_value: e.target.value || null } )}
 				/>
@@ -450,7 +436,7 @@ function GeneralTabContent( {
 			{/* Required toggle */}
 			{!isLayoutField && (
 				<Checkbox
-					label="Required"
+					label={t( 'Required' )}
 					checked={field.is_required}
 					onChange={( e ) => updateField( { is_required: e.target.checked } )}
 				/>
@@ -460,15 +446,15 @@ function GeneralTabContent( {
 			{rendersBeforeBasics && customSettingsPanel && (
 				<>
 					{customSettingsPanel}
-					<div className="divider text-xs text-base-content/50">Field Basics</div>
+					<div className="divider text-xs text-base-content/50">{t( 'Field Basics' )}</div>
 				</>
 			)}
 
 			{/* Width */}
 			<Select
-				label="Width"
+				label={t( 'Width' )}
 				value={field.width}
-				options={WIDTH_OPTIONS}
+				options={getWidthOptions()}
 				optionValue="value"
 				optionLabel="label"
 				onChange={( e ) => updateField( { width: e.target.value as FieldWidth } )}
@@ -476,81 +462,15 @@ function GeneralTabContent( {
 
 			{/* CSS Classes */}
 			<Input
-				label="CSS Classes"
+				label={t( 'CSS Classes' )}
 				value={field.css_classes ?? ''}
 				onChange={( e ) => updateField( { css_classes: e.target.value || null } )}
 			/>
 
-			{/* Text area rows */}
-			{field.type === 'textarea' && (
-				<Input
-					label="Rows"
-					type="number"
-					min={1}
-					max={50}
-					value={getFieldConfigInput( field, 'rows' )}
-					placeholder="4"
-					onChange={( e ) => updateField( buildFieldConfigUpdate( field, 'rows', parsePositiveInteger( e.target.value, 50 ) ) )}
-				/>
-			)}
-
-			{/* Heading level */}
-			{field.type === 'heading' && (
-				<Select
-					label="Heading Level"
-					value={getHeadingLevel( field )}
-					options={HEADING_LEVEL_OPTIONS}
-					optionValue="value"
-					optionLabel="label"
-					onChange={( e ) => updateField( buildFieldConfigUpdate( field, 'level', e.target.value ) )}
-				/>
-			)}
-
-			{/* Divider style and spacing */}
-			{field.type === 'divider' && (
-				<>
-					<Select
-						label="Line Style"
-						value={getFieldConfigInput( field, 'style' ) || 'solid'}
-						options={DIVIDER_STYLE_OPTIONS}
-						optionValue="value"
-						optionLabel="label"
-						onChange={( e ) => updateField( buildFieldConfigUpdate( field, 'style', e.target.value ) )}
-					/>
-					<Select
-						label="Spacing"
-						value={getFieldConfigInput( field, 'spacing' ) || 'normal'}
-						options={DIVIDER_SPACING_OPTIONS}
-						optionValue="value"
-						optionLabel="label"
-						onChange={( e ) => updateField( buildFieldConfigUpdate( field, 'spacing', e.target.value ) )}
-					/>
-				</>
-			)}
-
-			{/* Checked / unchecked display text */}
-			{ACCEPTANCE_FIELD_TYPES.has( field.type ) && (
-				<>
-					<Input
-						label="Checked Text"
-						value={getFieldConfigInput( field, 'checked_label' )}
-						placeholder="Yes"
-						hint="Shown in submissions, notifications and exports."
-						onChange={( e ) => updateField( buildFieldConfigUpdate( field, 'checked_label', e.target.value ) )}
-					/>
-					<Input
-						label="Unchecked Text"
-						value={getFieldConfigInput( field, 'unchecked_label' )}
-						placeholder="No"
-						onChange={( e ) => updateField( buildFieldConfigUpdate( field, 'unchecked_label', e.target.value ) )}
-					/>
-				</>
-			)}
-
 			{/* HTML Content (for html field type) */}
 			{field.type === 'html' && (
 				<Textarea
-					label="HTML Content"
+					label={t( 'HTML Content' )}
 					rows={6}
 					value={getLayoutContent( field )}
 					onChange={( e ) => updateField( buildLayoutContentUpdate( field, e.target.value ) )}
@@ -560,29 +480,41 @@ function GeneralTabContent( {
 			{/* Paragraph content */}
 			{field.type === 'paragraph' && (
 				<Textarea
-					label="Content"
+					label={t( 'Content' )}
 					rows={4}
 					value={getLayoutContent( field )}
 					onChange={( e ) => updateField( buildLayoutContentUpdate( field, e.target.value ) )}
 				/>
 			)}
 
+			{/* Type-specific settings from the field type's settings schema */}
+			{getSettingsForTab( field, 'general' ).map( ( setting ) => (
+				<SettingControl
+					key={setting.key}
+					field={field}
+					setting={setting}
+					updateField={updateField}
+				/>
+			) )}
+
 			{/* Options editor for choice fields */}
 			{hasOptions && (
 				<div className="space-y-2">
 					<label className="label">
-						<span className="label-text font-medium">Options</span>
+						<span className="label-text font-medium">{t( 'Options' )}</span>
 					</label>
 					{options.map( ( option, index ) => (
 						<div key={index} className="flex items-center gap-2">
 							<Input
-								placeholder="Label"
+								placeholder={t( 'Label' )}
+								aria-label={t( 'Option :number label', { number: index + 1 } )}
 								value={option.label}
 								onChange={( e ) => handleUpdateOption( index, 'label', e.target.value )}
 								className="flex-1"
 							/>
 							<Input
-								placeholder="Value"
+								placeholder={t( 'Value' )}
+								aria-label={t( 'Option :number value', { number: index + 1 } )}
 								value={option.value}
 								onChange={( e ) => handleUpdateOption( index, 'value', e.target.value )}
 								className="flex-1"
@@ -592,7 +524,8 @@ function GeneralTabContent( {
 								size="sm"
 								className="btn-circle"
 								onClick={() => handleRemoveOption( index )}
-								title="Remove option"
+								title={t( 'Remove option' )}
+								aria-label={t( 'Remove option' )}
 							>
 								&times;
 							</Button>
@@ -603,36 +536,8 @@ function GeneralTabContent( {
 						size="sm"
 						onClick={handleAddOption}
 					>
-						Add Option
+						{t( 'Add Option' )}
 					</Button>
-				</div>
-			)}
-
-			{/* File field config */}
-			{field.type === 'file' && (
-				<div className="space-y-4">
-					<Input
-						label="Max File Size (KB)"
-						type="number"
-						min={0}
-						value={getFileSettingInput( field, 'max_size' )}
-						onChange={( e ) => updateField( buildFileSettingUpdate(
-							field,
-							'max_size',
-							parseNumericInput( e.target.value ),
-						) )}
-					/>
-					<Input
-						label="Allowed File Types (comma-separated extensions, e.g. pdf, jpg)"
-						value={getFileSettingInput( field, 'allowed_types' )}
-						onChange={( e ) => updateField( buildFileSettingUpdate(
-							field,
-							'allowed_types',
-							e.target.value
-								? e.target.value.split( ',' ).map( ( s ) => s.trim() )
-								: undefined,
-						) )}
-					/>
 				</div>
 			)}
 
@@ -643,136 +548,131 @@ function GeneralTabContent( {
 }
 
 // ---------------------------------------------------------------------------
-// ValidationTabContent (inline sub-component)
+// SettingsTabContent (inline sub-component)
 // ---------------------------------------------------------------------------
 
-interface ValidationTabContentProps {
+interface SettingsTabContentProps {
 	field: FormField;
-	validationRules: ValidationRules;
-	updateValidation: ( rules: Partial<ValidationRules> ) => void;
+	settings: FieldSettingDefinition[];
 	updateField: ( data: UpdateFieldRequest ) => void;
 }
 
-function ValidationTabContent( {
+/** Renders a tab made only of schema settings (Validation, Advanced). */
+function SettingsTabContent( {
 	field,
-	validationRules,
-	updateValidation,
+	settings,
 	updateField,
-}: ValidationTabContentProps ): React.ReactElement {
+}: SettingsTabContentProps ): React.ReactElement {
 	return (
 		<div className="space-y-4 p-4">
-			{/* Min/Max for text fields */}
-			{( field.type === 'text' || field.type === 'email' || field.type === 'url' ||
-				field.type === 'textarea' || field.type === 'phone' ) && (
-				<>
-					<Input
-						label="Min Length"
-						type="number"
-						min={0}
-						value={validationRules.min ?? ''}
-						onChange={( e ) => updateValidation( {
-							min: parseNumericInput( e.target.value ),
-						} )}
-					/>
-					<Input
-						label="Max Length"
-						type="number"
-						min={0}
-						value={validationRules.max ?? ''}
-						onChange={( e ) => updateValidation( {
-							max: parseNumericInput( e.target.value ),
-						} )}
-					/>
-				</>
-			)}
-
-			{/* Min/Max/Step for number */}
-			{field.type === 'number' && (
-				<>
-					<Input
-						label="Minimum"
-						type="number"
-						value={validationRules.min ?? ''}
-						onChange={( e ) => updateValidation( {
-							min: parseNumericInput( e.target.value ),
-						} )}
-					/>
-					<Input
-						label="Maximum"
-						type="number"
-						value={validationRules.max ?? ''}
-						onChange={( e ) => updateValidation( {
-							max: parseNumericInput( e.target.value ),
-						} )}
-					/>
-					<Input
-						label="Step"
-						type="number"
-						min={0}
-						value={validationRules.step ?? ''}
-						onChange={( e ) => updateValidation( {
-							step: parseNumericInput( e.target.value ),
-						} )}
-					/>
-				</>
-			)}
-
-			{/* Date range */}
-			{field.type === 'date' && (
-				<>
-					<Input
-						label="Min Date"
-						type="date"
-						value={validationRules.min_date ?? ''}
-						onChange={( e ) => updateValidation( { min_date: e.target.value || undefined } )}
-					/>
-					<Input
-						label="Max Date"
-						type="date"
-						value={validationRules.max_date ?? ''}
-						onChange={( e ) => updateValidation( { max_date: e.target.value || undefined } )}
-					/>
-				</>
-			)}
-
-			{/* Time range */}
-			{field.type === 'time' && (
-				<>
-					<Input
-						label="Min Time"
-						type="time"
-						value={validationRules.min_time ?? ''}
-						onChange={( e ) => updateValidation( { min_time: e.target.value || undefined } )}
-					/>
-					<Input
-						label="Max Time"
-						type="time"
-						value={validationRules.max_time ?? ''}
-						onChange={( e ) => updateValidation( { max_time: e.target.value || undefined } )}
-					/>
-					<Input
-						label="Step (seconds)"
-						type="number"
-						min={1}
-						value={getFieldConfigInput( field, 'step' )}
-						placeholder="60"
-						hint="e.g. 900 for 15-minute intervals; under 60 lets users pick seconds."
-						onChange={( e ) => updateField( buildFieldConfigUpdate( field, 'step', parsePositiveInteger( e.target.value ) ) )}
-					/>
-				</>
-			)}
-
-			{/* Pattern */}
-			{( field.type === 'text' || field.type === 'phone' ) && (
-				<Input
-					label="Pattern (RegExp)"
-					value={validationRules.pattern ?? ''}
-					onChange={( e ) => updateValidation( { pattern: e.target.value || undefined } )}
-					placeholder="e.g. ^[A-Z]{2}[0-9]{4}$"
-					hint="Regular expression pattern for input validation."
+			{settings.map( ( setting ) => (
+				<SettingControl
+					key={setting.key}
+					field={field}
+					setting={setting}
+					updateField={updateField}
 				/>
-			)}
+			) )}
 		</div>
 	);
 }
 
+// ---------------------------------------------------------------------------
+// SettingControl (inline sub-component)
+// ---------------------------------------------------------------------------
+
+interface SettingControlProps {
+	field: FormField;
+	setting: FieldSettingDefinition;
+	updateField: ( data: UpdateFieldRequest ) => void;
+}
+
+/** Map a schema input to the HTML input type that edits it. */
+function htmlInputType( input: FieldSettingDefinition['input'] ): string {
+	switch ( input ) {
+		case 'integer':
+		case 'number':
+			return 'number';
+		case 'date':
+			return 'date';
+		case 'time':
+			return 'time';
+		default:
+			return 'text';
+	}
+}
+
+/**
+ * Renders one setting from a field type's settings schema.
+ *
+ * Toggles and selects save as they change. Typed inputs keep a local draft
+ * of exactly what was typed — a trailing comma in a list, a space between
+ * words, `0.` in a number — and save the parsed value, so parsing never
+ * rewrites the text under the cursor. The draft resets when another field
+ * or setting is shown.
+ */
+function SettingControl( { field, setting, updateField }: SettingControlProps ): React.ReactElement {
+	const stored = getSettingInput( field, setting );
+	const [draft, setDraft] = useState<string>( typeof stored === 'string' ? stored : '' );
+
+	useEffect( () => {
+		const current = getSettingInput( field, setting );
+
+		setDraft( typeof current === 'string' ? current : '' );
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [field.id, setting.key] );
+
+	// Follow the stored value when it moves away from the draft (a rejected
+	// update was reverted, or the server stored something else).
+	const storedText = typeof stored === 'string' ? stored : '';
+
+	useEffect( () => {
+		setDraft( ( current ) => ( isDraftStored( field, setting, current ) ? current : storedText ) );
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [storedText] );
+
+	if ( setting.input === 'toggle' ) {
+		return (
+			<Checkbox
+				label={setting.label}
+				hint={setting.hint}
+				checked={stored === true}
+				onChange={( e ) => updateField( buildSettingUpdate( field, setting, e.target.checked ) )}
+			/>
+		);
+	}
+
+	if ( setting.input === 'select' ) {
+		return (
+			<Select
+				label={setting.label}
+				hint={setting.hint}
+				value={typeof stored === 'string' ? stored : ''}
+				options={setting.options ?? []}
+				optionValue="value"
+				optionLabel="label"
+				onChange={( e ) => updateField( buildSettingUpdate( field, setting, e.target.value ) )}
+			/>
+		);
+	}
+
+	const isNumeric = setting.input === 'integer' || setting.input === 'number';
+
+	return (
+		<Input
+			label={setting.label}
+			hint={setting.hint}
+			type={htmlInputType( setting.input )}
+			value={draft}
+			placeholder={setting.placeholder}
+			min={isNumeric ? setting.min : undefined}
+			max={isNumeric ? setting.max : undefined}
+			step={isNumeric ? ( setting.input === 'integer' ? 1 : ( setting.step ?? 'any' ) ) : undefined}
+			className={setting.monospace ? 'font-mono' : undefined}
+			onChange={( e ) => {
+				setDraft( e.target.value );
+				updateField( buildSettingUpdate( field, setting, e.target.value ) );
+			}}
+		/>
+	);
+}

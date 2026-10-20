@@ -12,6 +12,8 @@
     :required="$field->is_required"
     wire:model.live="formData.{{ $field->name }}"
     id="field-{{ $field->name }}"
+    :disabled="$field->isReadOnly()"
+    :aria-readonly="$field->isReadOnly() ? 'true' : null"
     :class="$field->css_classes"
     :options="$options"
     option-value="value"

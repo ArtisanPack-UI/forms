@@ -16,6 +16,32 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Config;
 
+use ArtisanPackUI\Forms\Contracts\FieldType;
+use ArtisanPackUI\Forms\FieldTypes\AbstractFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ArrayFieldType;
+use ArtisanPackUI\Forms\FieldTypes\CheckboxFieldType;
+use ArtisanPackUI\Forms\FieldTypes\CheckboxGroupFieldType;
+use ArtisanPackUI\Forms\FieldTypes\DateFieldType;
+use ArtisanPackUI\Forms\FieldTypes\DividerFieldType;
+use ArtisanPackUI\Forms\FieldTypes\EmailFieldType;
+use ArtisanPackUI\Forms\FieldTypes\FileFieldType;
+use ArtisanPackUI\Forms\FieldTypes\HeadingFieldType;
+use ArtisanPackUI\Forms\FieldTypes\HiddenFieldType;
+use ArtisanPackUI\Forms\FieldTypes\HtmlFieldType;
+use ArtisanPackUI\Forms\FieldTypes\NumberFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ParagraphFieldType;
+use ArtisanPackUI\Forms\FieldTypes\PhoneFieldType;
+use ArtisanPackUI\Forms\FieldTypes\RadioFieldType;
+use ArtisanPackUI\Forms\FieldTypes\RatingFieldType;
+use ArtisanPackUI\Forms\FieldTypes\SelectFieldType;
+use ArtisanPackUI\Forms\FieldTypes\SelectMultipleFieldType;
+use ArtisanPackUI\Forms\FieldTypes\TextareaFieldType;
+use ArtisanPackUI\Forms\FieldTypes\TextFieldType;
+use ArtisanPackUI\Forms\FieldTypes\TimeFieldType;
+use ArtisanPackUI\Forms\FieldTypes\UrlFieldType;
+use Illuminate\Support\Facades\Log;
+use WeakMap;
+
 /**
  * Field types configuration class.
  *
@@ -37,7 +63,7 @@ class FieldTypes
     public const CATEGORY_FIELDS = [
         'basic'    => ['text', 'email', 'phone', 'number', 'url', 'textarea', 'hidden'],
         'choice'   => ['select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple'],
-        'advanced' => ['file', 'date', 'time'],
+        'advanced' => ['file', 'date', 'time', 'rating'],
         'layout'   => ['heading', 'paragraph', 'divider', 'html'],
     ];
 
@@ -176,6 +202,14 @@ class FieldTypes
             'supports_default_value' => true,
             'validation_options'     => ['min_time', 'max_time'],
         ],
+        'rating' => [
+            'icon'                   => 'o-star',
+            'category'               => 'advanced',
+            'has_options'            => false,
+            'supports_placeholder'   => false,
+            'supports_default_value' => true,
+            'validation_options'     => [],
+        ],
         'heading' => [
             'icon'                   => 'o-h1',
             'category'               => 'layout',
@@ -215,7 +249,55 @@ class FieldTypes
     ];
 
     /**
+     * The handler class for each built-in field type.
+     *
+     * @since 1.6.0
+     *
+     * @var array<string, class-string<AbstractFieldType>>
+     */
+    public const HANDLERS = [
+        'text'            => TextFieldType::class,
+        'email'           => EmailFieldType::class,
+        'number'          => NumberFieldType::class,
+        'url'             => UrlFieldType::class,
+        'textarea'        => TextareaFieldType::class,
+        'hidden'          => HiddenFieldType::class,
+        'select'          => SelectFieldType::class,
+        'radio'           => RadioFieldType::class,
+        'checkbox'        => CheckboxFieldType::class,
+        'checkbox_group'  => CheckboxGroupFieldType::class,
+        'select_multiple' => SelectMultipleFieldType::class,
+        'file'            => FileFieldType::class,
+        'date'            => DateFieldType::class,
+        'phone'           => PhoneFieldType::class,
+        'time'            => TimeFieldType::class,
+        'rating'          => RatingFieldType::class,
+        'heading'         => HeadingFieldType::class,
+        'paragraph'       => ParagraphFieldType::class,
+        'divider'         => DividerFieldType::class,
+        'html'            => HtmlFieldType::class,
+    ];
+
+    /**
+     * Handlers that give a type built-in behaviour without registering it.
+     *
+     * A `toggle` field has validated and displayed like a checkbox since 1.0,
+     * though the type is not offered in the builders.
+     *
+     * @since 1.6.0
+     *
+     * @var array<string, class-string<AbstractFieldType>>
+     */
+    public const BEHAVIOUR_HANDLERS = [
+        'toggle' => CheckboxFieldType::class,
+    ];
+
+    /**
      * Width option CSS classes.
+     *
+     * The single source for field widths: FormField::$width_class and the React
+     * and Vue renderers (`resources/js/shared/fieldSettings.ts`) use these.
+     * Partial widths stack full-width below the `md` breakpoint.
      *
      * @since 1.0.0
      *
@@ -223,10 +305,28 @@ class FieldTypes
      */
     public const WIDTH_CLASSES = [
         'full'       => 'w-full',
-        'half'       => 'w-1/2',
-        'third'      => 'w-1/3',
-        'two-thirds' => 'w-2/3',
+        'half'       => 'w-full md:w-1/2',
+        'third'      => 'w-full md:w-1/3',
+        'two-thirds' => 'w-full md:w-2/3',
     ];
+
+    /**
+     * Built-in handlers, with their definitions built, by translator instance, then locale.
+     *
+     * @since 1.6.0
+     *
+     * @var WeakMap<object, array<string, array<string, FieldType>>>|null
+     */
+    protected static ?WeakMap $builtInHandlers = null;
+
+    /**
+     * Registry entries already warned about, so a bad entry is logged once.
+     *
+     * @since 1.6.0
+     *
+     * @var array<string, true>
+     */
+    protected static array $warnedEntries = [];
 
     /**
      * Gets field type categories for organizing the palette.
@@ -258,7 +358,12 @@ class FieldTypes
     }
 
     /**
-     * Gets field type definitions with translated labels.
+     * Gets the built-in field type definitions with translated labels.
+     *
+     * Each definition comes from the type's handler (see HANDLERS). They only
+     * depend on the locale, so they are built once per translator and locale
+     * (see builtInHandlers()); the `ap.forms.fieldTypes` filter still runs on
+     * every getTypes() call.
      *
      * @since 1.0.0
      *
@@ -266,162 +371,10 @@ class FieldTypes
      */
     public static function types(): array
     {
-        return [
-            'text' => array_merge( self::TYPE_METADATA['text'], [
-                'label'    => __( 'Text Input' ),
-                'defaults' => [
-                    'label'       => __( 'Text Field' ),
-                    'placeholder' => '',
-                ],
-            ] ),
-            'email' => array_merge( self::TYPE_METADATA['email'], [
-                'label'    => __( 'Email' ),
-                'defaults' => [
-                    'label'       => __( 'Email Address' ),
-                    'placeholder' => __( 'you@example.com' ),
-                ],
-            ] ),
-            'number' => array_merge( self::TYPE_METADATA['number'], [
-                'label'    => __( 'Number' ),
-                'defaults' => [
-                    'label'       => __( 'Number' ),
-                    'placeholder' => '',
-                ],
-            ] ),
-            'url' => array_merge( self::TYPE_METADATA['url'], [
-                'label'    => __( 'URL' ),
-                'defaults' => [
-                    'label'       => __( 'Website URL' ),
-                    'placeholder' => 'https://example.com',
-                ],
-            ] ),
-            'textarea' => array_merge( self::TYPE_METADATA['textarea'], [
-                'label'    => __( 'Text Area' ),
-                'defaults' => [
-                    'label'        => __( 'Message' ),
-                    'placeholder'  => '',
-                    'field_config' => ['rows' => 4],
-                ],
-            ] ),
-            'hidden' => array_merge( self::TYPE_METADATA['hidden'], [
-                'label'    => __( 'Hidden Field' ),
-                'defaults' => [
-                    'label' => __( 'Hidden Field' ),
-                ],
-            ] ),
-            'select' => array_merge( self::TYPE_METADATA['select'], [
-                'label'    => __( 'Dropdown Select' ),
-                'defaults' => [
-                    'label'        => __( 'Select an Option' ),
-                    'placeholder'  => __( 'Choose...' ),
-                    'field_config' => [
-                        'options' => [],
-                    ],
-                ],
-            ] ),
-            'radio' => array_merge( self::TYPE_METADATA['radio'], [
-                'label'    => __( 'Radio Buttons' ),
-                'defaults' => [
-                    'label'        => __( 'Choose One' ),
-                    'field_config' => [
-                        'options' => [],
-                    ],
-                ],
-            ] ),
-            'checkbox' => array_merge( self::TYPE_METADATA['checkbox'], [
-                'label'    => __( 'Single Checkbox' ),
-                'defaults' => [
-                    'label' => __( 'I agree to the terms' ),
-                ],
-            ] ),
-            'checkbox_group' => array_merge( self::TYPE_METADATA['checkbox_group'], [
-                'label'    => __( 'Checkbox Group' ),
-                'defaults' => [
-                    'label'        => __( 'Select Options' ),
-                    'field_config' => [
-                        'options' => [],
-                    ],
-                ],
-            ] ),
-            'select_multiple' => array_merge( self::TYPE_METADATA['select_multiple'], [
-                'label'    => __( 'Multi-Select' ),
-                'defaults' => [
-                    'label'        => __( 'Select Multiple Options' ),
-                    'field_config' => [
-                        'options' => [],
-                    ],
-                ],
-            ] ),
-            'file' => array_merge( self::TYPE_METADATA['file'], [
-                'label'    => __( 'File Upload' ),
-                'defaults' => [
-                    'label'        => __( 'Upload File' ),
-                    'field_config' => [
-                        'max_size'      => 5120,
-                        'allowed_types' => ['pdf', 'doc', 'docx', 'jpg', 'png'],
-                    ],
-                ],
-            ] ),
-            'date' => array_merge( self::TYPE_METADATA['date'], [
-                'label'    => __( 'Date Picker' ),
-                'defaults' => [
-                    'label' => __( 'Select Date' ),
-                ],
-            ] ),
-            'phone' => array_merge( self::TYPE_METADATA['phone'], [
-                'label'    => __( 'Phone Number' ),
-                'defaults' => [
-                    'label'       => __( 'Phone Number' ),
-                    'placeholder' => '(123) 456-7890',
-                ],
-            ] ),
-            'time' => array_merge( self::TYPE_METADATA['time'], [
-                'label'    => __( 'Time Picker' ),
-                'defaults' => [
-                    'label'        => __( 'Select Time' ),
-                    'field_config' => [
-                        'step' => 60,
-                    ],
-                ],
-            ] ),
-            'heading' => array_merge( self::TYPE_METADATA['heading'], [
-                'label'    => __( 'Heading' ),
-                'defaults' => [
-                    'label'        => __( 'Section Heading' ),
-                    'field_config' => [
-                        'level' => 'h3',
-                    ],
-                ],
-            ] ),
-            'paragraph' => array_merge( self::TYPE_METADATA['paragraph'], [
-                'label'    => __( 'Paragraph Text' ),
-                'defaults' => [
-                    'label'        => __( 'Information' ),
-                    'field_config' => [
-                        'content' => __( 'Add descriptive text here.' ),
-                    ],
-                ],
-            ] ),
-            'divider' => array_merge( self::TYPE_METADATA['divider'], [
-                'label'    => __( 'Divider' ),
-                'defaults' => [
-                    'label'        => __( 'Divider' ),
-                    'field_config' => [
-                        'style'   => 'solid',
-                        'spacing' => 'normal',
-                    ],
-                ],
-            ] ),
-            'html' => array_merge( self::TYPE_METADATA['html'], [
-                'label'    => __( 'Custom HTML' ),
-                'defaults' => [
-                    'label'        => __( 'Custom Content' ),
-                    'field_config' => [
-                        'content' => '',
-                    ],
-                ],
-            ] ),
-        ];
+        return array_map(
+            fn ( FieldType $handler ): array => $handler->definition(),
+            self::builtInHandlers(),
+        );
     }
 
     /**
@@ -469,7 +422,9 @@ class FieldTypes
      * Gets all field type definitions.
      *
      * Applies the 'ap.forms.fieldTypes' filter hook to allow
-     * third-party packages to register custom field types.
+     * third-party packages to register custom field types. A filter may add an
+     * array definition, a FieldType handler class name or a handler instance;
+     * handlers are returned here as their definition.
      *
      * @since 1.0.0
      *
@@ -477,12 +432,45 @@ class FieldTypes
      */
     public static function getTypes(): array
     {
-        $types = self::types();
+        $types = [];
 
-        // Apply filter hook for extensibility
-        $types = applyFilters( 'ap.forms.fieldTypes', $types );
+        foreach ( self::getRegisteredTypes() as $type => $entry ) {
+            if ( is_array( $entry ) ) {
+                $types[ $type ] = $entry;
+
+                continue;
+            }
+
+            $handler = self::resolveHandler( (string) $type, $entry );
+
+            if ( null !== $handler ) {
+                $types[ $type ] = $handler->definition();
+            }
+        }
 
         return $types;
+    }
+
+    /**
+     * Gets the handler for a field type.
+     *
+     * Built-in types get their own handler, with any edits a filter made to
+     * their array definition applied. Types registered as an array get an
+     * adapter. An unknown type gets an adapter with an empty definition, so
+     * callers can always ask a handler how to validate, store and show a value.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $type  The field type name.
+     *
+     * @return FieldType The handler.
+     */
+    public static function handler( string $type ): FieldType
+    {
+        $registered = self::getRegisteredTypes();
+
+        return self::resolveHandler( $type, $registered[ $type ] ?? null )
+            ?? self::resolveHandler( $type, null );
     }
 
     /**
@@ -555,6 +543,9 @@ class FieldTypes
 
     /**
      * Gets available validation options for a field type.
+     *
+     * Kept for compatibility: since 1.6.0 the builders render a type's
+     * controls from the `settings` schema (see FieldSettings) instead.
      *
      * @since 1.0.0
      *
@@ -660,5 +651,111 @@ class FieldTypes
     public static function all(): array
     {
         return self::getTypes();
+    }
+
+    /**
+     * Gets the registered field types as the `ap.forms.fieldTypes` filter returns them.
+     *
+     * Built-ins are passed to the filter as array definitions, so filters
+     * written before 1.6.0 that edit or add arrays keep working.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> Array definitions, handler class names or handler instances.
+     */
+    protected static function getRegisteredTypes(): array
+    {
+        $types = applyFilters( 'ap.forms.fieldTypes', self::types() );
+
+        return is_array( $types ) ? $types : self::types();
+    }
+
+    /**
+     * Resolves a registry entry to a handler.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $type  The field type name.
+     * @param  mixed  $entry  An array definition, handler class name, handler instance or null.
+     *
+     * @return FieldType|null The handler, or null when the entry is not usable.
+     */
+    protected static function resolveHandler( string $type, mixed $entry ): ?FieldType
+    {
+        if ( $entry instanceof FieldType ) {
+            return $entry instanceof AbstractFieldType && '' === $entry->key() ? $entry->withKey( $type ) : $entry;
+        }
+
+        if ( is_string( $entry ) ) {
+            if ( is_subclass_of( $entry, FieldType::class ) ) {
+                return app()->make( $entry, ['key' => $type] );
+            }
+
+            if ( ! isset( self::$warnedEntries[ "{$type}:{$entry}" ] ) ) {
+                self::$warnedEntries[ "{$type}:{$entry}" ] = true;
+
+                Log::warning( 'ArtisanPackUI Forms: field type handler does not implement FieldType', [
+                    'type'    => $type,
+                    'handler' => $entry,
+                ] );
+            }
+
+            return null;
+        }
+
+        if ( null !== $entry && ! is_array( $entry ) ) {
+            return null;
+        }
+
+        $cached = self::builtInHandlers()[ $type ] ?? null;
+
+        if ( null !== $cached && ( null === $entry || $entry === $cached->definition() ) ) {
+            return $cached;
+        }
+
+        $builtIn = self::HANDLERS[ $type ] ?? self::BEHAVIOUR_HANDLERS[ $type ] ?? null;
+
+        if ( null !== $builtIn ) {
+            $handler = new $builtIn( $type );
+
+            return null === $entry ? $handler : $handler->withDefinition( $entry );
+        }
+
+        return new ArrayFieldType( $type, $entry ?? [] );
+    }
+
+    /**
+     * Gets the built-in handlers, with their definitions already built.
+     *
+     * Definitions only depend on the locale, so the handlers are built once per
+     * translator and locale and shared. A filter that leaves a built-in's
+     * definition untouched gets the shared handler back from resolveHandler().
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, FieldType> The handlers keyed by type.
+     */
+    protected static function builtInHandlers(): array
+    {
+        $translator              = app( 'translator' );
+        $locale                  = $translator->getLocale();
+        self::$builtInHandlers ??= new WeakMap();
+        $cached                  = self::$builtInHandlers[ $translator ] ?? [];
+
+        if ( isset( $cached[ $locale ] ) ) {
+            return $cached[ $locale ];
+        }
+
+        $handlers = [];
+
+        foreach ( self::HANDLERS as $type => $class ) {
+            $handlers[ $type ] = new $class( $type );
+            $handlers[ $type ]->definition();
+        }
+
+        $cached[ $locale ]                     = $handlers;
+        self::$builtInHandlers[ $translator ]  = $cached;
+
+        return $handlers;
     }
 }

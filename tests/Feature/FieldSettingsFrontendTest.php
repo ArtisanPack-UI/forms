@@ -57,17 +57,17 @@ describe( 'React custom settings placement (issue #76)', function () use ( $reso
     } );
 
     it( 'renders a before-basics panel above Width and an after-basics panel last', function () use ( $between ): void {
-        $general = $between( $this->editor, 'function GeneralTabContent(', '// ValidationTabContent' );
+        $general = $between( $this->editor, 'function GeneralTabContent(', '// SettingsTabContent' );
 
         $beforeBasics = strpos( $general, '{rendersBeforeBasics && customSettingsPanel && (' );
         $width        = strpos( $general, '{/* Width */}' );
         $required     = strpos( $general, '{/* Required toggle */}' );
         $afterBasics  = strpos( $general, '{!rendersBeforeBasics && customSettingsPanel}' );
-        $fileConfig   = strpos( $general, '{/* File field config */}' );
+        $typeSettings = strpos( $general, "{/* Type-specific settings from the field type's settings schema */}" );
 
         expect( $beforeBasics )->toBeGreaterThan( $required )
             ->and( $beforeBasics )->toBeLessThan( $width )
-            ->and( $afterBasics )->toBeGreaterThan( $fileConfig );
+            ->and( $afterBasics )->toBeGreaterThan( $typeSettings );
     } );
 
     it( 'exports the new registry API from the React entry point', function () use ( $resource ): void {
@@ -103,21 +103,28 @@ describe( 'Shared field settings contract (issues #79, #82)', function () use ( 
 } );
 
 describe( 'Builders and renderers use the shared contract (issues #79, #82)', function () use ( $resource ): void {
-    it( 'writes file settings and layout content through the shared helpers', function ( string $path ) use ( $resource ): void {
-        $editor = $resource( $path );
+    it( 'writes React file settings through the schema and layout content through the shared helpers', function () use ( $resource ): void {
+        $editor = $resource( 'react/components/admin/FieldEditor.tsx' );
 
-        expect( $editor )->toContain( 'buildFileSettingUpdate(' )
-            ->toContain( "'max_size'" )
-            ->toContain( "'allowed_types'" )
-            ->toContain( 'buildLayoutContentUpdate(' )
+        expect( $editor )->toContain( 'buildLayoutContentUpdate(' )
+            ->toContain( "getSettingsForTab( field, 'validation' )" )
+            ->toContain( 'updateField( buildSettingUpdate( field, setting, e.target.value ) );' )
             ->not->toContain( 'validationRules.max_size' )
             ->not->toContain( 'validationRules.allowed_types' )
-            ->not->toContain( 'default_value: e.target.value } )' )
-            ->not->toContain( 'default_value: ($event as string) } )' );
-    } )->with( [
-        'React' => 'react/components/admin/FieldEditor.tsx',
-        'Vue'   => 'vue/components/admin/FieldEditor.vue',
-    ] );
+            ->not->toContain( 'default_value: e.target.value } )' );
+    } );
+
+    it( 'writes Vue file settings through the schema and layout content through the shared helpers', function () use ( $resource ): void {
+        $editor  = $resource( 'vue/components/admin/FieldEditor.vue' );
+        $control = $resource( 'vue/components/admin/FieldSettingControl.vue' );
+
+        expect( $editor )->toContain( 'buildLayoutContentUpdate(' )
+            ->toContain( "getSettingsForTab( currentField.value, 'validation' )" )
+            ->not->toContain( 'validationRules.max_size' )
+            ->not->toContain( 'validationRules.allowed_types' )
+            ->not->toContain( 'default_value: ($event as string) } )' )
+            ->and( $control )->toContain( 'buildSettingUpdate( props.field, props.setting, draft.value )' );
+    } );
 
     it( 'derives the file accept attribute from the shared helper', function ( string $path ) use ( $resource ): void {
         expect( $resource( $path ) )->toContain( 'getFileAccept(' )
@@ -183,28 +190,25 @@ describe( 'React and Vue display settings (issue #83)', function () use ( $resou
             ->and( $builder )->toContain( 'delete fieldConfig[key];' );
     } );
 
-    it( 'adds the controls to the React editor', function () use ( $between ): void {
-        $general    = $between( $this->reactEditor, 'function GeneralTabContent(', '// ValidationTabContent' );
-        $validation = $between( $this->reactEditor, 'function ValidationTabContent(', "\n}\n" );
+    it( 'renders the React editor controls from the settings schema', function () use ( $between ): void {
+        $general  = $between( $this->reactEditor, 'function GeneralTabContent(', '// SettingsTabContent' );
+        $settings = $between( $this->reactEditor, 'function SettingsTabContent(', "\n}\n" );
 
-        expect( $general )->toContain( "buildFieldConfigUpdate( field, 'rows', parsePositiveInteger( e.target.value, 50 ) )" )
-            ->and( $general )->toContain( "buildFieldConfigUpdate( field, 'level', e.target.value )" )
-            ->and( $general )->toContain( "buildFieldConfigUpdate( field, 'style', e.target.value )" )
-            ->and( $general )->toContain( "buildFieldConfigUpdate( field, 'spacing', e.target.value )" )
-            ->and( $general )->toContain( "buildFieldConfigUpdate( field, 'checked_label', e.target.value )" )
-            ->and( $general )->toContain( "buildFieldConfigUpdate( field, 'unchecked_label', e.target.value )" )
-            ->and( $validation )->toContain( "buildFieldConfigUpdate( field, 'step', parsePositiveInteger( e.target.value ) )" );
+        expect( $general )->toContain( "getSettingsForTab( field, 'general' ).map(" )
+            ->and( $settings )->toContain( '<SettingControl' )
+            ->and( $this->reactEditor )->not->toContain( 'buildFieldConfigUpdate(' )
+            ->and( $this->reactEditor )->not->toContain( 'HEADING_LEVEL_OPTIONS' )
+            ->and( $this->reactEditor )->not->toContain( 'function ValidationTabContent(' );
     } );
 
-    it( 'adds the controls to the Vue editor', function (): void {
+    it( 'renders the Vue editor controls from the settings schema', function (): void {
         expect( $this->vueEditor )
-            ->toContain( "buildFieldConfigUpdate( currentField, 'rows', parsePositiveInteger( (\$event as string), 50 ) )" )
-            ->toContain( "buildFieldConfigUpdate( currentField, 'level', (\$event as string) )" )
-            ->toContain( "buildFieldConfigUpdate( currentField, 'style', (\$event as string) )" )
-            ->toContain( "buildFieldConfigUpdate( currentField, 'spacing', (\$event as string) )" )
-            ->toContain( "buildFieldConfigUpdate( currentField, 'checked_label', (\$event as string) )" )
-            ->toContain( "buildFieldConfigUpdate( currentField, 'unchecked_label', (\$event as string) )" )
-            ->toContain( "buildFieldConfigUpdate( currentField, 'step', parsePositiveInteger( (\$event as string) ) )" );
+            ->toContain( "getSettingsForTab( currentField.value, 'general' )" )
+            ->toContain( "getSettingsForTab( currentField.value, 'validation' )" )
+            ->toContain( '<FieldSettingControl' )
+            ->not->toContain( 'buildFieldConfigUpdate(' )
+            ->not->toContain( 'HEADING_LEVEL_OPTIONS' )
+            ->not->toContain( 'DIVIDER_STYLE_OPTIONS' );
     } );
 
     it( 'applies the settings in the React and Vue renderers', function () use ( $resource ): void {

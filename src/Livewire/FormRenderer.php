@@ -505,7 +505,9 @@ class FormRenderer extends Component
                 continue;
             }
 
-            if ( null !== $field->default_value ) {
+            if ( $field->isReadOnly() ) {
+                $this->formData[ $field->name ] = $field->getReadOnlyValue();
+            } elseif ( null !== $field->default_value ) {
                 $this->formData[ $field->name ] = $field->default_value;
             } elseif ( in_array( $field->type, ['checkbox_group', 'select_multiple'] ) ) {
                 $this->formData[ $field->name ] = [];
@@ -524,6 +526,8 @@ class FormRenderer extends Component
      */
     protected function validateCurrentStep(): bool
     {
+        $this->resetReadOnlyValues();
+
         $rules = $this->submissionService->buildValidationRules(
             $this->currentFields,
             $this->hiddenFields,
@@ -545,6 +549,8 @@ class FormRenderer extends Component
      */
     protected function validateAllFields(): bool
     {
+        $this->resetReadOnlyValues();
+
         $allFields = $this->form->is_multi_step
             ? $this->form->fields_ordered
             : $this->form->fields()->whereNull( 'step_id' )->orderBy( 'sort_order' )->get();
@@ -559,6 +565,21 @@ class FormRenderer extends Component
         $this->validate( $rules, $messages );
 
         return true;
+    }
+
+    /**
+     * Put read-only fields back to their own values, discarding client edits.
+     *
+     * Conditional logic is re-evaluated so field visibility follows the
+     * real values rather than the discarded ones.
+     *
+     * @since 1.6.0
+     */
+    protected function resetReadOnlyValues(): void
+    {
+        $this->formData = $this->submissionService->applyReadOnlyValues( $this->form->fields, $this->formData );
+
+        $this->evaluateConditionalLogic();
     }
 
     /**

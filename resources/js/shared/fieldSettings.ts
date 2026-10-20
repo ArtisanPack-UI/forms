@@ -15,6 +15,9 @@
  * - Display settings — textarea `rows`, heading `level`, divider `style` /
  *   `spacing`, time `step` and checkbox `checked_label` / `unchecked_label` —
  *   live in `field_config`.
+ * - Every type-specific setting is described by the field's `settings_schema`
+ *   (see `FieldSettings` on the server); `getSettingInput()`, `parseSetting()`
+ *   and `buildSettingUpdate()` mirror its reading and parsing.
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -22,7 +25,12 @@
  * @since      1.6.0
  */
 
-import type { FormField, UpdateFieldRequest, ValidationRules } from '../types/artisanpack-forms';
+import type {
+	FieldSettingDefinition,
+	FormField,
+	UpdateFieldRequest,
+	ValidationRules,
+} from '../types/artisanpack-forms';
 
 /** Field types whose content is edited in the builder's General tab. */
 export const CONTENT_LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'html'] );
@@ -257,4 +265,281 @@ export function buildFieldConfigUpdate(
 	}
 
 	return { field_config: fieldConfig as FormField['field_config'] };
+}
+
+// ---------------------------------------------------------------------------
+// Field widths
+// ---------------------------------------------------------------------------
+
+/**
+ * Width classes, mirroring `FieldTypes::WIDTH_CLASSES` (the single source on
+ * the server). Partial widths stack full-width below the `md` breakpoint.
+ */
+export const WIDTH_CLASSES: Readonly<Record<string, string>> = {
+	full: 'w-full',
+	half: 'w-full md:w-1/2',
+	third: 'w-full md:w-1/3',
+	'two-thirds': 'w-full md:w-2/3',
+};
+
+/** Get a field's width class, falling back to full width. */
+export function getWidthClass( width: string | null | undefined ): string {
+	return width && Object.prototype.hasOwnProperty.call( WIDTH_CLASSES, width ) ? WIDTH_CLASSES[width] : WIDTH_CLASSES.full;
+}
+
+// ---------------------------------------------------------------------------
+// Settings schema
+// ---------------------------------------------------------------------------
+
+/** Get the settings in a field's schema that belong in one builder tab. */
+export function getSettingsForTab( field: FormField, tab: FieldSettingDefinition['tab'] ): FieldSettingDefinition[] {
+	return ( field.settings_schema ?? [] ).filter( ( setting ) => setting.tab === tab );
+}
+
+/** Read a setting's stored value, preferring an unmigrated legacy copy. */
+export function readSetting( field: FormField, setting: FieldSettingDefinition ): unknown {
+	if ( setting.legacy_store ) {
+		const legacy = ( field[setting.legacy_store] as Record<string, unknown> | null | undefined )?.[setting.key];
+
+		if ( legacy !== undefined && legacy !== null ) {
+			return legacy;
+		}
+	}
+
+	return ( field[setting.store] as Record<string, unknown> | null | undefined )?.[setting.key];
+}
+
+/**
+ * Get a setting's value as the builder input shows it. Mirrors
+ * `FieldSettings::inputValue()`: toggles give a boolean, selects fall back to
+ * the default, and other inputs give a string (`''` when unset).
+ */
+export function getSettingInput( field: FormField, setting: FieldSettingDefinition ): string | boolean {
+	const value = readSetting( field, setting );
+
+	switch ( setting.input ) {
+		case 'toggle':
+			return value === undefined || value === null ? Boolean( setting.default ?? false ) : isTruthySetting( value );
+		case 'select':
+			return typeof value === 'string' || typeof value === 'number' ? String( value ) : String( setting.default ?? '' );
+		case 'list':
+			if ( Array.isArray( value ) ) {
+				return value.filter( ( entry ) => typeof entry === 'string' ).join( ', ' );
+			}
+
+			return typeof value === 'string' ? value : '';
+		default:
+			return typeof value === 'string' || typeof value === 'number' ? String( value ) : '';
+	}
+}
+
+/** Whether a stored setting counts as on, mirroring PHP's `FILTER_VALIDATE_BOOLEAN`. */
+function isTruthySetting( value: unknown ): boolean {
+	if ( typeof value === 'boolean' ) {
+		return value;
+	}
+
+	return ['1', 'true', 'on', 'yes'].includes( String( value ).trim().toLowerCase() );
+}
+
+/** Whether a number is within a setting's `min` / `max`. */
+function withinBounds( setting: FieldSettingDefinition, value: number ): boolean {
+	if ( typeof setting.min === 'number' && value < setting.min ) {
+		return false;
+	}
+
+	return !( typeof setting.max === 'number' && value > setting.max );
+}
+
+/** Matches `H:i` or `H:i:s`, mirroring `FormField::TIME_FORMAT_PATTERN`. */
+const SETTING_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+
+/**
+ * Parse a raw builder input into the value to store, or undefined to clear
+ * the setting. Mirrors `FieldSettings::parse()`.
+ */
+export function parseSetting(
+	setting: FieldSettingDefinition,
+	raw: unknown,
+): string | number | boolean | string[] | undefined {
+	if ( setting.input === 'toggle' ) {
+		return isTruthySetting( raw ) ? true : undefined;
+	}
+
+	if ( setting.input === 'list' ) {
+		const items = ( Array.isArray( raw ) ? raw : String( raw ?? '' ).split( ',' ) )
+			.map( ( item ) => ( typeof item === 'string' || typeof item === 'number' ? String( item ).trim() : '' ) )
+			.filter( ( item ) => item !== '' );
+
+		return items.length > 0 ? items : undefined;
+	}
+
+	if ( typeof raw !== 'string' && typeof raw !== 'number' ) {
+		return undefined;
+	}
+
+	const value = String( raw ).trim();
+
+	if ( value === '' ) {
+		return undefined;
+	}
+
+	switch ( setting.input ) {
+		case 'integer': {
+			if ( !/^-?\d+$/.test( value ) ) {
+				return undefined;
+			}
+
+			const num = Number( value );
+
+			return withinBounds( setting, num ) ? num : undefined;
+		}
+		case 'number': {
+			const num = Number( value );
+
+			return Number.isFinite( num ) && withinBounds( setting, num ) ? num : undefined;
+		}
+		case 'select':
+			return ( setting.options ?? [] ).some( ( option ) => option.value === value ) ? value : undefined;
+		case 'date': {
+			const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec( value );
+
+			if ( !match ) {
+				return undefined;
+			}
+
+			const date = new Date( Date.UTC( Number( match[1] ), Number( match[2] ) - 1, Number( match[3] ) ) );
+
+			return date.getUTCMonth() === Number( match[2] ) - 1 && date.getUTCDate() === Number( match[3] ) ? value : undefined;
+		}
+		case 'time':
+			return SETTING_TIME_PATTERN.test( value ) ? value.replace( /^(\d{2}:\d{2}):00$/, '$1' ) : undefined;
+		default:
+			return typeof setting.max_length === 'number' ? value.slice( 0, setting.max_length ) : value;
+	}
+}
+
+/**
+ * Build the update that stores a raw builder input for a setting, removing it
+ * when blank or invalid and dropping any legacy copy. Mirrors
+ * `FieldSettings::update()`.
+ */
+export function buildSettingUpdate(
+	field: FormField,
+	setting: FieldSettingDefinition,
+	raw: unknown,
+): UpdateFieldRequest {
+	const parsed = parseSetting( setting, raw );
+	const stored: Record<string, unknown> = { ...( ( field[setting.store] as Record<string, unknown> | null ) ?? {} ) };
+
+	if ( parsed === undefined ) {
+		delete stored[setting.key];
+	} else {
+		stored[setting.key] = parsed;
+	}
+
+	const update: Record<string, unknown> = { [setting.store]: stored };
+
+	if ( setting.legacy_store && setting.legacy_store !== setting.store ) {
+		const legacy: Record<string, unknown> = { ...( ( field[setting.legacy_store] as Record<string, unknown> | null ) ?? {} ) };
+
+		delete legacy[setting.key];
+		update[setting.legacy_store] = legacy;
+	}
+
+	return update as UpdateFieldRequest;
+}
+
+/**
+ * Whether a setting's typed draft is what the field holds.
+ *
+ * Compares the draft as it would be stored with the stored value, so a draft
+ * that only differs in formatting (`pdf,` for `pdf`) counts as stored, while
+ * one the builder reverted or the server changed does not.
+ *
+ * @since 1.6.0
+ */
+export function isDraftStored( field: FormField, setting: FieldSettingDefinition, draft: string ): boolean {
+	const drafted = { ...field, ...buildSettingUpdate( field, setting, draft ) } as FormField;
+
+	return String( getSettingInput( drafted, setting ) ) === String( getSettingInput( field, setting ) );
+}
+
+// ---------------------------------------------------------------------------
+// Read-only and rating fields
+// ---------------------------------------------------------------------------
+
+/** Whether a field is shown but not editable. */
+export function isReadOnlyField( field: FormField ): boolean {
+	return field.is_read_only === true;
+}
+
+/**
+ * The value a field starts with in the renderer.
+ *
+ * A read-only field starts with the value the server will store
+ * (`read_only_value`), so what is shown matches what is saved; other fields
+ * start with their default value.
+ *
+ * @since 1.6.0
+ */
+export function getInitialFieldValue( field: FormField ): unknown {
+	const source: unknown = isReadOnlyField( field ) && field.read_only_value !== undefined
+		? field.read_only_value
+		: field.default_value;
+
+	if ( field.type === 'checkbox_group' || field.type === 'select_multiple' ) {
+		if ( Array.isArray( source ) ) {
+			return source.map( String );
+		}
+
+		return typeof source === 'string' && source
+			? source.split( ',' ).map( ( v ) => v.trim() )
+			: [];
+	}
+
+	if ( field.type === 'checkbox' ) {
+		return source === true || source === '1' || source === 'true';
+	}
+
+	return source ?? '';
+}
+
+/** The largest number of stars a rating field may have, mirroring `RatingFieldType::MAX_STARS`. */
+export const RATING_MAX_STARS = 10;
+
+/** Get a rating field's number of stars (1–10, default 5), mirroring `RatingFieldType::maxRating()`. */
+export function getRatingMax( field: FormField ): number {
+	const max = Number( readConfig( field, 'max_rating' ) );
+
+	if ( !Number.isFinite( max ) || Math.trunc( max ) < 1 ) {
+		return 5;
+	}
+
+	return Math.min( Math.trunc( max ), RATING_MAX_STARS );
+}
+
+/** Whether a rating field accepts half stars. */
+export function ratingAllowsHalf( field: FormField ): boolean {
+	return isTruthySetting( readConfig( field, 'allow_half' ) ?? false );
+}
+
+/** Get a rating field's daisyUI size class (`rating-xs` … `rating-lg`, or none for `md`). */
+export function getRatingSizeClass( field: FormField ): string {
+	const size = readConfig( field, 'size' );
+
+	return size === 'xs' || size === 'sm' || size === 'lg' ? `rating-${size}` : '';
+}
+
+/** Get the selectable rating values, in ascending order: 1…max, or 0.5…max in halves. */
+export function getRatingSteps( field: FormField ): number[] {
+	const max = getRatingMax( field );
+	const step = ratingAllowsHalf( field ) ? 0.5 : 1;
+	const steps: number[] = [];
+
+	for ( let value = step; value <= max; value += step ) {
+		steps.push( value );
+	}
+
+	return steps;
 }

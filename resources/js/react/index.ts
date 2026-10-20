@@ -43,6 +43,7 @@ export {
 export {
 	FileField,
 	DateField,
+	RatingField,
 } from './components/fields/AdvancedField';
 
 export {
@@ -106,6 +107,7 @@ export {
 	FieldEditor,
 	FieldPalette,
 	FIELD_PALETTE,
+	getFieldPalette,
 	ConditionalLogicEditor,
 	NotificationEditor,
 	SubmissionsList,
@@ -135,3 +137,13 @@ export {
 	validateField,
 	validateFields,
 } from '../shared/validation';
+
+// Translations for the admin components
+export {
+	t,
+	setTranslations,
+	getTranslations,
+	clearTranslations,
+} from '../shared/i18n';
+
+export type { TranslationReplacements } from '../shared/i18n';

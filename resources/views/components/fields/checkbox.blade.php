@@ -20,6 +20,7 @@
             id="field-{{ $field->name }}"
             class="checkbox checkbox-primary {{ $field->css_classes }}"
             @if($field->is_required) required aria-required="true" @endif
+            @if($field->isReadOnly()) disabled aria-readonly="true" @endif
             @if($ariaDescribedBy) aria-describedby="{{ $ariaDescribedBy }}" @endif
         />
         <span class="label-text">

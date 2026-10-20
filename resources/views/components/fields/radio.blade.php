@@ -31,6 +31,7 @@
         role="radiogroup"
         @if($field->label) aria-labelledby="label-{{ $field->name }}" @endif
         @if($field->is_required) aria-required="true" @endif
+        @if($field->isReadOnly()) aria-readonly="true" @endif
         @if($ariaDescribedBy) aria-describedby="{{ $ariaDescribedBy }}" @endif
     >
         @foreach($options as $index => $option)
@@ -46,6 +47,7 @@
                     value="{{ $optionValue }}"
                     class="radio radio-primary"
                     id="field-{{ $field->name }}-{{ $index }}"
+                    @disabled($field->isReadOnly())
                 />
                 <span class="label-text">{{ $optionLabel }}</span>
             </label>

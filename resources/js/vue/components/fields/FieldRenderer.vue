@@ -16,6 +16,8 @@ import TextField from './TextField.vue';
 import ChoiceField from './ChoiceField.vue';
 import AdvancedField from './AdvancedField.vue';
 import LayoutField from './LayoutField.vue';
+import RatingField from './RatingField.vue';
+import { WIDTH_CLASSES } from '../../../shared/fieldSettings';
 
 const props = defineProps<{
 	field: FormField;
@@ -41,15 +43,8 @@ const emit = defineEmits<{
 const TEXT_TYPES = new Set( ['text', 'email', 'phone', 'number', 'url', 'textarea', 'hidden', 'time'] );
 const CHOICE_TYPES = new Set( ['select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple'] );
 const ADVANCED_TYPES = new Set( ['file', 'date'] );
+const RATING_TYPES = new Set( ['rating'] );
 const LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'divider', 'html'] );
-
-/** CSS class map for field width. */
-const WIDTH_CLASSES: Record<string, string> = {
-	full: 'w-full',
-	half: 'w-full md:w-1/2',
-	third: 'w-full md:w-1/3',
-	'two-thirds': 'w-full md:w-2/3',
-};
 
 /**
  * Returns the wrapper class for a field in an inline row.
@@ -91,6 +86,10 @@ const componentGroup = computed( () => {
 		return 'advanced';
 	}
 
+	if ( RATING_TYPES.has( props.field.type ) ) {
+		return 'rating';
+	}
+
 	if ( LAYOUT_TYPES.has( props.field.type ) ) {
 		return 'layout';
 	}
@@ -125,6 +124,14 @@ const componentGroup = computed( () => {
 			:display-config="displayConfig"
 			@update:model-value="emit( 'update:modelValue', $event )"
 			@file-change="emit( 'fileChange', $event )"
+		/>
+		<RatingField
+			v-else-if="componentGroup === 'rating'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
 		/>
 		<LayoutField
 			v-else-if="componentGroup === 'layout'"

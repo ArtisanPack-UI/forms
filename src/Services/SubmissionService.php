@@ -80,7 +80,9 @@ class SubmissionService
      * Creates a new submission for a form.
      *
      * Applies the 'ap.forms.submissionData' filter hook to allow
-     * third-party packages to modify submission data before saving.
+     * third-party packages to modify submission data before saving. Read-only
+     * fields are resolved after the filter, so a value it sets for one is
+     * replaced; use the 'ap.forms.readOnlyValue' filter to supply those.
      *
      * @since 1.0.0
      *
@@ -98,7 +100,12 @@ class SubmissionService
         // Apply filter hook to allow modifying submission data before saving
         $formData = applyFilters( 'ap.forms.submissionData', $formData, $form );
 
-        $submission = DB::transaction( function () use ( $form, $formData, $files, $metadata ): FormSubmission {
+        $fields = $form->fields()->get()->keyBy( 'name' );
+
+        // Read-only fields keep their own value whatever the client sent
+        $formData = $this->applyReadOnlyValues( $fields, $formData, true );
+
+        $submission = DB::transaction( function () use ( $form, $fields, $formData, $files, $metadata ): FormSubmission {
             // Create the submission record
             $submission = FormSubmission::create( [
                 'form_id'      => $form->id,
@@ -111,9 +118,6 @@ class SubmissionService
                 'is_starred'   => false,
             ] );
 
-            // Get all form fields
-            $fields = $form->fields()->get()->keyBy( 'name' );
-
             // Save each field value (except file fields which are handled separately)
             foreach ( $formData as $fieldName => $value ) {
                 $field = $fields->get( $fieldName );
@@ -123,7 +127,7 @@ class SubmissionService
                 }
 
                 // Skip file fields - they're handled separately in handleFileUpload()
-                if ( 'file' === $field->type ) {
+                if ( $field->is_file_field ) {
                     continue;
                 }
 
@@ -138,7 +142,7 @@ class SubmissionService
 
                 $field = $fields->get( $fieldName );
 
-                if ( ! $field || 'file' !== $field->type ) {
+                if ( ! $field || ! $field->is_file_field ) {
                     continue;
                 }
 
@@ -247,12 +251,15 @@ class SubmissionService
     /**
      * Builds validation rules for all visible fields.
      *
+     * Rules for inputs nested under a field (see FieldType::rules()) are keyed
+     * below the field's own validation key.
+     *
      * @since 1.0.0
      *
      * @param  Collection<int, FormField>  $fields  The form fields.
      * @param  array<string, bool>  $hiddenFields  Fields hidden by conditional logic.
      *
-     * @return array<string, array<int, string>> The validation rules.
+     * @return array<string, array<int, mixed>> The validation rules.
      */
     public function buildValidationRules( $fields, array $hiddenFields = [] ): array
     {
@@ -264,15 +271,8 @@ class SubmissionService
                 continue;
             }
 
-            // Skip layout-only fields
-            if ( in_array( $field->type, ['heading', 'paragraph', 'divider', 'html'] ) ) {
-                continue;
-            }
-
-            $fieldRules = $field->buildValidationRules();
-
-            if ( ! empty( $fieldRules ) ) {
-                $rules[ $this->validationKey( $field ) ] = $fieldRules;
+            foreach ( $field->buildKeyedValidationRules() as $inputKey => $fieldRules ) {
+                $rules[ $this->validationKey( $field, (string) $inputKey ) ] = $fieldRules;
             }
         }
 
@@ -293,37 +293,10 @@ class SubmissionService
         $messages = [];
 
         foreach ( $fields as $field ) {
-            // Skip layout-only fields
-            if ( in_array( $field->type, ['heading', 'paragraph', 'divider', 'html'] ) ) {
-                continue;
-            }
-
             $fieldKey = $this->validationKey( $field );
 
-            // Required message
-            if ( $field->is_required ) {
-                $requiredRule = in_array( $field->type, FormField::ACCEPTANCE_TYPES, true ) ? 'accepted' : 'required';
-
-                $messages[ "{$fieldKey}.{$requiredRule}" ] = __( 'The :field field is required.', ['field' => $field->label] );
-            }
-
-            // Type-specific messages
-            if ( 'email' === $field->type ) {
-                $messages[ "{$fieldKey}.email" ] = __( 'Please enter a valid email address for :field.', ['field' => $field->label] );
-            }
-
-            if ( 'url' === $field->type ) {
-                $messages[ "{$fieldKey}.url" ] = __( 'Please enter a valid URL for :field.', ['field' => $field->label] );
-            }
-
-            if ( 'time' === $field->type ) {
-                $messages[ "{$fieldKey}.regex" ] = __( 'Please enter a valid time for :field.', ['field' => $field->label] );
-            }
-
-            if ( 'file' === $field->type ) {
-                $messages[ "{$fieldKey}.file" ]  = __( 'Please upload a valid file for :field.', ['field' => $field->label] );
-                $messages[ "{$fieldKey}.mimes" ] = __( 'The :field must be a file of the allowed types.', ['field' => $field->label] );
-                $messages[ "{$fieldKey}.max" ]   = __( 'The :field must not exceed the maximum file size.', ['field' => $field->label] );
+            foreach ( $field->fieldType()->messages( $field ) as $rule => $message ) {
+                $messages[ "{$fieldKey}.{$rule}" ] = $message;
             }
         }
 
@@ -331,20 +304,56 @@ class SubmissionService
     }
 
     /**
+     * Replaces the submitted values of read-only fields with their own values.
+     *
+     * A read-only field is shown but not editable, so whatever the client sent
+     * for it is ignored in favour of FormField::getReadOnlyValue().
+     *
+     * With `$onlySubmitted`, fields missing from the data are left out rather
+     * than added, so a field the request layer dropped (for example because
+     * conditional logic hides it) is not stored.
+     *
+     * @since 1.6.0
+     *
+     * @param  iterable<FormField>  $fields  The form fields.
+     * @param  array<string, mixed>  $formData  The submitted values keyed by field name.
+     * @param  bool  $onlySubmitted  Whether to replace only the fields present in the data.
+     *
+     * @return array<string, mixed> The values with read-only fields resolved.
+     */
+    public function applyReadOnlyValues( iterable $fields, array $formData, bool $onlySubmitted = false ): array
+    {
+        foreach ( $fields as $field ) {
+            if ( $onlySubmitted && ! array_key_exists( $field->name, $formData ) ) {
+                continue;
+            }
+
+            if ( $field->isReadOnly() ) {
+                $formData[ $field->name ] = $field->getReadOnlyValue();
+            }
+        }
+
+        return $formData;
+    }
+
+    /**
      * Gets the Livewire renderer property path a field's value is validated at.
      *
      * File inputs bind to `files.{name}`; every other input binds to
-     * `formData.{name}`.
+     * `formData.{name}`. An input nested under the field adds its sub-key.
      *
      * @since 1.6.0
      *
      * @param  FormField  $field  The form field.
+     * @param  string  $inputKey  The nested input's key, or `''` for the field's own value.
      *
      * @return string The validation key.
      */
-    public function validationKey( FormField $field ): string
+    public function validationKey( FormField $field, string $inputKey = '' ): string
     {
-        return ( 'file' === $field->type ? 'files.' : 'formData.' ) . $field->name;
+        $key = ( $field->is_file_field ? 'files.' : 'formData.' ) . $field->name;
+
+        return '' === $inputKey ? $key : "{$key}.{$inputKey}";
     }
 
     /**
@@ -435,6 +444,8 @@ class SubmissionService
     /**
      * Saves a field value to the submission.
      *
+     * The field type's handler normalizes the value first.
+     *
      * @since 1.0.0
      *
      * @param  FormSubmission  $submission  The form submission.
@@ -454,12 +465,14 @@ class SubmissionService
             'created_at'    => now(),
         ];
 
+        $value = $field->fieldType()->normalize( $field, $value );
+
         // Handle array values (checkbox groups, multi-select)
         if ( is_array( $value ) ) {
             $data['value_array'] = $value;
             $data['value']       = null;
         } else {
-            $data['value']       = 'time' === $field->type && is_string( $value ) ? FormField::normalizeTimeValue( $value ) : (string) $value;
+            $data['value']       = (string) $value;
             $data['value_array'] = null;
         }
 

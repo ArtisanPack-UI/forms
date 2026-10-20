@@ -12,6 +12,7 @@
 import { computed } from 'vue';
 import { Checkbox, Radio, Select } from '@artisanpack-ui/vue/form';
 import type { FormField, DisplayConfig, FieldOption, OptionsFieldConfig } from '../../../types/artisanpack-forms';
+import { isReadOnlyField } from '../../../shared/fieldSettings';
 
 const props = defineProps<{
 	field: FormField;
@@ -29,6 +30,14 @@ const options = computed<FieldOption[]>( () => {
 
 	return props.field.options ?? config?.options ?? [];
 } );
+
+/** Read-only choices are announced as read-only and their inputs disabled. */
+const readOnly = computed( () => isReadOnlyField( props.field ) );
+
+/** Options with every entry disabled when the field is read-only. */
+const radioOptions = computed( (): FieldOption[] =>
+	readOnly.value ? options.value.map( ( option ) => ( { ...option, disabled: true } as unknown as FieldOption ) ) : options.value,
+);
 
 const showLabel = computed( () => props.displayConfig.label_position !== 'hidden' );
 const labelText = computed( () => props.field.label ?? undefined );
@@ -106,26 +115,34 @@ function handleMultiSelectChange( event: Event ): void {
 		:options="options"
 		option-value="value"
 		option-label="label"
+		:disabled="readOnly"
+		:aria-readonly="readOnly ? 'true' : undefined"
 		:inline="displayConfig.label_position === 'beside'"
 		@update:model-value="emit( 'update:modelValue', $event )"
 	/>
 
-	<!-- Radio -->
-	<Radio
+	<!-- Radio: a read-only group is wrapped in an element that carries aria-readonly, as in React -->
+	<div
 		v-else-if="field.type === 'radio'"
-		:label="showLabel ? labelText : undefined"
-		:aria-label="ariaLabel"
-		:name="field.name"
-		:model-value="stringValue"
-		:hint="field.help_text ?? undefined"
-		:error="error"
-		:required="field.is_required"
-		:class="field.css_classes ?? undefined"
-		:options="options"
-		option-value="value"
-		option-label="label"
-		@update:model-value="emit( 'update:modelValue', $event )"
-	/>
+		:role="readOnly ? 'group' : undefined"
+		:aria-readonly="readOnly ? 'true' : undefined"
+	>
+		<Radio
+			:label="showLabel ? labelText : undefined"
+			:aria-label="ariaLabel"
+			:name="field.name"
+			:model-value="stringValue"
+			:hint="field.help_text ?? undefined"
+			:error="error"
+			:required="field.is_required"
+			:class="field.css_classes ?? undefined"
+			:options="radioOptions"
+			option-value="value"
+			option-label="label"
+			:disabled="readOnly"
+			@update:model-value="!readOnly && emit( 'update:modelValue', $event )"
+		/>
+	</div>
 
 	<!-- Checkbox -->
 	<Checkbox
@@ -138,6 +155,8 @@ function handleMultiSelectChange( event: Event ): void {
 		:error="error"
 		:required="field.is_required"
 		:class="field.css_classes ?? undefined"
+		:disabled="readOnly"
+		:aria-readonly="readOnly ? 'true' : undefined"
 		right
 		@update:model-value="emit( 'update:modelValue', $event )"
 	/>
@@ -147,6 +166,7 @@ function handleMultiSelectChange( event: Event ): void {
 		v-else-if="field.type === 'checkbox_group'"
 		class="fieldset"
 		:aria-describedby="describedBy"
+		:aria-readonly="readOnly ? 'true' : undefined"
 	>
 		<legend
 			v-if="field.label"
@@ -162,6 +182,7 @@ function handleMultiSelectChange( event: Event ): void {
 				:label="option.label"
 				:name="`${field.name}[]`"
 				:model-value="selectedArray.includes( option.value )"
+				:disabled="readOnly"
 				right
 				@update:model-value="handleCheckboxGroupChange( option.value, $event as boolean )"
 			/>
@@ -189,6 +210,8 @@ function handleMultiSelectChange( event: Event ): void {
 			multiple
 			:value="selectedArray"
 			:required="field.is_required"
+			:disabled="readOnly"
+			:aria-readonly="readOnly ? 'true' : undefined"
 			:class="['select select-bordered w-full min-h-32', field.css_classes ?? '', error ? 'select-error' : '']"
 			:aria-invalid="error ? true : undefined"
 			:aria-labelledby="legendId"

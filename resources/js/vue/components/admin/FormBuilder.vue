@@ -25,7 +25,9 @@ import type {
 	UpdateFieldRequest,
 	UpdateFormRequest,
 } from '../../../types/artisanpack-forms';
-import { getLayoutContent } from '../../../shared/fieldSettings';
+import { getLayoutContent, getWidthClass } from '../../../shared/fieldSettings';
+import { getFieldTypeLabel } from '../../../shared/fieldTypeLabels';
+import { t } from '../../../shared/i18n';
 import { useApi } from '../../composables/useApi';
 import type { UseApiOptions } from '../../composables/useApi';
 import { ApiValidationError } from '../../composables/useApi';
@@ -150,7 +152,7 @@ async function loadForm(): Promise<void> {
 			activeStepId.value = sorted[0].id;
 		}
 	} catch ( err ) {
-		const message = err instanceof Error ? err.message : 'Failed to load form.';
+		const message = err instanceof Error ? err.message : t( 'Failed to load form.' );
 		error.value = message;
 	} finally {
 		isLoading.value = false;
@@ -208,7 +210,7 @@ async function addField( type: FieldType ): Promise<void> {
 		const request: StoreFieldRequest = {
 			name: `${type}_${Date.now()}`,
 			type,
-			label: type.replace( '_', ' ' ).replace( /\b\w/g, ( c ) => c.toUpperCase() ),
+			label: getFieldTypeLabel( type ),
 			sort_order: currentFields.value.length,
 			step_id: form.value.is_multi_step ? activeStepId.value : null,
 		};
@@ -225,7 +227,7 @@ async function addField( type: FieldType ): Promise<void> {
 		if ( err instanceof ApiValidationError ) {
 			validationErrors.value = err.errors;
 		} else {
-			error.value = err instanceof Error ? err.message : 'Failed to add field.';
+			error.value = err instanceof Error ? err.message : t( 'Failed to add field.' );
 		}
 	}
 }
@@ -241,23 +243,11 @@ async function updateField( fieldId: number, data: UpdateFieldRequest ): Promise
 		return;
 	}
 
-	// Optimistic update (deep-merge nested config objects)
-	fields.value = fields.value.map( ( f ) => {
-		if ( f.id !== fieldId ) {
-			return f;
-		}
-		const merged = { ...f, ...data };
-		if ( data.field_config && f.field_config ) {
-			merged.field_config = { ...f.field_config, ...data.field_config };
-		}
-		if ( data.validation_rules && f.validation_rules ) {
-			merged.validation_rules = { ...f.validation_rules, ...data.validation_rules };
-		}
-		if ( data.conditional_logic && f.conditional_logic ) {
-			merged.conditional_logic = { ...f.conditional_logic, ...data.conditional_logic };
-		}
-		return merged as FormField;
-	} );
+	// Optimistic update. Each column is replaced whole, as on the server, so a
+	// setting left out of `field_config` / `validation_rules` is removed.
+	fields.value = fields.value.map( ( f ) =>
+		f.id === fieldId ? { ...f, ...data } as FormField : f,
+	);
 
 	try {
 		const response = await put<{ data: FormField }>(
@@ -277,7 +267,7 @@ async function updateField( fieldId: number, data: UpdateFieldRequest ): Promise
 		if ( err instanceof ApiValidationError ) {
 			validationErrors.value = err.errors;
 		} else {
-			error.value = err instanceof Error ? err.message : 'Failed to update field.';
+			error.value = err instanceof Error ? err.message : t( 'Failed to update field.' );
 		}
 	}
 }
@@ -296,7 +286,7 @@ async function deleteField( fieldId: number ): Promise<void> {
 			activePanel.value = 'palette';
 		}
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to delete field.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to delete field.' );
 	}
 }
 
@@ -315,7 +305,7 @@ async function duplicateField( fieldId: number ): Promise<void> {
 		const request: StoreFieldRequest = {
 			name: `${field.name}_copy`,
 			type: field.type,
-			label: field.label ? `${field.label} (Copy)` : null,
+			label: field.label ? t( ':label (Copy)', { label: field.label } ) : null,
 			placeholder: field.placeholder,
 			help_text: field.help_text,
 			is_required: field.is_required,
@@ -336,7 +326,7 @@ async function duplicateField( fieldId: number ): Promise<void> {
 		fields.value = [...fields.value, response.data];
 		selectedFieldId.value = response.data.id;
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to duplicate field.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to duplicate field.' );
 	}
 }
 
@@ -380,7 +370,7 @@ async function handleDragEnd(): Promise<void> {
 			step_id: form.value.is_multi_step ? activeStepId.value : null,
 		} );
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to reorder fields.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to reorder fields.' );
 		await loadForm();
 	}
 }
@@ -414,7 +404,7 @@ async function addStep(): Promise<void> {
 
 	try {
 		const request: StoreStepRequest = {
-			title: `Step ${steps.value.length + 1}`,
+			title: t( 'Step :number', { number: steps.value.length + 1 } ),
 			sort_order: steps.value.length,
 		};
 
@@ -426,7 +416,7 @@ async function addStep(): Promise<void> {
 		steps.value = [...steps.value, response.data];
 		activeStepId.value = response.data.id;
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to add step.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to add step.' );
 	}
 }
 
@@ -454,7 +444,7 @@ async function updateStep( stepId: number, data: Partial<FormStep> ): Promise<vo
 			);
 		}
 
-		error.value = err instanceof Error ? err.message : 'Failed to update step.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to update step.' );
 	}
 }
 
@@ -463,7 +453,7 @@ async function deleteStep( stepId: number ): Promise<void> {
 		return;
 	}
 
-	if ( !window.confirm( 'Are you sure you want to delete this step? Fields will be unassigned.' ) ) {
+	if ( !window.confirm( t( 'Are you sure you want to delete this step? Fields will be unassigned.' ) ) ) {
 		return;
 	}
 
@@ -478,7 +468,7 @@ async function deleteStep( stepId: number ): Promise<void> {
 			activeStepId.value = steps.value[0]?.id ?? null;
 		}
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to delete step.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to delete step.' );
 	}
 }
 
@@ -513,7 +503,7 @@ async function reorderSteps( stepId: number, direction: 'up' | 'down' ): Promise
 	} catch ( err ) {
 		// Rollback
 		steps.value = sorted;
-		error.value = err instanceof Error ? err.message : 'Failed to reorder steps.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to reorder steps.' );
 	}
 }
 
@@ -528,13 +518,13 @@ async function enableMultiStep(): Promise<void> {
 
 		// Create first step if none exist
 		if ( steps.value.length === 0 ) {
-			const request = { title: 'Step 1', sort_order: 0 };
+			const request = { title: t( 'Step :number', { number: 1 } ), sort_order: 0 };
 			const response = await post<{ data: FormStep }>( `/${persistedSlug.value}/steps`, request );
 			steps.value = [...steps.value, response.data];
 			activeStepId.value = response.data.id;
 		}
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to enable multi-step.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to enable multi-step.' );
 	}
 }
 
@@ -548,7 +538,7 @@ async function disableMultiStep(): Promise<void> {
 		form.value = { ...form.value, is_multi_step: false };
 		activeStepId.value = null;
 	} catch ( err ) {
-		error.value = err instanceof Error ? err.message : 'Failed to disable multi-step.';
+		error.value = err instanceof Error ? err.message : t( 'Failed to disable multi-step.' );
 	}
 }
 
@@ -568,17 +558,7 @@ function fieldCardClass( field: FormField, index: number ): string {
 		classes.push( 'border-t-2 border-t-primary' );
 	}
 
-	if ( 'full' === field.width ) {
-		classes.push( 'w-full' );
-	} else if ( 'half' === field.width ) {
-		classes.push( 'w-1/2' );
-	} else if ( 'third' === field.width ) {
-		classes.push( 'w-1/3' );
-	} else if ( 'two-thirds' === field.width ) {
-		classes.push( 'w-2/3' );
-	} else {
-		classes.push( 'w-full' );
-	}
+	classes.push( getWidthClass( field.width ) );
 
 	return classes.join( ' ' );
 }
@@ -600,7 +580,7 @@ function onFieldCardKeyDown( e: KeyboardEvent, fieldId: number ): void {
 }
 
 function confirmDeleteField( fieldId: number ): void {
-	if ( window.confirm( 'Delete this field?' ) ) {
+	if ( window.confirm( t( 'Delete this field?' ) ) ) {
 		deleteField( fieldId );
 	}
 }
@@ -618,7 +598,7 @@ function getPreviewInputType( fieldType: string ): string {
 		role="status"
 	>
 		<Loading size="md" />
-		<span>Loading form builder...</span>
+		<span>{{ t( 'Loading form builder...' ) }}</span>
 	</div>
 
 	<!-- Error state (no form loaded) -->
@@ -630,8 +610,8 @@ function getPreviewInputType( fieldType: string ): string {
 		<Alert color="error">
 			<p>{{ error }}</p>
 			<div class="flex gap-2">
-				<Button size="sm" color="outline" @click="loadForm">Retry</Button>
-				<Button size="sm" color="ghost" @click="emit( 'back' )">Back to Forms</Button>
+				<Button size="sm" color="outline" @click="loadForm">{{ t( 'Retry' ) }}</Button>
+				<Button size="sm" color="ghost" @click="emit( 'back' )">{{ t( 'Back to Forms' ) }}</Button>
 			</div>
 		</Alert>
 	</div>
@@ -641,7 +621,7 @@ function getPreviewInputType( fieldType: string ): string {
 		v-else-if="!form"
 		:class="['p-8 text-center text-base-content/60', className]"
 	>
-		Form not found.
+		{{ t( 'Form not found.' ) }}
 	</div>
 
 	<!-- Main builder -->
@@ -653,28 +633,28 @@ function getPreviewInputType( fieldType: string ): string {
 		<div class="flex items-center justify-between bg-base-200 px-4 py-3 border-b border-base-300">
 			<div class="flex items-center gap-3">
 				<Button size="sm" color="ghost" @click="emit( 'back' )">
-					&larr; Back
+					&larr; {{ t( 'Back' ) }}
 				</Button>
 				<h1 class="text-lg font-bold">{{ form.name }}</h1>
 				<Badge
 					:color="form.is_active ? 'success' : 'warning'"
-					:value="form.is_active ? 'Active' : 'Draft'"
+					:value="form.is_active ? t( 'Active' ) : t( 'Draft' )"
 				/>
 			</div>
 			<div class="flex items-center gap-3">
-				<span v-if="isDirty" class="text-sm text-warning">Unsaved changes</span>
+				<span v-if="isDirty" class="text-sm text-warning">{{ t( 'Unsaved changes' ) }}</span>
 				<span
 					v-if="isSaving"
 					class="flex items-center gap-1 text-sm text-info"
 				>
 					<Loading size="xs" />
-					Saving...
+					{{ t( 'Saving...' ) }}
 				</span>
 				<span
 					v-if="lastSavedAt && !isSaving && !isDirty"
 					class="text-sm text-success"
 				>
-					Saved {{ lastSavedAt.toLocaleTimeString() }}
+					{{ t( 'Saved :time', { time: lastSavedAt.toLocaleTimeString() } ) }}
 				</span>
 				<span v-if="saveError" class="text-sm text-error">{{ saveError }}</span>
 				<Button
@@ -682,7 +662,7 @@ function getPreviewInputType( fieldType: string ): string {
 					color="outline"
 					@click="showPreview = !showPreview"
 				>
-					{{ showPreview ? 'Edit' : 'Preview' }}
+					{{ showPreview ? t( 'Edit' ) : t( 'Preview' ) }}
 				</Button>
 				<Button
 					size="sm"
@@ -690,7 +670,7 @@ function getPreviewInputType( fieldType: string ): string {
 					:disabled="isSaving"
 					@click="saveNow"
 				>
-					{{ isSaving ? 'Saving...' : 'Save' }}
+					{{ isSaving ? t( 'Saving...' ) : t( 'Save' ) }}
 				</Button>
 			</div>
 		</div>
@@ -702,7 +682,7 @@ function getPreviewInputType( fieldType: string ): string {
 			class="mx-4 mt-3"
 		>
 			<span>{{ error }}</span>
-			<Button size="sm" color="ghost" @click="error = null">Dismiss</Button>
+			<Button size="sm" color="ghost" @click="error = null">{{ t( 'Dismiss' ) }}</Button>
 		</Alert>
 
 		<!-- Validation errors -->
@@ -737,14 +717,14 @@ function getPreviewInputType( fieldType: string ): string {
 						:class="['tab', activePanel === 'palette' ? 'tab-active' : '']"
 						@click="activePanel = 'palette'"
 					>
-						Fields
+						{{ t( 'Fields' ) }}
 					</button>
 					<button
 						type="button"
 						:class="['tab', activePanel === 'settings' ? 'tab-active' : '']"
 						@click="activePanel = 'settings'"
 					>
-						Settings
+						{{ t( 'Settings' ) }}
 					</button>
 				</div>
 
@@ -760,26 +740,26 @@ function getPreviewInputType( fieldType: string ): string {
 						v-if="activePanel === 'settings'"
 						class="space-y-4"
 					>
-						<h3 class="text-base font-semibold">Form Settings</h3>
+						<h3 class="text-base font-semibold">{{ t( 'Form Settings' ) }}</h3>
 
 						<Input
 							id="form-name"
-							label="Form Name"
+							:label="t( 'Form Name' )"
 							:value="form.name"
 							@input="updateFormSetting( { name: ( $event.target as HTMLInputElement ).value } )"
 						/>
 
 						<Input
 							id="form-slug"
-							label="Slug"
+							:label="t( 'Slug' )"
 							:value="form.slug ?? ''"
-							hint="URL-friendly identifier for the form."
+							:hint="t( 'URL-friendly identifier for the form.' )"
 							@input="updateFormSetting( { slug: ( $event.target as HTMLInputElement ).value } )"
 						/>
 
 						<Textarea
 							id="form-description"
-							label="Description"
+							:label="t( 'Description' )"
 							:rows="3"
 							:value="form.description ?? ''"
 							@input="updateFormSetting( { description: ( $event.target as HTMLTextAreaElement ).value || null } )"
@@ -787,14 +767,14 @@ function getPreviewInputType( fieldType: string ): string {
 
 						<Input
 							id="form-submit-text"
-							label="Submit Button Text"
+							:label="t( 'Submit Button Text' )"
 							:value="form.submit_button_text"
 							@input="updateFormSetting( { submit_button_text: ( $event.target as HTMLInputElement ).value } )"
 						/>
 
 						<Textarea
 							id="form-success-msg"
-							label="Success Message"
+							:label="t( 'Success Message' )"
 							:rows="2"
 							:value="form.success_message ?? ''"
 							@input="updateFormSetting( { success_message: ( $event.target as HTMLTextAreaElement ).value || null } )"
@@ -802,35 +782,35 @@ function getPreviewInputType( fieldType: string ): string {
 
 						<Input
 							id="form-redirect"
-							label="Redirect URL"
+							:label="t( 'Redirect URL' )"
 							type="url"
 							:value="form.redirect_url ?? ''"
 							@input="updateFormSetting( { redirect_url: ( $event.target as HTMLInputElement ).value || null } )"
 						/>
 
 						<Checkbox
-							label="Active (Published)"
+							:label="t( 'Active (Published)' )"
 							:checked="form.is_active"
 							@change="updateFormSetting( { is_active: ( $event.target as HTMLInputElement ).checked } )"
 						/>
 
 						<Divider />
-						<h4 class="text-sm font-semibold">Multi-Step</h4>
+						<h4 class="text-sm font-semibold">{{ t( 'Multi-Step' ) }}</h4>
 
 						<Checkbox
-							label="Enable Multi-Step"
+							:label="t( 'Enable Multi-Step' )"
 							:checked="form.is_multi_step"
 							@change="( $event.target as HTMLInputElement ).checked ? enableMultiStep() : disableMultiStep()"
 						/>
 
 						<template v-if="form.is_multi_step">
 							<Checkbox
-								label="Show Progress Bar"
+								:label="t( 'Show Progress Bar' )"
 								:checked="form.show_progress_bar"
 								@change="updateFormSetting( { show_progress_bar: ( $event.target as HTMLInputElement ).checked } )"
 							/>
 							<Checkbox
-								label="Allow Step Navigation"
+								:label="t( 'Allow Step Navigation' )"
 								:checked="form.allow_step_navigation"
 								@change="updateFormSetting( { allow_step_navigation: ( $event.target as HTMLInputElement ).checked } )"
 							/>
@@ -857,7 +837,7 @@ function getPreviewInputType( fieldType: string ): string {
 								:class="['tab', step.id === activeStepId ? 'tab-active' : '']"
 								@click="activeStepId = step.id"
 							>
-								<span>{{ step.title || `Step ${index + 1}` }}</span>
+								<span>{{ step.title || t( 'Step :number', { number: index + 1 } ) }}</span>
 								<span class="ml-1 badge badge-sm badge-ghost">
 									{{ fields.filter( ( f ) => f.step_id === step.id ).length }}
 								</span>
@@ -867,8 +847,8 @@ function getPreviewInputType( fieldType: string ): string {
 									v-if="index > 0"
 									type="button"
 									class="btn btn-ghost btn-xs px-0.5 py-0 h-auto min-h-0 text-xs"
-									title="Move step left"
-									:aria-label="`Move ${step.title || `Step ${index + 1}`} left`"
+									:title="t( 'Move step left' )"
+									:aria-label="t( 'Move :step left', { step: step.title || t( 'Step :number', { number: index + 1 } ) } )"
 									@click="reorderSteps( step.id, 'up' )"
 								>
 									&#8249;
@@ -877,8 +857,8 @@ function getPreviewInputType( fieldType: string ): string {
 									v-if="index < sortedSteps.length - 1"
 									type="button"
 									class="btn btn-ghost btn-xs px-0.5 py-0 h-auto min-h-0 text-xs"
-									title="Move step right"
-									:aria-label="`Move ${step.title || `Step ${index + 1}`} right`"
+									:title="t( 'Move step right' )"
+									:aria-label="t( 'Move :step right', { step: step.title || t( 'Step :number', { number: index + 1 } ) } )"
 									@click="reorderSteps( step.id, 'down' )"
 								>
 									&#8250;
@@ -891,7 +871,7 @@ function getPreviewInputType( fieldType: string ): string {
 							:class="['tab', null === activeStepId ? 'tab-active' : '']"
 							@click="activeStepId = null"
 						>
-							Unassigned
+							{{ t( 'Unassigned' ) }}
 							<span class="ml-1 badge badge-sm badge-warning">
 								{{ fields.filter( ( f ) => null === f.step_id ).length }}
 							</span>
@@ -901,7 +881,8 @@ function getPreviewInputType( fieldType: string ): string {
 						size="sm"
 						color="ghost"
 						class="btn-circle"
-						title="Add Step"
+						:title="t( 'Add Step' )"
+						:aria-label="t( 'Add Step' )"
 						@click="addStep"
 					>
 						+
@@ -920,17 +901,17 @@ function getPreviewInputType( fieldType: string ): string {
 						<div class="flex items-center gap-2">
 							<Input
 								:id="`step-title-${step.id}`"
-								label="Step title"
+								:label="t( 'Step title' )"
 								:value="step.title ?? ''"
-								placeholder="Step title"
+								:placeholder="t( 'Step title' )"
 								class="flex-1"
 								@input="updateStep( step.id, { title: ( $event.target as HTMLInputElement ).value } )"
 							/>
 							<Input
 								:id="`step-desc-${step.id}`"
-								label="Step description"
+								:label="t( 'Step description' )"
 								:value="step.description ?? ''"
-								placeholder="Step description (optional)"
+								:placeholder="t( 'Step description (optional)' )"
 								class="flex-1"
 								@input="updateStep( step.id, { description: ( $event.target as HTMLInputElement ).value || null } )"
 							/>
@@ -938,10 +919,10 @@ function getPreviewInputType( fieldType: string ): string {
 								v-if="steps.length > 1"
 								size="sm"
 								color="error"
-								title="Delete step"
+								:title="t( 'Delete step' )"
 								@click="deleteStep( step.id )"
 							>
-								Delete Step
+								{{ t( 'Delete Step' ) }}
 							</Button>
 						</div>
 					</template>
@@ -993,7 +974,7 @@ function getPreviewInputType( fieldType: string ): string {
 								class="select select-bordered"
 								disabled
 							>
-								<option>{{ field.placeholder ?? 'Select...' }}</option>
+								<option>{{ field.placeholder ?? t( 'Select...' ) }}</option>
 							</select>
 							<label
 								v-if="'checkbox' === field.type"
@@ -1040,7 +1021,7 @@ function getPreviewInputType( fieldType: string ): string {
 						v-if="0 === currentFields.length"
 						class="flex items-center justify-center h-full border-2 border-dashed border-base-300 rounded-lg p-8"
 					>
-						<p class="text-base-content/50">Drag fields here or click a field type to add it.</p>
+						<p class="text-base-content/50">{{ t( 'Drag fields here or click a field type to add it.' ) }}</p>
 					</div>
 
 					<div class="space-y-2">
@@ -1050,7 +1031,7 @@ function getPreviewInputType( fieldType: string ): string {
 							:class="fieldCardClass( field, index )"
 							:tabindex="0"
 							role="button"
-							:aria-label="`Edit ${field.label || field.name} field`"
+							:aria-label="t( 'Edit :field field', { field: field.label || field.name } )"
 							draggable="true"
 							@dragstart="handleDragStart( index )"
 							@dragover.prevent="handleDragOver( index )"
@@ -1061,7 +1042,7 @@ function getPreviewInputType( fieldType: string ): string {
 							<div class="card-body flex-row items-center gap-3">
 								<div
 									class="cursor-grab text-base-content/40 hover:text-base-content/70"
-									title="Drag to reorder"
+									:title="t( 'Drag to reorder' )"
 								>
 									&#x2630;
 								</div>
@@ -1076,7 +1057,8 @@ function getPreviewInputType( fieldType: string ): string {
 									<Button
 										size="xs"
 										color="ghost"
-										title="Duplicate"
+										:title="t( 'Duplicate' )"
+										:aria-label="t( 'Duplicate' )"
 										@click.stop="duplicateField( field.id )"
 									>
 										&#x2398;
@@ -1085,7 +1067,8 @@ function getPreviewInputType( fieldType: string ): string {
 										size="xs"
 										color="ghost"
 										class="text-error"
-										title="Delete"
+										:title="t( 'Delete' )"
+										:aria-label="t( 'Delete' )"
 										@click.stop="confirmDeleteField( field.id )"
 									>
 										&times;

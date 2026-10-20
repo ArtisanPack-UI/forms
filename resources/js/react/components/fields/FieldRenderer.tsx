@@ -11,7 +11,8 @@
  */
 
 import type { BuiltInFieldType, DisplayConfig, FormField, FormLayout } from '../../../types/artisanpack-forms';
-import { DateField, FileField } from './AdvancedField';
+import { getWidthClass, WIDTH_CLASSES } from '../../../shared/fieldSettings';
+import { DateField, FileField, RatingField } from './AdvancedField';
 import {
 	CheckboxField,
 	CheckboxGroupField,
@@ -80,18 +81,11 @@ const FIELD_COMPONENTS: Record<BuiltInFieldType, FieldComponent> = {
 	file: FileField,
 	date: DateField,
 	time: TimeField,
+	rating: RatingField,
 	heading: HeadingField,
 	paragraph: ParagraphField,
 	divider: DividerField,
 	html: HtmlField,
-};
-
-/** CSS class map for field width. */
-const WIDTH_CLASSES: Record<string, string> = {
-	full: 'w-full',
-	half: 'w-full md:w-1/2',
-	third: 'w-full md:w-1/3',
-	'two-thirds': 'w-full md:w-2/3',
 };
 
 /**
@@ -110,9 +104,9 @@ function getInlineWidthClass( field: FormField ): string {
 		return 'hidden';
 	}
 
-	const width = WIDTH_CLASSES[field.width] ? field.width : 'full';
+	const widthClass = getWidthClass( field.width );
 
-	return width === 'full' ? 'flex-1 min-w-[min(12rem,100%)]' : WIDTH_CLASSES[width];
+	return widthClass === WIDTH_CLASSES.full ? 'flex-1 min-w-[min(12rem,100%)]' : widthClass;
 }
 
 /**
@@ -155,7 +149,7 @@ export function FieldRenderer( {
 
 	const widthClass = layout === 'inline'
 		? getInlineWidthClass( field )
-		: ( WIDTH_CLASSES[field.width] ?? WIDTH_CLASSES.full );
+		: getWidthClass( field.width );
 
 	return (
 		<div className={widthClass}>

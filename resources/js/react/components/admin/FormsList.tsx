@@ -22,6 +22,7 @@ import type {
 	SortDirection,
 	StoreFormRequest,
 } from '../../../types/artisanpack-forms';
+import { t } from '../../../shared/i18n';
 import { useApi } from '../../hooks/useApi';
 import type { UseApiOptions } from '../../hooks/useApi';
 
@@ -65,7 +66,7 @@ function SubmissionCount( { form }: { form: Form } ): React.ReactElement {
 					color="info"
 					size="sm"
 					className="ml-1"
-					value={`${form.unread_submissions_count} new`}
+					value={t( ':count new', { count: form.unread_submissions_count ?? 0 } )}
 				/>
 			)}
 		</>
@@ -150,7 +151,7 @@ export function FormsList( {
 			const data = await get<PaginatedResponse<Form>>( '/', params );
 			setForms( data );
 		} catch ( err ) {
-			const message = err instanceof Error ? err.message : 'Failed to load forms.';
+			const message = err instanceof Error ? err.message : t( 'Failed to load forms.' );
 			setError( message );
 		} finally {
 			setIsLoading( false );
@@ -176,7 +177,7 @@ export function FormsList( {
 	}, [] );
 
 	const handleDelete = useCallback( async ( form: Form ) => {
-		if ( !window.confirm( `Are you sure you want to delete "${form.name}"?` ) ) {
+		if ( !window.confirm( t( 'Are you sure you want to delete ":name"?', { name: form.name } ) ) ) {
 			return;
 		}
 
@@ -186,7 +187,7 @@ export function FormsList( {
 			await del( `/${form.slug}` );
 			await fetchForms();
 		} catch ( err ) {
-			const message = err instanceof Error ? err.message : 'Failed to delete form.';
+			const message = err instanceof Error ? err.message : t( 'Failed to delete form.' );
 			setError( message );
 		} finally {
 			setDeletingId( null );
@@ -201,7 +202,7 @@ export function FormsList( {
 
 		try {
 			const duplicateData: StoreFormRequest = {
-				name: `${form.name} (Copy)`,
+				name: t( ':name (Copy)', { name: form.name } ),
 				description: form.description,
 				submit_button_text: form.submit_button_text,
 				success_message: form.success_message,
@@ -215,7 +216,7 @@ export function FormsList( {
 			await post<{ data: Form }>( '/', duplicateData );
 			await fetchForms();
 		} catch ( err ) {
-			const message = err instanceof Error ? err.message : 'Failed to duplicate form.';
+			const message = err instanceof Error ? err.message : t( 'Failed to duplicate form.' );
 			setError( message );
 		} finally {
 			setDuplicatingId( null );
@@ -229,7 +230,7 @@ export function FormsList( {
 			await put( `/${form.slug}`, { is_active: !form.is_active } );
 			await fetchForms();
 		} catch ( err ) {
-			const message = err instanceof Error ? err.message : 'Failed to update form status.';
+			const message = err instanceof Error ? err.message : t( 'Failed to update form status.' );
 			setError( message );
 		} finally {
 			setTogglingId( null );
@@ -258,13 +259,13 @@ export function FormsList( {
 		<div className={`space-y-6 ${className ?? ''}`.trim()}>
 			{/* Header */}
 			<div className="flex items-center justify-between">
-				<h1 className="text-2xl font-bold">Forms</h1>
+				<h1 className="text-2xl font-bold">{t( 'Forms' )}</h1>
 				{onCreateForm && (
 					<Button
 						color="primary"
 						onClick={onCreateForm}
 					>
-						Create Form
+						{t( 'Create Form' )}
 					</Button>
 				)}
 			</div>
@@ -274,7 +275,7 @@ export function FormsList( {
 				<Input
 					type="search"
 					className="w-full max-w-xs"
-					placeholder="Search forms..."
+					placeholder={t( 'Search forms...' )}
 					value={search}
 					onChange={( e ) => {
 						setSearch( e.target.value );
@@ -285,9 +286,9 @@ export function FormsList( {
 				<Select
 					value={statusFilter}
 					options={[
-						{ id: 'all', name: 'All Status' },
-						{ id: 'active', name: 'Active' },
-						{ id: 'inactive', name: 'Inactive' },
+						{ id: 'all', name: t( 'All Status' ) },
+						{ id: 'active', name: t( 'Active' ) },
+						{ id: 'inactive', name: t( 'Inactive' ) },
 					]}
 					optionValue="id"
 					optionLabel="name"
@@ -309,7 +310,7 @@ export function FormsList( {
 			{isLoading && (
 				<div className="flex items-center justify-center gap-3 py-12" role="status">
 					<Loading size="md" />
-					<span>Loading forms...</span>
+					<span>{t( 'Loading forms...' )}</span>
 				</div>
 			)}
 
@@ -325,21 +326,21 @@ export function FormsList( {
 										size="sm"
 										onClick={() => handleSort( 'name' )}
 									>
-										Name{sortIndicator( 'name' )}
+										{t( 'Name' )}{sortIndicator( 'name' )}
 									</Button>
 								</th>
-								<th>Status</th>
-								<th>Submissions</th>
+								<th>{t( 'Status' )}</th>
+								<th>{t( 'Submissions' )}</th>
 								<th aria-sort={getAriaSortValue( 'created_at' )}>
 									<Button
 										color="ghost"
 										size="sm"
 										onClick={() => handleSort( 'created_at' )}
 									>
-										Created{sortIndicator( 'created_at' )}
+										{t( 'Created' )}{sortIndicator( 'created_at' )}
 									</Button>
 								</th>
-								<th>Actions</th>
+								<th>{t( 'Actions' )}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -364,7 +365,7 @@ export function FormsList( {
 									<td>
 										<Badge
 											color={form.is_active ? 'success' : 'warning'}
-											value={form.is_active ? 'Active' : 'Inactive'}
+											value={form.is_active ? t( 'Active' ) : t( 'Inactive' )}
 										/>
 									</td>
 									<td>
@@ -395,41 +396,41 @@ export function FormsList( {
 														color="ghost"
 														size="sm"
 														onClick={() => onEditForm?.( form )}
-														title="Edit"
+														title={t( 'Edit' )}
 														disabled={isRowProcessing}
 													>
-														Edit
+														{t( 'Edit' )}
 													</Button>
 													<Button
 														color="ghost"
 														size="sm"
 														onClick={() => handleDuplicate( form )}
 														disabled={isRowProcessing}
-														title="Duplicate"
+														title={t( 'Duplicate' )}
 													>
-														{duplicatingId === form.id ? 'Duplicating...' : 'Duplicate'}
+														{duplicatingId === form.id ? t( 'Duplicating...' ) : t( 'Duplicate' )}
 													</Button>
 													<Button
 														color="outline"
 														size="sm"
 														onClick={() => handleTogglePublish( form )}
 														disabled={isRowProcessing}
-														title={form.is_active ? 'Unpublish' : 'Publish'}
+														title={form.is_active ? t( 'Unpublish' ) : t( 'Publish' )}
 													>
 														{togglingId === form.id
-															? 'Updating...'
+															? t( 'Updating...' )
 															: form.is_active
-																? 'Unpublish'
-																: 'Publish'}
+																? t( 'Unpublish' )
+																: t( 'Publish' )}
 													</Button>
 													<Button
 														color="error"
 														size="sm"
 														onClick={() => handleDelete( form )}
 														disabled={isRowProcessing}
-														title="Delete"
+														title={t( 'Delete' )}
 													>
-														{deletingId === form.id ? 'Deleting...' : 'Delete'}
+														{deletingId === form.id ? t( 'Deleting...' ) : t( 'Delete' )}
 													</Button>
 												</div>
 											</td>
@@ -445,13 +446,13 @@ export function FormsList( {
 			{/* Empty state */}
 			{!isLoading && formsList.length === 0 && !error && (
 				<div className="flex flex-col items-center justify-center gap-4 py-16 text-base-content/60">
-					<p className="text-lg">No forms found.</p>
+					<p className="text-lg">{t( 'No forms found.' )}</p>
 					{onCreateForm && (
 						<Button
 							color="primary"
 							onClick={onCreateForm}
 						>
-							Create your first form
+							{t( 'Create your first form' )}
 						</Button>
 					)}
 				</div>
