@@ -355,6 +355,8 @@ export interface FormSubmissionValue {
     value: string | null;
     value_array: string[] | null;
     display_value: string;
+    /** Option labels for an array value, one per item (since 1.6.0). */
+    display_values: string[];
     upload_id: number | null;
     created_at: string;
 }

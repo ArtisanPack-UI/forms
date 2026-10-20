@@ -26,10 +26,18 @@ import type {
 } from '../../../types/artisanpack-forms';
 
 import {
+	ACCEPTANCE_FIELD_TYPES,
+	buildFieldConfigUpdate,
 	buildFileSettingUpdate,
 	buildLayoutContentUpdate,
+	DIVIDER_SPACINGS,
+	DIVIDER_STYLES,
+	getFieldConfigInput,
 	getFileSettingInput,
+	getHeadingLevel,
 	getLayoutContent,
+	HEADING_LEVELS,
+	parsePositiveInteger,
 } from '../../../shared/fieldSettings';
 import { resolveFieldSettings } from '../fields/registry';
 import type { CustomFieldSettingsEntry, FieldSettingsRegistration } from '../fields/registry';
@@ -61,6 +69,21 @@ const LAYOUT_FIELD_TYPES: Set<FieldType> = new Set( [
 	'divider',
 	'html',
 ] );
+
+/** Heading level options. */
+const HEADING_LEVEL_OPTIONS = HEADING_LEVELS.map( ( level ) => ( { value: level, label: level.toUpperCase() } ) );
+
+/** Divider line style options. */
+const DIVIDER_STYLE_OPTIONS = DIVIDER_STYLES.map( ( style ) => ( {
+	value: style,
+	label: style.charAt( 0 ).toUpperCase() + style.slice( 1 ),
+} ) );
+
+/** Divider spacing options. */
+const DIVIDER_SPACING_OPTIONS = DIVIDER_SPACINGS.map( ( spacing ) => ( {
+	value: spacing,
+	label: spacing.charAt( 0 ).toUpperCase() + spacing.slice( 1 ),
+} ) );
 
 /** Available width options. */
 const WIDTH_OPTIONS: Array<{ value: FieldWidth; label: string }> = [
@@ -258,6 +281,7 @@ export function FieldEditor( {
 						field={field}
 						validationRules={validationRules}
 						updateValidation={updateValidation}
+						updateField={updateField}
 					/>
 				),
 			} );
@@ -457,6 +481,72 @@ function GeneralTabContent( {
 				onChange={( e ) => updateField( { css_classes: e.target.value || null } )}
 			/>
 
+			{/* Text area rows */}
+			{field.type === 'textarea' && (
+				<Input
+					label="Rows"
+					type="number"
+					min={1}
+					max={50}
+					value={getFieldConfigInput( field, 'rows' )}
+					placeholder="4"
+					onChange={( e ) => updateField( buildFieldConfigUpdate( field, 'rows', parsePositiveInteger( e.target.value, 50 ) ) )}
+				/>
+			)}
+
+			{/* Heading level */}
+			{field.type === 'heading' && (
+				<Select
+					label="Heading Level"
+					value={getHeadingLevel( field )}
+					options={HEADING_LEVEL_OPTIONS}
+					optionValue="value"
+					optionLabel="label"
+					onChange={( e ) => updateField( buildFieldConfigUpdate( field, 'level', e.target.value ) )}
+				/>
+			)}
+
+			{/* Divider style and spacing */}
+			{field.type === 'divider' && (
+				<>
+					<Select
+						label="Line Style"
+						value={getFieldConfigInput( field, 'style' ) || 'solid'}
+						options={DIVIDER_STYLE_OPTIONS}
+						optionValue="value"
+						optionLabel="label"
+						onChange={( e ) => updateField( buildFieldConfigUpdate( field, 'style', e.target.value ) )}
+					/>
+					<Select
+						label="Spacing"
+						value={getFieldConfigInput( field, 'spacing' ) || 'normal'}
+						options={DIVIDER_SPACING_OPTIONS}
+						optionValue="value"
+						optionLabel="label"
+						onChange={( e ) => updateField( buildFieldConfigUpdate( field, 'spacing', e.target.value ) )}
+					/>
+				</>
+			)}
+
+			{/* Checked / unchecked display text */}
+			{ACCEPTANCE_FIELD_TYPES.has( field.type ) && (
+				<>
+					<Input
+						label="Checked Text"
+						value={getFieldConfigInput( field, 'checked_label' )}
+						placeholder="Yes"
+						hint="Shown in submissions, notifications and exports."
+						onChange={( e ) => updateField( buildFieldConfigUpdate( field, 'checked_label', e.target.value ) )}
+					/>
+					<Input
+						label="Unchecked Text"
+						value={getFieldConfigInput( field, 'unchecked_label' )}
+						placeholder="No"
+						onChange={( e ) => updateField( buildFieldConfigUpdate( field, 'unchecked_label', e.target.value ) )}
+					/>
+				</>
+			)}
+
 			{/* HTML Content (for html field type) */}
 			{field.type === 'html' && (
 				<Textarea
@@ -560,12 +650,14 @@ interface ValidationTabContentProps {
 	field: FormField;
 	validationRules: ValidationRules;
 	updateValidation: ( rules: Partial<ValidationRules> ) => void;
+	updateField: ( data: UpdateFieldRequest ) => void;
 }
 
 function ValidationTabContent( {
 	field,
 	validationRules,
 	updateValidation,
+	updateField,
 }: ValidationTabContentProps ): React.ReactElement {
 	return (
 		<div className="space-y-4 p-4">
@@ -657,6 +749,15 @@ function ValidationTabContent( {
 						type="time"
 						value={validationRules.max_time ?? ''}
 						onChange={( e ) => updateValidation( { max_time: e.target.value || undefined } )}
+					/>
+					<Input
+						label="Step (seconds)"
+						type="number"
+						min={1}
+						value={getFieldConfigInput( field, 'step' )}
+						placeholder="60"
+						hint="e.g. 900 for 15-minute intervals; under 60 lets users pick seconds."
+						onChange={( e ) => updateField( buildFieldConfigUpdate( field, 'step', parsePositiveInteger( e.target.value ) ) )}
 					/>
 				</>
 			)}

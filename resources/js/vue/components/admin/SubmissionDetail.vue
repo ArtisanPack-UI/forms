@@ -423,7 +423,7 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 							</template>
 							<!-- Array value -->
 							<ul v-else-if="value.value_array" class="list-disc list-inside">
-								<li v-for="( v, i ) in value.value_array" :key="i">{{ v }}</li>
+								<li v-for="( v, i ) in ( value.display_values ?? value.value_array )" :key="i">{{ v }}</li>
 							</ul>
 							<!-- Simple value -->
 							<span v-else>{{ value.display_value || '-' }}</span>

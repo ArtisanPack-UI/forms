@@ -116,7 +116,7 @@ class SubmissionController extends Controller
         $this->authorize( 'exportSubmissions', $form );
 
         $submissions = FormSubmission::where( 'form_id', $form->id )
-            ->with( 'values' )
+            ->with( 'values.field' )
             ->orderBy( 'created_at', 'desc' )
             ->get();
 

@@ -316,6 +316,10 @@ class SubmissionService
                 $messages[ "{$fieldKey}.url" ] = __( 'Please enter a valid URL for :field.', ['field' => $field->label] );
             }
 
+            if ( 'time' === $field->type ) {
+                $messages[ "{$fieldKey}.regex" ] = __( 'Please enter a valid time for :field.', ['field' => $field->label] );
+            }
+
             if ( 'file' === $field->type ) {
                 $messages[ "{$fieldKey}.file" ]  = __( 'Please upload a valid file for :field.', ['field' => $field->label] );
                 $messages[ "{$fieldKey}.mimes" ] = __( 'The :field must be a file of the allowed types.', ['field' => $field->label] );
@@ -455,7 +459,7 @@ class SubmissionService
             $data['value_array'] = $value;
             $data['value']       = null;
         } else {
-            $data['value']       = (string) $value;
+            $data['value']       = 'time' === $field->type && is_string( $value ) ? FormField::normalizeTimeValue( $value ) : (string) $value;
             $data['value_array'] = null;
         }
 

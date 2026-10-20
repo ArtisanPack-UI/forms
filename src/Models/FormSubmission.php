@@ -248,6 +248,9 @@ class FormSubmission extends Model
     /**
      * Gets submission data as a collection keyed by field name.
      *
+     * Holds the submitted values rather than their display labels, since it
+     * feeds notification conditions, webhooks and the JSON export.
+     *
      * @since 1.0.0
      *
      * @return Collection<string, string> The submission data collection.
@@ -255,7 +258,7 @@ class FormSubmission extends Model
     public function getDataAttribute(): Collection
     {
         return $this->values->mapWithKeys( function ( FormSubmissionValue $value ) {
-            return [$value->field_name => $value->display_value];
+            return [$value->field_name => $value->getRawValue()];
         } );
     }
 
@@ -356,7 +359,9 @@ class FormSubmission extends Model
     }
 
     /**
-     * Gets a submitted value by field name.
+     * Gets a submitted value's display value by field name.
+     *
+     * Choice fields return option labels; see FormSubmissionValue::$display_value.
      *
      * @since 1.0.0
      *

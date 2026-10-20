@@ -10,25 +10,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { FormField } from '../../../types/artisanpack-forms';
-import { getLayoutContent } from '../../../shared/fieldSettings';
+import { getDividerClasses, getHeadingLevel, getLayoutContent } from '../../../shared/fieldSettings';
 
 const props = defineProps<{
 	field: FormField;
 }>();
 
-const headingLevel = computed( () => {
-	if ( props.field.field_config && 'level' in props.field.field_config ) {
-		const parsed = Number( props.field.field_config.level );
-
-		if ( Number.isFinite( parsed ) ) {
-			return Math.min( Math.max( parsed, 1 ), 6 );
-		}
-	}
-
-	return 2;
-} );
-
-const headingTag = computed( () => `h${headingLevel.value}` );
+const headingTag = computed( () => getHeadingLevel( props.field ) );
 const layoutContent = computed( () => getLayoutContent( props.field ) );
 </script>
 
@@ -53,7 +41,7 @@ const layoutContent = computed( () => getLayoutContent( props.field ) );
 	<!-- Divider -->
 	<hr
 		v-else-if="field.type === 'divider'"
-		:class="['divider', field.css_classes ?? '']"
+		:class="['divider', getDividerClasses( field ), field.css_classes ?? '']"
 	/>
 
 	<!-- HTML -->

@@ -335,6 +335,30 @@ describe( 'SubmissionService', function (): void {
         } );
     } );
 
+    describe( 'time values (issue #87)', function (): void {
+        it( 'stores a time without its zero seconds part', function ( string $submitted, string $stored ): void {
+            $form = Form::factory()->create();
+            FormField::factory()->for( $form )->time()->create( ['name' => 'at', 'field_config' => ['step' => 1]] );
+
+            $submission = $this->service->create( $form, ['at' => $submitted] );
+
+            expect( $submission->values->first()->value )->toBe( $stored );
+        } )->with( [
+            'zero seconds'     => ['09:30:00', '09:30'],
+            'non-zero seconds' => ['09:30:15', '09:30:15'],
+            'minutes only'     => ['09:30', '09:30'],
+        ] );
+
+        it( 'gives time fields a readable format message', function (): void {
+            $form = Form::factory()->create();
+            FormField::factory()->for( $form )->time()->create( ['name' => 'at', 'label' => 'Start'] );
+
+            $messages = $this->service->buildValidationMessages( $form->fields );
+
+            expect( $messages['formData.at.regex'] )->toBe( 'Please enter a valid time for Start.' );
+        } );
+    } );
+
     describe( 'validation messages', function (): void {
         it( 'builds custom messages for required fields', function (): void {
             $form = Form::factory()->create();

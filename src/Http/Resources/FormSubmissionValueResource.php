@@ -42,17 +42,18 @@ class FormSubmissionValueResource extends JsonResource
     public function toArray( Request $request ): array
     {
         return [
-            'id'            => $this->id,
-            'submission_id' => $this->submission_id,
-            'field_id'      => $this->field_id,
-            'field_name'    => $this->field_name,
-            'field_label'   => $this->field_label,
-            'field_type'    => $this->field_type,
-            'value'         => $this->value,
-            'value_array'   => $this->value_array,
-            'display_value' => $this->display_value,
-            'upload_id'     => $this->upload_id,
-            'created_at'    => $this->created_at?->toIso8601String(),
+            'id'             => $this->id,
+            'submission_id'  => $this->submission_id,
+            'field_id'       => $this->field_id,
+            'field_name'     => $this->field_name,
+            'field_label'    => $this->field_label,
+            'field_type'     => $this->field_type,
+            'value'          => $this->value,
+            'value_array'    => $this->value_array,
+            'display_value'  => $this->display_value,
+            'display_values' => $this->display_values,
+            'upload_id'      => $this->upload_id,
+            'created_at'     => $this->created_at?->toIso8601String(),
         ];
     }
 }

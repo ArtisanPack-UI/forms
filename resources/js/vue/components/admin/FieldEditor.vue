@@ -25,10 +25,18 @@ import type {
 } from '../../../types/artisanpack-forms';
 
 import {
+	ACCEPTANCE_FIELD_TYPES,
+	buildFieldConfigUpdate,
 	buildFileSettingUpdate,
 	buildLayoutContentUpdate,
+	DIVIDER_SPACINGS,
+	DIVIDER_STYLES,
+	getFieldConfigInput,
 	getFileSettingInput,
+	getHeadingLevel,
 	getLayoutContent,
+	HEADING_LEVELS,
+	parsePositiveInteger,
 } from '../../../shared/fieldSettings';
 
 import ConditionalLogicEditor from './ConditionalLogicEditor.vue';
@@ -59,6 +67,21 @@ const LAYOUT_FIELD_TYPES = new Set<FieldType>( [
 	'divider',
 	'html',
 ] );
+
+/** Heading level options. */
+const HEADING_LEVEL_OPTIONS = HEADING_LEVELS.map( ( level ) => ( { value: level, label: level.toUpperCase() } ) );
+
+/** Divider line style options. */
+const DIVIDER_STYLE_OPTIONS = DIVIDER_STYLES.map( ( style ) => ( {
+	value: style,
+	label: style.charAt( 0 ).toUpperCase() + style.slice( 1 ),
+} ) );
+
+/** Divider spacing options. */
+const DIVIDER_SPACING_OPTIONS = DIVIDER_SPACINGS.map( ( spacing ) => ( {
+	value: spacing,
+	label: spacing.charAt( 0 ).toUpperCase() + spacing.slice( 1 ),
+} ) );
 
 /** Available width options. */
 const WIDTH_OPTIONS: Array<{ value: FieldWidth; label: string }> = [
@@ -344,6 +367,66 @@ const isPatternField = computed( () => {
 						@update:model-value="updateField( { css_classes: ($event as string) || null } )"
 					/>
 
+					<!-- Text area rows -->
+					<Input
+						v-if="field.type === 'textarea'"
+						label="Rows"
+						type="number"
+						:min="1"
+						:max="50"
+						placeholder="4"
+						:model-value="getFieldConfigInput( currentField, 'rows' )"
+						@update:model-value="updateField( buildFieldConfigUpdate( currentField, 'rows', parsePositiveInteger( ($event as string), 50 ) ) )"
+					/>
+
+					<!-- Heading level -->
+					<Select
+						v-if="field.type === 'heading'"
+						label="Heading Level"
+						:model-value="getHeadingLevel( currentField )"
+						:options="HEADING_LEVEL_OPTIONS"
+						option-value="value"
+						option-label="label"
+						@update:model-value="updateField( buildFieldConfigUpdate( currentField, 'level', ($event as string) ) )"
+					/>
+
+					<!-- Divider style and spacing -->
+					<template v-if="field.type === 'divider'">
+						<Select
+							label="Line Style"
+							:model-value="getFieldConfigInput( currentField, 'style' ) || 'solid'"
+							:options="DIVIDER_STYLE_OPTIONS"
+							option-value="value"
+							option-label="label"
+							@update:model-value="updateField( buildFieldConfigUpdate( currentField, 'style', ($event as string) ) )"
+						/>
+						<Select
+							label="Spacing"
+							:model-value="getFieldConfigInput( currentField, 'spacing' ) || 'normal'"
+							:options="DIVIDER_SPACING_OPTIONS"
+							option-value="value"
+							option-label="label"
+							@update:model-value="updateField( buildFieldConfigUpdate( currentField, 'spacing', ($event as string) ) )"
+						/>
+					</template>
+
+					<!-- Checked / unchecked display text -->
+					<template v-if="ACCEPTANCE_FIELD_TYPES.has( field.type )">
+						<Input
+							label="Checked Text"
+							placeholder="Yes"
+							hint="Shown in submissions, notifications and exports."
+							:model-value="getFieldConfigInput( currentField, 'checked_label' )"
+							@update:model-value="updateField( buildFieldConfigUpdate( currentField, 'checked_label', ($event as string) ) )"
+						/>
+						<Input
+							label="Unchecked Text"
+							placeholder="No"
+							:model-value="getFieldConfigInput( currentField, 'unchecked_label' )"
+							@update:model-value="updateField( buildFieldConfigUpdate( currentField, 'unchecked_label', ($event as string) ) )"
+						/>
+					</template>
+
 					<!-- HTML Content (for html field type) -->
 					<Textarea
 						v-if="field.type === 'html'"
@@ -497,6 +580,15 @@ const isPatternField = computed( () => {
 							type="time"
 							:model-value="validationRules.max_time ?? ''"
 							@update:model-value="updateValidation( { max_time: ($event as string) || undefined } )"
+						/>
+						<Input
+							label="Step (seconds)"
+							type="number"
+							:min="1"
+							placeholder="60"
+							hint="e.g. 900 for 15-minute intervals; under 60 lets users pick seconds."
+							:model-value="getFieldConfigInput( currentField, 'step' )"
+							@update:model-value="updateField( buildFieldConfigUpdate( currentField, 'step', parsePositiveInteger( ($event as string) ) ) )"
 						/>
 					</template>
 

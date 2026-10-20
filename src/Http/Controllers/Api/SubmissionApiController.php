@@ -78,7 +78,7 @@ class SubmissionApiController extends Controller
         $this->authorize( 'viewSubmissions', $form );
 
         $query = FormSubmission::where( 'form_id', $form->id )
-            ->with( ['values', 'uploads'] );
+            ->with( ['values.field', 'uploads'] );
 
         if ( $request->has( 'is_read' ) ) {
             $query->where( 'is_read', filter_var( $request->input( 'is_read' ), FILTER_VALIDATE_BOOLEAN ) );
@@ -118,7 +118,7 @@ class SubmissionApiController extends Controller
 
         $this->authorize( 'view', $submission );
 
-        $submission->load( ['values', 'uploads'] );
+        $submission->load( ['values.field', 'uploads'] );
 
         return new FormSubmissionResource( $submission );
     }
@@ -144,7 +144,7 @@ class SubmissionApiController extends Controller
 
         $submission->update( $request->validated() );
 
-        $freshSubmission = $submission->fresh( ['values', 'uploads'] );
+        $freshSubmission = $submission->fresh( ['values.field', 'uploads'] );
 
         if ( null === $freshSubmission ) {
             abort( 404, __( 'Submission not found after update.' ) );
@@ -278,7 +278,7 @@ class SubmissionApiController extends Controller
         $this->authorize( 'exportSubmissions', $form );
 
         $submissions = FormSubmission::where( 'form_id', $form->id )
-            ->with( 'values' )
+            ->with( 'values.field' )
             ->orderBy( 'created_at', 'desc' )
             ->get();
 

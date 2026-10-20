@@ -9,23 +9,15 @@
  * @since      1.1.0
  */
 
-import type { JSX } from 'react';
-
-import { getLayoutContent } from '../../../shared/fieldSettings';
+import { getDividerClasses, getHeadingLevel, getLayoutContent } from '../../../shared/fieldSettings';
 
 import type { FieldComponentProps } from './types';
 
-type HeadingTag = 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
-
 /**
- * Renders a heading element (h1-h6).
+ * Renders a heading element (h2-h6).
  */
 export function HeadingField( { field }: FieldComponentProps ) {
-	const rawLevel = field.field_config && 'level' in field.field_config
-		? Number( field.field_config.level )
-		: 2;
-	const level = Number.isFinite( rawLevel ) ? Math.min( Math.max( Math.trunc( rawLevel ), 1 ), 6 ) : 2;
-	const Tag = ( `h${level}` as HeadingTag ) satisfies keyof JSX.IntrinsicElements;
+	const Tag = getHeadingLevel( field );
 
 	return (
 		<Tag className={`font-bold ${field.css_classes ?? ''}`}>
@@ -49,7 +41,7 @@ export function ParagraphField( { field }: FieldComponentProps ) {
  * Renders a horizontal divider.
  */
 export function DividerField( { field }: FieldComponentProps ) {
-	return <hr className={`divider ${field.css_classes ?? ''}`} />;
+	return <hr className={`divider ${getDividerClasses( field )} ${field.css_classes ?? ''}`} />;
 }
 
 /**

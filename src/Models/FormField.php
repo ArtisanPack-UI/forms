@@ -75,6 +75,55 @@ class FormField extends Model
     public const ACCEPTANCE_TYPES = ['checkbox', 'toggle'];
 
     /**
+     * Field types whose submitted values are option values.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const CHOICE_TYPES = ['select', 'radio', 'checkbox_group', 'select_multiple'];
+
+    /**
+     * Heading levels the heading renderer accepts.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const HEADING_LEVELS = ['h2', 'h3', 'h4', 'h5', 'h6'];
+
+    /**
+     * Border styles the divider renderer accepts.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const DIVIDER_STYLES = ['solid', 'dashed', 'dotted'];
+
+    /**
+     * Spacing sizes the divider renderer accepts.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const DIVIDER_SPACINGS = ['small', 'normal', 'large'];
+
+    /**
+     * Accepted time formats: `H:i`, or `H:i:s` when the step is under a minute.
+     *
+     * A regex rather than `date_format:H:i,H:i:s`: with `date_format` present,
+     * `after_or_equal` parses limits with the first format only, so an `H:i:s`
+     * value would be compared against a different day than its `H:i` limit.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const TIME_FORMAT_PATTERN = '/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/';
+
+    /**
      * htmLawed configuration for admin-authored html field content.
      *
      * `safe` strips scripts, event handlers, `javascript:` URLs and embeds,
@@ -378,6 +427,84 @@ class FormField extends Model
     }
 
     /**
+     * Gets the label of the option with the given value.
+     *
+     * Options are stored as a list of `['value' => …, 'label' => …]` entries;
+     * a `value => label` map is accepted as well.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $value  The submitted option value.
+     *
+     * @return string|null The option label, or null when no option matches.
+     */
+    public function getOptionLabel( string $value ): ?string
+    {
+        foreach ( $this->options as $key => $option ) {
+            if ( is_array( $option ) ) {
+                if ( isset( $option['value'] ) && is_scalar( $option['value'] ) && (string) $option['value'] === $value ) {
+                    $label = $option['label'] ?? null;
+
+                    return is_scalar( $label ) && '' !== trim( (string) $label ) ? (string) $label : $value;
+                }
+
+                continue;
+            }
+
+            if ( is_string( $key ) && $key === $value && is_scalar( $option ) ) {
+                return (string) $option;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Gets the text shown for a checked or unchecked checkbox or toggle.
+     *
+     * Reads `field_config.checked_label` / `unchecked_label`, defaulting to
+     * "Yes" / "No".
+     *
+     * @since 1.6.0
+     *
+     * @param  bool  $checked  Whether the box was checked.
+     *
+     * @return string The display text.
+     */
+    public function getCheckedDisplayText( bool $checked ): string
+    {
+        $configured = $this->getConfig( $checked ? 'checked_label' : 'unchecked_label' );
+
+        if ( is_string( $configured ) && '' !== trim( $configured ) ) {
+            return $configured;
+        }
+
+        return $checked ? __( 'Yes' ) : __( 'No' );
+    }
+
+    /**
+     * Normalizes a submitted time value.
+     *
+     * Browsers submit `H:i:s` when the field's step is under 60 seconds. A
+     * zero seconds part carries no information, so it is dropped and the
+     * value is stored as `H:i`.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $value  The submitted time.
+     *
+     * @return string The normalized time.
+     */
+    public static function normalizeTimeValue( string $value ): string
+    {
+        if ( 1 === preg_match( '/^(\d{2}:\d{2}):00$/', $value, $matches ) ) {
+            return $matches[1];
+        }
+
+        return $value;
+    }
+
+    /**
      * Gets the display content for a heading, paragraph, or HTML layout field.
      *
      * Storage contract: `heading` → `label`, `paragraph` and `html` →
@@ -458,12 +585,13 @@ class FormField extends Model
         // Type-specific rules
         $rules = array_merge( $rules, $this->getTypeValidationRules() );
 
-        // Custom validation rules
-        if ( $min = $this->getValidationRule( 'min' ) ) {
+        // Custom validation rules. Limits are checked against null rather than
+        // truthiness so a limit of 0 is still applied.
+        if ( null !== ( $min = $this->getValidationLimit( 'min' ) ) ) {
             $rules[] = "min:{$min}";
         }
 
-        if ( $max = $this->getValidationRule( 'max' ) ) {
+        if ( null !== ( $max = $this->getValidationLimit( 'max' ) ) ) {
             $rules[] = "max:{$max}";
         }
 
@@ -472,20 +600,20 @@ class FormField extends Model
         }
 
         // Date range validation
-        if ( $minDate = $this->getValidationRule( 'min_date' ) ) {
+        if ( null !== ( $minDate = $this->getValidationLimit( 'min_date' ) ) ) {
             $rules[] = "after_or_equal:{$minDate}";
         }
 
-        if ( $maxDate = $this->getValidationRule( 'max_date' ) ) {
+        if ( null !== ( $maxDate = $this->getValidationLimit( 'max_date' ) ) ) {
             $rules[] = "before_or_equal:{$maxDate}";
         }
 
         // Time range validation
-        if ( $minTime = $this->getValidationRule( 'min_time' ) ) {
+        if ( null !== ( $minTime = $this->getValidationLimit( 'min_time' ) ) ) {
             $rules[] = "after_or_equal:{$minTime}";
         }
 
-        if ( $maxTime = $this->getValidationRule( 'max_time' ) ) {
+        if ( null !== ( $maxTime = $this->getValidationLimit( 'max_time' ) ) ) {
             $rules[] = "before_or_equal:{$maxTime}";
         }
 
@@ -579,7 +707,7 @@ class FormField extends Model
             'number'                            => ['numeric'],
             'phone'                             => ['string'],
             'date'                              => ['date'],
-            'time'                              => ['date_format:H:i'],
+            'time'                              => ['regex:' . self::TIME_FORMAT_PATTERN],
             'file'                              => $this->getFileValidationRules(),
             'checkbox_group', 'select_multiple' => ['array'],
             'checkbox', 'toggle'                => ['boolean'],
@@ -602,6 +730,30 @@ class FormField extends Model
 
         // Default to string validation for unknown types
         return ['string'];
+    }
+
+    /**
+     * Gets a validation limit as a rule parameter, or null when it is not set.
+     *
+     * `0` and `'0'` count as set; null, blank strings and non-scalars do not.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $key  The validation rule key.
+     *
+     * @return string|null The limit, or null when unset.
+     */
+    protected function getValidationLimit( string $key ): ?string
+    {
+        $value = $this->getValidationRule( $key );
+
+        if ( ! is_scalar( $value ) || is_bool( $value ) ) {
+            return null;
+        }
+
+        $value = trim( (string) $value );
+
+        return '' === $value ? null : $value;
     }
 
     /**

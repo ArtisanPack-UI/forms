@@ -12,6 +12,8 @@
 
 import { Input, Textarea } from '@artisanpack-ui/react/form';
 
+import { getTextareaRows, getTimeStep } from '../../../shared/fieldSettings';
+
 import type { FieldComponentProps } from './types';
 
 /**
@@ -149,6 +151,7 @@ export function TextareaField( { field, value, error, onChange, displayConfig }:
 			onChange={( e ) => onChange( e.target.value )}
 			minLength={field.validation_rules?.min}
 			maxLength={field.validation_rules?.max}
+			rows={getTextareaRows( field )}
 			inline={displayConfig.label_position === 'beside'}
 		/>
 	);
@@ -186,6 +189,7 @@ export function TimeField( { field, value, error, onChange, displayConfig }: Fie
 			onChange={( e ) => onChange( e.target.value )}
 			min={field.validation_rules?.min_time ?? undefined}
 			max={field.validation_rules?.max_time ?? undefined}
+			step={getTimeStep( field )}
 			inline={displayConfig.label_position === 'beside'}
 		/>
 	);

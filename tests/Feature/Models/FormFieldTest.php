@@ -7,6 +7,7 @@ use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormStep;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use ArtisanPackUI\Security\SecurityServiceProvider;
+use Illuminate\Support\Facades\Validator;
 
 describe( 'FormField Model', function (): void {
     describe( 'factory', function (): void {
@@ -190,10 +191,133 @@ describe( 'FormField Model', function (): void {
             $rules = $field->buildValidationRules();
 
             expect( $rules )->toContain( 'required' )
-                ->and( $rules )->toContain( 'date_format:H:i' )
+                ->and( $rules )->toContain( 'regex:' . FormField::TIME_FORMAT_PATTERN )
                 ->and( $rules )->toContain( 'after_or_equal:09:00' )
                 ->and( $rules )->toContain( 'before_or_equal:17:00' );
         } );
+    } );
+} );
+
+describe( 'FormField validation limits of zero (issue #86)', function (): void {
+    it( 'applies a limit set to zero', function ( string $type, array $limits, string $expected ): void {
+        $field = FormField::factory()->create( ['type' => $type, 'validation_rules' => $limits] );
+
+        expect( $field->buildValidationRules() )->toContain( $expected );
+    } )->with( [
+        'number min 0'        => ['number', ['min' => 0], 'min:0'],
+        'number max 0'        => ['number', ['max' => 0], 'max:0'],
+        'string min "0"'      => ['number', ['min' => '0'], 'min:0'],
+        'text min length 0'   => ['text', ['min' => 0], 'min:0'],
+        'negative number min' => ['number', ['min' => -10], 'min:-10'],
+    ] );
+
+    it( 'skips limits that are null or blank', function ( mixed $limit ): void {
+        $field = FormField::factory()->create( [
+            'type'             => 'number',
+            'validation_rules' => ['min' => $limit, 'max' => $limit, 'min_date' => $limit],
+        ] );
+
+        $rules = implode( '|', $field->buildValidationRules() );
+
+        expect( $rules )->not->toContain( 'min:' )
+            ->and( $rules )->not->toContain( 'max:' )
+            ->and( $rules )->not->toContain( 'after_or_equal' );
+    } )->with( [
+        'null'   => [null],
+        'blank'  => [''],
+        'spaces' => ['  '],
+        'false'  => [false],
+        'array'  => [[1]],
+    ] );
+
+    it( 'rejects a negative number when the minimum is zero', function (): void {
+        $field = FormField::factory()->create( ['type' => 'number', 'validation_rules' => ['min' => 0]] );
+        $rules = ['amount' => $field->buildValidationRules()];
+
+        expect( Validator::make( ['amount' => '-5'], $rules )->fails() )->toBeTrue()
+            ->and( Validator::make( ['amount' => '0'], $rules )->passes() )->toBeTrue();
+    } );
+} );
+
+describe( 'FormField time format (issue #87)', function (): void {
+    it( 'accepts times with and without seconds', function ( string $time, bool $passes ): void {
+        $field = FormField::factory()->time()->create( ['field_config' => ['step' => 1]] );
+
+        expect( Validator::make( ['at' => $time], ['at' => $field->buildValidationRules()] )->passes() )->toBe( $passes );
+    } )->with( [
+        'H:i'               => ['09:30', true],
+        'H:i:s'             => ['09:30:15', true],
+        'midnight'          => ['00:00', true],
+        'end of day'        => ['23:59:59', true],
+        'hour out of range' => ['24:00', false],
+        'single-digit hour' => ['9:30', false],
+        'seconds too large' => ['09:30:60', false],
+        'not a time'        => ['soon', false],
+    ] );
+
+    it( 'compares times with seconds against minute limits', function ( string $time, bool $passes ): void {
+        $field = FormField::factory()->time()->create( [
+            'field_config'     => ['step' => 1],
+            'validation_rules' => ['min_time' => '09:00', 'max_time' => '17:00'],
+        ] );
+
+        expect( Validator::make( ['at' => $time], ['at' => $field->buildValidationRules()] )->passes() )->toBe( $passes );
+    } )->with( [
+        'inside, with seconds' => ['12:30:15', true],
+        'inside, minutes only' => ['12:30', true],
+        'at the minimum'       => ['09:00:00', true],
+        'before the minimum'   => ['08:59:59', false],
+        'after the maximum'    => ['17:00:01', false],
+        'after, minutes only'  => ['17:01', false],
+    ] );
+
+    it( 'normalizes a zero seconds part away', function ( string $time, string $expected ): void {
+        expect( FormField::normalizeTimeValue( $time ) )->toBe( $expected );
+    } )->with( [
+        'zero seconds'     => ['09:30:00', '09:30'],
+        'non-zero seconds' => ['09:30:15', '09:30:15'],
+        'minutes only'     => ['09:30', '09:30'],
+        'unrecognized'     => ['soon', 'soon'],
+    ] );
+} );
+
+describe( 'FormField display text (issue #85)', function (): void {
+    it( 'maps an option value to its label', function (): void {
+        $field = FormField::factory()->select()->create();
+
+        expect( $field->getOptionLabel( 'option2' ) )->toBe( 'Option 2' )
+            ->and( $field->getOptionLabel( 'missing' ) )->toBeNull();
+    } );
+
+    it( 'accepts options stored as a value => label map', function (): void {
+        $field = FormField::factory()->create( [
+            'type'         => 'radio',
+            'field_config' => ['options' => ['ca' => 'California', 'ny' => 'New York']],
+        ] );
+
+        expect( $field->getOptionLabel( 'ca' ) )->toBe( 'California' );
+    } );
+
+    it( 'falls back to the value when an option has no label', function (): void {
+        $field = FormField::factory()->create( [
+            'type'         => 'radio',
+            'field_config' => ['options' => [['value' => 'ca', 'label' => '']]],
+        ] );
+
+        expect( $field->getOptionLabel( 'ca' ) )->toBe( 'ca' );
+    } );
+
+    it( 'uses Yes / No for a checkbox unless configured', function (): void {
+        $default    = FormField::factory()->create( ['type' => 'checkbox'] );
+        $configured = FormField::factory()->create( [
+            'type'         => 'checkbox',
+            'field_config' => ['checked_label' => 'Agreed', 'unchecked_label' => ' '],
+        ] );
+
+        expect( $default->getCheckedDisplayText( true ) )->toBe( 'Yes' )
+            ->and( $default->getCheckedDisplayText( false ) )->toBe( 'No' )
+            ->and( $configured->getCheckedDisplayText( true ) )->toBe( 'Agreed' )
+            ->and( $configured->getCheckedDisplayText( false ) )->toBe( 'No' );
     } );
 } );
 

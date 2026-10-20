@@ -17,6 +17,25 @@ import { ACCEPTANCE_FIELD_TYPES, getFileAllowedTypes, getFileMaxSize } from './f
 /** Layout field types that do not collect data. */
 const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );
 
+/**
+ * Read a numeric limit. `0` counts as set; null, blank and non-numeric values
+ * do not. Mirrors `FormField::getValidationLimit()`.
+ */
+function numericLimit( value: unknown ): number | undefined {
+	if ( value === null || value === undefined || value === '' ) {
+		return undefined;
+	}
+
+	const num = Number( value );
+
+	return Number.isFinite( num ) ? num : undefined;
+}
+
+/** Read a non-blank string limit (date or time), or undefined. */
+function stringLimit( value: unknown ): string | undefined {
+	return typeof value === 'string' && value.trim() !== '' ? value : undefined;
+}
+
 /** Field types where min/max rules apply to string length (not numeric value). */
 const TEXT_LENGTH_FIELDS = new Set( ['text', 'email', 'phone', 'url', 'textarea', 'hidden'] );
 
@@ -108,12 +127,15 @@ export function validateField(
 
 	// Min/max length for text-like fields only (not number, date, time, etc.)
 	if ( typeof value === 'string' && TEXT_LENGTH_FIELDS.has( field.type ) ) {
-		if ( rules.min !== undefined && value.length < rules.min ) {
-			errors.push( `Must be at least ${rules.min} characters.` );
+		const minLength = numericLimit( rules.min );
+		const maxLength = numericLimit( rules.max );
+
+		if ( minLength !== undefined && value.length < minLength ) {
+			errors.push( `Must be at least ${minLength} characters.` );
 		}
 
-		if ( rules.max !== undefined && value.length > rules.max ) {
-			errors.push( `Must be no more than ${rules.max} characters.` );
+		if ( maxLength !== undefined && value.length > maxLength ) {
+			errors.push( `Must be no more than ${maxLength} characters.` );
 		}
 	}
 
@@ -164,21 +186,25 @@ function validateNumericRules(
 	rules: ValidationRules,
 	errors: string[],
 ): void {
-	if ( rules.min !== undefined && num < rules.min ) {
-		errors.push( `Must be at least ${rules.min}.` );
+	const min = numericLimit( rules.min );
+	const max = numericLimit( rules.max );
+	const step = numericLimit( rules.step );
+
+	if ( min !== undefined && num < min ) {
+		errors.push( `Must be at least ${min}.` );
 	}
 
-	if ( rules.max !== undefined && num > rules.max ) {
-		errors.push( `Must be no more than ${rules.max}.` );
+	if ( max !== undefined && num > max ) {
+		errors.push( `Must be no more than ${max}.` );
 	}
 
-	if ( rules.step !== undefined && rules.step > 0 ) {
-		const base = rules.min ?? 0;
-		const remainder = Math.abs( ( num - base ) % rules.step );
+	if ( step !== undefined && step > 0 ) {
+		const base = min ?? 0;
+		const remainder = Math.abs( ( num - base ) % step );
 		const epsilon = 1e-9;
 
-		if ( remainder > epsilon && Math.abs( remainder - rules.step ) > epsilon ) {
-			errors.push( `Must be a multiple of ${rules.step}.` );
+		if ( remainder > epsilon && Math.abs( remainder - step ) > epsilon ) {
+			errors.push( `Must be a multiple of ${step}.` );
 		}
 	}
 }
@@ -199,20 +225,15 @@ function validateDateRules(
 		return;
 	}
 
-	if ( rules.min_date ) {
-		const minDate = new Date( rules.min_date );
+	const minDate = stringLimit( rules.min_date );
+	const maxDate = stringLimit( rules.max_date );
 
-		if ( date < minDate ) {
-			errors.push( `Date must be on or after ${rules.min_date}.` );
-		}
+	if ( minDate !== undefined && date < new Date( minDate ) ) {
+		errors.push( `Date must be on or after ${minDate}.` );
 	}
 
-	if ( rules.max_date ) {
-		const maxDate = new Date( rules.max_date );
-
-		if ( date > maxDate ) {
-			errors.push( `Date must be on or before ${rules.max_date}.` );
-		}
+	if ( maxDate !== undefined && date > new Date( maxDate ) ) {
+		errors.push( `Date must be on or before ${maxDate}.` );
 	}
 }
 
@@ -247,13 +268,15 @@ function validateTimeRules(
 	}
 
 	const normalized = normalizeTime( value );
+	const minTime = stringLimit( rules.min_time );
+	const maxTime = stringLimit( rules.max_time );
 
-	if ( rules.min_time && TIME_FORMAT_REGEX.test( rules.min_time ) && normalized < normalizeTime( rules.min_time ) ) {
-		errors.push( `Time must be on or after ${rules.min_time}.` );
+	if ( minTime !== undefined && TIME_FORMAT_REGEX.test( minTime ) && normalized < normalizeTime( minTime ) ) {
+		errors.push( `Time must be on or after ${minTime}.` );
 	}
 
-	if ( rules.max_time && TIME_FORMAT_REGEX.test( rules.max_time ) && normalized > normalizeTime( rules.max_time ) ) {
-		errors.push( `Time must be on or before ${rules.max_time}.` );
+	if ( maxTime !== undefined && TIME_FORMAT_REGEX.test( maxTime ) && normalized > normalizeTime( maxTime ) ) {
+		errors.push( `Time must be on or before ${maxTime}.` );
 	}
 }
 

@@ -173,6 +173,115 @@
                     </div>
                 @endif
 
+                {{-- Text area rows --}}
+                @if ('textarea' === $field->type)
+                    <div class="form-control">
+                        <label class="label" for="field-rows">
+                            <span class="label-text text-xs">{{ __( 'Rows' ) }}</span>
+                        </label>
+                        <input
+                            type="number"
+                            id="field-rows"
+                            class="input input-sm input-bordered w-full"
+                            value="{{ $field->getConfig('rows', 4) }}"
+                            min="1"
+                            max="50"
+                            wire:change="updateFieldConfig('rows', $event.target.value)"
+                        />
+                    </div>
+                @endif
+
+                {{-- Heading level --}}
+                @if ('heading' === $field->type)
+                    <div class="form-control">
+                        <label class="label" for="field-level">
+                            <span class="label-text text-xs">{{ __( 'Heading Level' ) }}</span>
+                        </label>
+                        <select
+                            id="field-level"
+                            class="select select-sm select-bordered w-full"
+                            wire:change="updateFieldConfig('level', $event.target.value)"
+                        >
+                            @foreach (\ArtisanPackUI\Forms\Models\FormField::HEADING_LEVELS as $level)
+                                <option value="{{ $level }}" {{ $field->getConfig('level', 'h3') === $level ? 'selected' : '' }}>
+                                    {{ strtoupper($level) }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
+
+                {{-- Divider style and spacing --}}
+                @if ('divider' === $field->type)
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="form-control">
+                            <label class="label" for="field-divider-style">
+                                <span class="label-text text-xs">{{ __( 'Line Style' ) }}</span>
+                            </label>
+                            <select
+                                id="field-divider-style"
+                                class="select select-sm select-bordered w-full"
+                                wire:change="updateFieldConfig('style', $event.target.value)"
+                            >
+                                @foreach (['solid' => __( 'Solid' ), 'dashed' => __( 'Dashed' ), 'dotted' => __( 'Dotted' )] as $style => $styleLabel)
+                                    <option value="{{ $style }}" {{ $field->getConfig('style', 'solid') === $style ? 'selected' : '' }}>
+                                        {{ $styleLabel }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-control">
+                            <label class="label" for="field-divider-spacing">
+                                <span class="label-text text-xs">{{ __( 'Spacing' ) }}</span>
+                            </label>
+                            <select
+                                id="field-divider-spacing"
+                                class="select select-sm select-bordered w-full"
+                                wire:change="updateFieldConfig('spacing', $event.target.value)"
+                            >
+                                @foreach (['small' => __( 'Small' ), 'normal' => __( 'Normal' ), 'large' => __( 'Large' )] as $spacing => $spacingLabel)
+                                    <option value="{{ $spacing }}" {{ $field->getConfig('spacing', 'normal') === $spacing ? 'selected' : '' }}>
+                                        {{ $spacingLabel }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Checked / unchecked display text --}}
+                @if (in_array($field->type, \ArtisanPackUI\Forms\Models\FormField::ACCEPTANCE_TYPES, true))
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="form-control">
+                            <label class="label" for="field-checked-label">
+                                <span class="label-text text-xs">{{ __( 'Checked Text' ) }}</span>
+                            </label>
+                            <input
+                                type="text"
+                                id="field-checked-label"
+                                class="input input-sm input-bordered w-full"
+                                value="{{ $field->getConfig('checked_label') }}"
+                                placeholder="{{ __( 'Yes' ) }}"
+                                wire:change="updateFieldConfig('checked_label', $event.target.value)"
+                            />
+                        </div>
+                        <div class="form-control">
+                            <label class="label" for="field-unchecked-label">
+                                <span class="label-text text-xs">{{ __( 'Unchecked Text' ) }}</span>
+                            </label>
+                            <input
+                                type="text"
+                                id="field-unchecked-label"
+                                class="input input-sm input-bordered w-full"
+                                value="{{ $field->getConfig('unchecked_label') }}"
+                                placeholder="{{ __( 'No' ) }}"
+                                wire:change="updateFieldConfig('unchecked_label', $event.target.value)"
+                            />
+                        </div>
+                    </div>
+                    <p class="text-xs text-base-content/50">{{ __( 'Shown in submissions, notifications and exports.' ) }}</p>
+                @endif
+
                 {{-- Width --}}
                 <div class="form-control">
                     <label class="label" for="field-width">
@@ -351,6 +460,53 @@
                                 />
                             </div>
                         @endif
+                    </div>
+                @endif
+
+                {{-- Min/Max time and step for time fields --}}
+                @if ('time' === $field->type)
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="form-control">
+                            <label class="label" for="field-min-time">
+                                <span class="label-text text-xs">{{ __( 'Min Time' ) }}</span>
+                            </label>
+                            <input
+                                type="time"
+                                id="field-min-time"
+                                class="input input-sm input-bordered w-full"
+                                value="{{ $field->getValidationRule('min_time') }}"
+                                wire:change="updateTimeLimit('min_time', $event.target.value)"
+                            />
+                        </div>
+                        <div class="form-control">
+                            <label class="label" for="field-max-time">
+                                <span class="label-text text-xs">{{ __( 'Max Time' ) }}</span>
+                            </label>
+                            <input
+                                type="time"
+                                id="field-max-time"
+                                class="input input-sm input-bordered w-full"
+                                value="{{ $field->getValidationRule('max_time') }}"
+                                wire:change="updateTimeLimit('max_time', $event.target.value)"
+                            />
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label class="label" for="field-time-step">
+                            <span class="label-text text-xs">{{ __( 'Step (seconds)' ) }}</span>
+                        </label>
+                        <input
+                            type="number"
+                            id="field-time-step"
+                            class="input input-sm input-bordered w-full"
+                            value="{{ $field->getConfig('step', 60) }}"
+                            min="1"
+                            placeholder="60"
+                            wire:change="updateFieldConfig('step', $event.target.value)"
+                        />
+                        <label class="label">
+                            <span class="label-text-alt text-xs text-base-content/50">{{ __( 'e.g., 900 for 15-minute intervals; under 60 lets users pick seconds' ) }}</span>
+                        </label>
                     </div>
                 @endif
             </div>

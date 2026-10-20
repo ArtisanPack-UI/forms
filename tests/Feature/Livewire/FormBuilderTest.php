@@ -535,3 +535,138 @@ describe( 'FormBuilder Enable/Disable Multi-Step', function (): void {
         $component->assertSet( 'activeStepId', $step->id );
     } );
 } );
+
+describe( 'FormBuilder display settings (issue #83)', function (): void {
+    beforeEach( function (): void {
+        $this->form = Form::factory()->create();
+    } );
+
+    it( 'saves a display setting to field_config', function ( string $type, string $setting, string $input, int|string $stored ): void {
+        $field = FormField::factory()->for( $this->form )->create( [
+            'type'         => $type,
+            'field_config' => ['keep' => 'me'],
+        ] );
+
+        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            ->call( 'selectField', $field->uuid )
+            ->call( 'updateFieldConfig', $setting, $input )
+            ->assertSet( 'isDirty', true );
+
+        expect( $field->fresh()->field_config )->toBe( ['keep' => 'me', $setting => $stored] );
+    } )->with( [
+        'textarea rows'           => ['textarea', 'rows', '8', 8],
+        'heading level'           => ['heading', 'level', 'h2', 'h2'],
+        'divider style'           => ['divider', 'style', 'dashed', 'dashed'],
+        'divider spacing'         => ['divider', 'spacing', 'large', 'large'],
+        'time step'               => ['time', 'step', '1', 1],
+        'checkbox checked text'   => ['checkbox', 'checked_label', ' Agreed ', 'Agreed'],
+        'checkbox unchecked text' => ['checkbox', 'unchecked_label', 'Declined', 'Declined'],
+    ] );
+
+    it( 'clears a display setting when the input is blank or invalid', function ( string $type, string $setting, string $input ): void {
+        $field = FormField::factory()->for( $this->form )->create( [
+            'type'         => $type,
+            'field_config' => [$setting => 'old'],
+        ] );
+
+        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            ->call( 'selectField', $field->uuid )
+            ->call( 'updateFieldConfig', $setting, $input );
+
+        expect( $field->fresh()->field_config )->not->toHaveKey( $setting );
+    } )->with( [
+        'rows, blank'         => ['textarea', 'rows', ''],
+        'rows, zero'          => ['textarea', 'rows', '0'],
+        'rows, too many'      => ['textarea', 'rows', '51'],
+        'rows, decimal'       => ['textarea', 'rows', '2.5'],
+        'level, h1'           => ['heading', 'level', 'h1'],
+        'style, unknown'      => ['divider', 'style', 'double'],
+        'spacing, unknown'    => ['divider', 'spacing', 'huge'],
+        'step, negative'      => ['time', 'step', '-5'],
+        'checked text, blank' => ['checkbox', 'checked_label', '   '],
+    ] );
+
+    it( 'ignores settings that do not apply to the field type', function ( string $type, string $setting ): void {
+        $field = FormField::factory()->for( $this->form )->create( ['type' => $type, 'field_config' => []] );
+
+        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            ->call( 'selectField', $field->uuid )
+            ->call( 'updateFieldConfig', $setting, '5' )
+            ->assertSet( 'isDirty', false );
+
+        expect( $field->fresh()->field_config )->toBe( [] );
+    } )->with( [
+        'rows on a text field'      => ['text', 'rows'],
+        'step on a number field'    => ['number', 'step'],
+        'options on a textarea'     => ['textarea', 'options'],
+        'level on a divider'        => ['divider', 'level'],
+    ] );
+
+    it( 'saves and clears time limits', function (): void {
+        $field = FormField::factory()->for( $this->form )->time()->create( [
+            'validation_rules' => ['min_time' => '08:00', 'max_time' => '18:00'],
+        ] );
+
+        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            ->call( 'selectField', $field->uuid )
+            ->call( 'updateTimeLimit', 'min_time', '09:00:00' )
+            ->call( 'updateTimeLimit', 'max_time', '' )
+            ->call( 'updateTimeLimit', 'pattern', '12:00' );
+
+        expect( $field->fresh()->validation_rules )->toBe( ['min_time' => '09:00'] );
+    } );
+
+    it( 'rejects an invalid time limit', function (): void {
+        $field = FormField::factory()->for( $this->form )->time()->create( [
+            'validation_rules' => ['min_time' => '08:00'],
+        ] );
+
+        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            ->call( 'selectField', $field->uuid )
+            ->call( 'updateTimeLimit', 'min_time', '25:00' );
+
+        expect( $field->fresh()->validation_rules )->toBe( [] );
+    } );
+
+    it( 'ignores time limits on other field types', function (): void {
+        $field = FormField::factory()->for( $this->form )->create( ['type' => 'date', 'validation_rules' => []] );
+
+        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            ->call( 'selectField', $field->uuid )
+            ->call( 'updateTimeLimit', 'min_time', '09:00' )
+            ->assertSet( 'isDirty', false );
+    } );
+
+    it( 'renders the controls for each field type', function ( string $type, array $expected ): void {
+        $field = FormField::factory()->for( $this->form )->create( ['type' => $type] );
+
+        $test = Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            ->call( 'selectField', $field->uuid );
+
+        foreach ( $expected as $html ) {
+            $test->assertSeeHtml( $html );
+        }
+    } )->with( [
+        'textarea' => ['textarea', ["updateFieldConfig('rows', \$event.target.value)"]],
+        'heading'  => ['heading', ["updateFieldConfig('level', \$event.target.value)", '<option value="h6"']],
+        'divider'  => ['divider', ["updateFieldConfig('style', \$event.target.value)", "updateFieldConfig('spacing', \$event.target.value)"]],
+        'time'     => ['time', [
+            "updateTimeLimit('min_time', \$event.target.value)",
+            "updateTimeLimit('max_time', \$event.target.value)",
+            "updateFieldConfig('step', \$event.target.value)",
+        ]],
+        'checkbox' => ['checkbox', [
+            "updateFieldConfig('checked_label', \$event.target.value)",
+            "updateFieldConfig('unchecked_label', \$event.target.value)",
+        ]],
+    ] );
+
+    it( 'does not render display controls for unrelated types', function (): void {
+        $field = FormField::factory()->for( $this->form )->create( ['type' => 'text'] );
+
+        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            ->call( 'selectField', $field->uuid )
+            ->assertDontSeeHtml( 'updateFieldConfig(' )
+            ->assertDontSeeHtml( 'updateTimeLimit(' );
+    } );
+} );

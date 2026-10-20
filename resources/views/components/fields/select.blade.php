@@ -2,7 +2,6 @@
 
 @php
     $options = $field->getConfig('options', []);
-    $multiple = $field->getConfig('multiple', false);
 @endphp
 
 <x-artisanpack-select
@@ -14,7 +13,6 @@
     wire:model.live="formData.{{ $field->name }}"
     id="field-{{ $field->name }}"
     :class="$field->css_classes"
-    :multiple="$multiple"
     :options="$options"
     option-value="value"
     option-label="label"

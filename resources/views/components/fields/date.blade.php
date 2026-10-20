@@ -3,19 +3,53 @@
 @php
     $minDate = $field->getValidationRule('min_date');
     $maxDate = $field->getValidationRule('max_date');
+
+    // Build aria-describedby with both hint and error IDs when applicable
+    $describedBy = [];
+    if ($error) {
+        $describedBy[] = 'error-' . $field->name;
+    }
+    if ($field->help_text) {
+        $describedBy[] = 'hint-' . $field->name;
+    }
+    $ariaDescribedBy = !empty($describedBy) ? implode(' ', $describedBy) : null;
 @endphp
 
-<x-artisanpack-input
-    type="date"
-    :label="$field->label"
-    :hint="$field->help_text"
-    :error="$error"
-    :required="$field->is_required"
-    wire:model.live="formData.{{ $field->name }}"
-    id="field-{{ $field->name }}"
-    :class="$field->css_classes"
-    :min="$minDate"
-    :max="$maxDate"
-    :aria-required="$field->is_required ? 'true' : 'false'"
-    :aria-describedby="$error ? 'error-' . $field->name : ($field->help_text ? 'hint-' . $field->name : null)"
-/>
+{{-- A plain input rather than <x-artisanpack-input>: that component nests the
+     input inside a `.input` wrapper, where daisyUI's `input[type=date]` rule
+     makes it inline-block and pins the date text to the top of the box. --}}
+<div class="form-control">
+    @if($field->label)
+        <label class="label" for="field-{{ $field->name }}">
+            <span class="label-text">
+                {{ $field->label }}
+                @if($field->is_required)
+                    <span class="text-error">*</span>
+                @endif
+            </span>
+        </label>
+    @endif
+
+    <input
+        type="date"
+        wire:model.live="formData.{{ $field->name }}"
+        id="field-{{ $field->name }}"
+        class="input input-bordered w-full {{ $field->css_classes }} @if($error) input-error @endif"
+        @if(filled($minDate)) min="{{ $minDate }}" @endif
+        @if(filled($maxDate)) max="{{ $maxDate }}" @endif
+        @if($field->is_required) required aria-required="true" @endif
+        @if($ariaDescribedBy) aria-describedby="{{ $ariaDescribedBy }}" @endif
+    />
+
+    @if($field->help_text)
+        <label class="label" id="hint-{{ $field->name }}">
+            <span class="label-text-alt">{{ $field->help_text }}</span>
+        </label>
+    @endif
+
+    @if($error)
+        <label class="label" id="error-{{ $field->name }}">
+            <span class="label-text-alt text-error">{{ $error }}</span>
+        </label>
+    @endif
+</div>
