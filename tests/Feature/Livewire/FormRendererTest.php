@@ -795,6 +795,28 @@ describe( 'FormRenderer date field', function (): void {
             ->assertSeeHtml( 'min="2026-01-01"' )
             ->assertSeeHtml( 'max="2026-12-31"' )
             ->assertSeeHtml( 'aria-describedby="hint-starts"' )
+            ->assertDontSeeHtml( 'aria-invalid' )
+            ->assertDontSeeHtml( 'aria-label="Starts"' )
             ->assertSee( 'Start Date' );
+    } );
+
+    it( 'marks the date input invalid when it has an error', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->required()->create( ['type' => 'date', 'name' => 'starts'] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->set( 'formLoadedAt', time() - 10 )
+            ->call( 'submit' )
+            ->assertHasErrors( ['formData.starts' => 'required'] )
+            ->assertSeeHtml( 'aria-invalid="true"' )
+            ->assertSeeHtml( 'aria-describedby="error-starts hint-starts"' );
+    } );
+
+    it( 'gives an unlabelled date input an accessible name', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->create( ['type' => 'date', 'name' => 'start_date', 'label' => ''] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->assertSeeHtml( 'aria-label="Start Date"' );
     } );
 } );

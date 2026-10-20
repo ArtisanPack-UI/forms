@@ -38,6 +38,8 @@
         @if(filled($minDate)) min="{{ $minDate }}" @endif
         @if(filled($maxDate)) max="{{ $maxDate }}" @endif
         @if($field->is_required) required aria-required="true" @endif
+        @if($error) aria-invalid="true" @endif
+        @unless($field->label) aria-label="{{ \Illuminate\Support\Str::headline($field->name) }}" @endunless
         @if($ariaDescribedBy) aria-describedby="{{ $ariaDescribedBy }}" @endif
     />
 
