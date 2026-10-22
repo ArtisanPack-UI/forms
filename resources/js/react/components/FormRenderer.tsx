@@ -13,6 +13,7 @@
 
 import { Button } from '@artisanpack-ui/react/form';
 
+import { getSubInputErrors } from '../../shared/composite';
 import type { FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
 import { useForm } from '../hooks/useForm';
 import { FieldRenderer } from './fields/FieldRenderer';
@@ -276,6 +277,7 @@ export function FormRenderer( {
 						displayConfig={form.config.display}
 						otherValue={otherValues[field.name] ?? ''}
 						onOtherChange={( text ) => setOtherValue( field.name, text )}
+						subErrors={getSubInputErrors( errors, field.name )}
 						fieldComponents={fieldComponents}
 						layout={isInline ? 'inline' : 'stacked'}
 					/>

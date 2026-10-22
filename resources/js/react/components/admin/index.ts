@@ -36,3 +36,9 @@ export type { SubmissionsListProps } from './SubmissionsList';
 
 export { SubmissionDetail } from './SubmissionDetail';
 export type { SubmissionDetailProps } from './SubmissionDetail';
+
+export { OptionsEditor } from './OptionsEditor';
+export type { OptionsEditorProps } from './OptionsEditor';
+
+export { SubInputsEditor } from './SubInputsEditor';
+export type { SubInputsEditorProps } from './SubInputsEditor';

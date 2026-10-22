@@ -23,6 +23,7 @@ import type {
 	FormUpload,
 	UpdateSubmissionRequest,
 } from '../../../types/artisanpack-forms';
+import { getSubInputErrors } from '../../../shared/composite';
 import { getAdministrativeFormState, resolveOtherChoices } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 import { validateFields } from '../../../shared/validation';
@@ -487,6 +488,7 @@ export function SubmissionDetail( {
 									field={field}
 									value={adminValues[field.name]}
 									error={adminErrors[field.name]?.[0]}
+									subErrors={getSubInputErrors( adminErrors, field.name )}
 									onChange={( value ) => {
 										setAdminValues( ( prev ) => ( { ...prev, [field.name]: value } ) );
 										setAdminSaved( false );

@@ -262,16 +262,18 @@ class FormSubmission extends Model
      * Gets submission data as a collection keyed by field name.
      *
      * Holds the submitted values rather than their display labels, since it
-     * feeds notification conditions, webhooks and the JSON export.
+     * feeds notification conditions, webhooks and the JSON export. Since
+     * 1.6.0 a composite field's value is a map of its sub-inputs (see
+     * FormSubmissionValue::getStructuredValue()).
      *
      * @since 1.0.0
      *
-     * @return Collection<string, string> The submission data collection.
+     * @return Collection<string, array<string, mixed>|string> The submission data collection.
      */
     public function getDataAttribute(): Collection
     {
         return $this->values->mapWithKeys( function ( FormSubmissionValue $value ) {
-            return [$value->field_name => $value->getRawValue()];
+            return [$value->field_name => $value->getStructuredValue()];
         } );
     }
 
@@ -280,7 +282,7 @@ class FormSubmission extends Model
      *
      * @since 1.0.0
      *
-     * @return array<string, string> The submission data array.
+     * @return array<string, array<string, mixed>|string> The submission data array.
      */
     public function getDataArrayAttribute(): array
     {

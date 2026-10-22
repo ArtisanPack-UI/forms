@@ -32,6 +32,7 @@ import type {
 	FormField,
 	LabelPlacement,
 	FormStep,
+	PredefinedChoiceList,
 	StoreFieldRequest,
 	StoreStepRequest,
 	UpdateFieldRequest,
@@ -124,6 +125,7 @@ export function FormBuilder( {
 	const [activeStepId, setActiveStepId] = useState<number | null>( null );
 	const [activePanel, setActivePanel] = useState<'palette' | 'settings' | 'editor'>( 'palette' );
 	const [showPreview, setShowPreview] = useState( false );
+	const [predefinedChoices, setPredefinedChoices] = useState<PredefinedChoiceList[]>( [] );
 
 	// Drag state
 	const [dragState, setDragState] = useState<DragState | null>( null );
@@ -219,6 +221,29 @@ export function FormBuilder( {
 	useEffect( () => {
 		loadForm();
 	}, [loadForm] );
+
+	// Load the lists the options editor's bulk editor can insert, once per form.
+	useEffect( () => {
+		if ( !form?.slug ) {
+			return undefined;
+		}
+
+		let cancelled = false;
+
+		get<{ data: PredefinedChoiceList[] }>( `/${encodeURIComponent( form.slug )}/fields/predefined-choices` )
+			.then( ( response ) => {
+				if ( !cancelled ) {
+					setPredefinedChoices( response.data );
+				}
+			} )
+			.catch( () => {
+				// The bulk editor still works without the predefined lists.
+			} );
+
+		return () => {
+			cancelled = true;
+		};
+	}, [get, form?.slug] );
 
 	// Update form settings
 	const updateFormSetting = useCallback( ( updates: UpdateFormRequest ) => {
@@ -1150,6 +1175,7 @@ export function FormBuilder( {
 								setActivePanel( 'palette' );
 							}}
 							customSettings={fieldCustomSettings}
+							predefinedChoices={predefinedChoices}
 						/>
 					</div>
 				)}

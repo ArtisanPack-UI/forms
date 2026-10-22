@@ -19,6 +19,7 @@ import type {
 	ConditionalOperator,
 	FormField,
 } from '../../../types/artisanpack-forms';
+import { getConditionTargets } from '../../../shared/composite';
 import { getConditionOptions } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 
@@ -100,6 +101,13 @@ const availableFields = computed( () =>
 	),
 );
 
+/** A composite field offers each of its enabled sub-inputs instead of itself. */
+const availableTargets = computed( () => availableFields.value.flatMap( getConditionTargets ) );
+
+const targetOptions = computed( () =>
+	availableTargets.value.map( ( target ) => ( { value: target.ref, label: target.label } ) ),
+);
+
 const defaultLogic = computed( (): GenericConditionalLogic => ( {
 	action: availableActions.value.length > 0 ? availableActions.value[0].value : '',
 	logic: 'all' as ConditionalLogicType,
@@ -119,14 +127,14 @@ function handleLogicTypeChange( logicType: string ): void {
 }
 
 function handleAddRule(): void {
-	const firstField = availableFields.value[0];
+	const firstTarget = availableTargets.value[0];
 
-	if ( !firstField ) {
+	if ( !firstTarget ) {
 		return;
 	}
 
 	const newRule: ConditionalLogicRule = {
-		field: firstField.uuid,
+		field: firstTarget.ref,
 		operator: 'equals',
 		value: '',
 	};
@@ -161,8 +169,15 @@ function needsValue( operator: ConditionalOperator ): boolean {
 	return def?.needsValue ?? true;
 }
 
-function getFieldOptions( fieldUuid: string ): Array<{ label: string; value: string }> | null {
-	const field = props.fields.find( ( f ) => f.uuid === fieldUuid );
+function getFieldOptions( fieldRef: string ): Array<{ label: string; value: string }> | null {
+	const target = availableTargets.value.find( ( entry ) => entry.ref === fieldRef );
+
+	// A sub-input takes free text.
+	if ( target?.subKey ) {
+		return null;
+	}
+
+	const field = target?.field ?? props.fields.find( ( f ) => f.uuid === fieldRef );
 
 	return field ? getConditionOptions( field ) : null;
 }
@@ -204,10 +219,7 @@ function getFieldOptions( fieldUuid: string ): Array<{ label: string; value: str
 					<Select
 						:model-value="rule.field"
 						size="sm"
-						:options="availableFields.map( ( f ) => ( {
-							value: f.uuid,
-							label: f.label || f.name,
-						} ) )"
+						:options="targetOptions"
 						option-value="value"
 						option-label="label"
 						@update:model-value="handleUpdateRule( index, { field: $event as string } )"

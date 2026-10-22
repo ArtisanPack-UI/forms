@@ -144,6 +144,7 @@
                                         $field,
                                         $formData[$field->name] ?? null,
                                         $errors->first('formData.' . $field->name),
+                                        \ArtisanPackUI\Forms\Support\FieldRenderer::subInputErrors($field, $errors),
                                     ) !!}
                                 </div>
                             @endforeach

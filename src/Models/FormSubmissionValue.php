@@ -266,6 +266,26 @@ class FormSubmissionValue extends Model
     }
 
     /**
+     * Gets the stored value in its submitted shape.
+     *
+     * A composite field's value is a map of sub-input keys, which is kept as
+     * an array so webhooks, the JSON export and notification conditions see
+     * each part. Every other value is getRawValue().
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed>|string The value.
+     */
+    public function getStructuredValue(): array|string
+    {
+        if ( is_array( $this->value_array ) && [] !== $this->value_array && ! array_is_list( $this->value_array ) ) {
+            return $this->value_array;
+        }
+
+        return $this->getRawValue();
+    }
+
+    /**
      * Checks if this value is an array value.
      *
      * @since 1.0.0

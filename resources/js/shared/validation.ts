@@ -13,6 +13,13 @@
 import type { FormField, ValidationRules } from '../types/artisanpack-forms';
 
 import {
+	getEnabledSubInputs,
+	getRequiredSubInputKeys,
+	isCompositeField,
+	SUB_INPUT_MAX_LENGTH,
+	toCompositeValue,
+} from './composite';
+import {
 	ACCEPTANCE_FIELD_TYPES,
 	allowsOtherChoice,
 	getFileAllowedTypes,
@@ -23,6 +30,7 @@ import {
 	OTHER_CHOICE_VALUE,
 	ratingAllowsHalf,
 } from './fieldSettings';
+import { t } from './i18n';
 
 /** Layout field types that do not collect data. */
 const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );
@@ -381,7 +389,64 @@ function validateFileRules(
 }
 
 /**
+ * Validates a composite field, one sub-input at a time.
+ *
+ * Mirrors `CompositeFieldType::rules()`: the field's required inputs must be
+ * filled in, email and URL inputs must be valid, number inputs numeric and
+ * text no longer than `SUB_INPUT_MAX_LENGTH`. The field's custom required
+ * and error messages replace the built-in ones.
+ *
+ * @since 1.6.0
+ *
+ * @returns Error arrays keyed `{field}.{key}` (empty when valid).
+ */
+export function validateCompositeField( field: FormField, value: unknown ): Record<string, string[]> {
+	const parts = toCompositeValue( value );
+	const required = new Set( getRequiredSubInputKeys( field ) );
+	const errors: Record<string, string[]> = {};
+
+	for ( const subInput of getEnabledSubInputs( field ) ) {
+		const part = ( parts[subInput.key] ?? '' ).trim();
+		const replacements = { field: field.label ?? field.name, part: subInput.label };
+		let message: string | undefined;
+
+		if ( part === '' ) {
+			message = required.has( subInput.key )
+				? field.required_message ?? t( ':field: :part is required.', replacements )
+				: undefined;
+		} else if ( subInput.type === 'number' ) {
+			message = Number.isFinite( Number( part ) ) ? undefined : t( ':field: :part must be a number.', replacements );
+		} else if ( part.length > SUB_INPUT_MAX_LENGTH ) {
+			message = t( ':field: :part may not be longer than :max characters.', { ...replacements, max: SUB_INPUT_MAX_LENGTH } );
+		} else if ( subInput.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test( part ) ) {
+			message = t( ':field: :part must be a valid email address.', replacements );
+		} else if ( subInput.type === 'url' && !isValidUrl( part ) ) {
+			message = t( ':field: :part must be a valid URL.', replacements );
+		}
+
+		if ( message !== undefined ) {
+			errors[`${field.name}.${subInput.key}`] = [part !== '' && field.error_message ? field.error_message : message];
+		}
+	}
+
+	return errors;
+}
+
+/** Whether a string parses as an absolute URL. */
+function isValidUrl( value: string ): boolean {
+	try {
+		new URL( value );
+
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/**
  * Validates all visible fields in a form.
+ *
+ * A composite field's errors are keyed `{field}.{key}` (since 1.6.0).
  *
  * @returns A map of field names to their error arrays.
  */
@@ -399,6 +464,12 @@ export function validateFields(
 		}
 
 		if ( hiddenFields[field.name] ) {
+			continue;
+		}
+
+		if ( isCompositeField( field ) ) {
+			Object.assign( errors, validateCompositeField( field, formData[field.name] ) );
+
 			continue;
 		}
 

@@ -45,6 +45,8 @@ class SelectFieldType extends ChoiceFieldType
                 ],
             ],
             'settings' => [
+                $this->choicesSourceSetting(),
+                $this->searchableSetting(),
                 $this->readOnlySetting(),
             ],
         ] );

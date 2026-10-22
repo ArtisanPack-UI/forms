@@ -24,6 +24,7 @@ import type {
 	FieldType,
 	FieldWidth,
 	FormField,
+	PredefinedChoiceList,
 	UpdateFieldRequest,
 } from '../../../types/artisanpack-forms';
 
@@ -35,12 +36,15 @@ import {
 	getSettingsForTab,
 	isDraftStored,
 } from '../../../shared/fieldSettings';
+import { applySubInputUpdate, isCompositeField } from '../../../shared/composite';
 import { MERGE_TAGS } from '../../../shared/dynamicPopulation';
 import { getFieldTypeLabel } from '../../../shared/fieldTypeLabels';
 import { t } from '../../../shared/i18n';
 import { resolveFieldSettings } from '../fields/registry';
 import type { CustomFieldSettingsEntry, FieldSettingsRegistration } from '../fields/registry';
 import { ConditionalLogicEditor } from './ConditionalLogicEditor';
+import { OptionsEditor } from './OptionsEditor';
+import { SubInputsEditor } from './SubInputsEditor';
 
 /** Field types that support an options list. */
 const OPTION_FIELD_TYPES: Set<FieldType> = new Set( [
@@ -95,6 +99,11 @@ export interface FieldEditorProps {
 	 * `registerFieldSettings`) for the same type.
 	 */
 	customSettings?: Record<string, CustomFieldSettingsEntry>;
+	/**
+	 * The lists the options editor's bulk editor can insert (since 1.6.0;
+	 * from the `fields/predefined-choices` endpoint).
+	 */
+	predefinedChoices?: PredefinedChoiceList[];
 }
 
 /**
@@ -121,6 +130,7 @@ export function FieldEditor( {
 	onClose,
 	className,
 	customSettings,
+	predefinedChoices,
 }: FieldEditorProps ): React.ReactElement {
 	const [activeTab, setActiveTab] = useState<string>( 'general' );
 
@@ -188,31 +198,17 @@ export function FieldEditor( {
 		return ( field.field_config as { options?: FieldOption[] } )?.options ?? field.options ?? [];
 	}, [field, hasOptions] );
 
-	const handleAddOption = useCallback( () => {
-		const newOptions = [
-			...options,
-			{ label: t( 'Option :number', { number: options.length + 1 } ), value: `option_${options.length + 1}` },
-		];
-		updateField( { field_config: { ...( field.field_config ?? {} ), options: newOptions } } );
-	}, [field.field_config, options, updateField] );
-
-	const handleUpdateOption = useCallback(
-		( index: number, key: 'label' | 'value', value: string ) => {
-			const newOptions = options.map( ( opt, i ) =>
-				i === index ? { ...opt, [key]: value } : opt,
-			);
+	const handleSetOptions = useCallback(
+		( newOptions: FieldOption[] ) => {
 			updateField( { field_config: { ...( field.field_config ?? {} ), options: newOptions } } );
 		},
-		[field.field_config, options, updateField],
+		[field.field_config, updateField],
 	);
 
-	const handleRemoveOption = useCallback(
-		( index: number ) => {
-			const newOptions = options.filter( ( _, i ) => i !== index );
-			updateField( { field_config: { ...( field.field_config ?? {} ), options: newOptions } } );
-		},
-		[field.field_config, options, updateField],
-	);
+	// Show a sub-input change at once; the server rebuilds `sub_inputs` on save.
+	const patchField = useCallback( ( patch: Partial<FormField> ) => {
+		setField( ( prev ) => ( { ...prev, ...patch } ) );
+	}, [] );
 
 	const validationSettings = useMemo( () => getSettingsForTab( field, 'validation' ), [field] );
 	const advancedSettings = useMemo( () => getSettingsForTab( field, 'advanced' ), [field] );
@@ -230,9 +226,9 @@ export function FieldEditor( {
 						hasOptions={hasOptions}
 						options={options}
 						updateField={updateField}
-						handleAddOption={handleAddOption}
-						handleUpdateOption={handleUpdateOption}
-						handleRemoveOption={handleRemoveOption}
+						patchField={patchField}
+						setOptions={handleSetOptions}
+						predefinedChoices={predefinedChoices}
 						customSettings={customSettingsPanel}
 						allFields={allFields}
 					/>
@@ -288,8 +284,7 @@ export function FieldEditor( {
 		return tabItems;
 	}, [
 		field, isLayoutField, hasOptions, options, validationSettings, advancedSettings,
-		allFields, updateField,
-		handleAddOption, handleUpdateOption, handleRemoveOption,
+		allFields, updateField, patchField, handleSetOptions, predefinedChoices,
 		customSettingsPanel,
 	] );
 
@@ -357,9 +352,9 @@ interface GeneralTabContentProps {
 	hasOptions: boolean;
 	options: FieldOption[];
 	updateField: ( data: UpdateFieldRequest ) => void;
-	handleAddOption: () => void;
-	handleUpdateOption: ( index: number, key: 'label' | 'value', value: string ) => void;
-	handleRemoveOption: ( index: number ) => void;
+	patchField: ( patch: Partial<FormField> ) => void;
+	setOptions: ( options: FieldOption[] ) => void;
+	predefinedChoices?: PredefinedChoiceList[];
 	customSettings?: FieldSettingsRegistration;
 	allFields: FormField[];
 }
@@ -370,12 +365,13 @@ function GeneralTabContent( {
 	hasOptions,
 	options,
 	updateField,
-	handleAddOption,
-	handleUpdateOption,
-	handleRemoveOption,
+	patchField,
+	setOptions,
+	predefinedChoices,
 	customSettings,
 	allFields,
 }: GeneralTabContentProps ): React.ReactElement {
+	const isComposite = isCompositeField( field );
 	const CustomSettings = customSettings?.component;
 	const customSettingsPanel = CustomSettings ? (
 		<CustomSettings field={field} allFields={allFields} updateField={updateField} />
@@ -407,12 +403,23 @@ function GeneralTabContent( {
 				hint={t( 'Machine-readable name. Used as the form data key.' )}
 			/>
 
-			{/* Placeholder (non-layout only) */}
-			{!isLayoutField && !NO_PLACEHOLDER_TYPES.has( field.type ) && (
+			{/* Placeholder (non-layout only; a composite field's inputs have their own) */}
+			{!isLayoutField && !isComposite && !NO_PLACEHOLDER_TYPES.has( field.type ) && (
 				<Input
 					label={t( 'Placeholder' )}
 					value={field.placeholder ?? ''}
 					onChange={( e ) => updateField( { placeholder: e.target.value || null } )}
+				/>
+			)}
+
+			{/* A composite field's sub-inputs */}
+			{isComposite && (
+				<SubInputsEditor
+					field={field}
+					onChange={( data, key, setting, value ) => {
+						updateField( data );
+						patchField( { sub_inputs: applySubInputUpdate( field, key, setting, value ).sub_inputs } );
+					}}
 				/>
 			)}
 
@@ -426,7 +433,7 @@ function GeneralTabContent( {
 			)}
 
 			{/* Default value */}
-			{!isLayoutField && field.type !== 'file' && (
+			{!isLayoutField && !isComposite && field.type !== 'file' && (
 				<Input
 					label={t( 'Default Value' )}
 					value={field.default_value ?? ''}
@@ -501,46 +508,12 @@ function GeneralTabContent( {
 
 			{/* Options editor for choice fields */}
 			{hasOptions && (
-				<div className="space-y-2">
-					<label className="label">
-						<span className="label-text font-medium">{t( 'Options' )}</span>
-					</label>
-					{options.map( ( option, index ) => (
-						<div key={index} className="flex items-center gap-2">
-							<Input
-								placeholder={t( 'Label' )}
-								aria-label={t( 'Option :number label', { number: index + 1 } )}
-								value={option.label}
-								onChange={( e ) => handleUpdateOption( index, 'label', e.target.value )}
-								className="flex-1"
-							/>
-							<Input
-								placeholder={t( 'Value' )}
-								aria-label={t( 'Option :number value', { number: index + 1 } )}
-								value={option.value}
-								onChange={( e ) => handleUpdateOption( index, 'value', e.target.value )}
-								className="flex-1"
-							/>
-							<Button
-								color="ghost"
-								size="sm"
-								className="btn-circle"
-								onClick={() => handleRemoveOption( index )}
-								title={t( 'Remove option' )}
-								aria-label={t( 'Remove option' )}
-							>
-								&times;
-							</Button>
-						</div>
-					) )}
-					<Button
-						color="ghost"
-						size="sm"
-						onClick={handleAddOption}
-					>
-						{t( 'Add Option' )}
-					</Button>
-				</div>
+				<OptionsEditor
+					field={field}
+					options={options}
+					onChange={setOptions}
+					predefinedChoices={predefinedChoices}
+				/>
 			)}
 
 			{/* Host-supplied settings panel for a custom field type */}

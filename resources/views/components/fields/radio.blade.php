@@ -1,14 +1,14 @@
 @props(['field', 'value' => '', 'error' => null])
 
 @php
-    $options = $field->getConfig('options', []);
+    $options = $field->getRenderOptions();
     $allowsOther = $field->allowsOtherChoice();
     $otherSelected = $allowsOther && \ArtisanPackUI\Forms\Models\FormField::OTHER_CHOICE_VALUE === $value;
 @endphp
 
 @component('forms::components.field-layout', ['field' => $field, 'error' => $error])
 <div
-    class="flex flex-col gap-2 {{ $field->css_classes }}"
+    class="{{ $field->getChoiceLayoutClasses() }} {{ $field->css_classes }}"
     role="radiogroup"
     @if($field->label) aria-labelledby="label-{{ $field->name }}" @endif
     @if($field->is_required) aria-required="true" @endif

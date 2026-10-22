@@ -44,6 +44,10 @@ class CheckboxGroupFieldType extends MultipleChoiceFieldType
                 ],
             ],
             'settings' => [
+                $this->choicesSourceSetting(),
+                $this->choiceLayoutSetting(),
+                $this->randomizeSetting(),
+                $this->selectAllSetting(),
                 ...$this->otherChoiceSettings(),
                 ...$this->selectionSettings(),
             ],

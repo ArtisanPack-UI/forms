@@ -19,7 +19,9 @@ namespace ArtisanPackUI\Forms\Models;
 use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Contracts\FieldType;
 use ArtisanPackUI\Forms\Database\Factories\FormFieldFactory;
+use ArtisanPackUI\Forms\FieldTypes\CompositeFieldType;
 use ArtisanPackUI\Forms\Support\Autocomplete;
+use ArtisanPackUI\Forms\Support\ChoiceSources;
 use ArtisanPackUI\Forms\Support\MergeTags;
 use ArtisanPackUI\Forms\Support\PopulationContext;
 use Illuminate\Database\Eloquent\Builder;
@@ -29,6 +31,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Random\Engine\Mt19937;
+use Random\Randomizer;
 
 /**
  * Form field model class.
@@ -86,6 +90,53 @@ class FormField extends Model
      * @var list<string>
      */
     public const CHOICE_TYPES = ['select', 'radio', 'checkbox_group', 'select_multiple'];
+
+    /**
+     * Choice field types whose submitted value is a list of option values.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const MULTIPLE_CHOICE_TYPES = ['checkbox_group', 'select_multiple'];
+
+    /**
+     * Layouts a radio or checkbox group may arrange its choices in.
+     *
+     * Column layouts fill row by row, so the reading order matches the DOM order.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const CHOICE_LAYOUTS = ['stacked', 'inline', '2-col', '3-col'];
+
+    /**
+     * Where a composite field shows the labels of its sub-inputs.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const SUB_LABEL_PLACEMENTS = ['below', 'above', 'hidden'];
+
+    /**
+     * How a composite field is exported: one column per enabled sub-input, or one formatted column.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const COMPOSITE_EXPORT_FORMATS = ['columns', 'single'];
+
+    /**
+     * Input types a composite field's sub-input may use.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const SUB_INPUT_TYPES = ['text', 'email', 'tel', 'url', 'number'];
 
     /**
      * Rules whose failure means a value is missing, which the custom required
@@ -265,6 +316,13 @@ class FormField extends Model
     protected ?Form $settingsForm = null;
 
     /**
+     * The seed randomized choices are shuffled with, kept by withChoiceSeed().
+     *
+     * @since 1.6.0
+     */
+    protected ?int $choiceSeed = null;
+
+    /**
      * Leaves the cached field type handler and settings form out when the model is serialized.
      *
      * The handler holds locale-specific labels and may come from a filter, so
@@ -416,13 +474,25 @@ class FormField extends Model
     /**
      * Gets the options for select/checkbox/radio fields.
      *
+     * Since 1.6.0, a field whose `choices_source` setting names a registered
+     * source gets that source's choices (see ChoiceSources) instead of the
+     * options stored in `field_config`.
+     *
      * @since 1.0.0
      *
      * @return array<int|string, mixed> The field options array.
      */
     public function getOptionsAttribute(): array
     {
-        return $this->field_config['options'] ?? [];
+        $source = $this->getChoicesSource();
+
+        if ( null !== $source ) {
+            return app( ChoiceSources::class )->resolve( $source, $this );
+        }
+
+        $options = $this->field_config['options'] ?? [];
+
+        return is_array( $options ) ? $options : [];
     }
 
     /**
@@ -569,6 +639,348 @@ class FormField extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Gets the registered source the field loads its choices from.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null The `choices_source` setting when the type offers it and the source is registered, otherwise null.
+     */
+    public function getChoicesSource(): ?string
+    {
+        $source = $this->getConfig( 'choices_source' );
+
+        if ( ! is_string( $source ) || '' === $source || ! $this->offersSetting( 'choices_source' ) ) {
+            return null;
+        }
+
+        return app( ChoiceSources::class )->has( $source ) ? $source : null;
+    }
+
+    /**
+     * Checks whether the field's value is a list of option values.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True for a checkbox group or multi-select.
+     */
+    public function isMultipleChoice(): bool
+    {
+        return in_array( $this->type, self::MULTIPLE_CHOICE_TYPES, true );
+    }
+
+    /**
+     * Gets the values of the options marked as selected by default.
+     *
+     * A single-choice field takes the first marked option only.
+     *
+     * @since 1.6.0
+     *
+     * @return list<string> The option values.
+     */
+    public function getDefaultOptionValues(): array
+    {
+        if ( ! in_array( $this->type, self::CHOICE_TYPES, true ) ) {
+            return [];
+        }
+
+        $values = [];
+
+        foreach ( $this->options as $option ) {
+            if ( ! is_array( $option ) || ! isset( $option['value'] ) || ! is_scalar( $option['value'] ) ) {
+                continue;
+            }
+
+            if ( true === filter_var( $option['default'] ?? false, FILTER_VALIDATE_BOOLEAN ) ) {
+                $values[] = (string) $option['value'];
+            }
+        }
+
+        $values = array_values( array_unique( $values ) );
+
+        return $this->isMultipleChoice() ? $values : array_slice( $values, 0, 1 );
+    }
+
+    /**
+     * Gets how a radio or checkbox group arranges its choices.
+     *
+     * @since 1.6.0
+     *
+     * @return string `stacked` (the default), `inline`, `2-col` or `3-col`.
+     */
+    public function getChoiceLayout(): string
+    {
+        $layout = $this->getConfig( 'layout' );
+
+        return is_string( $layout ) && in_array( $layout, self::CHOICE_LAYOUTS, true ) && $this->offersSetting( 'layout' )
+            ? $layout
+            : 'stacked';
+    }
+
+    /**
+     * Gets the CSS classes that arrange a radio or checkbox group's choices.
+     *
+     * Columns stack below the `sm` breakpoint. The React and Vue renderers
+     * mirror these (`resources/js/shared/choices.ts`).
+     *
+     * @since 1.6.0
+     *
+     * @return string The classes.
+     */
+    public function getChoiceLayoutClasses(): string
+    {
+        return match ( $this->getChoiceLayout() ) {
+            'inline' => 'flex flex-wrap gap-x-6 gap-y-2',
+            '2-col'  => 'grid grid-cols-1 gap-2 sm:grid-cols-2',
+            '3-col'  => 'grid grid-cols-1 gap-2 sm:grid-cols-3',
+            default  => 'flex flex-col gap-2',
+        };
+    }
+
+    /**
+     * Checks whether the field shows its choices in a random order.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the `randomize` setting is on and the type offers it.
+     */
+    public function randomizesChoices(): bool
+    {
+        return $this->configFlag( 'randomize' ) && $this->offersSetting( 'randomize' );
+    }
+
+    /**
+     * Checks whether a checkbox group offers a "Select All" choice.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the `select_all` setting is on and the type offers it.
+     */
+    public function offersSelectAll(): bool
+    {
+        return $this->configFlag( 'select_all' ) && $this->offersSetting( 'select_all' );
+    }
+
+    /**
+     * Checks whether a select or multi-select is rendered as a searchable combobox.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the `searchable` setting is on and the type offers it.
+     */
+    public function isSearchable(): bool
+    {
+        return $this->configFlag( 'searchable' ) && $this->offersSetting( 'searchable' );
+    }
+
+    /**
+     * Sets the seed randomized choices are shuffled with.
+     *
+     * The Livewire renderer passes one seed per visitor, so its re-renders
+     * keep the same order. Without a seed the order changes per instance.
+     *
+     * @since 1.6.0
+     *
+     * @param  int  $seed  The seed.
+     *
+     * @return static The field.
+     */
+    public function withChoiceSeed( int $seed ): static
+    {
+        $this->choiceSeed = $seed;
+
+        return $this;
+    }
+
+    /**
+     * Gets the options in the order the renderer shows them.
+     *
+     * Shuffled when the field randomizes its choices, deterministically for
+     * the seed (see withChoiceSeed()) mixed with the field's ID, so two
+     * randomized fields on a form get different orders.
+     *
+     * @since 1.6.0
+     *
+     * @return array<int|string, mixed> The options.
+     */
+    public function getRenderOptions(): array
+    {
+        $options = $this->options;
+
+        if ( ! $this->randomizesChoices() || count( $options ) < 2 || ! array_is_list( $options ) ) {
+            return $options;
+        }
+
+        $this->choiceSeed ??= random_int( 0, PHP_INT_MAX );
+        $engine             = new Mt19937( (int) crc32( $this->choiceSeed . ':' . ( $this->getKey() ?? $this->name ) ) );
+
+        return ( new Randomizer( $engine ) )->shuffleArray( $options );
+    }
+
+    /**
+     * Checks whether the field collects several inputs stored together.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the field's type handler extends CompositeFieldType and declares sub-inputs.
+     */
+    public function isComposite(): bool
+    {
+        return [] !== $this->getSubInputs();
+    }
+
+    /**
+     * Gets a composite field's sub-inputs, with the field's own settings applied.
+     *
+     * Only types whose handler extends CompositeFieldType have sub-inputs. The type's `sub_inputs` definition gives each sub-input's key, default
+     * label and placeholder, whether it is enabled and required by default,
+     * its `autocomplete` token, input `type` and extra validation `rules`.
+     * The field's `field_config.sub_inputs.{key}` may change `enabled`,
+     * `label`, `placeholder` and `required`.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, array{key: string, label: string, default_label: string, placeholder: string|null, enabled: bool, required: bool, autocomplete: string|null, type: string, rules: list<mixed>}> The sub-inputs by key, in definition order.
+     */
+    public function getSubInputs(): array
+    {
+        if ( ! $this->fieldType() instanceof CompositeFieldType ) {
+            return [];
+        }
+
+        $definitions = $this->fieldType()->definition()['sub_inputs'] ?? [];
+        $configured  = $this->getConfig( 'sub_inputs', [] );
+        $subInputs   = [];
+
+        foreach ( is_array( $definitions ) ? $definitions : [] as $definition ) {
+            $key = is_array( $definition ) ? ( $definition['key'] ?? null ) : null;
+
+            if ( ! is_string( $key ) || 1 !== preg_match( '/^[A-Za-z0-9_]+$/', $key ) || isset( $subInputs[ $key ] ) ) {
+                continue;
+            }
+
+            $config       = is_array( $configured ) && is_array( $configured[ $key ] ?? null ) ? $configured[ $key ] : [];
+            $defaultLabel = is_scalar( $definition['label'] ?? null ) ? (string) $definition['label'] : Str::headline( $key );
+            $label        = $config['label'] ?? null;
+            $placeholder  = $config['placeholder'] ?? $definition['placeholder'] ?? null;
+            $type         = $definition['type'] ?? 'text';
+            $rules        = $definition['rules'] ?? [];
+
+            $subInputs[ $key ] = [
+                'key'           => $key,
+                'label'         => is_string( $label ) && '' !== trim( $label ) ? trim( $label ) : $defaultLabel,
+                'default_label' => $defaultLabel,
+                'placeholder'   => is_string( $placeholder ) && '' !== trim( $placeholder ) ? trim( $placeholder ) : null,
+                'enabled'       => $this->subInputFlag( $config, $definition, 'enabled', true ),
+                'required'      => $this->subInputFlag( $config, $definition, 'required', false ),
+                'autocomplete'  => Autocomplete::isToken( $definition['autocomplete'] ?? null ) ? $definition['autocomplete'] : null,
+                'type'          => in_array( $type, self::SUB_INPUT_TYPES, true ) ? $type : 'text',
+                'rules'         => is_array( $rules ) ? array_values( $rules ) : [$rules],
+            ];
+        }
+
+        return $subInputs;
+    }
+
+    /**
+     * Gets a composite field's enabled sub-inputs.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, array<string, mixed>> The sub-inputs by key (see getSubInputs()).
+     */
+    public function getEnabledSubInputs(): array
+    {
+        return array_filter( $this->getSubInputs(), fn ( array $subInput ): bool => $subInput['enabled'] );
+    }
+
+    /**
+     * Gets the keys of a composite field's sub-inputs that must be filled in.
+     *
+     * Only a required field requires its sub-inputs: those marked required,
+     * or every enabled sub-input when none is marked.
+     *
+     * @since 1.6.0
+     *
+     * @return list<string> The sub-input keys.
+     */
+    public function getRequiredSubInputKeys(): array
+    {
+        if ( ! $this->is_required ) {
+            return [];
+        }
+
+        $enabled  = $this->getEnabledSubInputs();
+        $required = array_keys( array_filter( $enabled, fn ( array $subInput ): bool => $subInput['required'] ) );
+
+        return [] === $required ? array_keys( $enabled ) : $required;
+    }
+
+    /**
+     * Gets where a composite field shows its sub-input labels.
+     *
+     * @since 1.6.0
+     *
+     * @return string `below` (the default), `above` or `hidden` (`sr-only`, still announced).
+     */
+    public function getSubLabelPlacement(): string
+    {
+        $placement = $this->getConfig( 'sub_label_placement' );
+
+        return is_string( $placement ) && in_array( $placement, self::SUB_LABEL_PLACEMENTS, true ) ? $placement : 'below';
+    }
+
+    /**
+     * Gets how a composite field is exported to CSV.
+     *
+     * @since 1.6.0
+     *
+     * @return string `columns` (the default; one per enabled sub-input) or `single` (one formatted column).
+     */
+    public function getCompositeExportFormat(): string
+    {
+        $format = $this->getConfig( 'export_format' );
+
+        return is_string( $format ) && in_array( $format, self::COMPOSITE_EXPORT_FORMATS, true ) ? $format : 'columns';
+    }
+
+    /**
+     * Gets the targets a conditional logic rule may test on this field.
+     *
+     * The field itself, or for a composite field each enabled sub-input,
+     * referenced as `{name}.{key}` (or `{uuid}.{key}`).
+     *
+     * @since 1.6.0
+     *
+     * @return list<array{name: string, label: string, type: string, uuid: string, options: array<int|string, mixed>}> The targets.
+     */
+    public function getConditionTargets(): array
+    {
+        if ( ! $this->isComposite() ) {
+            return [[
+                'name'    => (string) $this->name,
+                'label'   => (string) $this->label,
+                'type'    => (string) $this->type,
+                'uuid'    => (string) $this->uuid,
+                'options' => $this->getConditionOptions(),
+            ]];
+        }
+
+        $targets = [];
+
+        foreach ( $this->getEnabledSubInputs() as $key => $subInput ) {
+            $targets[] = [
+                'name'    => "{$this->name}.{$key}",
+                'label'   => __( ':field: :part', ['field' => $this->label, 'part' => $subInput['label']] ),
+                'type'    => 'text',
+                'uuid'    => "{$this->uuid}.{$key}",
+                'options' => [],
+            ];
+        }
+
+        return $targets;
     }
 
     /**
@@ -1228,6 +1640,25 @@ class FormField extends Model
         }
 
         return false;
+    }
+
+    /**
+     * Reads a sub-input flag from the field's settings, falling back to the type's definition.
+     *
+     * @since 1.6.0
+     *
+     * @param  array<string, mixed>  $config  The sub-input's `field_config.sub_inputs` entry.
+     * @param  array<string, mixed>  $definition  The sub-input's definition.
+     * @param  string  $key  The flag.
+     * @param  bool  $default  The value when neither sets it.
+     *
+     * @return bool The flag.
+     */
+    protected function subInputFlag( array $config, array $definition, string $key, bool $default ): bool
+    {
+        $value = $config[ $key ] ?? $definition[ $key ] ?? $default;
+
+        return true === filter_var( $value, FILTER_VALIDATE_BOOLEAN );
     }
 
     /**

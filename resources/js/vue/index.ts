@@ -22,6 +22,8 @@ export { default as AdvancedField } from './components/fields/AdvancedField.vue'
 export { default as LayoutField } from './components/fields/LayoutField.vue';
 export { default as RatingField } from './components/fields/RatingField.vue';
 export { default as FieldLayout } from './components/fields/FieldLayout.vue';
+export { default as Combobox } from './components/fields/Combobox.vue';
+export { default as CompositeField } from './components/fields/CompositeField.vue';
 
 // Composables
 export { useForm } from './composables/useForm';
@@ -44,6 +46,8 @@ export {
 	NotificationEditor,
 	SubmissionsList,
 	SubmissionDetail,
+	OptionsEditor,
+	SubInputsEditor,
 } from './components/admin';
 
 // Shared utilities (re-exported for convenience)
@@ -68,6 +72,31 @@ export {
 	resolveOtherChoices,
 } from '../shared/fieldSettings';
 export type { DescriptionPlacement, FieldLayout as FieldLayoutSettings, LabelPlacement } from '../shared/fieldSettings';
+
+// Choice field helpers (since 1.6.0)
+export {
+	applyBulkChoices,
+	getChoiceLayout,
+	getChoiceLayoutClasses,
+	getDefaultOptionValues,
+	getRenderOptions,
+	parseBulkChoices,
+	shuffleWithSeed,
+	toBulkChoices,
+} from '../shared/choices';
+
+// Composite field helpers (since 1.6.0)
+export {
+	buildSubInputUpdate,
+	getConditionTargets,
+	getEnabledSubInputs,
+	getRequiredSubInputKeys,
+	getSubInputErrors,
+	isCompositeField,
+} from '../shared/composite';
+export type { ConditionTarget, SubInputSetting } from '../shared/composite';
+
+export { validateCompositeField } from '../shared/validation';
 
 // Dynamic population (since 1.6.0)
 export {

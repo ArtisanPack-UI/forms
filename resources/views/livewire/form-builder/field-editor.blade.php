@@ -140,6 +140,11 @@
                     </div>
                 @endif
 
+                {{-- A composite field's sub-inputs --}}
+                @if ($field->isComposite())
+                    @include('forms::livewire.form-builder.sub-inputs-editor', ['field' => $field])
+                @endif
+
                 {{-- Help text --}}
                 @unless ($isContentLayoutField)
                     <div class="form-control">

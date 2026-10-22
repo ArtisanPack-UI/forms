@@ -3,16 +3,26 @@
 
   Renders select, radio, checkbox, toggle, checkbox_group, and select_multiple
   fields using @artisanpack-ui/vue components. Radio and checkbox groups can
-  offer an "Other" choice that reveals a text input.
+  offer an "Other" choice that reveals a text input, arrange their choices in
+  columns or inline and show them in a random order; a checkbox group can
+  offer "Select All". Radios are native inputs in a labelled `radiogroup`, as
+  in React. A searchable select or multi-select renders a combobox (since 1.6.0).
 
   @package    ArtisanPack_UI
   @subpackage Forms
   @since      1.1.0
 -->
 <script setup lang="ts">
-import { computed } from 'vue';
-import { Checkbox, Radio, Select, Toggle } from '@artisanpack-ui/vue/form';
-import type { FormField, DisplayConfig, FieldOption, OptionsFieldConfig } from '../../../types/artisanpack-forms';
+import { computed, ref, toRaw, watchEffect } from 'vue';
+import { Checkbox, Select, Toggle } from '@artisanpack-ui/vue/form';
+import type { FormField, DisplayConfig, FieldOption } from '../../../types/artisanpack-forms';
+import {
+	getChoiceLayoutClasses,
+	getFieldOptions,
+	getRenderOptions,
+	isSearchableField,
+	offersSelectAll,
+} from '../../../shared/choices';
 import {
 	allowsOtherChoice,
 	getCheckLabelProps,
@@ -28,6 +38,7 @@ import {
 	OTHER_CHOICE_VALUE,
 } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
+import Combobox from './Combobox.vue';
 import FieldLayout from './FieldLayout.vue';
 import { vAutocomplete } from './autocomplete';
 import { vDescribedBy } from './describedBy';
@@ -46,11 +57,21 @@ const emit = defineEmits<{
 	'update:otherValue': [text: string];
 }>();
 
-const options = computed<FieldOption[]>( () => {
-	const config = props.field.field_config as OptionsFieldConfig | null;
+/**
+ * The options, in the order they are shown. Radio and checkbox groups may
+ * shuffle them, once per field object (hence `toRaw`).
+ */
+const options = computed<FieldOption[]>( () =>
+	props.field.type === 'radio' || props.field.type === 'checkbox_group'
+		? getRenderOptions( toRaw( props.field ) )
+		: getFieldOptions( props.field ),
+);
 
-	return props.field.options ?? config?.options ?? [];
-} );
+/** Whether a select or multi-select is a searchable combobox. */
+const searchable = computed( () => isSearchableField( props.field ) );
+
+/** The classes that arrange a radio or checkbox group's choices. */
+const layoutClasses = computed( () => getChoiceLayoutClasses( props.field ) );
 
 /** Read-only choices are announced as read-only and their inputs disabled. */
 const readOnly = computed( () => isReadOnlyField( props.field ) );
@@ -65,10 +86,11 @@ const choices = computed<FieldOption[]>( () =>
 		: options.value,
 );
 
-/** Options with every entry disabled when the field is read-only. */
-const radioOptions = computed( (): FieldOption[] =>
-	readOnly.value ? choices.value.map( ( option ) => ( { ...option, disabled: true } as unknown as FieldOption ) ) : choices.value,
-);
+/** The values of the options "Select All" controls ("Other" is left alone). */
+const optionValues = computed( () => options.value.map( ( option ) => option.value ) );
+
+/** Whether a checkbox group shows "Select All". */
+const showSelectAll = computed( () => offersSelectAll( props.field ) && optionValues.value.length > 1 );
 
 /** Whether the "Other" choice is selected, revealing its text input. */
 const otherSelected = computed( () => allowsOther.value && isOtherChoiceSelected( props.modelValue ) );
@@ -95,14 +117,6 @@ const layoutDescribedBy = computed( () =>
 	layout.value.custom ? getLayoutDescribedBy( props.field, layout.value, props.error ) : undefined,
 );
 
-const showLabel = computed( () => props.displayConfig.label_position !== 'hidden' );
-const labelText = computed( () => props.field.label ?? undefined );
-const ariaLabel = computed( () =>
-	props.displayConfig.label_position === 'hidden'
-		? ( props.field.label ?? props.field.name )
-		: undefined,
-);
-
 const stringValue = computed( () => String( props.modelValue ?? '' ) );
 
 const isChecked = computed( () => {
@@ -126,6 +140,20 @@ const isChecked = computed( () => {
 const selectedArray = computed( () =>
 	Array.isArray( props.modelValue ) ? props.modelValue.map( String ) : [],
 );
+
+/** How many of the options are selected, for the "Select All" state. */
+const selectedOptionCount = computed( () =>
+	optionValues.value.filter( ( value ) => selectedArray.value.includes( value ) ).length,
+);
+
+const selectAllInput = ref<HTMLInputElement | null>( null );
+
+// `indeterminate` is a property only, so it is set rather than bound.
+watchEffect( () => {
+	if ( selectAllInput.value ) {
+		selectAllInput.value.indeterminate = selectedOptionCount.value > 0 && selectedOptionCount.value < optionValues.value.length;
+	}
+} );
 
 const hintId = computed( () => {
 	if ( layout.value.custom ) {
@@ -159,6 +187,19 @@ function handleCheckboxGroupChange( optionValue: string, checked: boolean ): voi
 	emit( 'update:modelValue', updated );
 }
 
+function handleSelectAll( checked: boolean ): void {
+	const others = selectedArray.value.filter( ( value ) => !optionValues.value.includes( value ) );
+
+	emit( 'update:modelValue', checked ? [...optionValues.value, ...others] : others );
+}
+
+/** The `aria-describedby` value for a searchable select's input. */
+const comboboxDescribedBy = computed( () =>
+	layout.value.custom
+		? [getLayoutDescribedBy( props.field, layout.value ), errorId.value].filter( Boolean ).join( ' ' ) || undefined
+		: describedBy.value,
+);
+
 function handleMultiSelectChange( event: Event ): void {
 	const target = event.target as HTMLSelectElement;
 	const selected = Array.from( target.selectedOptions, ( opt ) => opt.value );
@@ -167,8 +208,43 @@ function handleMultiSelectChange( event: Event ): void {
 </script>
 
 <template>
+	<!-- Searchable select or multi-select: an ARIA combobox -->
+	<FieldLayout v-if="searchable" :field="field" :layout="layout">
+		<div class="fieldset">
+			<label
+				v-if="!layout.custom && field.label"
+				:id="`${field.name}-label`"
+				:for="layout.inputId"
+				:class="['fieldset-legend', displayConfig.label_position === 'hidden' ? 'sr-only' : '']"
+			>
+				{{ field.label }}
+				<span v-if="field.is_required" class="text-error ml-1">*</span>
+			</label>
+			<Combobox
+				:id="layout.inputId"
+				:options="options"
+				:model-value="modelValue"
+				:multiple="field.type === 'select_multiple'"
+				:placeholder="field.placeholder ?? undefined"
+				:required="field.is_required"
+				:read-only="readOnly"
+				:invalid="Boolean( error )"
+				:described-by="comboboxDescribedBy"
+				:list-label="field.label ?? field.name"
+				:class="field.css_classes ?? undefined"
+				@update:model-value="emit( 'update:modelValue', $event )"
+			/>
+			<p v-if="!layout.custom && hintId" :id="hintId" class="fieldset-label">
+				{{ field.help_text }}
+			</p>
+			<p v-if="error" :id="errorId" class="fieldset-label text-error" role="alert">
+				{{ error }}
+			</p>
+		</div>
+	</FieldLayout>
+
 	<!-- Select -->
-	<FieldLayout v-if="field.type === 'select'" :field="field" :layout="layout">
+	<FieldLayout v-else-if="field.type === 'select'" :field="field" :layout="layout">
 		<Select
 			v-autocomplete="field.autocomplete"
 			v-described-by="layoutDescribedBy"
@@ -188,46 +264,76 @@ function handleMultiSelectChange( event: Event ): void {
 		/>
 	</FieldLayout>
 
-	<!-- Radio: a read-only group is wrapped in an element that carries aria-readonly, as in React -->
+	<!-- Radio: native radios in a labelled radiogroup; a read-only group is wrapped in an element that carries aria-readonly, as in React -->
 	<FieldLayout v-else-if="field.type === 'radio'" :field="field" :layout="layout" group>
 		<div
 			:role="readOnly ? 'group' : undefined"
 			:aria-readonly="readOnly ? 'true' : undefined"
 		>
-			<Radio
-				:id="layout.custom ? layout.inputId : undefined"
-				:label="!layout.custom && showLabel ? labelText : undefined"
-				:aria-label="layout.custom ? undefined : ariaLabel"
-				v-bind="layout.custom ? { 'aria-labelledby': legendId, 'aria-describedby': layoutDescribedBy } : {}"
-				:name="field.name"
-				:model-value="stringValue"
-				:hint="layout.custom ? undefined : ( field.help_text ?? undefined )"
-				:error="error"
-				:required="field.is_required"
-				:class="field.css_classes ?? undefined"
-				:options="radioOptions"
-				option-value="value"
-				option-label="label"
-				:disabled="readOnly"
-				@update:model-value="!readOnly && emit( 'update:modelValue', $event )"
-			/>
-			<div v-if="otherSelected" class="mt-2">
-				<label :for="otherInputId" class="sr-only">
-					{{ t( ':label, please specify', { label: getOtherChoiceLabel( field ) } ) }}
-				</label>
-				<input
-					:id="otherInputId"
-					type="text"
-					:class="['input input-bordered w-full', error ? 'input-error' : '']"
-					:value="otherValue ?? ''"
-					:maxlength="OTHER_CHOICE_MAX_LENGTH"
-					:placeholder="t( 'Please specify' )"
-					required
-					aria-required="true"
+			<div class="fieldset">
+				<span
+					v-if="!layout.custom && field.label"
+					:id="legendId"
+					:class="['fieldset-legend', displayConfig.label_position === 'hidden' ? 'sr-only' : '']"
+				>
+					{{ field.label }}
+					<span v-if="field.is_required" class="text-error ml-1">*</span>
+				</span>
+				<div
+					role="radiogroup"
+					:aria-labelledby="legendId"
+					:aria-label="legendId ? undefined : field.name"
+					:aria-describedby="describedBy"
+					:aria-required="field.is_required ? 'true' : undefined"
 					:aria-invalid="error ? true : undefined"
-					:readonly="readOnly"
-					@input="emit( 'update:otherValue', ( $event.target as HTMLInputElement ).value )"
-				/>
+					:class="[layoutClasses, field.css_classes ?? '']"
+				>
+					<label
+						v-for="( option, index ) in choices"
+						:key="option.value"
+						:for="`field-${field.name}-${option.value === OTHER_CHOICE_VALUE ? 'other' : index}`"
+						class="flex items-center gap-2 cursor-pointer"
+					>
+						<input
+							:id="`field-${field.name}-${option.value === OTHER_CHOICE_VALUE ? 'other' : index}`"
+							type="radio"
+							:name="field.name"
+							:value="option.value"
+							class="radio radio-primary"
+							:checked="stringValue === option.value"
+							:required="field.is_required && index === 0"
+							:disabled="readOnly"
+							:aria-controls="option.value === OTHER_CHOICE_VALUE && otherSelected ? otherInputId : undefined"
+							@change="!readOnly && emit( 'update:modelValue', option.value )"
+						/>
+						<span>{{ option.label }}</span>
+					</label>
+				</div>
+				<div v-if="otherSelected" class="mt-2">
+					<label :for="otherInputId" class="sr-only">
+						{{ t( ':label, please specify', { label: getOtherChoiceLabel( field ) } ) }}
+					</label>
+					<input
+						:id="otherInputId"
+						type="text"
+						:class="['input input-bordered w-full', error ? 'input-error' : '']"
+						:value="otherValue ?? ''"
+						:maxlength="OTHER_CHOICE_MAX_LENGTH"
+						:placeholder="t( 'Please specify' )"
+						required
+						aria-required="true"
+						:aria-invalid="error ? true : undefined"
+						:aria-describedby="errorId"
+						:readonly="readOnly"
+						@input="emit( 'update:otherValue', ( $event.target as HTMLInputElement ).value )"
+					/>
+				</div>
+				<p v-if="!layout.custom && hintId" :id="hintId" class="fieldset-label">
+					{{ field.help_text }}
+				</p>
+				<p v-if="error" :id="errorId" class="fieldset-label text-error" role="alert">
+					{{ error }}
+				</p>
 			</div>
 		</div>
 	</FieldLayout>
@@ -282,10 +388,27 @@ function handleMultiSelectChange( event: Event ): void {
 				{{ field.label }}
 				<span v-if="field.is_required" class="text-error ml-1">*</span>
 			</legend>
-			<div :class="['flex flex-col gap-2', field.css_classes ?? '']">
+			<label
+				v-if="showSelectAll"
+				:for="`field-${field.name}-select-all`"
+				class="mb-2 flex cursor-pointer items-center gap-2 font-medium"
+			>
+				<input
+					:id="`field-${field.name}-select-all`"
+					ref="selectAllInput"
+					type="checkbox"
+					class="checkbox checkbox-primary"
+					:checked="selectedOptionCount === optionValues.length"
+					:disabled="readOnly"
+					:aria-controls="optionValues.map( ( _, index ) => `field-${field.name}-${index}` ).join( ' ' )"
+					@change="handleSelectAll( ( $event.target as HTMLInputElement ).checked )"
+				/>
+				<span>{{ t( 'Select All' ) }}</span>
+			</label>
+			<div :class="[layoutClasses, field.css_classes ?? '']">
 				<Checkbox
-					v-for="option in choices"
-					:id="option.value === OTHER_CHOICE_VALUE ? `field-${field.name}-other` : undefined"
+					v-for="( option, index ) in choices"
+					:id="option.value === OTHER_CHOICE_VALUE ? `field-${field.name}-other` : `field-${field.name}-${index}`"
 					:key="option.value"
 					:label="option.label"
 					:name="`${field.name}[]`"

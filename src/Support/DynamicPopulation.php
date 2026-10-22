@@ -46,7 +46,9 @@ class DynamicPopulation
      *
      * Read-only fields start with their read-only value, which the client
      * cannot change, so they are not populated from the prefill or query
-     * string.
+     * string. Choice fields start with the options marked as defaults, or
+     * else their default value. Composite fields start with every enabled
+     * sub-input blank and are not populated.
      *
      * @since 1.6.0
      *
@@ -54,7 +56,8 @@ class DynamicPopulation
      * @param  PopulationContext  $context  The visitor and page.
      * @param  array<string, mixed>  $prefill  Values passed to the renderer, keyed by parameter name.
      *
-     * @return mixed The value: a string, a boolean for a checkbox or toggle, or a list for a multi-choice field.
+     * @return mixed The value: a string, a boolean for a checkbox or toggle, a list for a multi-choice field
+     *               or a map of sub-input keys for a composite field.
      */
     public static function initialValue( FormField $field, PopulationContext $context, array $prefill = [] ): mixed
     {
@@ -62,7 +65,11 @@ class DynamicPopulation
             return $field->getReadOnlyValue();
         }
 
-        $default = $field->getResolvedDefaultValue( $context );
+        if ( $field->isComposite() ) {
+            return self::emptyValue( $field );
+        }
+
+        $default = self::defaultValue( $field, $context );
 
         if ( ! $field->allowsDynamicPopulation() ) {
             return $default ?? self::emptyValue( $field );
@@ -101,6 +108,31 @@ class DynamicPopulation
     }
 
     /**
+     * Gets the value a field starts with before it is populated.
+     *
+     * The options marked as defaults (see FormField::getDefaultOptionValues()),
+     * as a list for a multi-choice field, or else the default value with merge
+     * tags replaced.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     * @param  PopulationContext  $context  The visitor and page.
+     *
+     * @return array<int, string>|string|null The default, or null when there is none.
+     */
+    protected static function defaultValue( FormField $field, PopulationContext $context ): array|string|null
+    {
+        $optionDefaults = $field->getDefaultOptionValues();
+
+        if ( [] !== $optionDefaults ) {
+            return $field->isMultipleChoice() ? $optionDefaults : $optionDefaults[0];
+        }
+
+        return $field->getResolvedDefaultValue( $context );
+    }
+
+    /**
      * Fits a populated value to the field's type.
      *
      * Choice fields keep only values that match an option (by value, then by
@@ -112,18 +144,18 @@ class DynamicPopulation
      *
      * @param  FormField  $field  The field.
      * @param  mixed  $raw  The populated value.
-     * @param  string|null  $default  The resolved default value, used when the value does not fit.
+     * @param  array<int, string>|string|null  $default  The default (see defaultValue()), used when the value does not fit.
      *
      * @return mixed The value.
      */
-    protected static function coerce( FormField $field, mixed $raw, ?string $default ): mixed
+    protected static function coerce( FormField $field, mixed $raw, array|string|null $default ): mixed
     {
         $items = array_map(
             fn ( mixed $item ): string => self::sanitize( (string) $item ),
             array_filter( is_array( $raw ) ? $raw : [$raw], fn ( mixed $item ): bool => is_scalar( $item ) ),
         );
 
-        if ( in_array( $field->type, ['checkbox_group', 'select_multiple'], true ) ) {
+        if ( $field->isMultipleChoice() ) {
             $values = [];
 
             foreach ( $items as $item ) {
@@ -203,10 +235,15 @@ class DynamicPopulation
      *
      * @param  FormField  $field  The field.
      *
-     * @return array<int, string>|string An empty list for multi-choice fields, otherwise an empty string.
+     * @return array<int|string, string>|string An empty list for multi-choice fields, a blank string per
+     *                                          enabled sub-input for composite fields, otherwise an empty string.
      */
     protected static function emptyValue( FormField $field ): array|string
     {
-        return in_array( $field->type, ['checkbox_group', 'select_multiple'], true ) ? [] : '';
+        if ( $field->isComposite() ) {
+            return array_fill_keys( array_keys( $field->getEnabledSubInputs() ), '' );
+        }
+
+        return $field->isMultipleChoice() ? [] : '';
     }
 }

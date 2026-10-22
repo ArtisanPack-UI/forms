@@ -44,6 +44,9 @@ class RadioFieldType extends ChoiceFieldType
                 ],
             ],
             'settings' => [
+                $this->choicesSourceSetting(),
+                $this->choiceLayoutSetting(),
+                $this->randomizeSetting(),
                 ...$this->otherChoiceSettings(),
                 $this->readOnlySetting(),
             ],

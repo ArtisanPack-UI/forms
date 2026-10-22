@@ -14,6 +14,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { Button, Input, Select } from '@artisanpack-ui/react';
 
+import { getConditionTargets } from '../../../shared/composite';
 import { getConditionOptions } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 
@@ -115,6 +116,9 @@ export function ConditionalLogicEditor( {
 		[fields, excludeFieldId],
 	);
 
+	// A composite field offers each of its enabled sub-inputs instead of itself.
+	const availableTargets = useMemo( () => availableFields.flatMap( getConditionTargets ), [availableFields] );
+
 	const defaultLogic = useMemo( () => ( {
 		action: availableActions[0].value,
 		logic: 'all' as ConditionalLogicType,
@@ -138,20 +142,20 @@ export function ConditionalLogicEditor( {
 	);
 
 	const handleAddRule = useCallback( () => {
-		const firstField = availableFields[0];
+		const firstTarget = availableTargets[0];
 
-		if ( !firstField ) {
+		if ( !firstTarget ) {
 			return;
 		}
 
 		const newRule: ConditionalLogicRule = {
-			field: firstField.uuid,
+			field: firstTarget.ref,
 			operator: 'equals',
 			value: '',
 		};
 
 		onChange( { ...logic, rules: [...logic.rules, newRule] } );
-	}, [availableFields, logic, onChange] );
+	}, [availableTargets, logic, onChange] );
 
 	const handleUpdateRule = useCallback(
 		( index: number, updates: Partial<ConditionalLogicRule> ) => {
@@ -185,14 +189,20 @@ export function ConditionalLogicEditor( {
 		[],
 	);
 
-	// Get options for a referenced field (for value dropdown)
+	// Get options for a referenced field (for value dropdown); a sub-input takes free text
 	const getFieldOptions = useCallback(
-		( fieldUuid: string ) => {
-			const field = fields.find( ( f ) => f.uuid === fieldUuid );
+		( fieldRef: string ) => {
+			const target = availableTargets.find( ( entry ) => entry.ref === fieldRef );
+
+			if ( target?.subKey ) {
+				return null;
+			}
+
+			const field = target?.field ?? fields.find( ( f ) => f.uuid === fieldRef );
 
 			return field ? getConditionOptions( field ) : null;
 		},
-		[fields],
+		[availableTargets, fields],
 	);
 
 	return (
@@ -236,9 +246,9 @@ export function ConditionalLogicEditor( {
 										value={rule.field}
 										onChange={( e ) => handleUpdateRule( index, { field: e.target.value } )}
 										className="select-sm"
-										options={availableFields.map( ( f ) => ( {
-											value: f.uuid,
-											label: f.label || f.name,
+										options={availableTargets.map( ( target ) => ( {
+											value: target.ref,
+											label: target.label,
 										} ) )}
 										optionValue="value"
 										optionLabel="label"

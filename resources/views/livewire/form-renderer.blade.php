@@ -160,6 +160,7 @@
                                         $field,
                                         $formData[$field->name] ?? null,
                                         $errors->first(( $field->is_file_field ? 'files.' : 'formData.' ) . $field->name),
+                                        \ArtisanPackUI\Forms\Support\FieldRenderer::subInputErrors($field, $errors),
                                     ) !!}
                                 </div>
                             @endforeach
@@ -255,6 +256,7 @@
                                 $field,
                                 $formData[$field->name] ?? null,
                                 $errors->first(( $field->is_file_field ? 'files.' : 'formData.' ) . $field->name),
+                                \ArtisanPackUI\Forms\Support\FieldRenderer::subInputErrors($field, $errors),
                             ) !!}
                         </div>
                     @endforeach
@@ -479,7 +481,8 @@
             },
 
             /**
-             * Get field value by name or UUID
+             * Get field value by name or UUID, or a composite field's
+             * sub-input value by `{name or UUID}.{key}`
              */
             getFieldValue(fieldRef, formData) {
                 // Check if it's a direct field name
@@ -492,6 +495,15 @@
                     if (uuid === fieldRef) {
                         return formData[name];
                     }
+                }
+
+                // Check if it's a composite field's sub-input
+                const dot = fieldRef.indexOf('.');
+
+                if (dot > 0) {
+                    const value = this.getFieldValue(fieldRef.slice(0, dot), formData);
+
+                    return value && typeof value === 'object' ? (value[fieldRef.slice(dot + 1)] ?? null) : null;
                 }
 
                 return null;

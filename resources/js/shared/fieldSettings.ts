@@ -35,6 +35,7 @@ import type {
 	ValidationRules,
 } from '../types/artisanpack-forms';
 
+import { getEmptyCompositeValue, isCompositeField, toCompositeValue } from './composite';
 import { getPopulatedValue } from './dynamicPopulation';
 import type { PopulationSource } from './dynamicPopulation';
 
@@ -486,11 +487,18 @@ export function isReadOnlyField( field: FormField ): boolean {
  * A read-only field starts with the value the server will store
  * (`read_only_value`), so what is shown matches what is saved. Other fields
  * start with their resolved default value, or — when populated dynamically —
- * the prefill or query string value (see `getPopulatedValue()`).
+ * the prefill or query string value (see `getPopulatedValue()`). A
+ * composite field starts with a blank string per enabled sub-input.
  *
  * @since 1.6.0
  */
 export function getInitialFieldValue( field: FormField, population: PopulationSource = {} ): unknown {
+	if ( isCompositeField( field ) ) {
+		const resolved = toCompositeValue( field.resolved_default_value );
+
+		return Object.fromEntries( Object.keys( getEmptyCompositeValue( field ) ).map( ( key ) => [key, resolved[key] ?? ''] ) );
+	}
+
 	const source: unknown = isReadOnlyField( field ) && field.read_only_value !== undefined
 		? field.read_only_value
 		: getPopulatedValue( field, population );

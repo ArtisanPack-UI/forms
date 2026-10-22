@@ -37,6 +37,9 @@ use ArtisanPackUI\Forms\Models\FormField;
  * - `min`, `max`: bounds for `integer` and `number`; `max_length` for `text`.
  * - `step`: the `step` attribute of a `number` input.
  * - `options`: a list of `['value' => …, 'label' => …]` for `select`.
+ * - `options_from`: `choice_sources` to append the registered choice sources
+ *   (see ChoiceSources) to a `select`'s options when the schema is read. The
+ *   setting is left out while no source is registered.
  * - `monospace`: whether to show the input in a monospace font.
  *
  * @since 1.6.0
@@ -136,7 +139,7 @@ class FieldSettings
      */
     public static function schema( FormField $field ): array
     {
-        return self::normalizeSchema( FieldTypes::handler( $field->type )->definition()['settings'] ?? [] );
+        return self::resolveOptionSources( self::normalizeSchema( FieldTypes::handler( $field->type )->definition()['settings'] ?? [] ) );
     }
 
     /**
@@ -313,6 +316,38 @@ class FieldSettings
         }
 
         return $data;
+    }
+
+    /**
+     * Fills in the options of settings that take them from elsewhere (`options_from`).
+     *
+     * @since 1.6.0
+     *
+     * @param  list<array<string, mixed>>  $settings  The normalized settings.
+     *
+     * @return list<array<string, mixed>> The settings, without any whose source has no options.
+     */
+    protected static function resolveOptionSources( array $settings ): array
+    {
+        $resolved = [];
+
+        foreach ( $settings as $setting ) {
+            if ( 'choice_sources' === ( $setting['options_from'] ?? null ) ) {
+                $sources = app( ChoiceSources::class )->options();
+
+                if ( [] === $sources ) {
+                    continue;
+                }
+
+                $setting['options'] = array_merge( $setting['options'] ?? [], $sources );
+            }
+
+            unset( $setting['options_from'] );
+
+            $resolved[] = $setting;
+        }
+
+        return $resolved;
     }
 
     /**

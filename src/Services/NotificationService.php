@@ -23,6 +23,7 @@ use ArtisanPackUI\Forms\Jobs\SendFormNotification;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormNotification;
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -405,6 +406,7 @@ class NotificationService
         foreach ( $submission->values as $value ) {
             $placeholder = '{' . $value->field_name . '}';
             $parsed      = str_replace( $placeholder, $value->display_value ?? '', $parsed );
+            $parsed      = $this->replaceSubInputTags( $parsed, $value );
         }
 
         // Replace system placeholders
@@ -530,6 +532,37 @@ class NotificationService
     // =========================================
     // Helpers
     // =========================================
+
+    /**
+     * Replaces a composite value's `{field:key}` merge tags with its sub-input values.
+     *
+     * A redacted value leaves every sub-input blank.
+     *
+     * @since 1.6.0
+     *
+     * @param string              $template The template.
+     * @param FormSubmissionValue $value    The stored value.
+     *
+     * @return string The template with the tags replaced.
+     */
+    protected function replaceSubInputTags( string $template, FormSubmissionValue $value ): string
+    {
+        $parts = $value->getStructuredValue();
+
+        if ( ! is_array( $parts ) || ! str_contains( $template, '{' . $value->field_name . ':' ) ) {
+            return $template;
+        }
+
+        foreach ( $parts as $key => $part ) {
+            $template = str_replace(
+                '{' . $value->field_name . ':' . $key . '}',
+                $value->isRedacted() || ! is_scalar( $part ) ? '' : (string) $part,
+                $template,
+            );
+        }
+
+        return $template;
+    }
 
     /**
      * Gets default values for a notification type.
