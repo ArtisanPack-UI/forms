@@ -20,6 +20,7 @@ namespace ArtisanPackUI\Forms\Models;
 
 use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Database\Factories\FormSubmissionValueFactory;
+use ArtisanPackUI\Forms\Support\FieldPrivacy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,11 +44,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $value
  * @property array|null $value_array
  * @property int|null $upload_id
+ * @property \Illuminate\Support\Carbon|null $redacted_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property-read FormSubmission $submission
  * @property-read FormField|null $field
  * @property-read FormUpload|null $upload
  * @property-read string $display_value
+ * @property-read string $masked_display_value
  * @property-read string $display_label
  * @property-read list<string> $display_values
  * @property-read bool $is_array_value
@@ -85,6 +88,7 @@ class FormSubmissionValue extends Model
         'value',
         'value_array',
         'upload_id',
+        'redacted_at',
         'created_at',
     ];
 
@@ -139,8 +143,9 @@ class FormSubmissionValue extends Model
      * their option labels and file values as the uploaded file name. Choice
      * fields show the chosen option label (falling back to the raw value when
      * the field or option no longer exists) and checkboxes and toggles show
-     * their checked / unchecked text. Use getRawValue() where the stored value
-     * matters.
+     * their checked / unchecked text. A value redacted by
+     * `forms:prune-submissions` shows as "[Redacted]". Use getRawValue() where
+     * the stored value matters.
      *
      * @since 1.0.0
      *
@@ -148,7 +153,23 @@ class FormSubmissionValue extends Model
      */
     public function getDisplayValueAttribute(): string
     {
+        if ( $this->isRedacted() ) {
+            return __( '[Redacted]' );
+        }
+
         return FieldTypes::handler( (string) $this->field_type )->display( $this );
+    }
+
+    /**
+     * Gets the display value with all but its last characters masked.
+     *
+     * @since 1.6.0
+     *
+     * @return string The masked display value, such as `••••1234`.
+     */
+    public function getMaskedDisplayValueAttribute(): string
+    {
+        return FieldPrivacy::mask( $this->display_value );
     }
 
     /**
@@ -269,6 +290,32 @@ class FormSubmissionValue extends Model
     }
 
     /**
+     * Checks whether the value's field masks it in the admin.
+     *
+     * Values of a deleted field are not masked, since its settings are gone.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when masked.
+     */
+    public function isMasked(): bool
+    {
+        return true === $this->getSourceField()?->isMaskedInAdmin();
+    }
+
+    /**
+     * Checks whether `forms:prune-submissions` cleared the value.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when redacted.
+     */
+    public function isRedacted(): bool
+    {
+        return null !== $this->redacted_at;
+    }
+
+    /**
      * Creates a new factory instance for the model.
      *
      * @since 1.0.0
@@ -291,6 +338,7 @@ class FormSubmissionValue extends Model
     {
         return [
             'value_array' => 'array',
+            'redacted_at' => 'datetime',
             'created_at'  => 'datetime',
         ];
     }
@@ -313,7 +361,7 @@ class FormSubmissionValue extends Model
             return $value;
         }
 
-        return $this->getSourceField()?->getOptionLabel( $value ) ?? $value;
+        return $this->getSourceField()?->getChoiceDisplayLabel( $value ) ?? $value;
     }
 
     /**

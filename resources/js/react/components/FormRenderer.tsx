@@ -192,6 +192,8 @@ export function FormRenderer( {
 		loadError,
 		setValue,
 		setFile,
+		otherValues,
+		setOtherValue,
 		nextStep,
 		prevStep,
 		goToStep,
@@ -272,6 +274,8 @@ export function FormRenderer( {
 						onChange={( value ) => setValue( field.name, value )}
 						onFileChange={( file ) => setFile( field.name, file )}
 						displayConfig={form.config.display}
+						otherValue={otherValues[field.name] ?? ''}
+						onOtherChange={( text ) => setOtherValue( field.name, text )}
 						fieldComponents={fieldComponents}
 						layout={isInline ? 'inline' : 'stacked'}
 					/>

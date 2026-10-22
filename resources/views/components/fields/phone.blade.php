@@ -1,22 +1,15 @@
 @props(['field', 'value' => '', 'error' => null])
 
 @php
-    // Build aria-describedby with both hint and error IDs when applicable
-    $describedBy = [];
-    if ($error) {
-        $describedBy[] = 'error-' . $field->name;
-    }
-    if ($field->help_text) {
-        $describedBy[] = 'hint-' . $field->name;
-    }
-    $ariaDescribedBy = !empty($describedBy) ? implode(' ', $describedBy) : null;
+    // The input component renders a top label; the layout renders the others.
+    $layoutLabel = 'top' !== $field->getLabelPlacement();
 @endphp
 
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true, 'renderError' => false])
 <x-artisanpack-input
     type="tel"
-    :label="$field->label"
+    :label="$layoutLabel ? null : $field->label"
     :placeholder="$field->placeholder ?? '(123) 456-7890'"
-    :hint="$field->help_text"
     :error="$error"
     :required="$field->is_required"
     wire:model.live="formData.{{ $field->name }}"
@@ -25,5 +18,7 @@
     :readonly="$field->isReadOnly()"
     :class="$field->css_classes"
     :aria-required="$field->is_required ? 'true' : 'false'"
-    :aria-describedby="$ariaDescribedBy"
+    :aria-labelledby="$layoutLabel && filled($field->label) ? 'label-' . $field->name : null"
+    :aria-describedby="$field->getDescribedBy($error)"
 />
+@endcomponent

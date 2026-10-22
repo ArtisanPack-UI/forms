@@ -26,8 +26,11 @@
  */
 
 import type {
+	DisplayConfig,
 	FieldSettingDefinition,
 	FormField,
+	FormSubmissionValue,
+	OptionsFieldConfig,
 	UpdateFieldRequest,
 	ValidationRules,
 } from '../types/artisanpack-forms';
@@ -568,4 +571,285 @@ export function getRatingSteps( field: FormField ): number[] {
 	}
 
 	return steps;
+}
+
+// ---------------------------------------------------------------------------
+// "Other" choice
+// ---------------------------------------------------------------------------
+
+/**
+ * The value a selected "Other" choice holds while the form is filled in,
+ * mirroring `FormField::OTHER_CHOICE_VALUE`. It is replaced with the typed
+ * text on submit (see `resolveOtherChoices()`); a blank text leaves it in
+ * place, which the server rejects.
+ *
+ * @since 1.6.0
+ */
+export const OTHER_CHOICE_VALUE = '__other__';
+
+/** The longest "Other" text, mirroring `FormField::OTHER_CHOICE_MAX_LENGTH`. */
+export const OTHER_CHOICE_MAX_LENGTH = 255;
+
+/** Whether a radio or checkbox group offers an "Other" choice with a text input. */
+export function allowsOtherChoice( field: FormField ): boolean {
+	return typeof field.other_choice_label === 'string';
+}
+
+/** Get the label of a field's "Other" choice. */
+export function getOtherChoiceLabel( field: FormField ): string {
+	return field.other_choice_label ?? 'Other';
+}
+
+/** Whether a field's value has its "Other" choice selected. */
+export function isOtherChoiceSelected( value: unknown ): boolean {
+	return Array.isArray( value ) ? value.includes( OTHER_CHOICE_VALUE ) : value === OTHER_CHOICE_VALUE;
+}
+
+/**
+ * Replace each selected "Other" choice with the text typed for it, mirroring
+ * `SubmissionService::resolveOtherChoices()`. A blank text leaves the
+ * placeholder in place.
+ *
+ * @since 1.6.0
+ */
+export function resolveOtherChoices(
+	fields: FormField[],
+	values: Record<string, unknown>,
+	otherValues: Record<string, string>,
+): Record<string, unknown> {
+	const resolved: Record<string, unknown> = { ...values };
+
+	for ( const field of fields ) {
+		const text = ( otherValues[field.name] ?? '' ).trim();
+
+		if ( !allowsOtherChoice( field ) || text === '' || !( field.name in resolved ) ) {
+			continue;
+		}
+
+		const value = resolved[field.name];
+
+		if ( Array.isArray( value ) ) {
+			resolved[field.name] = Array.from( new Set( value.map( ( item ) => ( item === OTHER_CHOICE_VALUE ? text : item ) ) ) );
+		} else if ( value === OTHER_CHOICE_VALUE ) {
+			resolved[field.name] = text;
+		}
+	}
+
+	return resolved;
+}
+
+/**
+ * Get the options a conditional logic rule on a field can test for: its
+ * options, then its "Other" choice when it has one, so a rule can match any
+ * text typed into it. Mirrors `FormField::getConditionOptions()`.
+ *
+ * @since 1.6.0
+ */
+export function getConditionOptions( field: FormField ): Array<{ label: string; value: string }> | null {
+	const options = field.options ?? ( field.field_config as OptionsFieldConfig | null )?.options ?? [];
+	const withOther = allowsOtherChoice( field )
+		? [...options, { label: getOtherChoiceLabel( field ), value: OTHER_CHOICE_VALUE }]
+		: options;
+
+	return withOther.length > 0 ? withOther : null;
+}
+
+/**
+ * Get the values an admin edits a submission's administrative fields with,
+ * seeded from what is stored. Text stored for an "Other" choice selects the
+ * choice and fills its input. Mirrors `SubmissionDetail::fillAdministrativeValues()`.
+ *
+ * @since 1.6.0
+ */
+export function getAdministrativeFormState(
+	fields: FormField[],
+	stored: FormSubmissionValue[],
+): { values: Record<string, unknown>; otherValues: Record<string, string> } {
+	const values: Record<string, unknown> = {};
+	const otherValues: Record<string, string> = {};
+
+	for ( const field of fields ) {
+		const entry = stored.find( ( value ) => value.field_id === field.id );
+		let value: unknown = entry?.value_array ?? entry?.value ?? null;
+
+		if ( ACCEPTANCE_FIELD_TYPES.has( field.type ) ) {
+			value = ['1', 'true', 'yes', 'on'].includes( String( value ?? '' ).toLowerCase() );
+		} else if ( field.type === 'checkbox_group' || field.type === 'select_multiple' ) {
+			value = Array.isArray( value ) ? value.map( String ) : [];
+		}
+
+		if ( allowsOtherChoice( field ) ) {
+			const optionValues = new Set( ( field.options ?? ( field.field_config as OptionsFieldConfig | null )?.options ?? [] ).map( ( option ) => option.value ) );
+			const isOther = ( item: unknown ): boolean => typeof item === 'string' && item.trim() !== '' && !optionValues.has( item );
+
+			if ( Array.isArray( value ) ) {
+				value = value.map( ( item ) => {
+					if ( isOther( item ) ) {
+						otherValues[field.name] = String( item );
+
+						return OTHER_CHOICE_VALUE;
+					}
+
+					return item;
+				} );
+			} else if ( isOther( value ) ) {
+				otherValues[field.name] = String( value );
+				value = OTHER_CHOICE_VALUE;
+			}
+		}
+
+		values[field.name] = value ?? '';
+	}
+
+	return { values, otherValues };
+}
+
+// ---------------------------------------------------------------------------
+// Label and description placement
+// ---------------------------------------------------------------------------
+
+/** Label placements, mirroring `FormField::LABEL_PLACEMENTS`. */
+export type LabelPlacement = 'top' | 'left' | 'hidden';
+
+/** Description placements, mirroring `FormField::DESCRIPTION_PLACEMENTS`. */
+export type DescriptionPlacement = 'above' | 'below';
+
+/**
+ * Where a field shows its label and description, and the IDs that tie them
+ * to the input.
+ *
+ * @since 1.6.0
+ */
+export interface FieldLayout {
+	/**
+	 * Whether the field or its form sets a placement. When false, the field
+	 * components keep their `displayConfig.label_position` behaviour.
+	 */
+	custom: boolean;
+	label: LabelPlacement;
+	description: DescriptionPlacement;
+	/** The input's ID, for `<label htmlFor>`. */
+	inputId: string;
+	/** The label's ID, for a group's `aria-labelledby`. */
+	labelId: string;
+	/** The description's ID, for `aria-describedby`. */
+	descriptionId: string;
+}
+
+/** Maps the legacy `display.label_position` config onto a label placement. */
+const LEGACY_LABEL_PLACEMENTS: Record<string, LabelPlacement> = {
+	above: 'top',
+	beside: 'left',
+	hidden: 'hidden',
+};
+
+/**
+ * Get where a field shows its label and description.
+ *
+ * The render payload's `label_placement` and `description_placement` hold
+ * the field's setting or its form's default (see
+ * `FormField::getConfiguredLabelPlacement()`).
+ *
+ * @since 1.6.0
+ */
+export function getFieldLayout( field: FormField, displayConfig?: DisplayConfig ): FieldLayout {
+	const label = field.label_placement ?? LEGACY_LABEL_PLACEMENTS[displayConfig?.label_position ?? 'above'] ?? 'top';
+
+	return {
+		custom: Boolean( field.label_placement || field.description_placement ),
+		label,
+		description: field.description_placement ?? 'below',
+		inputId: `field-${field.name}`,
+		labelId: `field-${field.name}-label`,
+		descriptionId: `field-${field.name}-description`,
+	};
+}
+
+/**
+ * Get the `aria-describedby` value for an input in a custom layout: the
+ * description (when the field has one) and the error the input component
+ * renders as `{inputId}-error`.
+ *
+ * @since 1.6.0
+ */
+export function getLayoutDescribedBy( field: FormField, layout: FieldLayout, error?: string ): string | undefined {
+	return [field.help_text ? layout.descriptionId : undefined, error ? `${layout.inputId}-error` : undefined]
+		.filter( Boolean )
+		.join( ' ' ) || undefined;
+}
+
+/** Label, hint and ID props for an input component that renders its own label and hint. */
+export interface InputLabelProps {
+	id?: string;
+	label?: string;
+	'aria-label'?: string;
+	'aria-describedby'?: string;
+	hint?: string;
+	inline: boolean;
+}
+
+/**
+ * Gets the label props for an input component.
+ *
+ * In a custom layout the component renders neither label nor hint (the
+ * layout does) and its input gets the IDs they reference. Otherwise it
+ * keeps the `displayConfig.label_position` behaviour.
+ */
+export function getInputLabelProps(
+	field: FormField,
+	layout: FieldLayout,
+	displayConfig: DisplayConfig,
+	error?: string,
+): InputLabelProps {
+	if ( layout.custom ) {
+		return {
+			id: layout.inputId,
+			'aria-describedby': getLayoutDescribedBy( field, layout, error ),
+			inline: false,
+		};
+	}
+
+	return {
+		label: displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined,
+		'aria-label': displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined,
+		hint: field.help_text ?? undefined,
+		inline: displayConfig.label_position === 'beside',
+	};
+}
+
+/** Label, hint and ID props for a single checkbox or toggle, whose label sits beside the box. */
+export interface CheckLabelProps {
+	id?: string;
+	label?: string;
+	'aria-label'?: string;
+	'aria-describedby'?: string;
+	hint?: string;
+}
+
+/**
+ * Gets the label props for a single checkbox or toggle.
+ *
+ * Its label stays beside the box in a custom layout, except a hidden label,
+ * which the layout renders `sr-only` (pass `renderLabel` when the
+ * placement is `hidden`). The layout renders the description.
+ */
+export function getCheckLabelProps(
+	field: FormField,
+	layout: FieldLayout,
+	displayConfig: DisplayConfig,
+	error?: string,
+): CheckLabelProps {
+	if ( layout.custom ) {
+		return {
+			id: layout.inputId,
+			label: layout.label === 'hidden' ? undefined : ( field.label ?? undefined ),
+			'aria-describedby': getLayoutDescribedBy( field, layout, error ),
+		};
+	}
+
+	return {
+		label: displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined,
+		'aria-label': displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined,
+		hint: field.help_text ?? undefined,
+	};
 }

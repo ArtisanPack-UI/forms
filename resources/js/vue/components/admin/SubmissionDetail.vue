@@ -14,15 +14,27 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { Alert, Badge, Button, Card, Loading, Textarea } from '@artisanpack-ui/vue';
 
 import type {
+	DisplayConfig,
 	Form,
 	FormSubmission,
 	FormSubmissionValue,
 	FormUpload,
 	UpdateSubmissionRequest,
 } from '../../../types/artisanpack-forms';
-import { useApi } from '../../composables/useApi';
+import { ApiValidationError, useApi } from '../../composables/useApi';
 import type { UseApiOptions } from '../../composables/useApi';
+import { getAdministrativeFormState, resolveOtherChoices } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
+import { validateFields } from '../../../shared/validation';
+import FieldRenderer from '../fields/FieldRenderer.vue';
+
+/** Display settings for the administrative field inputs. */
+const ADMIN_FIELD_DISPLAY: DisplayConfig = {
+	label_position: 'above',
+	show_required_indicator: true,
+	required_indicator: '*',
+	error_display: 'below',
+};
 
 /** Check whether a URL uses a safe protocol (http or https). */
 function isSafeUrl( url: string ): boolean {
@@ -76,6 +88,23 @@ const adminNotes  = ref( '' );
 const isSavingNotes = ref( false );
 const isUpdating  = ref( false );
 
+/** Values of the form's administrative fields, keyed by field name. */
+const adminValues = ref<Record<string, unknown>>( {} );
+/** Text typed into an administrative field's "Other" choice. */
+const adminOtherValues = ref<Record<string, string>>( {} );
+const adminErrors = ref<Record<string, string[]>>( {} );
+const isSavingAdmin = ref( false );
+const adminSaved = ref( false );
+
+/** Seeds the administrative field inputs from a loaded submission. */
+function seedAdministrativeFields( loaded: FormSubmission ): void {
+	const state = getAdministrativeFormState( loaded.administrative_fields ?? [], loaded.values ?? [] );
+
+	adminValues.value = state.values;
+	adminOtherValues.value = state.otherValues;
+	adminErrors.value = {};
+}
+
 // ---------------------------------------------------------------------------
 // Load submission
 // ---------------------------------------------------------------------------
@@ -99,6 +128,7 @@ async function loadSubmission(): Promise<void> {
 
 		submission.value = response.data;
 		adminNotes.value = response.data.admin_notes ?? '';
+		seedAdministrativeFields( response.data );
 
 		// Auto-mark as read after successful fetch
 		if ( !response.data.is_read ) {
@@ -197,6 +227,57 @@ async function saveNotes(): Promise<void> {
 	} finally {
 		isSavingNotes.value = false;
 	}
+}
+
+async function saveAdministrativeFields(): Promise<void> {
+	const fields = submission.value?.administrative_fields ?? [];
+	const values = resolveOtherChoices( fields, adminValues.value, adminOtherValues.value );
+	const clientErrors = validateFields( fields, values, {} );
+
+	adminSaved.value = false;
+
+	if ( Object.keys( clientErrors ).length > 0 ) {
+		adminErrors.value = clientErrors;
+
+		return;
+	}
+
+	isSavingAdmin.value = true;
+	adminErrors.value = {};
+
+	try {
+		const response = await put<{ data: FormSubmission }>(
+			`/${props.form.slug}/submissions/${props.submissionId}`,
+			{ admin_values: values },
+		);
+		submission.value = response.data;
+		seedAdministrativeFields( response.data );
+		adminSaved.value = true;
+	} catch ( err ) {
+		if ( err instanceof ApiValidationError ) {
+			const serverErrors: Record<string, string[]> = {};
+
+			for ( const [key, messages] of Object.entries( err.errors ) ) {
+				serverErrors[key.replace( /^admin_values\./, '' )] = messages;
+			}
+
+			adminErrors.value = serverErrors;
+		} else {
+			error.value = err instanceof Error ? err.message : t( 'Failed to update submission.' );
+		}
+	} finally {
+		isSavingAdmin.value = false;
+	}
+}
+
+function setAdminValue( name: string, value: unknown ): void {
+	adminValues.value = { ...adminValues.value, [name]: value };
+	adminSaved.value = false;
+}
+
+function setAdminOtherValue( name: string, text: string ): void {
+	adminOtherValues.value = { ...adminOtherValues.value, [name]: text };
+	adminSaved.value = false;
 }
 
 async function deleteSubmission(): Promise<void> {
@@ -398,8 +479,15 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 							{{ value.field_admin_label || value.field_label || value.field_name }}
 						</dt>
 						<dd>
+							<!-- Masked value: the API sends the masked text -->
+							<span v-if="value.is_masked" class="inline-flex items-center gap-2">
+								<span class="font-mono">{{ value.display_value }}</span>
+								<Badge color="neutral" size="sm" :value="t( 'Masked' )" />
+							</span>
+							<!-- Redacted value -->
+							<span v-else-if="value.is_redacted" class="italic text-base-content/60">{{ value.display_value }}</span>
 							<!-- File value -->
-							<template v-if="value.upload_id && submission.uploads">
+							<template v-else-if="value.upload_id && submission.uploads">
 								<template v-if="findUpload( value )">
 									<div class="flex items-center gap-3">
 										<img
@@ -468,6 +556,34 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 						</div>
 					</div>
 				</div>
+			</Card>
+
+			<!-- Administrative fields -->
+			<Card
+				v-if="submission.administrative_fields && submission.administrative_fields.length > 0"
+				:title="t( 'Administrative Fields' )"
+				bordered
+			>
+				<p class="text-sm text-base-content/60 mb-4">{{ t( 'Internal fields that are not shown on the public form' ) }}</p>
+				<form class="flex flex-wrap gap-4" @submit.prevent="saveAdministrativeFields">
+					<FieldRenderer
+						v-for="field in submission.administrative_fields"
+						:key="field.id"
+						:field="field"
+						:model-value="adminValues[field.name]"
+						:error="adminErrors[field.name]?.[0]"
+						:display-config="ADMIN_FIELD_DISPLAY"
+						:other-value="adminOtherValues[field.name] ?? ''"
+						@update:model-value="setAdminValue( field.name, $event )"
+						@update:other-value="setAdminOtherValue( field.name, $event )"
+					/>
+					<div class="w-full flex items-center gap-3">
+						<Button type="submit" color="primary" size="sm" :disabled="isSavingAdmin">
+							{{ isSavingAdmin ? t( 'Saving...' ) : t( 'Save Administrative Fields' ) }}
+						</Button>
+						<span v-if="adminSaved" class="text-sm text-success" role="status">{{ t( 'Saved.' ) }}</span>
+					</div>
+				</form>
 			</Card>
 
 			<!-- Admin notes -->

@@ -116,6 +116,42 @@
                                     :hint="__( 'Optional. Redirect users to this URL after submission.' )"
                                 />
 
+                                {{-- Field Display Defaults --}}
+                                <div class="space-y-4 border-t border-base-300 pt-6">
+                                    <h3 class="text-sm font-medium">{{ __( 'Field Display' ) }}</h3>
+
+                                    <p class="text-sm text-base-content/60">{{ __( 'Defaults for every field. A field can override them in its settings.' ) }}</p>
+
+                                    {{-- The select has no "selected" option binding outside Livewire, so Alpine sets the saved value. --}}
+                                    <x-artisanpack-select
+                                        :label="__( 'Label Placement' )"
+                                        name="label_placement"
+                                        :options="[
+                                            ['value' => '', 'label' => __( 'Top (default)' )],
+                                            ['value' => 'top', 'label' => __( 'Top' )],
+                                            ['value' => 'left', 'label' => __( 'Left' )],
+                                            ['value' => 'hidden', 'label' => __( 'Hidden' )],
+                                        ]"
+                                        option-value="value"
+                                        option-label="label"
+                                        :hint="__( 'Hidden labels are still read by screen readers.' )"
+                                        x-init="$el.value = {{ \Illuminate\Support\Js::from( (string) old( 'label_placement', $form->getSetting( 'label_placement' ) ?? '' ) ) }}"
+                                    />
+
+                                    <x-artisanpack-select
+                                        :label="__( 'Description Placement' )"
+                                        name="description_placement"
+                                        :options="[
+                                            ['value' => '', 'label' => __( 'Below the input (default)' )],
+                                            ['value' => 'above', 'label' => __( 'Above the input' )],
+                                            ['value' => 'below', 'label' => __( 'Below the input' )],
+                                        ]"
+                                        option-value="value"
+                                        option-label="label"
+                                        x-init="$el.value = {{ \Illuminate\Support\Js::from( (string) old( 'description_placement', $form->getSetting( 'description_placement' ) ?? '' ) ) }}"
+                                    />
+                                </div>
+
                                 {{-- Status Toggle --}}
                                 <input type="hidden" name="is_active" value="0" />
                                 <x-artisanpack-checkbox

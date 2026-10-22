@@ -2,7 +2,8 @@
   Choice-based field components wrapper.
 
   Renders select, radio, checkbox, toggle, checkbox_group, and select_multiple
-  fields using @artisanpack-ui/vue components.
+  fields using @artisanpack-ui/vue components. Radio and checkbox groups can
+  offer an "Other" choice that reveals a text input.
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -12,18 +13,37 @@
 import { computed } from 'vue';
 import { Checkbox, Radio, Select, Toggle } from '@artisanpack-ui/vue/form';
 import type { FormField, DisplayConfig, FieldOption, OptionsFieldConfig } from '../../../types/artisanpack-forms';
-import { getToggleColor, getToggleSizeClass, isReadOnlyField } from '../../../shared/fieldSettings';
+import {
+	allowsOtherChoice,
+	getCheckLabelProps,
+	getFieldLayout,
+	getInputLabelProps,
+	getLayoutDescribedBy,
+	getOtherChoiceLabel,
+	getToggleColor,
+	getToggleSizeClass,
+	isOtherChoiceSelected,
+	isReadOnlyField,
+	OTHER_CHOICE_MAX_LENGTH,
+	OTHER_CHOICE_VALUE,
+} from '../../../shared/fieldSettings';
+import { t } from '../../../shared/i18n';
+import FieldLayout from './FieldLayout.vue';
 import { vAutocomplete } from './autocomplete';
+import { vDescribedBy } from './describedBy';
 
 const props = defineProps<{
 	field: FormField;
 	modelValue: unknown;
 	error?: string;
 	displayConfig: DisplayConfig;
+	/** Text typed into the field's "Other" choice (since 1.6.0). */
+	otherValue?: string;
 }>();
 
 const emit = defineEmits<{
 	'update:modelValue': [value: unknown];
+	'update:otherValue': [text: string];
 }>();
 
 const options = computed<FieldOption[]>( () => {
@@ -35,9 +55,44 @@ const options = computed<FieldOption[]>( () => {
 /** Read-only choices are announced as read-only and their inputs disabled. */
 const readOnly = computed( () => isReadOnlyField( props.field ) );
 
+/** Whether the field offers an "Other" choice, which comes last. */
+const allowsOther = computed( () => allowsOtherChoice( props.field ) );
+
+/** The options, with the "Other" choice added when the field offers one. */
+const choices = computed<FieldOption[]>( () =>
+	allowsOther.value
+		? [...options.value, { value: OTHER_CHOICE_VALUE, label: getOtherChoiceLabel( props.field ) }]
+		: options.value,
+);
+
 /** Options with every entry disabled when the field is read-only. */
 const radioOptions = computed( (): FieldOption[] =>
-	readOnly.value ? options.value.map( ( option ) => ( { ...option, disabled: true } as unknown as FieldOption ) ) : options.value,
+	readOnly.value ? choices.value.map( ( option ) => ( { ...option, disabled: true } as unknown as FieldOption ) ) : choices.value,
+);
+
+/** Whether the "Other" choice is selected, revealing its text input. */
+const otherSelected = computed( () => allowsOther.value && isOtherChoiceSelected( props.modelValue ) );
+
+/** Where the label and description go (see `FieldLayout.vue`). */
+const layout = computed( () => getFieldLayout( props.field, props.displayConfig ) );
+
+/** The select's label, hint and ID props; `aria-describedby` is set by `v-described-by`. */
+const selectLabelProps = computed( () => {
+	const { 'aria-describedby': _describedBy, ...rest } = getInputLabelProps( props.field, layout.value, props.displayConfig, props.error );
+
+	return rest;
+} );
+
+/** A single checkbox or toggle's label, hint and ID props; `aria-describedby` is set by `v-described-by`. */
+const checkLabelProps = computed( () => {
+	const { 'aria-describedby': _describedBy, ...rest } = getCheckLabelProps( props.field, layout.value, props.displayConfig, props.error );
+
+	return rest;
+} );
+
+/** The description and error IDs the input references in a custom layout. */
+const layoutDescribedBy = computed( () =>
+	layout.value.custom ? getLayoutDescribedBy( props.field, layout.value, props.error ) : undefined,
 );
 
 const showLabel = computed( () => props.displayConfig.label_position !== 'hidden' );
@@ -72,18 +127,29 @@ const selectedArray = computed( () =>
 	Array.isArray( props.modelValue ) ? props.modelValue.map( String ) : [],
 );
 
-const hintId = computed( () =>
-	props.field.help_text && !props.error ? `${props.field.name}-hint` : undefined,
-);
+const hintId = computed( () => {
+	if ( layout.value.custom ) {
+		return props.field.help_text ? layout.value.descriptionId : undefined;
+	}
+
+	return props.field.help_text && !props.error ? `${props.field.name}-hint` : undefined;
+} );
 const errorId = computed( () =>
 	props.error ? `${props.field.name}-error` : undefined,
 );
 const describedBy = computed( () =>
 	[hintId.value, errorId.value].filter( Boolean ).join( ' ' ) || undefined,
 );
-const legendId = computed( () =>
-	props.field.label ? `${props.field.name}-label` : undefined,
-);
+const legendId = computed( () => {
+	if ( !props.field.label ) {
+		return undefined;
+	}
+
+	return layout.value.custom ? layout.value.labelId : `${props.field.name}-label`;
+} );
+
+/** The ID of the "Other" choice's text input. */
+const otherInputId = computed( () => `field-${props.field.name}-other-text` );
 
 function handleCheckboxGroupChange( optionValue: string, checked: boolean ): void {
 	const updated = checked
@@ -102,155 +168,200 @@ function handleMultiSelectChange( event: Event ): void {
 
 <template>
 	<!-- Select -->
-	<Select
-		v-if="field.type === 'select'"
-		v-autocomplete="field.autocomplete"
-		:label="showLabel ? labelText : undefined"
-		:aria-label="ariaLabel"
-		:name="field.name"
-		:model-value="stringValue"
-		:placeholder="field.placeholder ?? 'Select an option...'"
-		:hint="field.help_text ?? undefined"
-		:error="error"
-		:required="field.is_required"
-		:class="field.css_classes ?? undefined"
-		:options="options"
-		option-value="value"
-		option-label="label"
-		:disabled="readOnly"
-		:aria-readonly="readOnly ? 'true' : undefined"
-		:inline="displayConfig.label_position === 'beside'"
-		@update:model-value="emit( 'update:modelValue', $event )"
-	/>
-
-	<!-- Radio: a read-only group is wrapped in an element that carries aria-readonly, as in React -->
-	<div
-		v-else-if="field.type === 'radio'"
-		:role="readOnly ? 'group' : undefined"
-		:aria-readonly="readOnly ? 'true' : undefined"
-	>
-		<Radio
-			:label="showLabel ? labelText : undefined"
-			:aria-label="ariaLabel"
+	<FieldLayout v-if="field.type === 'select'" :field="field" :layout="layout">
+		<Select
+			v-autocomplete="field.autocomplete"
+			v-described-by="layoutDescribedBy"
+			v-bind="selectLabelProps"
 			:name="field.name"
 			:model-value="stringValue"
-			:hint="field.help_text ?? undefined"
+			:placeholder="field.placeholder ?? 'Select an option...'"
 			:error="error"
 			:required="field.is_required"
 			:class="field.css_classes ?? undefined"
-			:options="radioOptions"
+			:options="options"
 			option-value="value"
 			option-label="label"
 			:disabled="readOnly"
-			@update:model-value="!readOnly && emit( 'update:modelValue', $event )"
+			:aria-readonly="readOnly ? 'true' : undefined"
+			@update:model-value="emit( 'update:modelValue', $event )"
 		/>
-	</div>
+	</FieldLayout>
+
+	<!-- Radio: a read-only group is wrapped in an element that carries aria-readonly, as in React -->
+	<FieldLayout v-else-if="field.type === 'radio'" :field="field" :layout="layout" group>
+		<div
+			:role="readOnly ? 'group' : undefined"
+			:aria-readonly="readOnly ? 'true' : undefined"
+		>
+			<Radio
+				:id="layout.custom ? layout.inputId : undefined"
+				:label="!layout.custom && showLabel ? labelText : undefined"
+				:aria-label="layout.custom ? undefined : ariaLabel"
+				v-bind="layout.custom ? { 'aria-labelledby': legendId, 'aria-describedby': layoutDescribedBy } : {}"
+				:name="field.name"
+				:model-value="stringValue"
+				:hint="layout.custom ? undefined : ( field.help_text ?? undefined )"
+				:error="error"
+				:required="field.is_required"
+				:class="field.css_classes ?? undefined"
+				:options="radioOptions"
+				option-value="value"
+				option-label="label"
+				:disabled="readOnly"
+				@update:model-value="!readOnly && emit( 'update:modelValue', $event )"
+			/>
+			<div v-if="otherSelected" class="mt-2">
+				<label :for="otherInputId" class="sr-only">
+					{{ t( ':label, please specify', { label: getOtherChoiceLabel( field ) } ) }}
+				</label>
+				<input
+					:id="otherInputId"
+					type="text"
+					:class="['input input-bordered w-full', error ? 'input-error' : '']"
+					:value="otherValue ?? ''"
+					:maxlength="OTHER_CHOICE_MAX_LENGTH"
+					:placeholder="t( 'Please specify' )"
+					required
+					aria-required="true"
+					:aria-invalid="error ? true : undefined"
+					:readonly="readOnly"
+					@input="emit( 'update:otherValue', ( $event.target as HTMLInputElement ).value )"
+				/>
+			</div>
+		</div>
+	</FieldLayout>
 
 	<!-- Checkbox -->
-	<Checkbox
-		v-else-if="field.type === 'checkbox'"
-		:label="showLabel ? labelText : undefined"
-		:aria-label="ariaLabel"
-		:name="field.name"
-		:model-value="isChecked"
-		:hint="field.help_text ?? undefined"
-		:error="error"
-		:required="field.is_required"
-		:class="field.css_classes ?? undefined"
-		:disabled="readOnly"
-		:aria-readonly="readOnly ? 'true' : undefined"
-		right
-		@update:model-value="emit( 'update:modelValue', $event )"
-	/>
-
-	<!-- Toggle: a checkbox with role="switch", sized and colored by the field's settings -->
-	<Toggle
-		v-else-if="field.type === 'toggle'"
-		:label="showLabel ? labelText : undefined"
-		:aria-label="ariaLabel"
-		:name="field.name"
-		:model-value="isChecked"
-		:hint="field.help_text ?? undefined"
-		:error="error"
-		:required="field.is_required"
-		:color="getToggleColor( field )"
-		:class="[getToggleSizeClass( field ), field.css_classes ?? '']"
-		:disabled="readOnly"
-		:aria-readonly="readOnly ? 'true' : undefined"
-		right
-		@update:model-value="emit( 'update:modelValue', $event )"
-	/>
-
-	<!-- Checkbox Group -->
-	<fieldset
-		v-else-if="field.type === 'checkbox_group'"
-		class="fieldset"
-		:aria-describedby="describedBy"
-		:aria-readonly="readOnly ? 'true' : undefined"
-	>
-		<legend
-			v-if="field.label"
-			:class="['fieldset-legend', displayConfig.label_position === 'hidden' ? 'sr-only' : '']"
-		>
-			{{ field.label }}
-			<span v-if="field.is_required" class="text-error ml-1">*</span>
-		</legend>
-		<div :class="['flex flex-col gap-2', field.css_classes ?? '']">
-			<Checkbox
-				v-for="option in options"
-				:key="option.value"
-				:label="option.label"
-				:name="`${field.name}[]`"
-				:model-value="selectedArray.includes( option.value )"
-				:disabled="readOnly"
-				right
-				@update:model-value="handleCheckboxGroupChange( option.value, $event as boolean )"
-			/>
-		</div>
-		<p v-if="field.help_text && !error" :id="hintId" class="fieldset-label">
-			{{ field.help_text }}
-		</p>
-		<p v-if="error" :id="errorId" class="fieldset-label text-error" role="alert">
-			{{ error }}
-		</p>
-	</fieldset>
-
-	<!-- Select Multiple -->
-	<fieldset v-else-if="field.type === 'select_multiple'" class="fieldset">
-		<legend
-			v-if="field.label"
-			:id="legendId"
-			:class="['fieldset-legend', displayConfig.label_position === 'hidden' ? 'sr-only' : '']"
-		>
-			{{ field.label }}
-			<span v-if="field.is_required" class="text-error ml-1">*</span>
-		</legend>
-		<select
+	<FieldLayout v-else-if="field.type === 'checkbox'" :field="field" :layout="layout" :render-label="layout.label === 'hidden'">
+		<Checkbox
+			v-described-by="layoutDescribedBy"
+			v-bind="checkLabelProps"
 			:name="field.name"
-			multiple
-			:value="selectedArray"
+			:model-value="isChecked"
+			:error="error"
 			:required="field.is_required"
+			:class="field.css_classes ?? undefined"
 			:disabled="readOnly"
 			:aria-readonly="readOnly ? 'true' : undefined"
-			:class="['select select-bordered w-full min-h-32', field.css_classes ?? '', error ? 'select-error' : '']"
-			:aria-invalid="error ? true : undefined"
-			:aria-labelledby="legendId"
+			right
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+	</FieldLayout>
+
+	<!-- Toggle: a checkbox with role="switch", sized and colored by the field's settings -->
+	<FieldLayout v-else-if="field.type === 'toggle'" :field="field" :layout="layout" :render-label="layout.label === 'hidden'">
+		<Toggle
+			v-described-by="layoutDescribedBy"
+			v-bind="checkLabelProps"
+			:name="field.name"
+			:model-value="isChecked"
+			:error="error"
+			:required="field.is_required"
+			:color="getToggleColor( field )"
+			:class="[getToggleSizeClass( field ), field.css_classes ?? '']"
+			:disabled="readOnly"
+			:aria-readonly="readOnly ? 'true' : undefined"
+			right
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+	</FieldLayout>
+
+	<!-- Checkbox Group -->
+	<FieldLayout v-else-if="field.type === 'checkbox_group'" :field="field" :layout="layout" group>
+		<fieldset
+			class="fieldset"
+			:aria-labelledby="layout.custom ? legendId : undefined"
 			:aria-describedby="describedBy"
-			@change="handleMultiSelectChange"
+			:aria-readonly="readOnly ? 'true' : undefined"
 		>
-			<option
-				v-for="option in options"
-				:key="option.value"
-				:value="option.value"
+			<legend
+				v-if="!layout.custom && field.label"
+				:class="['fieldset-legend', displayConfig.label_position === 'hidden' ? 'sr-only' : '']"
 			>
-				{{ option.label }}
-			</option>
-		</select>
-		<p v-if="field.help_text && !error" :id="hintId" class="fieldset-label">
-			{{ field.help_text }}
-		</p>
-		<p v-if="error" :id="errorId" class="fieldset-label text-error" role="alert">
-			{{ error }}
-		</p>
-	</fieldset>
+				{{ field.label }}
+				<span v-if="field.is_required" class="text-error ml-1">*</span>
+			</legend>
+			<div :class="['flex flex-col gap-2', field.css_classes ?? '']">
+				<Checkbox
+					v-for="option in choices"
+					:id="option.value === OTHER_CHOICE_VALUE ? `field-${field.name}-other` : undefined"
+					:key="option.value"
+					:label="option.label"
+					:name="`${field.name}[]`"
+					:model-value="selectedArray.includes( option.value )"
+					:disabled="readOnly"
+					right
+					@update:model-value="handleCheckboxGroupChange( option.value, $event as boolean )"
+				/>
+			</div>
+			<div v-if="otherSelected" class="mt-2">
+				<label :for="otherInputId" class="sr-only">
+					{{ t( ':label, please specify', { label: getOtherChoiceLabel( field ) } ) }}
+				</label>
+				<input
+					:id="otherInputId"
+					type="text"
+					:class="['input input-bordered w-full', error ? 'input-error' : '']"
+					:value="otherValue ?? ''"
+					:maxlength="OTHER_CHOICE_MAX_LENGTH"
+					:placeholder="t( 'Please specify' )"
+					required
+					aria-required="true"
+					:aria-invalid="error ? true : undefined"
+					:aria-describedby="errorId"
+					:readonly="readOnly"
+					@input="emit( 'update:otherValue', ( $event.target as HTMLInputElement ).value )"
+				/>
+			</div>
+			<p v-if="!layout.custom && hintId" :id="hintId" class="fieldset-label">
+				{{ field.help_text }}
+			</p>
+			<p v-if="error" :id="errorId" class="fieldset-label text-error" role="alert">
+				{{ error }}
+			</p>
+		</fieldset>
+	</FieldLayout>
+
+	<!-- Select Multiple -->
+	<FieldLayout v-else-if="field.type === 'select_multiple'" :field="field" :layout="layout">
+		<fieldset class="fieldset">
+			<legend
+				v-if="!layout.custom && field.label"
+				:id="legendId"
+				:class="['fieldset-legend', displayConfig.label_position === 'hidden' ? 'sr-only' : '']"
+			>
+				{{ field.label }}
+				<span v-if="field.is_required" class="text-error ml-1">*</span>
+			</legend>
+			<select
+				:id="layout.custom ? layout.inputId : undefined"
+				:name="field.name"
+				multiple
+				:value="selectedArray"
+				:required="field.is_required"
+				:disabled="readOnly"
+				:aria-readonly="readOnly ? 'true' : undefined"
+				:class="['select select-bordered w-full min-h-32', field.css_classes ?? '', error ? 'select-error' : '']"
+				:aria-invalid="error ? true : undefined"
+				:aria-labelledby="layout.custom ? undefined : legendId"
+				:aria-describedby="describedBy"
+				@change="handleMultiSelectChange"
+			>
+				<option
+					v-for="option in options"
+					:key="option.value"
+					:value="option.value"
+				>
+					{{ option.label }}
+				</option>
+			</select>
+			<p v-if="!layout.custom && hintId" :id="hintId" class="fieldset-label">
+				{{ field.help_text }}
+			</p>
+			<p v-if="error" :id="errorId" class="fieldset-label text-error" role="alert">
+				{{ error }}
+			</p>
+		</fieldset>
+	</FieldLayout>
 </template>

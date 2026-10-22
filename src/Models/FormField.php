@@ -134,6 +134,66 @@ class FormField extends Model
     public const DIVIDER_SPACINGS = ['small', 'normal', 'large'];
 
     /**
+     * Label placements a field or form may set.
+     *
+     * `left` sits beside the input from the `md` breakpoint up; `hidden`
+     * keeps the label for assistive technology (`sr-only`).
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const LABEL_PLACEMENTS = ['top', 'left', 'hidden'];
+
+    /**
+     * Description (help text) placements a field or form may set.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const DESCRIPTION_PLACEMENTS = ['above', 'below'];
+
+    /**
+     * Field visibilities: `administrative` fields are left out of the public
+     * form and edited by admins on the submission.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const VISIBILITIES = ['visible', 'administrative'];
+
+    /**
+     * The value a renderer submits for a selected "Other" choice whose text is
+     * blank. Renderers replace it with the typed text, so a submitted copy
+     * means the text is missing.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const OTHER_CHOICE_VALUE = '__other__';
+
+    /**
+     * The longest "Other" text a submission may hold.
+     *
+     * @since 1.6.0
+     *
+     * @var int
+     */
+    public const OTHER_CHOICE_MAX_LENGTH = 255;
+
+    /**
+     * The longest "redact after N days" period a field may set.
+     *
+     * @since 1.6.0
+     *
+     * @var int
+     */
+    public const MAX_REDACT_DAYS = 3650;
+
+    /**
      * Accepted time formats: `H:i`, or `H:i:s` when the step is under a minute.
      *
      * A regex rather than `date_format:H:i,H:i:s`: with `date_format` present,
@@ -198,7 +258,14 @@ class FormField extends Model
     protected ?FieldType $resolvedFieldType = null;
 
     /**
-     * Leaves the cached field type handler out when the model is serialized.
+     * The form read for form-level settings, kept by settingsForm().
+     *
+     * @since 1.6.0
+     */
+    protected ?Form $settingsForm = null;
+
+    /**
+     * Leaves the cached field type handler and settings form out when the model is serialized.
      *
      * The handler holds locale-specific labels and may come from a filter, so
      * it is resolved again after unserializing rather than restored.
@@ -210,6 +277,7 @@ class FormField extends Model
     public function __sleep(): array
     {
         $this->resolvedFieldType = null;
+        $this->settingsForm      = null;
 
         return parent::__sleep();
     }
@@ -501,6 +569,234 @@ class FormField extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Gets the label a choice field shows for a stored value.
+     *
+     * The option's label, or "{Other label}: {value}" for text typed into the
+     * "Other" choice.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $value  The stored value.
+     *
+     * @return string|null The label, or null when no option matches and the field has no "Other" choice.
+     */
+    public function getChoiceDisplayLabel( string $value ): ?string
+    {
+        $label = $this->getOptionLabel( $value );
+
+        if ( null !== $label || ! $this->isOtherChoiceValue( $value ) ) {
+            return $label;
+        }
+
+        return __( ':label: :value', ['label' => $this->getOtherChoiceLabel(), 'value' => $value] );
+    }
+
+    /**
+     * Gets the options a conditional logic rule on this field can test for.
+     *
+     * The field's options, followed by its "Other" choice when it has one, so
+     * a rule can match any text typed into it.
+     *
+     * @since 1.6.0
+     *
+     * @return array<int|string, mixed> The options.
+     */
+    public function getConditionOptions(): array
+    {
+        $options = $this->options;
+
+        if ( $this->allowsOtherChoice() && array_is_list( $options ) ) {
+            $options[] = ['value' => self::OTHER_CHOICE_VALUE, 'label' => $this->getOtherChoiceLabel()];
+        }
+
+        return $options;
+    }
+
+    /**
+     * Checks whether the field offers an "Other" choice with a text input.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the `enable_other` setting is on and the type offers it.
+     */
+    public function allowsOtherChoice(): bool
+    {
+        return $this->configFlag( 'enable_other' ) && $this->offersSetting( 'enable_other' );
+    }
+
+    /**
+     * Gets the label of the "Other" choice.
+     *
+     * @since 1.6.0
+     *
+     * @return string The `other_label` setting, or "Other".
+     */
+    public function getOtherChoiceLabel(): string
+    {
+        return $this->translatedConfig( 'other_label' ) ?? __( 'Other' );
+    }
+
+    /**
+     * Checks whether a submitted or stored value is text typed into the "Other" choice.
+     *
+     * Any non-blank value that matches no option counts, as does the
+     * placeholder a renderer submits when the text is blank.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $value  The value.
+     *
+     * @return bool True for an "Other" value.
+     */
+    public function isOtherChoiceValue( string $value ): bool
+    {
+        if ( ! $this->allowsOtherChoice() || '' === trim( $value ) ) {
+            return false;
+        }
+
+        return self::OTHER_CHOICE_VALUE === $value || null === $this->getOptionLabel( $value );
+    }
+
+    /**
+     * Gets the label placement set on the field or, failing that, its form.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null `top`, `left` or `hidden`, or null when neither sets one.
+     */
+    public function getConfiguredLabelPlacement(): ?string
+    {
+        return $this->placementSetting( 'label_placement', self::LABEL_PLACEMENTS );
+    }
+
+    /**
+     * Gets where the label is shown.
+     *
+     * @since 1.6.0
+     *
+     * @return string `top` (the default), `left` or `hidden`.
+     */
+    public function getLabelPlacement(): string
+    {
+        return $this->getConfiguredLabelPlacement() ?? 'top';
+    }
+
+    /**
+     * Gets the description placement set on the field or, failing that, its form.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null `above` or `below`, or null when neither sets one.
+     */
+    public function getConfiguredDescriptionPlacement(): ?string
+    {
+        return $this->placementSetting( 'description_placement', self::DESCRIPTION_PLACEMENTS );
+    }
+
+    /**
+     * Gets where the description (help text) is shown relative to the input.
+     *
+     * @since 1.6.0
+     *
+     * @return string `below` (the default) or `above`.
+     */
+    public function getDescriptionPlacement(): string
+    {
+        return $this->getConfiguredDescriptionPlacement() ?? 'below';
+    }
+
+    /**
+     * Gets the `aria-describedby` value for the field's input.
+     *
+     * References the `error-{name}` and `hint-{name}` elements the Blade
+     * partials render, wherever the description is placed.
+     *
+     * @since 1.6.0
+     *
+     * @param  string|null  $error  The validation error, or null.
+     *
+     * @return string|null The space-separated IDs, or null for none.
+     */
+    public function getDescribedBy( ?string $error = null ): ?string
+    {
+        $ids = array_filter( [
+            filled( $error ) ? 'error-' . $this->name : null,
+            filled( $this->help_text ) ? 'hint-' . $this->name : null,
+        ] );
+
+        return [] === $ids ? null : implode( ' ', $ids );
+    }
+
+    /**
+     * Checks whether the field is left out of the public form and edited by admins.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the `visibility` setting is `administrative` and the type offers it.
+     */
+    public function isAdministrative(): bool
+    {
+        return 'administrative' === $this->getConfig( 'visibility' ) && $this->offersSetting( 'visibility' );
+    }
+
+    /**
+     * Checks whether a value must not repeat one already submitted for the field.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the `no_duplicates` setting is on and the type offers it.
+     */
+    public function rejectsDuplicates(): bool
+    {
+        return $this->configFlag( 'no_duplicates' ) && $this->offersSetting( 'no_duplicates' );
+    }
+
+    /**
+     * Checks whether submitted values are saved.
+     *
+     * A field with "Do not store" on still reaches notifications and webhooks
+     * for the request it was submitted in, but is never written to the database.
+     *
+     * @since 1.6.0
+     *
+     * @return bool False when the `do_not_store` setting is on and the type offers it.
+     */
+    public function storesValues(): bool
+    {
+        return ! ( $this->configFlag( 'do_not_store' ) && $this->offersSetting( 'do_not_store' ) );
+    }
+
+    /**
+     * Checks whether stored values are masked in the admin unless the viewer may reveal them.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the `mask_in_admin` setting is on and the type offers it.
+     */
+    public function isMaskedInAdmin(): bool
+    {
+        return $this->configFlag( 'mask_in_admin' ) && $this->offersSetting( 'mask_in_admin' );
+    }
+
+    /**
+     * Gets how many days stored values are kept before `forms:prune-submissions` redacts them.
+     *
+     * @since 1.6.0
+     *
+     * @return int|null The days, or null to keep values until the submission is pruned.
+     */
+    public function getRedactAfterDays(): ?int
+    {
+        if ( ! $this->offersSetting( 'redact_after_days' ) ) {
+            return null;
+        }
+
+        $days = filter_var( $this->getConfig( 'redact_after_days' ), FILTER_VALIDATE_INT );
+
+        return false !== $days && $days >= 1 && $days <= self::MAX_REDACT_DAYS ? $days : null;
     }
 
     /**
@@ -896,6 +1192,25 @@ class FormField extends Model
     }
 
     /**
+     * Gives the field its form for reading form-level settings, without a query.
+     *
+     * Renderers that already hold the form call this for each field. The form
+     * is not set as the `form` relation (see settingsForm()).
+     *
+     * @since 1.6.0
+     *
+     * @param  Form  $form  The field's form.
+     *
+     * @return static The field.
+     */
+    public function withSettingsForm( Form $form ): static
+    {
+        $this->settingsForm = $form;
+
+        return $this;
+    }
+
+    /**
      * Checks whether the field's type offers a setting.
      *
      * @since 1.6.0
@@ -913,6 +1228,79 @@ class FormField extends Model
         }
 
         return false;
+    }
+
+    /**
+     * Checks whether a toggle setting stored in `field_config` is on.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $key  The `field_config` key.
+     *
+     * @return bool True when on.
+     */
+    protected function configFlag( string $key ): bool
+    {
+        return true === filter_var( $this->getConfig( $key, false ), FILTER_VALIDATE_BOOLEAN );
+    }
+
+    /**
+     * Gets a placement setting from the field, falling back to the form's `settings`.
+     *
+     * Types without the setting (such as hidden fields, which show no label)
+     * take neither.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $key  The setting key, the same on the field and the form.
+     * @param  list<string>  $allowed  The accepted values.
+     *
+     * @return string|null The placement, or null when neither sets a valid one.
+     */
+    protected function placementSetting( string $key, array $allowed ): ?string
+    {
+        if ( ! $this->offersSetting( $key ) ) {
+            return null;
+        }
+
+        $placement = $this->getConfig( $key );
+
+        if ( is_string( $placement ) && in_array( $placement, $allowed, true ) ) {
+            return $placement;
+        }
+
+        $placement = $this->settingsForm()?->getSetting( $key );
+
+        return is_string( $placement ) && in_array( $placement, $allowed, true ) ? $placement : null;
+    }
+
+    /**
+     * Gets the field's form, for reading form-level settings.
+     *
+     * Uses the `form` relation when loaded. Otherwise the form is fetched once
+     * and kept outside the relations, so a field loaded through its form's
+     * `fields` relation does not point back at the form (which Livewire could
+     * not dehydrate).
+     *
+     * @since 1.6.0
+     *
+     * @return Form|null The form.
+     */
+    protected function settingsForm(): ?Form
+    {
+        if ( $this->relationLoaded( 'form' ) ) {
+            return $this->getRelation( 'form' );
+        }
+
+        if ( null === $this->form_id ) {
+            return null;
+        }
+
+        if ( $this->settingsForm?->getKey() !== $this->form_id ) {
+            $this->settingsForm = Form::query()->find( $this->form_id );
+        }
+
+        return $this->settingsForm;
     }
 
     /**

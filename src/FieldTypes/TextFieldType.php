@@ -44,6 +44,7 @@ class TextFieldType extends AbstractFieldType
             'settings' => [
                 ...$this->lengthSettings(),
                 $this->patternSetting(),
+                $this->noDuplicatesSetting(),
                 $this->readOnlySetting(),
             ],
         ] );

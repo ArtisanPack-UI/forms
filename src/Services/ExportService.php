@@ -19,6 +19,7 @@ namespace ArtisanPackUI\Forms\Services;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Forms\Support\FieldPrivacy;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Response;
 use RuntimeException;
@@ -82,7 +83,8 @@ class ExportService
      * Builds CSV headers from form fields.
      *
      * Applies the 'ap.forms.exportHeaders' filter hook to allow
-     * third-party packages to modify export headers.
+     * third-party packages to modify export headers. Fields masked in the
+     * admin are left out unless the user may reveal them.
      *
      * @since 1.0.0
      *
@@ -101,7 +103,7 @@ class ExportService
         ];
 
         // Add field headers; each field type decides its own columns
-        foreach ( $form->fields()->orderBy( 'sort_order' )->get() as $field ) {
+        foreach ( $this->exportableFields( $form ) as $field ) {
             array_push( $headers, ...$field->fieldType()->exportColumns( $field ) );
         }
 
@@ -135,7 +137,7 @@ class ExportService
      */
     public function buildRows( Form $form, Collection $submissions ): array
     {
-        $fields = $form->fields()->orderBy( 'sort_order' )->get();
+        $fields = $this->exportableFields( $form );
         $rows   = [];
 
         foreach ( $submissions as $submission ) {
@@ -215,7 +217,11 @@ class ExportService
      */
     public function exportToJson( Form $form, Collection $submissions ): array
     {
-        $data = [];
+        $data         = [];
+        $maskedFields = array_diff(
+            $form->fields()->pluck( 'name' )->all(),
+            $this->exportableFields( $form )->pluck( 'name' )->all(),
+        );
 
         foreach ( $submissions as $submission ) {
             // Build metadata, respecting privacy settings
@@ -235,7 +241,7 @@ class ExportService
                 'id'                => $submission->id,
                 'submission_number' => $submission->submission_number,
                 'submitted_at'      => $submission->created_at->toIso8601String(),
-                'data'              => $submission->data_array,
+                'data'              => array_diff_key( $submission->data_array, array_flip( $maskedFields ) ),
                 'metadata'          => $metadata,
             ];
 
@@ -246,5 +252,28 @@ class ExportService
         }
 
         return $data;
+    }
+
+    /**
+     * Gets the fields whose values are exported, in form order.
+     *
+     * Fields masked in the admin are left out unless the current user may
+     * reveal masked values (see FieldPrivacy::canReveal()).
+     *
+     * @since 1.6.0
+     *
+     * @param  Form  $form  The form.
+     *
+     * @return Collection<int, FormField> The fields.
+     */
+    protected function exportableFields( Form $form ): Collection
+    {
+        $fields = $form->fields()->orderBy( 'sort_order' )->get();
+
+        if ( FieldPrivacy::canReveal() ) {
+            return $fields;
+        }
+
+        return $fields->reject( fn ( FormField $field ): bool => $field->isMaskedInAdmin() )->values();
     }
 }

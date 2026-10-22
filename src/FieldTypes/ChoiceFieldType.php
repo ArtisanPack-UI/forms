@@ -37,6 +37,6 @@ abstract class ChoiceFieldType extends AbstractFieldType
             return $raw;
         }
 
-        return $this->sourceField( $value )?->getOptionLabel( $raw ) ?? $raw;
+        return $this->sourceField( $value )?->getChoiceDisplayLabel( $raw ) ?? $raw;
     }
 }

@@ -12,8 +12,16 @@
 import { computed } from 'vue';
 import { DatePicker, FileUpload, Input } from '@artisanpack-ui/vue/form';
 import type { FormField, DisplayConfig } from '../../../types/artisanpack-forms';
-import { getFileAccept, isReadOnlyField } from '../../../shared/fieldSettings';
+import {
+	getFieldLayout,
+	getFileAccept,
+	getInputLabelProps,
+	getLayoutDescribedBy,
+	isReadOnlyField,
+} from '../../../shared/fieldSettings';
+import FieldLayout from './FieldLayout.vue';
 import { vAutocomplete } from './autocomplete';
+import { vDescribedBy } from './describedBy';
 
 const props = defineProps<{
 	field: FormField;
@@ -29,12 +37,26 @@ const emit = defineEmits<{
 
 const stringValue = computed( () => String( props.modelValue ?? '' ) );
 
-const showLabel = computed( () => props.displayConfig.label_position !== 'hidden' );
-const labelText = computed( () => props.field.label ?? undefined );
-const ariaLabel = computed( () =>
-	props.displayConfig.label_position === 'hidden'
-		? ( props.field.label ?? props.field.name )
-		: undefined,
+/** Where the label and description go (see `FieldLayout.vue`). */
+const layout = computed( () => getFieldLayout( props.field, props.displayConfig ) );
+
+/** The input's label, hint and ID props; `aria-describedby` is set by `v-described-by`. */
+const labelProps = computed( () => {
+	const { 'aria-describedby': _describedBy, ...rest } = getInputLabelProps( props.field, layout.value, props.displayConfig, props.error );
+
+	return rest;
+} );
+
+/** The file input's label props; it has no inline label mode. */
+const fileLabelProps = computed( () => {
+	const { inline: _inline, ...rest } = labelProps.value;
+
+	return rest;
+} );
+
+/** The description and error IDs the input references in a custom layout. */
+const describedBy = computed( () =>
+	layout.value.custom ? getLayoutDescribedBy( props.field, layout.value, props.error ) : undefined,
 );
 
 const allowedTypes = computed( () => getFileAccept( props.field ) );
@@ -58,53 +80,50 @@ function handleFilesSelected( fileList: FileList | null ): void {
 </script>
 
 <template>
-	<!-- File -->
-	<FileUpload
-		v-if="field.type === 'file'"
-		:label="showLabel ? labelText : undefined"
-		:aria-label="ariaLabel"
-		:name="field.name"
-		:accept="allowedTypes"
-		:hint="field.help_text ?? undefined"
-		:error="error"
-		:required="field.is_required"
-		:class="field.css_classes ?? undefined"
-		with-drag-drop
-		@files-selected="handleFilesSelected"
-	/>
+	<FieldLayout :field="field" :layout="layout">
+		<!-- File -->
+		<FileUpload
+			v-if="field.type === 'file'"
+			v-described-by="describedBy"
+			v-bind="fileLabelProps"
+			:name="field.name"
+			:accept="allowedTypes"
+			:error="error"
+			:required="field.is_required"
+			:class="field.css_classes ?? undefined"
+			with-drag-drop
+			@files-selected="handleFilesSelected"
+		/>
 
-	<!-- Date, read-only: DatePicker has no readonly state, so use a plain date input -->
-	<Input
-		v-else-if="field.type === 'date' && readOnly"
-		v-autocomplete="field.autocomplete"
-		type="date"
-		:label="showLabel ? labelText : undefined"
-		:aria-label="ariaLabel"
-		:name="field.name"
-		:model-value="stringValue"
-		:hint="field.help_text ?? undefined"
-		:error="error"
-		:required="field.is_required"
-		:class="field.css_classes ?? undefined"
-		readonly
-		:inline="displayConfig.label_position === 'beside'"
-	/>
+		<!-- Date, read-only: DatePicker has no readonly state, so use a plain date input -->
+		<Input
+			v-else-if="field.type === 'date' && readOnly"
+			v-autocomplete="field.autocomplete"
+			v-described-by="describedBy"
+			type="date"
+			v-bind="labelProps"
+			:name="field.name"
+			:model-value="stringValue"
+			:error="error"
+			:required="field.is_required"
+			:class="field.css_classes ?? undefined"
+			readonly
+		/>
 
-	<!-- Date -->
-	<DatePicker
-		v-else-if="field.type === 'date'"
-		v-autocomplete="field.autocomplete"
-		:label="showLabel ? labelText : undefined"
-		:aria-label="ariaLabel"
-		:name="field.name"
-		:model-value="stringValue"
-		:hint="field.help_text ?? undefined"
-		:error="error"
-		:required="field.is_required"
-		:class="field.css_classes ?? undefined"
-		:min="field.validation_rules?.min_date ?? undefined"
-		:max="field.validation_rules?.max_date ?? undefined"
-		:inline="displayConfig.label_position === 'beside'"
-		@update:model-value="emit( 'update:modelValue', $event )"
-	/>
+		<!-- Date -->
+		<DatePicker
+			v-else-if="field.type === 'date'"
+			v-autocomplete="field.autocomplete"
+			v-described-by="describedBy"
+			v-bind="labelProps"
+			:name="field.name"
+			:model-value="stringValue"
+			:error="error"
+			:required="field.is_required"
+			:class="field.css_classes ?? undefined"
+			:min="field.validation_rules?.min_date ?? undefined"
+			:max="field.validation_rules?.max_date ?? undefined"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+	</FieldLayout>
 </template>

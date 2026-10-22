@@ -49,6 +49,10 @@ export interface FieldRendererProps {
 	onFileChange?: ( file: File | File[] ) => void;
 	/** Display configuration from the form. */
 	displayConfig: DisplayConfig;
+	/** Text typed into the field's "Other" choice (since 1.6.0). */
+	otherValue?: string;
+	/** Callback to update the "Other" choice's text (since 1.6.0). */
+	onOtherChange?: ( text: string ) => void;
 	/**
 	 * Host-supplied field components that overlay the built-ins. Takes
 	 * precedence over the module-level registry (see `registerFieldComponent`)
@@ -132,6 +136,8 @@ export function FieldRenderer( {
 	onChange,
 	onFileChange,
 	displayConfig,
+	otherValue,
+	onOtherChange,
 	fieldComponents,
 	layout = 'stacked',
 }: FieldRendererProps ) {
@@ -162,6 +168,8 @@ export function FieldRenderer( {
 				onChange={onChange}
 				onFileChange={onFileChange}
 				displayConfig={displayConfig}
+				otherValue={otherValue}
+				onOtherChange={onOtherChange}
 			/>
 		</div>
 	);

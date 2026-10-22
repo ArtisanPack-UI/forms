@@ -209,7 +209,7 @@
                                         @endphp
                                         @foreach ($summaryValues as $value)
                                             <span class="opacity-60">{{ $value->display_label }}:</span>
-                                            {{ \Illuminate\Support\Str::limit($value->display_value, 30) }}
+                                            {{ \Illuminate\Support\Str::limit($value->isMasked() && !$this->canRevealMaskedValues ? $value->masked_display_value : $value->display_value, 30) }}
                                             @if (!$loop->last)
                                                 <span class="opacity-30 mx-1">|</span>
                                             @endif

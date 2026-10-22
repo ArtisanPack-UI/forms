@@ -17,7 +17,7 @@
             'label' => $f->label,
             'type' => $f->type,
             'uuid' => $f->uuid,
-            'options' => $f->options,
+            'options' => $f->getConditionOptions(),
         ])->values()->all()),
         operators: @js($this->conditionOperators),
         actions: @js($this->conditionActions),

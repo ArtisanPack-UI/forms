@@ -21,6 +21,7 @@ use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use ArtisanPackUI\Forms\Models\FormUpload;
+use ArtisanPackUI\Forms\Support\SubmissionRules;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -83,6 +84,10 @@ class SubmissionService
      * third-party packages to modify submission data before saving. Read-only
      * fields are resolved after the filter, so a value it sets for one is
      * replaced; use the 'ap.forms.readOnlyValue' filter to supply those.
+     * Values for administrative fields are dropped, since admins fill those in
+     * on the submission (see updateAdministrativeValues()). Values of "Do not
+     * store" fields are not saved; they are added to the submission's loaded
+     * values for the notifications and webhooks of this request only.
      *
      * @since 1.0.0
      *
@@ -105,6 +110,9 @@ class SubmissionService
         // Read-only fields keep their own value whatever the client sent
         $formData = $this->applyReadOnlyValues( $fields, $formData, true );
 
+        // Administrative fields are never filled in by the public form
+        $formData = array_diff_key( $formData, $fields->filter( fn ( FormField $field ): bool => $field->isAdministrative() )->all() );
+
         $submission = DB::transaction( function () use ( $form, $fields, $formData, $files, $metadata ): FormSubmission {
             // Create the submission record
             $submission = FormSubmission::create( [
@@ -117,6 +125,8 @@ class SubmissionService
                 'is_spam'      => false,
                 'is_starred'   => false,
             ] );
+
+            $transientValues = [];
 
             // Save each field value (except file fields which are handled separately)
             foreach ( $formData as $fieldName => $value ) {
@@ -131,7 +141,19 @@ class SubmissionService
                     continue;
                 }
 
+                if ( ! $field->storesValues() ) {
+                    $transientValues[] = $this->buildValueAttributes( $submission, $field, $value );
+
+                    continue;
+                }
+
                 $this->saveFieldValue( $submission, $field, $value );
+            }
+
+            // Set before the transaction commits, so the FormSubmitted listeners
+            // (dispatched after commit) see the values that are not stored.
+            if ( [] !== $transientValues ) {
+                $submission->withTransientValues( $transientValues, $fields );
             }
 
             // Handle file uploads
@@ -252,7 +274,8 @@ class SubmissionService
      * Builds validation rules for all visible fields.
      *
      * Rules for inputs nested under a field (see FieldType::rules()) are keyed
-     * below the field's own validation key.
+     * below the field's own validation key. Administrative fields are left
+     * out (see buildAdministrativeValidationRules()).
      *
      * @since 1.0.0
      *
@@ -268,6 +291,11 @@ class SubmissionService
         foreach ( $fields as $field ) {
             // Skip fields hidden by conditional logic
             if ( isset( $hiddenFields[ $field->name ] ) && $hiddenFields[ $field->name ] ) {
+                continue;
+            }
+
+            // Administrative fields are not on the public form
+            if ( $field->isAdministrative() ) {
                 continue;
             }
 
@@ -337,6 +365,124 @@ class SubmissionService
         }
 
         return $formData;
+    }
+
+    /**
+     * Replaces each selected "Other" choice with the text typed for it.
+     *
+     * Renderers keep the "Other" choice selected as FormField::OTHER_CHOICE_VALUE
+     * and its text separately. A blank text leaves the placeholder in place,
+     * which the `forms_other_choice` rule then rejects.
+     *
+     * @since 1.6.0
+     *
+     * @param  iterable<FormField>  $fields  The form fields.
+     * @param  array<string, mixed>  $formData  The submitted values keyed by field name.
+     * @param  array<string, mixed>  $otherValues  The "Other" texts keyed by field name.
+     *
+     * @return array<string, mixed> The values with "Other" choices resolved.
+     */
+    public function resolveOtherChoices( iterable $fields, array $formData, array $otherValues ): array
+    {
+        foreach ( $fields as $field ) {
+            if ( ! $field->allowsOtherChoice() || ! array_key_exists( $field->name, $formData ) ) {
+                continue;
+            }
+
+            $text = $otherValues[ $field->name ] ?? '';
+            $text = is_scalar( $text ) && ! is_bool( $text ) ? trim( (string) $text ) : '';
+
+            if ( '' === $text ) {
+                continue;
+            }
+
+            $value = $formData[ $field->name ];
+
+            if ( is_array( $value ) ) {
+                $resolved = array_map( fn ( mixed $item ): mixed => FormField::OTHER_CHOICE_VALUE === $item ? $text : $item, $value );
+
+                $formData[ $field->name ] = array_values( array_unique( $resolved, SORT_REGULAR ) );
+            } elseif ( FormField::OTHER_CHOICE_VALUE === $value ) {
+                $formData[ $field->name ] = $text;
+            }
+        }
+
+        return $formData;
+    }
+
+    /**
+     * Builds the validation rules for the administrative fields an admin edits on a submission.
+     *
+     * Keyed like buildValidationRules(). A "No duplicates" check skips the
+     * submission being edited.
+     *
+     * @since 1.6.0
+     *
+     * @param  iterable<FormField>  $fields  The form fields; only administrative ones are used.
+     * @param  FormSubmission  $submission  The submission being edited.
+     * @param  string  $prefix  The key the values are nested under.
+     *
+     * @return array<string, array<int, mixed>> The validation rules.
+     */
+    public function buildAdministrativeValidationRules( iterable $fields, FormSubmission $submission, string $prefix = 'formData' ): array
+    {
+        $rules = [];
+
+        foreach ( $fields as $field ) {
+            if ( ! $field->isAdministrative() ) {
+                continue;
+            }
+
+            foreach ( $field->buildKeyedValidationRules() as $inputKey => $fieldRules ) {
+                $key           = '' === $inputKey ? "{$prefix}.{$field->name}" : "{$prefix}.{$field->name}.{$inputKey}";
+                $rules[ $key ] = SubmissionRules::ignoringSubmission( $fieldRules, (int) $submission->getKey() );
+            }
+        }
+
+        return $rules;
+    }
+
+    /**
+     * Saves the values an admin entered for a submission's administrative fields.
+     *
+     * Only administrative fields that store values are written; a blank value
+     * removes the stored one. Fires the submission's updated event once.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormSubmission  $submission  The submission.
+     * @param  array<string, mixed>  $values  The values keyed by field name.
+     *
+     * @return FormSubmission The submission, with its `values` relation unloaded.
+     */
+    public function updateAdministrativeValues( FormSubmission $submission, array $values ): FormSubmission
+    {
+        $submission->loadMissing( 'form.fields' );
+
+        DB::transaction( function () use ( $submission, $values ): void {
+            foreach ( $submission->form->fields as $field ) {
+                if ( ! $field->isAdministrative() || ! $field->storesValues() || ! array_key_exists( $field->name, $values ) ) {
+                    continue;
+                }
+
+                $value = $values[ $field->name ];
+
+                FormSubmissionValue::query()
+                    ->where( 'submission_id', $submission->getKey() )
+                    ->where( 'field_id', $field->getKey() )
+                    ->delete();
+
+                if ( null === $value || '' === $value || [] === $value ) {
+                    continue;
+                }
+
+                $this->saveFieldValue( $submission, $field, $value );
+            }
+
+            $submission->touch();
+        } );
+
+        return $submission->unsetRelation( 'values' );
     }
 
     /**
@@ -459,6 +605,24 @@ class SubmissionService
      */
     protected function saveFieldValue( FormSubmission $submission, FormField $field, mixed $value ): FormSubmissionValue
     {
+        return FormSubmissionValue::create( $this->buildValueAttributes( $submission, $field, $value ) );
+    }
+
+    /**
+     * Builds the attributes a field value is stored with.
+     *
+     * The field type's handler normalizes the value first.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormSubmission  $submission  The form submission.
+     * @param  FormField  $field  The form field.
+     * @param  mixed  $value  The field value.
+     *
+     * @return array<string, mixed> The FormSubmissionValue attributes.
+     */
+    protected function buildValueAttributes( FormSubmission $submission, FormField $field, mixed $value ): array
+    {
         $data = [
             'submission_id'     => $submission->id,
             'field_id'          => $field->id,
@@ -480,7 +644,7 @@ class SubmissionService
             $data['value_array'] = null;
         }
 
-        return FormSubmissionValue::create( $data );
+        return $data;
     }
 
     /**

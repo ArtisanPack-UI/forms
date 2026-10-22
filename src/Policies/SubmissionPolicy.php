@@ -194,6 +194,26 @@ class SubmissionPolicy
     }
 
     /**
+     * Determines whether the user can see values of fields masked in the admin.
+     *
+     * Admins (see isAdmin()) may by default. The decision passes through the
+     * `ap.forms.canRevealMaskedValues` filter so an app can grant it by role or
+     * permission instead.
+     *
+     * @since 1.6.0
+     *
+     * @param Authenticatable|null $user The authenticated user.
+     *
+     * @return bool True if masked values are shown in full.
+     */
+    public function revealMaskedValues( ?Authenticatable $user ): bool
+    {
+        $allowed = null !== $user && $this->isAdmin( $user );
+
+        return true === applyFilters( 'ap.forms.canRevealMaskedValues', $allowed, $user );
+    }
+
+    /**
      * Determines whether the user can export submissions.
      *
      * This authorizes access to export functionality. When ownership

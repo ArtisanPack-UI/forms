@@ -84,6 +84,24 @@ class SendWebhook implements ShouldQueue
     public ?string $secret;
 
     /**
+     * Attributes of the submission's "Do not store" values, which only reach
+     * the job through its payload (see FormSubmission::withTransientValues()).
+     *
+     * @since 1.6.0
+     *
+     * @var list<array<string, mixed>>
+     */
+    public array $transientValues = [];
+
+    /**
+     * Whether the queued payload is encrypted. It is when it carries values
+     * that are not stored.
+     *
+     * @since 1.6.0
+     */
+    public bool $shouldBeEncrypted = false;
+
+    /**
      * Creates a new job instance.
      *
      * @since 1.0.0
@@ -94,9 +112,11 @@ class SendWebhook implements ShouldQueue
      */
     public function __construct( FormSubmission $submission, string $url, ?string $secret = null )
     {
-        $this->submission = $submission;
-        $this->url        = $url;
-        $this->secret     = $secret;
+        $this->submission        = $submission;
+        $this->url               = $url;
+        $this->secret            = $secret;
+        $this->transientValues   = $submission->getTransientValues();
+        $this->shouldBeEncrypted = [] !== $this->transientValues;
     }
 
     /**
@@ -110,6 +130,11 @@ class SendWebhook implements ShouldQueue
     {
         // Ensure relationships are loaded
         $this->submission->loadMissing( ['form', 'values.field'] );
+
+        // Values of "Do not store" fields travel with the job, not the database
+        if ( [] !== $this->transientValues ) {
+            $this->submission->withTransientValues( $this->transientValues );
+        }
 
         // Build the webhook payload
         $payload = $this->buildPayload();

@@ -34,6 +34,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -118,13 +119,13 @@ class SubmissionApiController extends Controller
 
         $this->authorize( 'view', $submission );
 
-        $submission->load( ['values.field', 'uploads'] );
+        $submission->load( ['values.field', 'uploads', 'form.fields'] );
 
         return new FormSubmissionResource( $submission );
     }
 
     /**
-     * Updates submission metadata (read/starred/spam/notes).
+     * Updates submission metadata (read/starred/spam/notes) and administrative field values.
      *
      * @since 1.1.0
      *
@@ -142,9 +143,16 @@ class SubmissionApiController extends Controller
 
         $this->authorize( 'update', $submission );
 
-        $submission->update( $request->validated() );
+        $data        = Arr::except( $request->validated(), 'admin_values' );
+        $adminValues = $request->administrativeValues();
 
-        $freshSubmission = $submission->fresh( ['values.field', 'uploads'] );
+        $submission->update( $data );
+
+        if ( null !== $adminValues ) {
+            $this->submissionService->updateAdministrativeValues( $submission, $adminValues );
+        }
+
+        $freshSubmission = $submission->fresh( ['values.field', 'uploads', 'form.fields'] );
 
         if ( null === $freshSubmission ) {
             abort( 404, __( 'Submission not found after update.' ) );

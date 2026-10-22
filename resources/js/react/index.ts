@@ -54,6 +54,9 @@ export {
 	HtmlField,
 } from './components/fields/LayoutField';
 
+export { FieldLayout } from './components/fields/FieldLayout';
+export type { FieldLayoutProps } from './components/fields/FieldLayout';
+
 export type { FieldComponentProps } from './components/fields/types';
 
 // Field extensibility registry
@@ -138,6 +141,16 @@ export {
 	validateField,
 	validateFields,
 } from '../shared/validation';
+
+// Field layout and "Other" choice helpers (since 1.6.0)
+export {
+	OTHER_CHOICE_VALUE,
+	allowsOtherChoice,
+	getFieldLayout,
+	getOtherChoiceLabel,
+	resolveOtherChoices,
+} from '../shared/fieldSettings';
+export type { DescriptionPlacement, FieldLayout as FieldLayoutSettings, LabelPlacement } from '../shared/fieldSettings';
 
 // Dynamic population (since 1.6.0)
 export {

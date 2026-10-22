@@ -18,9 +18,11 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Http\Requests;
 
 use ArtisanPackUI\Forms\Models\Form;
+use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Support\FiresValidationHooks;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 /**
  * Store form request class.
@@ -78,6 +80,8 @@ class StoreFormRequest extends FormRequest
             'is_multi_step'         => ['nullable', 'boolean'],
             'show_progress_bar'     => ['nullable', 'boolean'],
             'allow_step_navigation' => ['nullable', 'boolean'],
+            'label_placement'       => ['nullable', 'string', Rule::in( FormField::LABEL_PLACEMENTS )],
+            'description_placement' => ['nullable', 'string', Rule::in( FormField::DESCRIPTION_PLACEMENTS )],
         ];
     }
 

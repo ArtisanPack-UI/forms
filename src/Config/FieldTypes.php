@@ -82,6 +82,9 @@ class FieldTypes
      *     supports_autocomplete?: bool,
      *     autocomplete?: string,
      *     supports_dynamic_population?: bool,
+     *     supports_label_placement?: bool,
+     *     supports_visibility?: bool,
+     *     supports_privacy?: bool,
      *     validation_options: array<string>
      * }>
      */
@@ -134,12 +137,13 @@ class FieldTypes
             'validation_options'     => ['min', 'max'],
         ],
         'hidden' => [
-            'icon'                   => 'o-eye-slash',
-            'category'               => 'basic',
-            'has_options'            => false,
-            'supports_placeholder'   => false,
-            'supports_default_value' => true,
-            'validation_options'     => [],
+            'icon'                     => 'o-eye-slash',
+            'category'                 => 'basic',
+            'has_options'              => false,
+            'supports_placeholder'     => false,
+            'supports_default_value'   => true,
+            'supports_label_placement' => false,
+            'validation_options'       => [],
         ],
         'select' => [
             'icon'                   => 'o-chevron-down',
@@ -197,6 +201,8 @@ class FieldTypes
             'supports_placeholder'        => false,
             'supports_default_value'      => false,
             'supports_dynamic_population' => false,
+            'supports_visibility'         => false,
+            'supports_privacy'            => false,
             'validation_options'          => ['max_size', 'allowed_types'],
         ],
         'date' => [

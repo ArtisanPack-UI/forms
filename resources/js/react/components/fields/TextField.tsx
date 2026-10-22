@@ -14,34 +14,36 @@
 
 import { Input, Textarea } from '@artisanpack-ui/react/form';
 
-import { getTextareaRows, getTimeStep, isReadOnlyField } from '../../../shared/fieldSettings';
+import { getFieldLayout, getInputLabelProps, getTextareaRows, getTimeStep, isReadOnlyField } from '../../../shared/fieldSettings';
 
+import { FieldLayout } from './FieldLayout';
 import type { FieldComponentProps } from './types';
 
 /**
  * Renders a single-line text input field.
  */
 export function TextField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
+	const layout = getFieldLayout( field, displayConfig );
+
 	return (
-		<Input
-			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
-			name={field.name}
-			type="text"
-			value={String( value ?? '' )}
-			placeholder={field.placeholder ?? undefined}
-			hint={field.help_text ?? undefined}
-			error={error}
-			required={field.is_required}
-			autoComplete={field.autocomplete ?? undefined}
-			readOnly={isReadOnlyField( field )}
-			className={field.css_classes ?? undefined}
-			onChange={( e ) => onChange( e.target.value )}
-			minLength={field.validation_rules?.min}
-			maxLength={field.validation_rules?.max}
-			pattern={field.validation_rules?.pattern ?? undefined}
-			inline={displayConfig.label_position === 'beside'}
-		/>
+		<FieldLayout field={field} layout={layout}>
+			<Input
+				{...getInputLabelProps( field, layout, displayConfig, error )}
+				name={field.name}
+				type="text"
+				value={String( value ?? '' )}
+				placeholder={field.placeholder ?? undefined}
+				error={error}
+				required={field.is_required}
+				autoComplete={field.autocomplete ?? undefined}
+				readOnly={isReadOnlyField( field )}
+				className={field.css_classes ?? undefined}
+				onChange={( e ) => onChange( e.target.value )}
+				minLength={field.validation_rules?.min}
+				maxLength={field.validation_rules?.max}
+				pattern={field.validation_rules?.pattern ?? undefined}
+			/>
+		</FieldLayout>
 	);
 }
 
@@ -49,23 +51,24 @@ export function TextField( { field, value, error, onChange, displayConfig }: Fie
  * Renders an email input field.
  */
 export function EmailField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
+	const layout = getFieldLayout( field, displayConfig );
+
 	return (
-		<Input
-			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
-			name={field.name}
-			type="email"
-			value={String( value ?? '' )}
-			placeholder={field.placeholder ?? undefined}
-			hint={field.help_text ?? undefined}
-			error={error}
-			required={field.is_required}
-			autoComplete={field.autocomplete ?? undefined}
-			readOnly={isReadOnlyField( field )}
-			className={field.css_classes ?? undefined}
-			onChange={( e ) => onChange( e.target.value )}
-			inline={displayConfig.label_position === 'beside'}
-		/>
+		<FieldLayout field={field} layout={layout}>
+			<Input
+				{...getInputLabelProps( field, layout, displayConfig, error )}
+				name={field.name}
+				type="email"
+				value={String( value ?? '' )}
+				placeholder={field.placeholder ?? undefined}
+				error={error}
+				required={field.is_required}
+				autoComplete={field.autocomplete ?? undefined}
+				readOnly={isReadOnlyField( field )}
+				className={field.css_classes ?? undefined}
+				onChange={( e ) => onChange( e.target.value )}
+			/>
+		</FieldLayout>
 	);
 }
 
@@ -73,24 +76,25 @@ export function EmailField( { field, value, error, onChange, displayConfig }: Fi
  * Renders a phone input field.
  */
 export function PhoneField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
+	const layout = getFieldLayout( field, displayConfig );
+
 	return (
-		<Input
-			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
-			name={field.name}
-			type="tel"
-			value={String( value ?? '' )}
-			placeholder={field.placeholder ?? undefined}
-			hint={field.help_text ?? undefined}
-			error={error}
-			required={field.is_required}
-			autoComplete={field.autocomplete ?? undefined}
-			readOnly={isReadOnlyField( field )}
-			className={field.css_classes ?? undefined}
-			onChange={( e ) => onChange( e.target.value )}
-			pattern={field.validation_rules?.pattern ?? undefined}
-			inline={displayConfig.label_position === 'beside'}
-		/>
+		<FieldLayout field={field} layout={layout}>
+			<Input
+				{...getInputLabelProps( field, layout, displayConfig, error )}
+				name={field.name}
+				type="tel"
+				value={String( value ?? '' )}
+				placeholder={field.placeholder ?? undefined}
+				error={error}
+				required={field.is_required}
+				autoComplete={field.autocomplete ?? undefined}
+				readOnly={isReadOnlyField( field )}
+				className={field.css_classes ?? undefined}
+				onChange={( e ) => onChange( e.target.value )}
+				pattern={field.validation_rules?.pattern ?? undefined}
+			/>
+		</FieldLayout>
 	);
 }
 
@@ -98,26 +102,27 @@ export function PhoneField( { field, value, error, onChange, displayConfig }: Fi
  * Renders a number input field.
  */
 export function NumberField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
+	const layout = getFieldLayout( field, displayConfig );
+
 	return (
-		<Input
-			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
-			name={field.name}
-			type="number"
-			value={String( value ?? '' )}
-			placeholder={field.placeholder ?? undefined}
-			hint={field.help_text ?? undefined}
-			error={error}
-			required={field.is_required}
-			autoComplete={field.autocomplete ?? undefined}
-			readOnly={isReadOnlyField( field )}
-			className={field.css_classes ?? undefined}
-			onChange={( e ) => onChange( e.target.value )}
-			min={field.validation_rules?.min}
-			max={field.validation_rules?.max}
-			step={field.validation_rules?.step}
-			inline={displayConfig.label_position === 'beside'}
-		/>
+		<FieldLayout field={field} layout={layout}>
+			<Input
+				{...getInputLabelProps( field, layout, displayConfig, error )}
+				name={field.name}
+				type="number"
+				value={String( value ?? '' )}
+				placeholder={field.placeholder ?? undefined}
+				error={error}
+				required={field.is_required}
+				autoComplete={field.autocomplete ?? undefined}
+				readOnly={isReadOnlyField( field )}
+				className={field.css_classes ?? undefined}
+				onChange={( e ) => onChange( e.target.value )}
+				min={field.validation_rules?.min}
+				max={field.validation_rules?.max}
+				step={field.validation_rules?.step}
+			/>
+		</FieldLayout>
 	);
 }
 
@@ -125,23 +130,24 @@ export function NumberField( { field, value, error, onChange, displayConfig }: F
  * Renders a URL input field.
  */
 export function UrlField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
+	const layout = getFieldLayout( field, displayConfig );
+
 	return (
-		<Input
-			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
-			name={field.name}
-			type="url"
-			value={String( value ?? '' )}
-			placeholder={field.placeholder ?? 'https://'}
-			hint={field.help_text ?? undefined}
-			error={error}
-			required={field.is_required}
-			autoComplete={field.autocomplete ?? undefined}
-			readOnly={isReadOnlyField( field )}
-			className={field.css_classes ?? undefined}
-			onChange={( e ) => onChange( e.target.value )}
-			inline={displayConfig.label_position === 'beside'}
-		/>
+		<FieldLayout field={field} layout={layout}>
+			<Input
+				{...getInputLabelProps( field, layout, displayConfig, error )}
+				name={field.name}
+				type="url"
+				value={String( value ?? '' )}
+				placeholder={field.placeholder ?? 'https://'}
+				error={error}
+				required={field.is_required}
+				autoComplete={field.autocomplete ?? undefined}
+				readOnly={isReadOnlyField( field )}
+				className={field.css_classes ?? undefined}
+				onChange={( e ) => onChange( e.target.value )}
+			/>
+		</FieldLayout>
 	);
 }
 
@@ -149,25 +155,26 @@ export function UrlField( { field, value, error, onChange, displayConfig }: Fiel
  * Renders a multi-line textarea field.
  */
 export function TextareaField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
+	const layout = getFieldLayout( field, displayConfig );
+
 	return (
-		<Textarea
-			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
-			name={field.name}
-			value={String( value ?? '' )}
-			placeholder={field.placeholder ?? undefined}
-			hint={field.help_text ?? undefined}
-			error={error}
-			required={field.is_required}
-			autoComplete={field.autocomplete ?? undefined}
-			readOnly={isReadOnlyField( field )}
-			className={field.css_classes ?? undefined}
-			onChange={( e ) => onChange( e.target.value )}
-			minLength={field.validation_rules?.min}
-			maxLength={field.validation_rules?.max}
-			rows={getTextareaRows( field )}
-			inline={displayConfig.label_position === 'beside'}
-		/>
+		<FieldLayout field={field} layout={layout}>
+			<Textarea
+				{...getInputLabelProps( field, layout, displayConfig, error )}
+				name={field.name}
+				value={String( value ?? '' )}
+				placeholder={field.placeholder ?? undefined}
+				error={error}
+				required={field.is_required}
+				autoComplete={field.autocomplete ?? undefined}
+				readOnly={isReadOnlyField( field )}
+				className={field.css_classes ?? undefined}
+				onChange={( e ) => onChange( e.target.value )}
+				minLength={field.validation_rules?.min}
+				maxLength={field.validation_rules?.max}
+				rows={getTextareaRows( field )}
+			/>
+		</FieldLayout>
 	);
 }
 
@@ -189,23 +196,24 @@ export function HiddenField( { field, value }: Pick<FieldComponentProps, 'field'
  * Renders a time input field.
  */
 export function TimeField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
+	const layout = getFieldLayout( field, displayConfig );
+
 	return (
-		<Input
-			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
-			name={field.name}
-			type="time"
-			value={String( value ?? '' )}
-			hint={field.help_text ?? undefined}
-			error={error}
-			required={field.is_required}
-			readOnly={isReadOnlyField( field )}
-			className={field.css_classes ?? undefined}
-			onChange={( e ) => onChange( e.target.value )}
-			min={field.validation_rules?.min_time ?? undefined}
-			max={field.validation_rules?.max_time ?? undefined}
-			step={getTimeStep( field )}
-			inline={displayConfig.label_position === 'beside'}
-		/>
+		<FieldLayout field={field} layout={layout}>
+			<Input
+				{...getInputLabelProps( field, layout, displayConfig, error )}
+				name={field.name}
+				type="time"
+				value={String( value ?? '' )}
+				error={error}
+				required={field.is_required}
+				readOnly={isReadOnlyField( field )}
+				className={field.css_classes ?? undefined}
+				onChange={( e ) => onChange( e.target.value )}
+				min={field.validation_rules?.min_time ?? undefined}
+				max={field.validation_rules?.max_time ?? undefined}
+				step={getTimeStep( field )}
+			/>
+		</FieldLayout>
 	);
 }

@@ -75,6 +75,24 @@ class SendFormNotification implements ShouldQueue
     public FormSubmission $submission;
 
     /**
+     * Attributes of the submission's "Do not store" values, which only reach
+     * the job through its payload (see FormSubmission::withTransientValues()).
+     *
+     * @since 1.6.0
+     *
+     * @var list<array<string, mixed>>
+     */
+    public array $transientValues = [];
+
+    /**
+     * Whether the queued payload is encrypted. It is when it carries values
+     * that are not stored.
+     *
+     * @since 1.6.0
+     */
+    public bool $shouldBeEncrypted = false;
+
+    /**
      * Creates a new job instance.
      *
      * @since 1.0.0
@@ -84,8 +102,10 @@ class SendFormNotification implements ShouldQueue
      */
     public function __construct( FormNotification $notification, FormSubmission $submission )
     {
-        $this->notification = $notification;
-        $this->submission   = $submission;
+        $this->notification      = $notification;
+        $this->submission        = $submission;
+        $this->transientValues   = $submission->getTransientValues();
+        $this->shouldBeEncrypted = [] !== $this->transientValues;
     }
 
     /**
@@ -100,6 +120,11 @@ class SendFormNotification implements ShouldQueue
         // Ensure relationships are loaded
         $this->submission->loadMissing( ['form', 'values.field'] );
         $this->notification->loadMissing( 'form' );
+
+        // Values of "Do not store" fields travel with the job, not the database
+        if ( [] !== $this->transientValues ) {
+            $this->submission->withTransientValues( $this->transientValues );
+        }
 
         // Re-evaluate the quarantine policy at execution time. The submission
         // may have been quarantined after this job was dispatched, and the

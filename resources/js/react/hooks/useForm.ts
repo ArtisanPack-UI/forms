@@ -20,7 +20,7 @@ import type {
 	SubmitFormResponse,
 } from '../../types/artisanpack-forms';
 import { getHiddenFields } from '../../shared/conditionalLogic';
-import { getInitialFieldValue } from '../../shared/fieldSettings';
+import { getInitialFieldValue, resolveOtherChoices } from '../../shared/fieldSettings';
 import { validateFields } from '../../shared/validation';
 
 /** Configuration options for the useForm hook. */
@@ -54,6 +54,12 @@ export interface UseFormReturn {
 	errors: Record<string, string[]>;
 	/** File uploads keyed by field name. */
 	files: Record<string, File | File[]>;
+	/**
+	 * Text typed into each field's "Other" choice, keyed by field name. The
+	 * choice stays selected in `values` and is replaced with this text on
+	 * submit (since 1.6.0).
+	 */
+	otherValues: Record<string, string>;
 	/** Map of field names to hidden state (true = hidden by conditional logic). */
 	hiddenFields: Record<string, boolean>;
 	/** Whether the form definition is loading. */
@@ -78,6 +84,8 @@ export interface UseFormReturn {
 	setValue: ( name: string, value: unknown ) => void;
 	/** Sets a file for a field. */
 	setFile: ( name: string, file: File | File[] ) => void;
+	/** Sets the text typed into a field's "Other" choice (since 1.6.0). */
+	setOtherValue: ( name: string, text: string ) => void;
 	/** Removes a file for a field. */
 	removeFile: ( name: string ) => void;
 	/** Navigates to the next step with validation. Returns true if successful. */
@@ -124,6 +132,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 	const [values, setValues] = useState<Record<string, unknown>>( {} );
 	const [errors, setErrors] = useState<Record<string, string[]>>( {} );
 	const [files, setFiles] = useState<Record<string, File | File[]>>( {} );
+	const [otherValues, setOtherValues] = useState<Record<string, string>>( {} );
 	const [isLoading, setIsLoading] = useState( true );
 	const [isSubmitting, setIsSubmitting] = useState( false );
 	const [isSubmitted, setIsSubmitted] = useState( false );
@@ -276,6 +285,16 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		} );
 	}, [] );
 
+	const setOtherValue = useCallback( ( name: string, text: string ) => {
+		setOtherValues( ( prev ) => ( { ...prev, [name]: text } ) );
+		setErrors( ( prev ) => {
+			const next = { ...prev };
+			delete next[name];
+
+			return next;
+		} );
+	}, [] );
+
 	const removeFile = useCallback( ( name: string ) => {
 		setFiles( ( prev ) => {
 			const next = { ...prev };
@@ -294,9 +313,14 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				return {};
 			}
 
-			return validateFields( fieldsToValidate, values, hiddenFields, files );
+			return validateFields(
+				fieldsToValidate,
+				resolveOtherChoices( fieldsToValidate, values, otherValues ),
+				hiddenFields,
+				files,
+			);
 		},
-		[values, hiddenFields, files, clientValidation],
+		[values, otherValues, hiddenFields, files, clientValidation],
 	);
 
 	const nextStep = useCallback( (): boolean => {
@@ -394,8 +418,8 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 			const url = `${baseUrl}/${encodeURIComponent( formSlug )}/submit`;
 			const formDataObj = new FormData();
 
-			// Add form data values
-			for ( const [key, value] of Object.entries( values ) ) {
+			// Add form data values, with each "Other" choice replaced by its text
+			for ( const [key, value] of Object.entries( resolveOtherChoices( allFields, values, otherValues ) ) ) {
 				if ( hiddenFields[key] ) {
 					continue;
 				}
@@ -513,6 +537,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		baseUrl,
 		formSlug,
 		values,
+		otherValues,
 		files,
 		onSuccess,
 		onError,
@@ -536,6 +561,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		setValues( defaults );
 		setErrors( {} );
 		setFiles( {} );
+		setOtherValues( {} );
 		setIsSubmitted( false );
 		setCurrentStep( 0 );
 		formLoadedAt.current = Math.floor( Date.now() / 1000 );
@@ -546,6 +572,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		values,
 		errors,
 		files,
+		otherValues,
 		hiddenFields,
 		isLoading,
 		isSubmitting,
@@ -558,6 +585,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		loadError,
 		setValue,
 		setFile,
+		setOtherValue,
 		removeFile,
 		nextStep,
 		prevStep,

@@ -21,13 +21,16 @@ import { Checkbox } from '@artisanpack-ui/react';
 import { Divider } from '@artisanpack-ui/react';
 import { Input } from '@artisanpack-ui/react';
 import { Loading } from '@artisanpack-ui/react';
+import { Select } from '@artisanpack-ui/react';
 import { Textarea } from '@artisanpack-ui/react';
 
 import type {
 	FieldPaletteGroup,
+	DescriptionPlacement,
 	FieldType,
 	Form,
 	FormField,
+	LabelPlacement,
 	FormStep,
 	StoreFieldRequest,
 	StoreStepRequest,
@@ -788,6 +791,36 @@ export function FormBuilder( {
 									type="url"
 									value={form.redirect_url ?? ''}
 									onChange={( e ) => updateFormSetting( { redirect_url: e.target.value || null } )}
+								/>
+
+								<Select
+									id="form-label-placement"
+									label={t( 'Label Placement' )}
+									hint={t( 'The default for every field. A field can override it in its settings.' )}
+									value={form.label_placement ?? ''}
+									options={[
+										{ value: '', label: t( 'Top (default)' ) },
+										{ value: 'top', label: t( 'Top' ) },
+										{ value: 'left', label: t( 'Left' ) },
+										{ value: 'hidden', label: t( 'Hidden' ) },
+									]}
+									optionValue="value"
+									optionLabel="label"
+									onChange={( e ) => updateFormSetting( { label_placement: ( e.target.value || null ) as LabelPlacement | null } )}
+								/>
+
+								<Select
+									id="form-description-placement"
+									label={t( 'Description Placement' )}
+									value={form.description_placement ?? ''}
+									options={[
+										{ value: '', label: t( 'Below the input (default)' ) },
+										{ value: 'above', label: t( 'Above the input' ) },
+										{ value: 'below', label: t( 'Below the input' ) },
+									]}
+									optionValue="value"
+									optionLabel="label"
+									onChange={( e ) => updateFormSetting( { description_placement: ( e.target.value || null ) as DescriptionPlacement | null } )}
 								/>
 
 								<Checkbox

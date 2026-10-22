@@ -56,6 +56,7 @@ class NumberFieldType extends AbstractFieldType
                     'placeholder' => '1',
                     'hint'        => __( 'e.g., 0.01 for decimals, 1 for integers' ),
                 ],
+                $this->noDuplicatesSetting(),
                 $this->readOnlySetting(),
             ],
         ] );

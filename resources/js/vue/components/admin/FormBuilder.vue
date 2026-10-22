@@ -13,12 +13,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
-import { Alert, Badge, Button, Checkbox, Divider, Input, Loading, Textarea } from '@artisanpack-ui/vue';
+import { Alert, Badge, Button, Checkbox, Divider, Input, Loading, Select, Textarea } from '@artisanpack-ui/vue';
 
 import type {
+	DescriptionPlacement,
 	FieldType,
 	Form,
 	FormField,
+	LabelPlacement,
 	FormStep,
 	StoreFieldRequest,
 	StoreStepRequest,
@@ -786,6 +788,36 @@ function getPreviewInputType( fieldType: string ): string {
 							type="url"
 							:value="form.redirect_url ?? ''"
 							@input="updateFormSetting( { redirect_url: ( $event.target as HTMLInputElement ).value || null } )"
+						/>
+
+						<Select
+							id="form-label-placement"
+							:label="t( 'Label Placement' )"
+							:hint="t( 'The default for every field. A field can override it in its settings.' )"
+							:model-value="form.label_placement ?? ''"
+							:options="[
+								{ value: '', label: t( 'Top (default)' ) },
+								{ value: 'top', label: t( 'Top' ) },
+								{ value: 'left', label: t( 'Left' ) },
+								{ value: 'hidden', label: t( 'Hidden' ) },
+							]"
+							option-value="value"
+							option-label="label"
+							@update:model-value="updateFormSetting( { label_placement: ( $event || null ) as LabelPlacement | null } )"
+						/>
+
+						<Select
+							id="form-description-placement"
+							:label="t( 'Description Placement' )"
+							:model-value="form.description_placement ?? ''"
+							:options="[
+								{ value: '', label: t( 'Below the input (default)' ) },
+								{ value: 'above', label: t( 'Above the input' ) },
+								{ value: 'below', label: t( 'Below the input' ) },
+							]"
+							option-value="value"
+							option-label="label"
+							@update:model-value="updateFormSetting( { description_placement: ( $event || null ) as DescriptionPlacement | null } )"
 						/>
 
 						<Checkbox

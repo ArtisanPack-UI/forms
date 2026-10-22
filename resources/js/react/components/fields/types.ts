@@ -25,4 +25,8 @@ export interface FieldComponentProps {
 	onFileChange?: ( file: File | File[] ) => void;
 	/** Display configuration from the form. */
 	displayConfig: DisplayConfig;
+	/** Text typed into the field's "Other" choice (since 1.6.0). */
+	otherValue?: string;
+	/** Callback to update the "Other" choice's text (since 1.6.0). */
+	onOtherChange?: ( text: string ) => void;
 }

@@ -43,6 +43,7 @@ class PhoneFieldType extends AbstractFieldType
             ],
             'settings' => [
                 $this->patternSetting(),
+                $this->noDuplicatesSetting(),
                 $this->readOnlySetting(),
             ],
         ] );

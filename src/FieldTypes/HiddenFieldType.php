@@ -40,6 +40,9 @@ class HiddenFieldType extends AbstractFieldType
             'defaults' => [
                 'label' => __( 'Hidden Field' ),
             ],
+            'settings' => [
+                $this->noDuplicatesSetting(),
+            ],
         ] );
     }
 }
