@@ -43,7 +43,11 @@ class SelectMultipleFieldType extends MultipleChoiceFieldType
                     'options' => [],
                 ],
             ],
-            'settings' => $this->selectionSettings(),
+            'settings' => [
+                $this->choicesSourceSetting(),
+                $this->searchableSetting(),
+                ...$this->selectionSettings(),
+            ],
         ] );
     }
 }

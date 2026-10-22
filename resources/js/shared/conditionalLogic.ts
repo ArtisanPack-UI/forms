@@ -10,6 +10,7 @@
  * @since      1.1.0
  */
 
+import { formatCompositeForCondition } from './composite';
 import type {
 	ConditionalLogic,
 	ConditionalLogicRule,
@@ -36,13 +37,29 @@ function buildFieldMaps( fields: FormField[] ): {
 }
 
 /**
- * Resolves a field reference (UUID or name) to a field name.
+ * Resolves a field reference (UUID or name) to a field name and, for a
+ * composite field's sub-input (`{field}.{key}`), the sub-input key. A
+ * reference that names a field as a whole is never split. Mirrors
+ * `ConditionalLogicService::resolveFieldReference()`.
  */
-function resolveFieldName(
+function resolveFieldReference(
 	fieldRef: string,
 	uuidToName: Record<string, string>,
-): string {
-	return uuidToName[fieldRef] ?? fieldRef;
+	formData: Record<string, unknown>,
+): [string, string | undefined] {
+	if ( uuidToName[fieldRef] !== undefined || Object.prototype.hasOwnProperty.call( formData, fieldRef ) ) {
+		return [uuidToName[fieldRef] ?? fieldRef, undefined];
+	}
+
+	const dot = fieldRef.indexOf( '.' );
+
+	if ( dot > 0 && dot < fieldRef.length - 1 ) {
+		const base = fieldRef.slice( 0, dot );
+
+		return [uuidToName[base] ?? base, fieldRef.slice( dot + 1 )];
+	}
+
+	return [fieldRef, undefined];
 }
 
 /**
@@ -270,7 +287,8 @@ export function compareValues(
 }
 
 /**
- * Evaluates a single conditional logic rule against form data.
+ * Evaluates a single conditional logic rule against form data. A rule may
+ * test one of a composite field's sub-inputs as `{field}.{key}` (since 1.6.0).
  */
 export function evaluateRule(
 	rule: ConditionalLogicRule,
@@ -283,8 +301,17 @@ export function evaluateRule(
 		return true;
 	}
 
-	const fieldName = resolveFieldName( fieldRef, uuidToName );
-	const fieldValue = formData[fieldName] ?? null;
+	const [fieldName, subKey] = resolveFieldReference( fieldRef, uuidToName, formData );
+	let fieldValue: unknown = formData[fieldName] ?? null;
+
+	if ( subKey !== undefined ) {
+		fieldValue = fieldValue && typeof fieldValue === 'object' && !Array.isArray( fieldValue )
+			? ( fieldValue as Record<string, unknown> )[subKey] ?? null
+			: null;
+	} else {
+		// A rule on a whole composite field compares its formatted value.
+		fieldValue = formatCompositeForCondition( fieldValue );
+	}
 
 	return compareValues( fieldValue, rule.operator, rule.value ?? '' );
 }

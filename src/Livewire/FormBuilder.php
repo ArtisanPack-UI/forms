@@ -24,12 +24,14 @@ namespace ArtisanPackUI\Forms\Livewire;
 
 use ArtisanPackUI\Forms\Config\ConditionalLogic;
 use ArtisanPackUI\Forms\Config\FieldTypes;
+use ArtisanPackUI\Forms\FieldTypes\CompositeFieldType;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\FieldService;
 use ArtisanPackUI\Forms\Services\StepService;
 use ArtisanPackUI\Forms\Support\FieldSettings;
+use ArtisanPackUI\Forms\Support\PredefinedChoices;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
@@ -389,6 +391,62 @@ class FormBuilder extends Component
             : ['field_config' => array_merge( $field->field_config ?? [], ['content' => $content] )];
 
         $this->persistSelectedField( $field, $data + ['default_value' => null] );
+    }
+
+    /**
+     * Replace or extend the selected choice field's options from bulk text.
+     *
+     * The text holds one `value|label` (or `label`) per line, as the bulk
+     * editor and its predefined lists write it (see PredefinedChoices).
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $text  The bulk text.
+     * @param  string  $mode  `replace` the options, or `append` to them.
+     */
+    public function applyBulkChoices( string $text, string $mode = 'replace' ): void
+    {
+        $field = $this->getSelectedFieldModel();
+
+        if ( null === $field || ! FieldTypes::hasOptions( $field->type ) ) {
+            return;
+        }
+
+        $options = PredefinedChoices::apply(
+            $field->getConfig( 'options', [] ),
+            PredefinedChoices::parseBulk( $text ),
+            'append' === $mode ? 'append' : 'replace',
+        );
+
+        $this->persistSelectedField( $field, ['field_config' => array_merge( $field->field_config ?? [], ['options' => $options] )] );
+    }
+
+    /**
+     * Change one setting of one of the selected composite field's sub-inputs.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $key  The sub-input key.
+     * @param  string  $setting  `enabled`, `required`, `label` or `placeholder`.
+     * @param  mixed  $value  The raw input value.
+     */
+    public function updateSubInput( string $key, string $setting, mixed $value ): void
+    {
+        $field = $this->getSelectedFieldModel();
+
+        if ( null === $field ) {
+            return;
+        }
+
+        $config = CompositeFieldType::updateSubInputConfig( $field, $key, $setting, $value );
+
+        if ( null === $config ) {
+            unset( $this->selectedField );
+
+            return;
+        }
+
+        $this->persistSelectedField( $field, ['field_config' => $config] );
     }
 
     /**

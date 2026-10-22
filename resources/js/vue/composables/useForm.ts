@@ -19,6 +19,7 @@ import type {
 	FormStep,
 	SubmitFormResponse,
 } from '../../types/artisanpack-forms';
+import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composite';
 import { getHiddenFields } from '../../shared/conditionalLogic';
 import { getInitialFieldValue, resolveOtherChoices } from '../../shared/fieldSettings';
 import { validateFields } from '../../shared/validation';
@@ -194,12 +195,13 @@ export function useForm( options: UseFormOptions ) {
 	onMounted( fetchForm );
 
 	function setValue( name: string, value: unknown ): void {
+		const previous = values.value[name];
+
 		values.value = { ...values.value, [name]: value };
 
-		if ( errors.value[name] ) {
-			const next = { ...errors.value };
-			delete next[name];
-			errors.value = next;
+		// A composite field's errors are keyed by sub-input; only the changed parts are cleared.
+		if ( Object.keys( errors.value ).some( ( key ) => key === name || key.startsWith( `${name}.` ) ) ) {
+			errors.value = clearChangedFieldErrors( errors.value, name, previous, value );
 		}
 	}
 
@@ -310,7 +312,7 @@ export function useForm( options: UseFormOptions ) {
 
 			// Navigate to first step with errors (multi-step)
 			if ( form.value.is_multi_step && sortedSteps.value.length > 0 ) {
-				const errorFieldNames = new Set( Object.keys( validationErrors ) );
+				const errorFieldNames = new Set( Object.keys( validationErrors ).map( getErrorFieldName ) );
 
 				for ( let i = 0; i < sortedSteps.value.length; i++ ) {
 					const stepFields = allFields.value.filter(
@@ -343,6 +345,11 @@ export function useForm( options: UseFormOptions ) {
 				if ( Array.isArray( value ) ) {
 					for ( const item of value ) {
 						formDataObj.append( `data[${key}][]`, String( item ) );
+					}
+				} else if ( value !== null && typeof value === 'object' ) {
+					// A composite field's value is a map of sub-inputs.
+					for ( const [subKey, part] of Object.entries( value as Record<string, unknown> ) ) {
+						formDataObj.append( `data[${key}][${subKey}]`, String( part ?? '' ) );
 					}
 				} else if ( value !== null && value !== undefined ) {
 					formDataObj.append( `data[${key}]`, String( value ) );
@@ -395,7 +402,7 @@ export function useForm( options: UseFormOptions ) {
 
 				// Navigate to first step with server errors (multi-step)
 				if ( form.value.is_multi_step && sortedSteps.value.length > 0 ) {
-					const errorFieldNames = new Set( Object.keys( serverErrors ) );
+					const errorFieldNames = new Set( Object.keys( serverErrors ).map( getErrorFieldName ) );
 
 					for ( let i = 0; i < sortedSteps.value.length; i++ ) {
 						const stepFields = allFields.value.filter(

@@ -50,7 +50,7 @@ describe( 'Toggle field in React and Vue (issue #93)', function () use ( $resour
         $choice = $resource( 'vue/components/fields/ChoiceField.vue' );
         $toggle = $between( $choice, 'v-else-if="field.type === \'toggle\'"', '/>' );
 
-        expect( $choice )->toContain( "import { Checkbox, Radio, Select, Toggle } from '@artisanpack-ui/vue/form';" )
+        expect( $choice )->toContain( "import { Checkbox, Select, Toggle } from '@artisanpack-ui/vue/form';" )
             ->and( $toggle )->toContain( ':color="getToggleColor( field )"' )
             ->toContain( 'getToggleSizeClass( field )' )
             ->toContain( ':disabled="readOnly"' )
@@ -158,7 +158,7 @@ describe( 'Dynamic population in React and Vue (issue #95)', function () use ( $
 
     it( 'is part of the render payload type', function () use ( $resource ): void {
         expect( $resource( 'types/artisanpack-forms.d.ts' ) )->toContain( 'dynamic_parameter?: string | null;' )
-            ->toContain( 'resolved_default_value?: string | boolean | string[] | null;' );
+            ->toContain( 'resolved_default_value?: string | boolean | string[] | Record<string, string> | null;' );
     } );
 } );
 

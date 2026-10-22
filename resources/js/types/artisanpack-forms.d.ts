@@ -129,6 +129,26 @@ export type DescriptionPlacement = 'above' | 'below';
 export type FieldVisibility = 'visible' | 'administrative';
 
 /**
+ * How a radio or checkbox group arranges its choices (since 1.6.0).
+ */
+export type ChoiceLayout = 'stacked' | 'inline' | '2-col' | '3-col';
+
+/**
+ * Where a composite field shows its sub-input labels (since 1.6.0).
+ */
+export type SubLabelPlacement = 'below' | 'above' | 'hidden';
+
+/**
+ * How a composite field is exported to CSV (since 1.6.0).
+ */
+export type CompositeExportFormat = 'columns' | 'single';
+
+/**
+ * The input type of a composite field's sub-input (since 1.6.0).
+ */
+export type SubInputType = 'text' | 'email' | 'tel' | 'url' | 'number';
+
+/**
  * Error display mode options.
  */
 export type ErrorDisplay = 'below' | 'tooltip' | 'summary';
@@ -176,7 +196,9 @@ export interface ConditionalLogic {
 export interface FieldOption {
     label: string;
     value: string;
-    [key: string]: string;
+    /** Whether the option starts selected (since 1.6.0). */
+    default?: boolean;
+    [key: string]: string | boolean | undefined;
 }
 
 /**
@@ -213,6 +235,66 @@ export interface OptionsFieldConfig extends BaseFieldConfig {
     enable_other?: boolean;
     /** The "Other" choice's label. Defaults to "Other" (since 1.6.0). */
     other_label?: string;
+    /** A registered choice source the options are loaded from instead of `options` (since 1.6.0). */
+    choices_source?: string;
+    /** How a radio or checkbox group arranges its choices. Defaults to `stacked` (since 1.6.0). */
+    layout?: ChoiceLayout;
+    /** Whether a radio or checkbox group shows its choices in a random order (since 1.6.0). */
+    randomize?: boolean;
+    /** Whether a checkbox group offers a "Select All" checkbox (since 1.6.0). */
+    select_all?: boolean;
+    /** Whether a select or multi-select is a searchable combobox (since 1.6.0). */
+    searchable?: boolean;
+}
+
+/**
+ * A composite field's own settings for one sub-input, in
+ * `field_config.sub_inputs.{key}` (since 1.6.0).
+ */
+export interface SubInputConfig {
+    enabled?: boolean;
+    required?: boolean;
+    label?: string;
+    placeholder?: string;
+}
+
+/**
+ * Configuration for composite (multi-input) fields (since 1.6.0).
+ */
+export interface CompositeFieldConfig extends BaseFieldConfig {
+    /** Per sub-input overrides, keyed by sub-input key. */
+    sub_inputs?: Record<string, SubInputConfig>;
+    /** Where the sub-input labels are shown. Defaults to `below`. */
+    sub_label_placement?: SubLabelPlacement;
+    /** How the field is exported. Defaults to `columns`. */
+    export_format?: CompositeExportFormat;
+}
+
+/**
+ * One of a composite field's sub-inputs, with the field's settings applied
+ * (`FormField::getSubInputs()` on the server; since 1.6.0).
+ */
+export interface SubInputDefinition {
+    key: string;
+    /** The sub-label, already translated. */
+    label: string;
+    /** The type's own sub-label, shown as the builder's placeholder. */
+    default_label: string;
+    placeholder: string | null;
+    enabled: boolean;
+    /** Whether a required field requires this input (see `required_sub_inputs`). */
+    required: boolean;
+    autocomplete: string | null;
+    type: SubInputType;
+}
+
+/**
+ * A predefined choice list the builders' bulk editor can insert (since 1.6.0).
+ */
+export interface PredefinedChoiceList {
+    key: string;
+    label: string;
+    choices: Array<{ value: string; label: string }>;
 }
 
 /**
@@ -306,6 +388,7 @@ export type FieldConfig =
     | ToggleFieldConfig
     | CommonFieldConfig
     | ContentFieldConfig
+    | CompositeFieldConfig
     | BaseFieldConfig
     | null;
 
@@ -413,12 +496,23 @@ export interface FormField {
      */
     description_placement?: DescriptionPlacement | null;
     /**
-     * The value the field starts with: its default value with server merge
-     * tags replaced, or the `ap.forms.fieldValue.{parameter}` filter's value.
-     * Page tags (`{embed_url}`, `{referer}`, `{query:…}`) are left for the
-     * client. Only in the public render payload (since 1.6.0).
+     * A composite field's sub-inputs, enabled or not (since 1.6.0). Present
+     * only for composite fields.
      */
-    resolved_default_value?: string | boolean | string[] | null;
+    sub_inputs?: SubInputDefinition[];
+    /** The keys of the sub-inputs a submission must fill in (since 1.6.0). */
+    required_sub_inputs?: string[];
+    /** Where a composite field shows its sub-input labels (since 1.6.0). */
+    sub_label_placement?: SubLabelPlacement;
+    /**
+     * The value the field starts with: its default value with server merge
+     * tags replaced, the options marked as defaults, or the
+     * `ap.forms.fieldValue.{parameter}` filter's value; a map of sub-input
+     * keys for a composite field. Page tags (`{embed_url}`, `{referer}`,
+     * `{query:…}`) are left for the client. Only in the public render payload
+     * (since 1.6.0).
+     */
+    resolved_default_value?: string | boolean | string[] | Record<string, string> | null;
     /**
      * The field type's settings schema (since 1.6.0). Left out of the public
      * render payload.

@@ -12,6 +12,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Button } from '@artisanpack-ui/vue/form';
+import { getSubInputErrors } from '../../shared/composite';
 import type { FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
 import { useForm } from '../composables/useForm';
 import FieldRenderer from './fields/FieldRenderer.vue';
@@ -181,6 +182,7 @@ function handleFormSubmit( e: Event ): void {
 						:error="errors[field.name]?.[0]"
 						:display-config="form.config.display"
 						:other-value="otherValues[field.name] ?? ''"
+						:sub-errors="getSubInputErrors( errors, field.name )"
 						@update:model-value="setValue( field.name, $event )"
 						@update:other-value="setOtherValue( field.name, $event )"
 						@file-change="setFile( field.name, $event )"
@@ -207,6 +209,7 @@ function handleFormSubmit( e: Event ): void {
 						:display-config="form.config.display"
 						:layout="layout"
 						:other-value="otherValues[field.name] ?? ''"
+						:sub-errors="getSubInputErrors( errors, field.name )"
 						@update:model-value="setValue( field.name, $event )"
 						@update:other-value="setOtherValue( field.name, $event )"
 						@file-change="setFile( field.name, $event )"

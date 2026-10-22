@@ -1,11 +1,16 @@
 @props(['field', 'value' => [], 'error' => null])
 
 @php
-	$options = $field->getConfig('options', []);
+	$options = $field->getRenderOptions();
 	// The input component renders a top label; the layout renders the others.
 	$layoutLabel = 'top' !== $field->getLabelPlacement();
 @endphp
 
+@if($field->isSearchable())
+	@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => 'field-' . $field->name])
+		@include('forms::components.combobox', ['field' => $field, 'error' => $error, 'options' => $options, 'multiple' => true])
+	@endcomponent
+@else
 @component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true, 'renderError' => false])
 <x-artisanpack-select
 	:label="$layoutLabel ? null : $field->label"
@@ -24,3 +29,4 @@
 	:aria-describedby="$field->getDescribedBy($error)"
 />
 @endcomponent
+@endif

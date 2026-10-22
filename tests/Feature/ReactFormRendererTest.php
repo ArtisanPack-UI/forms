@@ -207,7 +207,7 @@ describe( 'React Form Renderer', function (): void {
         } );
 
         it( 'resolves field references by UUID', function (): void {
-            expect( $this->content )->toContain( 'resolveFieldName' )
+            expect( $this->content )->toContain( 'resolveFieldReference' )
                 ->and( $this->content )->toContain( 'uuidToName' );
         } );
     } );

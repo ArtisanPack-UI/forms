@@ -123,6 +123,9 @@ class FormFieldResource extends JsonResource
             'dynamic_parameter'      => $this->resource->getPopulationParameter(),
             'is_administrative'      => $this->resource->isAdministrative(),
             'other_choice_label'     => $this->when( $this->resource->allowsOtherChoice(), fn (): string => $this->resource->getOtherChoiceLabel() ),
+            'sub_inputs'             => $this->when( $this->resource->isComposite(), fn (): array => $this->subInputs() ),
+            'required_sub_inputs'    => $this->when( $this->resource->isComposite(), fn (): array => $this->resource->getRequiredSubInputKeys() ),
+            'sub_label_placement'    => $this->when( $this->resource->isComposite(), fn (): string => $this->resource->getSubLabelPlacement() ),
             'label_placement'        => $this->when( $this->includeResolvedDefault, fn (): ?string => $this->resource->getConfiguredLabelPlacement() ),
             'description_placement'  => $this->when( $this->includeResolvedDefault, fn (): ?string => $this->resource->getConfiguredDescriptionPlacement() ),
             'resolved_default_value' => $this->when(
@@ -133,6 +136,25 @@ class FormFieldResource extends JsonResource
             'created_at'        => $this->created_at?->toIso8601String(),
             'updated_at'        => $this->updated_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Gets a composite field's sub-inputs for the builders and renderers.
+     *
+     * Every sub-input is listed, with its `enabled` flag, so the builders can
+     * turn them on and off; the renderers show the enabled ones. Validation
+     * rules stay on the server.
+     *
+     * @since 1.6.0
+     *
+     * @return list<array{key: string, label: string, default_label: string, placeholder: string|null, enabled: bool, required: bool, autocomplete: string|null, type: string}> The sub-inputs.
+     */
+    protected function subInputs(): array
+    {
+        return array_values( array_map(
+            fn ( array $subInput ): array => array_diff_key( $subInput, ['rules' => true] ),
+            $this->resource->getSubInputs(),
+        ) );
     }
 
     /**

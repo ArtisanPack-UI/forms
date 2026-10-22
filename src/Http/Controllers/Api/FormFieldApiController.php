@@ -25,6 +25,7 @@ use ArtisanPackUI\Forms\Http\Resources\FormFieldResource;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Services\FieldService;
+use ArtisanPackUI\Forms\Support\PredefinedChoices;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -70,6 +71,28 @@ class FormFieldApiController extends Controller
         $fields = $form->fields()->orderBy( 'sort_order' )->get();
 
         return FormFieldResource::collection( $fields );
+    }
+
+    /**
+     * Lists the predefined choice lists the builders' bulk editor can insert.
+     *
+     * @since 1.6.0
+     *
+     * @param Form $form The form being edited.
+     *
+     * @return JsonResponse The lists, each with its key, label and choices.
+     */
+    public function predefinedChoices( Form $form ): JsonResponse
+    {
+        $this->authorize( 'update', $form );
+
+        $lists = [];
+
+        foreach ( PredefinedChoices::all() as $key => $list ) {
+            $lists[] = ['key' => $key, 'label' => $list['label'], 'choices' => $list['choices']];
+        }
+
+        return response()->json( ['data' => $lists] );
     }
 
     /**

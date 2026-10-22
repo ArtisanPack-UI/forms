@@ -18,6 +18,8 @@ namespace ArtisanPackUI\Forms\Support;
 use ArtisanPackUI\Forms\Models\FormField;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\MessageBag;
+use Illuminate\Support\ViewErrorBag;
 
 /**
  * Renders a form field and pipes the resulting HTML through the
@@ -36,10 +38,11 @@ class FieldRenderer
      * @param  FormField  $field  The field being rendered.
      * @param  mixed  $value  The current field value.
      * @param  string|null  $error  The current validation error, if any.
+     * @param  array<string, string>  $subErrors  A composite field's errors by sub-input key (since 1.6.0; see subInputErrors()).
      *
      * @return string The (possibly filtered) HTML.
      */
-    public static function render( FormField $field, mixed $value = null, ?string $error = null ): string
+    public static function render( FormField $field, mixed $value = null, ?string $error = null, array $subErrors = [] ): string
     {
         $view = $field->fieldType()->view();
 
@@ -57,11 +60,38 @@ class FieldRenderer
         }
 
         $html = View::make( $view, [
-            'field' => $field,
-            'value' => $value,
-            'error' => $error,
+            'field'     => $field,
+            'value'     => $value,
+            'error'     => $error,
+            'subErrors' => $subErrors,
         ] )->render();
 
         return applyFilters( 'ap.forms.fieldRender', $html, $field );
+    }
+
+    /**
+     * Gets the first error for each of a composite field's sub-inputs.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     * @param  MessageBag|ViewErrorBag  $errors  The validation errors.
+     * @param  string  $prefix  The key the field's value is nested under.
+     *
+     * @return array<string, string> The errors by sub-input key; empty for other fields.
+     */
+    public static function subInputErrors( FormField $field, MessageBag|ViewErrorBag $errors, string $prefix = 'formData' ): array
+    {
+        $subErrors = [];
+
+        foreach ( array_keys( $field->getEnabledSubInputs() ) as $key ) {
+            $error = $errors->first( "{$prefix}.{$field->name}.{$key}" );
+
+            if ( '' !== $error ) {
+                $subErrors[ $key ] = $error;
+            }
+        }
+
+        return $subErrors;
     }
 }

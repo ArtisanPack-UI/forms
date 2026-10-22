@@ -29,4 +29,6 @@ export interface FieldComponentProps {
 	otherValue?: string;
 	/** Callback to update the "Other" choice's text (since 1.6.0). */
 	onOtherChange?: ( text: string ) => void;
+	/** A composite field's first error per sub-input, keyed by sub-input (since 1.6.0). */
+	subErrors?: Record<string, string>;
 }

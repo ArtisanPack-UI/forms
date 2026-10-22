@@ -22,6 +22,7 @@ import type {
 	FormField,
 	LabelPlacement,
 	FormStep,
+	PredefinedChoiceList,
 	StoreFieldRequest,
 	StoreStepRequest,
 	UpdateFieldRequest,
@@ -81,6 +82,7 @@ const selectedFieldId = ref<number | null>( null );
 const activeStepId = ref<number | null>( null );
 const activePanel = ref<'palette' | 'settings' | 'editor'>( 'palette' );
 const showPreview = ref( false );
+const predefinedChoices = ref<PredefinedChoiceList[]>( [] );
 
 // Drag state
 const dragState = ref<DragState | null>( null );
@@ -165,6 +167,23 @@ async function loadForm(): Promise<void> {
 watch( () => props.formSlug, () => {
 	loadForm();
 }, { immediate: true } );
+
+// Load the lists the options editor's bulk editor can insert, once per form.
+watch( persistedSlug, async ( slug ) => {
+	if ( !slug ) {
+		return;
+	}
+
+	try {
+		const response = await get<{ data: PredefinedChoiceList[] }>( `/${encodeURIComponent( slug )}/fields/predefined-choices` );
+
+		if ( slug === persistedSlug.value ) {
+			predefinedChoices.value = response.data;
+		}
+	} catch {
+		// The bulk editor still works without the predefined lists.
+	}
+} );
 
 // Update form settings
 function updateFormSetting( updates: UpdateFormRequest ): void {
@@ -1127,6 +1146,7 @@ function getPreviewInputType( fieldType: string ): string {
 				<FieldEditor
 					:field="selectedField"
 					:all-fields="fields"
+					:predefined-choices="predefinedChoices"
 					@change="updateField"
 					@delete="deleteField"
 					@duplicate="duplicateField"

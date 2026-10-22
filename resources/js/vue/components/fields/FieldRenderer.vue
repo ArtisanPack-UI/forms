@@ -2,7 +2,8 @@
   Field renderer component.
 
   Maps a form field definition to the appropriate Vue component
-  based on its field type.
+  based on its field type. A type with sub-inputs that has no component of
+  its own renders as a composite field (since 1.6.0).
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -17,6 +18,8 @@ import ChoiceField from './ChoiceField.vue';
 import AdvancedField from './AdvancedField.vue';
 import LayoutField from './LayoutField.vue';
 import RatingField from './RatingField.vue';
+import CompositeField from './CompositeField.vue';
+import { isCompositeField } from '../../../shared/composite';
 import { WIDTH_CLASSES } from '../../../shared/fieldSettings';
 
 const props = defineProps<{
@@ -34,6 +37,8 @@ const props = defineProps<{
 	layout?: FormLayout;
 	/** Text typed into the field's "Other" choice (since 1.6.0). */
 	otherValue?: string;
+	/** A composite field's first error per sub-input, keyed by sub-input (since 1.6.0). */
+	subErrors?: Record<string, string>;
 }>();
 
 const emit = defineEmits<{
@@ -97,6 +102,10 @@ const componentGroup = computed( () => {
 		return 'layout';
 	}
 
+	if ( isCompositeField( props.field ) ) {
+		return 'composite';
+	}
+
 	return null;
 } );
 </script>
@@ -141,6 +150,15 @@ const componentGroup = computed( () => {
 		<LayoutField
 			v-else-if="componentGroup === 'layout'"
 			:field="field"
+		/>
+		<CompositeField
+			v-else-if="componentGroup === 'composite'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:sub-errors="subErrors"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
 		/>
 	</div>
 </template>

@@ -172,7 +172,7 @@ describe( 'Vue read-only fields (issue #99)', function () use ( $resource, $betw
         $choice = $resource( 'vue/components/fields/ChoiceField.vue' );
 
         expect( $choice )->toContain( 'const readOnly = computed( () => isReadOnlyField( props.field ) );' )
-            ->toContain( ':options="radioOptions"' )
+            ->toContain( 'type="radio"' )
             ->toContain( ':disabled="readOnly"' )
             ->and( substr_count( $choice, ":aria-readonly=\"readOnly ? 'true' : undefined\"" ) )->toBe( 6 )
             ->and( $resource( 'vue/components/fields/RatingField.vue' ) )
@@ -186,7 +186,7 @@ describe( 'Vue read-only fields (issue #99)', function () use ( $resource, $betw
         expect( $radio )
             ->toContain( ":role=\"readOnly ? 'group' : undefined\"" )
             ->toContain( ':disabled="readOnly"' )
-            ->toContain( "!readOnly && emit( 'update:modelValue', \$event )" );
+            ->toContain( "!readOnly && emit( 'update:modelValue', option.value )" );
     } );
 
     it( 'seeds a read-only field from the value the server stores', function () use ( $resource ): void {
@@ -210,7 +210,9 @@ describe( 'Vue builder review fixes', function () use ( $resource, $between ): v
     } );
 
     it( 'keeps pending settings when options are edited', function (): void {
-        expect( substr_count( $this->editor, 'field_config: { ...( currentField.value.field_config ?? {} ), options: newOptions }' ) )->toBe( 3 )
+        // Every options edit (add, update, remove, defaults, bulk) goes through OptionsEditor's change event.
+        expect( substr_count( $this->editor, 'field_config: { ...( currentField.value.field_config ?? {} ), options: newOptions }' ) )->toBe( 1 )
+            ->and( $this->editor )->toContain( '@change="setOptions"' )
             ->and( $this->editor )->not->toContain( '...( props.field.field_config ?? {} )' );
     } );
 
@@ -234,11 +236,11 @@ describe( 'Vue builder review fixes', function () use ( $resource, $between ): v
     it( 'hides the placeholder for checkbox, toggle, radio and rating fields', function (): void {
         expect( $this->editor )
             ->toContain( "const NO_PLACEHOLDER_TYPES = new Set<FieldType>( ['checkbox', 'toggle', 'radio', 'rating'] );" )
-            ->toContain( 'v-if="!isLayoutField && !NO_PLACEHOLDER_TYPES.has( field.type )"' );
+            ->toContain( 'v-if="!isLayoutField && !isComposite && !NO_PLACEHOLDER_TYPES.has( field.type )"' );
     } );
 
-    it( 'labels option inputs for screen readers', function (): void {
-        expect( $this->editor )
+    it( 'labels option inputs for screen readers', function () use ( $resource ): void {
+        expect( $resource( 'vue/components/admin/OptionsEditor.vue' ) )
             ->toContain( ":aria-label=\"t( 'Option :number label', { number: index + 1 } )\"" )
             ->toContain( ":aria-label=\"t( 'Option :number value', { number: index + 1 } )\"" );
     } );

@@ -131,7 +131,7 @@ abstract class AbstractFieldType implements FieldType
         }
 
         $definition = array_merge(
-            ['sub_inputs' => [], 'settings' => []],
+            $this->baseDefinition(),
             $this->defineType(),
             $this->definitionOverrides,
         );
@@ -278,6 +278,18 @@ abstract class AbstractFieldType implements FieldType
     public function view(): string
     {
         return 'forms::components.fields.' . $this->key;
+    }
+
+    /**
+     * Gets the definition entries a type starts from, before defineType().
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> The entries.
+     */
+    protected function baseDefinition(): array
+    {
+        return ['sub_inputs' => [], 'settings' => []];
     }
 
     /**
@@ -737,6 +749,105 @@ abstract class AbstractFieldType implements FieldType
                 'label'       => __( '"Other" Label' ),
                 'placeholder' => __( 'Other' ),
             ],
+        ];
+    }
+
+    /**
+     * Gets the setting that loads a choice field's options from a registered source.
+     *
+     * Its options are filled in when the schema is read (see
+     * FieldSettings::schema()), since sources are registered through the
+     * `ap.forms.choiceSources` filter; the setting is left out when none is.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> The setting.
+     */
+    protected function choicesSourceSetting(): array
+    {
+        return [
+            'key'          => 'choices_source',
+            'input'        => 'select',
+            'options_from' => 'choice_sources',
+            'label'        => __( 'Load Choices From' ),
+            'hint'         => __( 'Choices from a source are loaded when the form is shown, replacing the options list.' ),
+            'options'      => [
+                ['value' => '', 'label' => __( 'Options list' )],
+            ],
+        ];
+    }
+
+    /**
+     * Gets the setting that arranges a radio or checkbox group's choices.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> The setting.
+     */
+    protected function choiceLayoutSetting(): array
+    {
+        return [
+            'key'     => 'layout',
+            'input'   => 'select',
+            'default' => 'stacked',
+            'label'   => __( 'Choice Layout' ),
+            'options' => [
+                ['value' => 'stacked', 'label' => __( 'Stacked' )],
+                ['value' => 'inline', 'label' => __( 'Inline' )],
+                ['value' => '2-col', 'label' => __( 'Two columns' )],
+                ['value' => '3-col', 'label' => __( 'Three columns' )],
+            ],
+        ];
+    }
+
+    /**
+     * Gets the setting that shows a field's choices in a random order.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> The setting.
+     */
+    protected function randomizeSetting(): array
+    {
+        return [
+            'key'   => 'randomize',
+            'input' => 'toggle',
+            'label' => __( 'Randomize choice order' ),
+            'hint'  => __( 'Each visitor sees the choices in a different order. An "Other" choice stays last.' ),
+        ];
+    }
+
+    /**
+     * Gets the setting that adds a "Select All" choice to a checkbox group.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> The setting.
+     */
+    protected function selectAllSetting(): array
+    {
+        return [
+            'key'   => 'select_all',
+            'input' => 'toggle',
+            'label' => __( 'Show "Select All"' ),
+            'hint'  => __( 'Adds a checkbox that selects or clears every choice.' ),
+        ];
+    }
+
+    /**
+     * Gets the setting that renders a select as a searchable combobox.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> The setting.
+     */
+    protected function searchableSetting(): array
+    {
+        return [
+            'key'   => 'searchable',
+            'input' => 'toggle',
+            'label' => __( 'Enable search' ),
+            'hint'  => __( 'Lets visitors type to filter long option lists.' ),
         ];
     }
 

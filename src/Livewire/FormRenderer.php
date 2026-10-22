@@ -90,6 +90,14 @@ class FormRenderer extends Component
     public array $otherValues = [];
 
     /**
+     * The seed randomized choices are shuffled with, so re-renders keep their order.
+     *
+     * @since 1.6.0
+     */
+    #[Locked]
+    public int $choiceSeed = 0;
+
+    /**
      * Uploaded files keyed by field name.
      *
      * @var array<string, mixed>
@@ -158,6 +166,7 @@ class FormRenderer extends Component
     {
         $this->form            = $form->load( ['fields', 'steps.fields'] );
         $this->formLoadedAt    = time();
+        $this->choiceSeed      = random_int( 1, 2147483647 );
         $this->initialFormData = $this->buildInitialFormData( PopulationContext::fromPageRequest( request() ), $prefill );
         $this->initializeFormData();
         $this->evaluateConditionalLogic();
@@ -171,7 +180,8 @@ class FormRenderer extends Component
      * Get fields for the current view (current step or all fields).
      *
      * Administrative fields are left out, since admins fill them in on the
-     * submission.
+     * submission. Each field gets the visitor's choice seed, so randomized
+     * choices keep their order across re-renders.
      *
      * @return Collection<int, FormField>
      */
@@ -190,7 +200,7 @@ class FormRenderer extends Component
 
         return $fields
             ->reject( fn ( FormField $field ): bool => $field->isAdministrative() )
-            ->each( fn ( FormField $field ): FormField => $field->withSettingsForm( $this->form ) )
+            ->each( fn ( FormField $field ): FormField => $field->withSettingsForm( $this->form )->withChoiceSeed( $this->choiceSeed ) )
             ->values();
     }
 

@@ -19,6 +19,7 @@ import type {
 	FormStep,
 	SubmitFormResponse,
 } from '../../types/artisanpack-forms';
+import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composite';
 import { getHiddenFields } from '../../shared/conditionalLogic';
 import { getInitialFieldValue, resolveOtherChoices } from '../../shared/fieldSettings';
 import { validateFields } from '../../shared/validation';
@@ -265,14 +266,17 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		return Math.round( ( ( currentStep + 1 ) / totalSteps ) * 100 );
 	}, [currentStep, totalSteps] );
 
-	const setValue = useCallback( ( name: string, value: unknown ) => {
-		setValues( ( prev ) => ( { ...prev, [name]: value } ) );
-		setErrors( ( prev ) => {
-			const next = { ...prev };
-			delete next[name];
+	// The latest values, so setValue can compare a composite field's parts.
+	const valuesRef = useRef( values );
+	valuesRef.current = values;
 
-			return next;
-		} );
+	const setValue = useCallback( ( name: string, value: unknown ) => {
+		const previous = valuesRef.current[name];
+
+		valuesRef.current = { ...valuesRef.current, [name]: value };
+		setValues( ( prev ) => ( { ...prev, [name]: value } ) );
+		// A composite field's errors are keyed by sub-input; only the changed parts are cleared.
+		setErrors( ( prev ) => clearChangedFieldErrors( prev, name, previous, value ) );
 	}, [] );
 
 	const setFile = useCallback( ( name: string, file: File | File[] ) => {
@@ -394,7 +398,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 			// If multi-step, navigate to the first step with errors
 			if ( form.is_multi_step && sortedSteps.length > 0 ) {
-				const errorFieldNames = new Set( Object.keys( validationErrors ) );
+				const errorFieldNames = new Set( Object.keys( validationErrors ).map( getErrorFieldName ) );
 
 				for ( let i = 0; i < sortedSteps.length; i++ ) {
 					const stepFields = allFields.filter(
@@ -427,6 +431,11 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				if ( Array.isArray( value ) ) {
 					for ( const item of value ) {
 						formDataObj.append( `data[${key}][]`, String( item ) );
+					}
+				} else if ( value !== null && typeof value === 'object' ) {
+					// A composite field's value is a map of sub-inputs.
+					for ( const [subKey, part] of Object.entries( value as Record<string, unknown> ) ) {
+						formDataObj.append( `data[${key}][${subKey}]`, String( part ?? '' ) );
 					}
 				} else if ( value !== null && value !== undefined ) {
 					formDataObj.append( `data[${key}]`, String( value ) );
@@ -480,7 +489,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 				// Navigate to the first step with server errors (multi-step forms)
 				if ( form.is_multi_step && sortedSteps.length > 0 ) {
-					const errorFieldNames = new Set( Object.keys( serverErrors ) );
+					const errorFieldNames = new Set( Object.keys( serverErrors ).map( getErrorFieldName ) );
 
 					for ( let i = 0; i < sortedSteps.length; i++ ) {
 						const stepFields = allFields.filter(

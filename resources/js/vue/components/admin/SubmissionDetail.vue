@@ -23,6 +23,7 @@ import type {
 } from '../../../types/artisanpack-forms';
 import { ApiValidationError, useApi } from '../../composables/useApi';
 import type { UseApiOptions } from '../../composables/useApi';
+import { getSubInputErrors } from '../../../shared/composite';
 import { getAdministrativeFormState, resolveOtherChoices } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 import { validateFields } from '../../../shared/validation';
@@ -574,6 +575,7 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 						:error="adminErrors[field.name]?.[0]"
 						:display-config="ADMIN_FIELD_DISPLAY"
 						:other-value="adminOtherValues[field.name] ?? ''"
+						:sub-errors="getSubInputErrors( adminErrors, field.name )"
 						@update:model-value="setAdminValue( field.name, $event )"
 						@update:other-value="setAdminOtherValue( field.name, $event )"
 					/>

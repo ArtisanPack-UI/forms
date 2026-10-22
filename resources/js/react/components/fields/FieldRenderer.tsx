@@ -11,6 +11,7 @@
  */
 
 import type { BuiltInFieldType, DisplayConfig, FormField, FormLayout } from '../../../types/artisanpack-forms';
+import { isCompositeField } from '../../../shared/composite';
 import { getWidthClass, WIDTH_CLASSES } from '../../../shared/fieldSettings';
 import { DateField, FileField, RatingField } from './AdvancedField';
 import {
@@ -21,6 +22,7 @@ import {
 	SelectMultipleField,
 	ToggleField,
 } from './ChoiceField';
+import { CompositeField } from './CompositeField';
 import { DividerField, HeadingField, HtmlField, ParagraphField } from './LayoutField';
 import {
 	EmailField,
@@ -53,6 +55,11 @@ export interface FieldRendererProps {
 	otherValue?: string;
 	/** Callback to update the "Other" choice's text (since 1.6.0). */
 	onOtherChange?: ( text: string ) => void;
+	/**
+	 * A composite field's first error per sub-input, keyed by sub-input
+	 * (since 1.6.0; see `getSubInputErrors()`).
+	 */
+	subErrors?: Record<string, string>;
 	/**
 	 * Host-supplied field components that overlay the built-ins. Takes
 	 * precedence over the module-level registry (see `registerFieldComponent`)
@@ -138,18 +145,21 @@ export function FieldRenderer( {
 	displayConfig,
 	otherValue,
 	onOtherChange,
+	subErrors,
 	fieldComponents,
 	layout = 'stacked',
 }: FieldRendererProps ) {
 	// Resolution order: host prop overlay, then the module-level registry,
-	// then the built-in components. This keeps built-ins working while letting
-	// a host add or override a type without patching the vendored source.
+	// then the built-in components, then the generic composite component for
+	// a type with sub-inputs. This keeps built-ins working while letting a
+	// host add or override a type without patching the vendored source.
 	// `ownEntry` guards the plain-object maps so an arbitrary type such as
 	// `constructor` cannot resolve an inherited `Object.prototype` member.
 	const Component =
 		ownEntry( fieldComponents, field.type ) ??
 		getRegisteredFieldComponent( field.type ) ??
-		ownEntry( FIELD_COMPONENTS as Record<string, FieldComponent>, field.type );
+		ownEntry( FIELD_COMPONENTS as Record<string, FieldComponent>, field.type ) ??
+		( isCompositeField( field ) ? CompositeField : undefined );
 
 	if ( !Component ) {
 		return null;
@@ -170,6 +180,7 @@ export function FieldRenderer( {
 				displayConfig={displayConfig}
 				otherValue={otherValue}
 				onOtherChange={onOtherChange}
+				subErrors={subErrors}
 			/>
 		</div>
 	);

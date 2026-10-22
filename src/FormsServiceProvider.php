@@ -69,7 +69,9 @@ class FormsServiceProvider extends ServiceProvider
      *
      * Merges the package's local forms configuration into a temporary key.
      * The `boot` method will then handle merging this into the main `artisanpack` config.
-     * Also registers all service classes as singletons in the container.
+     * Also registers all service classes as singletons in the container, and
+     * the choice sources registry once per request or queued job, since it
+     * keeps resolved choices for that long.
      *
      * @since 1.0.0
      */
@@ -115,6 +117,8 @@ class FormsServiceProvider extends ServiceProvider
         $this->app->singleton( IntegrationService::class, function ( $app ) {
             return new IntegrationService;
         } );
+
+        $this->app->scoped( Support\ChoiceSources::class );
     }
 
     /**

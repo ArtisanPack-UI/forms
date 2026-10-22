@@ -18,6 +18,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
 
+use ArtisanPackUI\Forms\FieldTypes\CompositeFieldType;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use Illuminate\Database\Eloquent\Collection;
@@ -166,14 +167,21 @@ class ConditionalLogicService
             return true; // No field reference, condition is met
         }
 
-        // Resolve field name (could be UUID or field name)
-        $fieldName  = $this->resolveFieldName( $fieldRef );
-        $fieldValue = $formData[ $fieldName ] ?? null;
+        // Resolve field name (could be UUID or field name), and a composite field's sub-input
+        [$fieldName, $subKey] = $this->resolveFieldReference( $fieldRef );
+        $fieldValue           = $formData[ $fieldName ] ?? null;
 
         // A rule on the "Other" choice matches any text typed into it
         $field = $this->fieldsByName[ $fieldName ] ?? null;
 
-        if ( FormField::OTHER_CHOICE_VALUE === $ruleValue && null !== $field && $field->allowsOtherChoice() ) {
+        if ( null !== $subKey ) {
+            $fieldValue = is_array( $fieldValue ) ? ( $fieldValue[ $subKey ] ?? null ) : null;
+        } elseif ( is_array( $fieldValue ) && [] !== $fieldValue && ! array_is_list( $fieldValue ) ) {
+            // A rule on a whole composite field compares its formatted value, never the array
+            $fieldValue = $this->formatCompositeValue( $field, $fieldValue );
+        }
+
+        if ( null === $subKey && FormField::OTHER_CHOICE_VALUE === $ruleValue && null !== $field && $field->allowsOtherChoice() ) {
             $fieldValue = $this->markOtherChoice( $field, $fieldValue );
         }
 
@@ -345,7 +353,8 @@ class ConditionalLogicService
 
         $logic['rules'] = array_filter(
             $logic['rules'],
-            fn ( $rule ) => in_array( $rule['field'] ?? '', $validFieldRefs, true ),
+            fn ( $rule ) => in_array( $rule['field'] ?? '', $validFieldRefs, true )
+                || in_array( explode( '.', (string) ( $rule['field'] ?? '' ), 2 )[0], $validFieldRefs, true ),
         );
 
         // Re-index array
@@ -407,9 +416,39 @@ class ConditionalLogicService
     }
 
     /**
+     * Formats a composite field's value for a rule on the whole field.
+     *
+     * Uses the field's handler (see CompositeFieldType::format()) when the
+     * field is known, otherwise joins the filled parts with `, `.
+     *
+     * @since 1.6.0
+     *
+     * @param FormField|null           $field The field, when known.
+     * @param array<int|string, mixed> $parts The value's parts.
+     *
+     * @return string The formatted value.
+     */
+    protected function formatCompositeValue( ?FormField $field, array $parts ): string
+    {
+        $handler = $field?->fieldType();
+
+        if ( $handler instanceof CompositeFieldType ) {
+            return $handler->format( $field, $parts );
+        }
+
+        $filled = array_filter(
+            array_map( fn ( mixed $part ): string => is_scalar( $part ) ? trim( (string) $part ) : '', $parts ),
+            fn ( string $part ): bool => '' !== $part,
+        );
+
+        return implode( ', ', $filled );
+    }
+
+    /**
      * Resolves a field reference to a field name.
      *
-     * The reference could be a UUID or a field name.
+     * The reference could be a UUID or a field name. A reference to a
+     * composite field's sub-input (`{field}.{key}`) resolves to the field.
      *
      * @since 1.0.0
      *
@@ -419,13 +458,34 @@ class ConditionalLogicService
      */
     protected function resolveFieldName( string $fieldRef ): string
     {
-        // Check if it's a UUID that we can resolve
-        if ( isset( $this->uuidToFieldName[ $fieldRef ] ) ) {
-            return $this->uuidToFieldName[ $fieldRef ];
+        return $this->resolveFieldReference( $fieldRef )[0];
+    }
+
+    /**
+     * Resolves a field reference to a field name and, for a composite field, a sub-input key.
+     *
+     * The reference is a UUID or a field name, optionally followed by
+     * `.{key}` to test one of a composite field's sub-inputs. A reference
+     * that names a known field as a whole is never split.
+     *
+     * @since 1.6.0
+     *
+     * @param string $fieldRef The field reference.
+     *
+     * @return array{0: string, 1: string|null} The field name and the sub-input key, or null for the whole field.
+     */
+    protected function resolveFieldReference( string $fieldRef ): array
+    {
+        if ( isset( $this->uuidToFieldName[ $fieldRef ] ) || isset( $this->fieldsByName[ $fieldRef ] ) ) {
+            return [$this->uuidToFieldName[ $fieldRef ] ?? $fieldRef, null];
         }
 
-        // Assume it's already a field name
-        return $fieldRef;
+        [$base, $subKey] = array_pad( explode( '.', $fieldRef, 2 ), 2, null );
+
+        // Check if it's a UUID that we can resolve; otherwise assume it's already a field name
+        $fieldName = $this->uuidToFieldName[ $base ] ?? $base;
+
+        return [$fieldName, null === $subKey || '' === $subKey ? null : $subKey];
     }
 
     /**

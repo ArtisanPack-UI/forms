@@ -4,7 +4,10 @@
  * Renders select, radio, checkbox, toggle, checkbox_group, and select_multiple
  * fields using @artisanpack-ui/react components. A read-only choice is marked
  * `aria-readonly` and its native inputs are disabled. Radio and checkbox
- * groups can offer an "Other" choice that reveals a text input.
+ * groups can offer an "Other" choice that reveals a text input, arrange their
+ * choices in columns or inline and show them in a random order; a checkbox
+ * group can offer "Select All". A searchable select or multi-select renders
+ * a combobox (since 1.6.0).
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -12,7 +15,17 @@
  * @since      1.1.0
  */
 
+import { useEffect, useRef } from 'react';
+
 import { Checkbox, Select, Toggle } from '@artisanpack-ui/react/form';
+
+import {
+	getChoiceLayoutClasses,
+	getFieldOptions,
+	getRenderOptions,
+	isSearchableField,
+	offersSelectAll,
+} from '../../../shared/choices';
 
 import {
 	allowsOtherChoice,
@@ -30,18 +43,9 @@ import {
 } from '../../../shared/fieldSettings';
 import type { FieldLayout as FieldLayoutSettings } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
-import type { FieldOption, OptionsFieldConfig } from '../../../types/artisanpack-forms';
+import { Combobox } from './Combobox';
 import { FieldLayout } from './FieldLayout';
 import type { FieldComponentProps } from './types';
-
-/**
- * Maps form field options to the format expected by Select/Radio components.
- */
-function mapOptions( field: FieldComponentProps['field'] ): FieldOption[] {
-	const config = field.field_config as OptionsFieldConfig | null;
-
-	return field.options ?? config?.options ?? [];
-}
 
 /**
  * Normalizes a value to a boolean for checkbox/toggle fields.
@@ -121,10 +125,66 @@ function OtherChoiceInput( { field, value, error, readOnly, onChange }: OtherCho
 }
 
 /**
- * Renders a select dropdown field.
+ * Renders a searchable select or multi-select as a combobox, with its own
+ * label, hint and error unless a custom layout places them.
+ *
+ * @since 1.6.0
  */
-export function SelectField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
-	const options = mapOptions( field );
+function SearchableSelect( { field, value, error, onChange, displayConfig, multiple }: FieldComponentProps & { multiple: boolean } ) {
+	const layout = getFieldLayout( field, displayConfig );
+	const inputId = layout.inputId;
+	const labelId = field.label && !layout.custom ? `${field.name}-label` : undefined;
+	const hintId = !layout.custom && field.help_text && !error ? `${field.name}-hint` : undefined;
+	const errorId = error ? `${field.name}-error` : undefined;
+	const describedBy = layout.custom
+		? [getLayoutDescribedBy( field, layout ), errorId].filter( Boolean ).join( ' ' ) || undefined
+		: [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
+
+	return (
+		<FieldLayout field={field} layout={layout}>
+			<div className="fieldset">
+				{labelId && (
+					<label
+						id={labelId}
+						htmlFor={inputId}
+						className={`fieldset-legend ${displayConfig.label_position === 'hidden' ? 'sr-only' : ''}`}
+					>
+						{field.label}
+						{field.is_required && <span className="text-error ml-1">*</span>}
+					</label>
+				)}
+				<Combobox
+					id={inputId}
+					options={getFieldOptions( field )}
+					value={value}
+					multiple={multiple}
+					onChange={onChange}
+					placeholder={field.placeholder ?? undefined}
+					required={field.is_required}
+					readOnly={isReadOnlyField( field )}
+					invalid={Boolean( error )}
+					describedBy={describedBy}
+					listLabel={field.label ?? field.name}
+					className={field.css_classes ?? undefined}
+				/>
+				{hintId && <p id={hintId} className="fieldset-label">{field.help_text}</p>}
+				{error && <p id={errorId} className="fieldset-label text-error" role="alert">{error}</p>}
+			</div>
+		</FieldLayout>
+	);
+}
+
+/**
+ * Renders a select dropdown field, or a combobox when search is on.
+ */
+export function SelectField( props: FieldComponentProps ) {
+	const { field, value, error, onChange, displayConfig } = props;
+
+	if ( isSearchableField( field ) ) {
+		return <SearchableSelect {...props} multiple={false} />;
+	}
+
+	const options = getFieldOptions( field );
 	const readOnly = isReadOnlyField( field );
 	const layout = getFieldLayout( field, displayConfig );
 
@@ -157,7 +217,7 @@ export function SelectField( { field, value, error, onChange, displayConfig }: F
  * An "Other" choice comes last and reveals a text input.
  */
 export function RadioField( { field, value, error, onChange, displayConfig, otherValue = '', onOtherChange }: FieldComponentProps ) {
-	const options = mapOptions( field );
+	const options = getRenderOptions( field );
 	const readOnly = isReadOnlyField( field );
 	const layout = getFieldLayout( field, displayConfig );
 	const { labelId, errorId, hintId, describedBy } = getGroupIds( field, layout, error );
@@ -181,7 +241,7 @@ export function RadioField( { field, value, error, onChange, displayConfig, othe
 				aria-describedby={describedBy}
 				aria-required={field.is_required ? 'true' : undefined}
 				aria-invalid={error ? true : undefined}
-				className={`flex flex-col gap-2 ${field.css_classes ?? ''}`}
+				className={`${getChoiceLayoutClasses( field )} ${field.css_classes ?? ''}`}
 			>
 				{choices.map( ( option, index ) => {
 					const optionId = `field-${field.name}-${option.value === OTHER_CHOICE_VALUE ? 'other' : index}`;
@@ -255,11 +315,23 @@ export function CheckboxField( { field, value, error, onChange, displayConfig }:
 /**
  * Renders a checkbox group (multi-select checkboxes) field.
  *
- * An "Other" choice comes last and reveals a text input.
+ * An "Other" choice comes last and reveals a text input. A "Select All"
+ * checkbox (since 1.6.0) is checked when every choice is and mixed when some
+ * are; it leaves the "Other" choice alone.
  */
 export function CheckboxGroupField( { field, value, error, onChange, displayConfig, otherValue = '', onOtherChange }: FieldComponentProps ) {
-	const options = mapOptions( field );
+	const options = getRenderOptions( field );
 	const selectedValues = Array.isArray( value ) ? value.map( String ) : [];
+	const optionValues = options.map( ( option ) => option.value );
+	const selectedCount = optionValues.filter( ( optionValue ) => selectedValues.includes( optionValue ) ).length;
+	const showSelectAll = offersSelectAll( field ) && optionValues.length > 1;
+	const selectAllRef = useRef<HTMLInputElement>( null );
+
+	useEffect( () => {
+		if ( selectAllRef.current ) {
+			selectAllRef.current.indeterminate = selectedCount > 0 && selectedCount < optionValues.length;
+		}
+	}, [selectedCount, optionValues.length] );
 	const readOnly = isReadOnlyField( field );
 	const layout = getFieldLayout( field, displayConfig );
 	const { labelId, errorId, hintId, describedBy } = getGroupIds( field, layout, error );
@@ -273,6 +345,12 @@ export function CheckboxGroupField( { field, value, error, onChange, displayConf
 			: selectedValues.filter( ( v ) => v !== optionValue );
 
 		onChange( updated );
+	};
+
+	const handleSelectAll = ( checked: boolean ) => {
+		const others = selectedValues.filter( ( v ) => !optionValues.includes( v ) );
+
+		onChange( checked ? [...optionValues, ...others] : others );
 	};
 
 	return (
@@ -289,11 +367,26 @@ export function CheckboxGroupField( { field, value, error, onChange, displayConf
 						{field.is_required && <span className="text-error ml-1">*</span>}
 					</legend>
 				)}
-				<div className={`flex flex-col gap-2 ${field.css_classes ?? ''}`}>
-					{choices.map( ( option ) => (
+				{showSelectAll && (
+					<label htmlFor={`field-${field.name}-select-all`} className="mb-2 flex cursor-pointer items-center gap-2 font-medium">
+						<input
+							ref={selectAllRef}
+							id={`field-${field.name}-select-all`}
+							type="checkbox"
+							className="checkbox checkbox-primary"
+							checked={selectedCount === optionValues.length}
+							disabled={readOnly}
+							aria-controls={optionValues.map( ( _, index ) => `field-${field.name}-${index}` ).join( ' ' )}
+							onChange={( e ) => handleSelectAll( e.target.checked )}
+						/>
+						<span>{t( 'Select All' )}</span>
+					</label>
+				)}
+				<div className={`${getChoiceLayoutClasses( field )} ${field.css_classes ?? ''}`}>
+					{choices.map( ( option, index ) => (
 						<Checkbox
 							key={option.value}
-							id={option.value === OTHER_CHOICE_VALUE ? `field-${field.name}-other` : undefined}
+							id={option.value === OTHER_CHOICE_VALUE ? `field-${field.name}-other` : `field-${field.name}-${index}`}
 							label={option.label}
 							name={`${field.name}[]`}
 							checked={selectedValues.includes( option.value )}
@@ -319,10 +412,16 @@ export function CheckboxGroupField( { field, value, error, onChange, displayConf
 }
 
 /**
- * Renders a multi-select dropdown field.
+ * Renders a multi-select dropdown field, or a combobox when search is on.
  */
-export function SelectMultipleField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
-	const options = mapOptions( field );
+export function SelectMultipleField( props: FieldComponentProps ) {
+	const { field, value, error, onChange, displayConfig } = props;
+
+	if ( isSearchableField( field ) ) {
+		return <SearchableSelect {...props} multiple />;
+	}
+
+	const options = getFieldOptions( field );
 	const selectedValues = Array.isArray( value ) ? value.map( String ) : [];
 	const readOnly = isReadOnlyField( field );
 	const layout = getFieldLayout( field, displayConfig );

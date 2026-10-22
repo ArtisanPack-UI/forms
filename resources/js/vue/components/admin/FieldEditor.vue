@@ -21,6 +21,8 @@ import type {
 	FieldType,
 	FieldWidth,
 	FormField,
+	PredefinedChoiceList,
+	SubInputDefinition,
 	UpdateFieldRequest,
 } from '../../../types/artisanpack-forms';
 
@@ -29,12 +31,16 @@ import {
 	getLayoutContent,
 	getSettingsForTab,
 } from '../../../shared/fieldSettings';
+import { applySubInputUpdate, isCompositeField } from '../../../shared/composite';
+import type { SubInputSetting } from '../../../shared/composite';
 import { MERGE_TAGS } from '../../../shared/dynamicPopulation';
 import { getFieldTypeLabel } from '../../../shared/fieldTypeLabels';
 import { t } from '../../../shared/i18n';
 
 import ConditionalLogicEditor from './ConditionalLogicEditor.vue';
 import FieldSettingControl from './FieldSettingControl.vue';
+import OptionsEditor from './OptionsEditor.vue';
+import SubInputsEditor from './SubInputsEditor.vue';
 
 /** Field types that support an options list. */
 const OPTION_FIELD_TYPES = new Set<FieldType>( [
@@ -70,6 +76,11 @@ const props = defineProps<{
 	allFields: FormField[];
 	/** Optional CSS class name. */
 	class?: string;
+	/**
+	 * The lists the options editor's bulk editor can insert (since 1.6.0;
+	 * from the `fields/predefined-choices` endpoint).
+	 */
+	predefinedChoices?: PredefinedChoiceList[];
 }>();
 
 const emit = defineEmits<{
@@ -83,6 +94,7 @@ const activeTab = ref<string>( 'general' );
 
 const isLayoutField = computed( () => LAYOUT_FIELD_TYPES.has( props.field.type ) );
 const hasOptions    = computed( () => OPTION_FIELD_TYPES.has( props.field.type ) );
+const isComposite   = computed( () => isCompositeField( props.field ) );
 
 // ---------------------------------------------------------------------------
 // Debounced field updates (500ms) -- accumulate changes and flush on timer
@@ -160,36 +172,29 @@ const options = computed( (): FieldOption[] => {
 		?? [];
 } );
 
-function handleAddOption(): void {
-	// Compute unique suffix to avoid collisions after deletions
-	let maxSuffix = 0;
-
-	for ( const opt of options.value ) {
-		const match = opt.value.match( /^option_(\d+)$/ );
-
-		if ( match ) {
-			maxSuffix = Math.max( maxSuffix, Number( match[1] ) );
-		}
-	}
-
-	const nextSuffix = maxSuffix + 1;
-	const newOptions = [
-		...options.value,
-		{ label: t( 'Option :number', { number: nextSuffix } ), value: `option_${nextSuffix}` },
-	];
+function setOptions( newOptions: FieldOption[] ): void {
 	updateField( { field_config: { ...( currentField.value.field_config ?? {} ), options: newOptions } } );
 }
 
-function handleUpdateOption( index: number, key: 'label' | 'value', value: string ): void {
-	const newOptions = options.value.map( ( opt, i ) =>
-		i === index ? { ...opt, [key]: value } : opt,
-	);
-	updateField( { field_config: { ...( currentField.value.field_config ?? {} ), options: newOptions } } );
-}
+// ---------------------------------------------------------------------------
+// Sub-inputs of a composite field: shown changed at once, rebuilt by the
+// server on save.
+// ---------------------------------------------------------------------------
 
-function handleRemoveOption( index: number ): void {
-	const newOptions = options.value.filter( ( _, i ) => i !== index );
-	updateField( { field_config: { ...( currentField.value.field_config ?? {} ), options: newOptions } } );
+const localSubInputs = ref<SubInputDefinition[] | null>( null );
+
+watch( () => [props.field.id, props.field.sub_inputs], () => {
+	localSubInputs.value = null;
+} );
+
+const subInputsField = computed( (): FormField => ( {
+	...currentField.value,
+	sub_inputs: localSubInputs.value ?? props.field.sub_inputs,
+} ) );
+
+function handleSubInputChange( data: UpdateFieldRequest, key: string, setting: SubInputSetting, value: unknown ): void {
+	localSubInputs.value = applySubInputUpdate( subInputsField.value, key, setting, value ).sub_inputs ?? null;
+	updateField( data );
 }
 
 // ---------------------------------------------------------------------------
@@ -296,12 +301,20 @@ function confirmDelete(): void {
 						@update:model-value="updateField( { name: ($event as string) } )"
 					/>
 
-					<!-- Placeholder (non-layout only) -->
+					<!-- Placeholder (non-layout only; a composite field's inputs have their own) -->
 					<Input
-						v-if="!isLayoutField && !NO_PLACEHOLDER_TYPES.has( field.type )"
+						v-if="!isLayoutField && !isComposite && !NO_PLACEHOLDER_TYPES.has( field.type )"
 						:label="t( 'Placeholder' )"
 						:model-value="field.placeholder ?? ''"
 						@update:model-value="updateField( { placeholder: ($event as string) || null } )"
+					/>
+
+					<!-- A composite field's sub-inputs -->
+					<SubInputsEditor
+						v-if="isComposite"
+						:key="field.id"
+						:field="subInputsField"
+						@change="handleSubInputChange"
 					/>
 
 					<!-- Help text -->
@@ -314,7 +327,7 @@ function confirmDelete(): void {
 
 					<!-- Default value -->
 					<Input
-						v-if="!isLayoutField && field.type !== 'file'"
+						v-if="!isLayoutField && !isComposite && field.type !== 'file'"
 						:label="t( 'Default Value' )"
 						:model-value="field.default_value ?? ''"
 						:hint="t( 'Merge tags: :tags', { tags: MERGE_TAGS.join( ', ' ) } )"
@@ -374,48 +387,14 @@ function confirmDelete(): void {
 					/>
 
 					<!-- Options editor for choice fields -->
-					<div v-if="hasOptions" class="space-y-2">
-						<label class="label">
-							<span class="label-text font-medium">{{ t( 'Options' ) }}</span>
-						</label>
-						<div
-							v-for="( option, index ) in options"
-							:key="index"
-							class="flex items-center gap-2"
-						>
-							<Input
-								:placeholder="t( 'Label' )"
-								:aria-label="t( 'Option :number label', { number: index + 1 } )"
-								:model-value="option.label"
-								class="flex-1"
-								@update:model-value="handleUpdateOption( index, 'label', ($event as string) )"
-							/>
-							<Input
-								:placeholder="t( 'Value' )"
-								:aria-label="t( 'Option :number value', { number: index + 1 } )"
-								:model-value="option.value"
-								class="flex-1"
-								@update:model-value="handleUpdateOption( index, 'value', ($event as string) )"
-							/>
-							<Button
-								color="ghost"
-								size="sm"
-								class="btn-circle"
-								:title="t( 'Remove option' )"
-								:aria-label="t( 'Remove option' )"
-								@click="handleRemoveOption( index )"
-							>
-								&times;
-							</Button>
-						</div>
-						<Button
-							color="ghost"
-							size="sm"
-							@click="handleAddOption"
-						>
-							{{ t( 'Add Option' ) }}
-						</Button>
-					</div>
+					<OptionsEditor
+						v-if="hasOptions"
+						:key="field.id"
+						:field="currentField"
+						:options="options"
+						:predefined-choices="predefinedChoices"
+						@change="setOptions"
+					/>
 				</div>
 			</template>
 

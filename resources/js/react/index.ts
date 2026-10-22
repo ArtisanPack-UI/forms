@@ -57,6 +57,11 @@ export {
 export { FieldLayout } from './components/fields/FieldLayout';
 export type { FieldLayoutProps } from './components/fields/FieldLayout';
 
+export { Combobox } from './components/fields/Combobox';
+export type { ComboboxProps } from './components/fields/Combobox';
+
+export { CompositeField } from './components/fields/CompositeField';
+
 export type { FieldComponentProps } from './components/fields/types';
 
 // Field extensibility registry
@@ -116,6 +121,8 @@ export {
 	NotificationEditor,
 	SubmissionsList,
 	SubmissionDetail,
+	OptionsEditor,
+	SubInputsEditor,
 } from './components/admin';
 
 export type {
@@ -127,6 +134,8 @@ export type {
 	NotificationEditorProps,
 	SubmissionsListProps,
 	SubmissionDetailProps,
+	OptionsEditorProps,
+	SubInputsEditorProps,
 } from './components/admin';
 
 // Utilities
@@ -151,6 +160,31 @@ export {
 	resolveOtherChoices,
 } from '../shared/fieldSettings';
 export type { DescriptionPlacement, FieldLayout as FieldLayoutSettings, LabelPlacement } from '../shared/fieldSettings';
+
+// Choice field helpers (since 1.6.0)
+export {
+	applyBulkChoices,
+	getChoiceLayout,
+	getChoiceLayoutClasses,
+	getDefaultOptionValues,
+	getRenderOptions,
+	parseBulkChoices,
+	shuffleWithSeed,
+	toBulkChoices,
+} from '../shared/choices';
+
+// Composite field helpers (since 1.6.0)
+export {
+	buildSubInputUpdate,
+	getConditionTargets,
+	getEnabledSubInputs,
+	getRequiredSubInputKeys,
+	getSubInputErrors,
+	isCompositeField,
+} from '../shared/composite';
+export type { ConditionTarget, SubInputSetting } from '../shared/composite';
+
+export { validateCompositeField } from '../shared/validation';
 
 // Dynamic population (since 1.6.0)
 export {
