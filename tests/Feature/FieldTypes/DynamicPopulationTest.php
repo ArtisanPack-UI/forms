@@ -133,6 +133,16 @@ describe( 'dynamic population sources', function (): void {
             ->and( DynamicPopulation::initialValue( $field, new PopulationContext( query: ['fruit' => ['b', 'a']] ) ) )->toBe( ['b', 'a'] );
     } );
 
+    it( 'falls back to the default when no populated value matches a multi-choice option', function ( string $type ): void {
+        $options = ['options' => [['value' => 'a', 'label' => 'Apples'], ['value' => 'b', 'label' => 'Bananas'], ['value' => 'c', 'label' => 'Cherries']]];
+        $field   = populatedField( ['type' => $type, 'name' => 'fruit', 'default_value' => 'a, cherries'], $options );
+        $bare    = populatedField( ['type' => $type, 'name' => 'fruit'], $options );
+
+        expect( DynamicPopulation::initialValue( $field, new PopulationContext( query: ['fruit' => 'zzz'] ) ) )->toBe( ['a', 'c'] )
+            ->and( DynamicPopulation::initialValue( $field, new PopulationContext( query: ['fruit' => 'b'] ) ) )->toBe( ['b'] )
+            ->and( DynamicPopulation::initialValue( $bare, new PopulationContext( query: ['fruit' => 'zzz'] ) ) )->toBe( [] );
+    } )->with( ['checkbox_group', 'select_multiple'] );
+
     it( 'reads a checkbox or toggle value as on or off', function (): void {
         $field = populatedField( ['type' => 'toggle', 'name' => 'subscribe'] );
 

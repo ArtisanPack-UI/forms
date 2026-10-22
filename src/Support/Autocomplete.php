@@ -81,6 +81,8 @@ class Autocomplete
         'tel-national',
         'tel-area-code',
         'tel-local',
+        'tel-local-prefix',
+        'tel-local-suffix',
         'tel-extension',
         'email',
         'impp',

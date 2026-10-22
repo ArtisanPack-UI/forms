@@ -136,6 +136,10 @@ class DynamicPopulation
                 }
             }
 
+            if ( [] === $values && null !== $default && $raw !== $default ) {
+                return self::coerce( $field, $default, null );
+            }
+
             return array_values( array_unique( $values ) );
         }
 

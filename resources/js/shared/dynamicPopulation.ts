@@ -152,7 +152,7 @@ function coerce( field: FormField, raw: unknown, fallback: unknown ): unknown {
 			.map( ( part ) => matchOption( field, part.trim() ) )
 			.filter( ( match ): match is string => match !== undefined );
 
-		return Array.from( new Set( values ) );
+		return values.length > 0 ? Array.from( new Set( values ) ) : fallback;
 	}
 
 	const value = items[0] ?? '';

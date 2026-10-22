@@ -491,7 +491,7 @@ abstract class AbstractFieldType implements FieldType
      */
     protected function commonSettings( array $definition, array $settings ): array
     {
-        if ( true === ( $definition['is_layout'] ?? false ) ) {
+        if ( (bool) ( $definition['is_layout'] ?? false ) ) {
             return [];
         }
 

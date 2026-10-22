@@ -50,6 +50,12 @@ describe( 'admin field label', function (): void {
             ->and( $blank->getStoredAdminLabel() )->toBeNull();
     } );
 
+    it( 'caps a stored admin label at the column length', function (): void {
+        $long = FormField::factory()->make( ['field_config' => ['admin_label' => str_repeat( 'é', 300 )]] );
+
+        expect( $long->getStoredAdminLabel() )->toBe( str_repeat( 'é', 255 ) );
+    } );
+
     it( 'is denormalized into the submission values alongside the label', function (): void {
         expect( Schema::hasColumn( 'form_submission_values', 'field_admin_label' ) )->toBeTrue();
 

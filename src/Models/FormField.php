@@ -543,6 +543,9 @@ class FormField extends Model
     /**
      * Gets the `admin_label` setting.
      *
+     * Capped at 255 characters to fit the `field_admin_label` column, since
+     * the field API can store a longer value than the builder allows.
+     *
      * @since 1.6.0
      *
      * @return string|null The admin label, or null when not set.
@@ -551,7 +554,7 @@ class FormField extends Model
     {
         $adminLabel = $this->getConfig( 'admin_label' );
 
-        return is_string( $adminLabel ) && '' !== trim( $adminLabel ) ? trim( $adminLabel ) : null;
+        return is_string( $adminLabel ) && '' !== trim( $adminLabel ) ? mb_substr( trim( $adminLabel ), 0, 255 ) : null;
     }
 
     /**

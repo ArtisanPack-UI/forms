@@ -133,7 +133,8 @@ describe( 'Dynamic population in React and Vue (issue #95)', function () use ( $
             ->toContain( '.slice( 0, MAX_POPULATED_LENGTH );' )
             ->and( $between( $this->population, 'function coerce(', "\n}\n" ) )
             ->toContain( ".flatMap( ( item ) => item.split( ',' ) )" )
-            ->toContain( 'return matchOption( field, value ) ?? fallback' );
+            ->toContain( 'return matchOption( field, value ) ?? fallback' )
+            ->toContain( 'return values.length > 0 ? Array.from( new Set( values ) ) : fallback;' );
     } );
 
     it( 'keeps read-only fields on the value the server stores', function () use ( $resource ): void {

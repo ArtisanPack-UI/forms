@@ -49,6 +49,18 @@ describe( 'custom layout field types', function (): void {
         expect( array_column( FieldSettings::schema( $this->sectionBreak ), 'key' ) )->toBe( [] );
     } );
 
+    it( 'gets none of the input settings when is_layout is truthy but not true', function ( mixed $isLayout ): void {
+        addFilter( 'ap.forms.fieldTypes', function ( array $types ) use ( $isLayout ): array {
+            $types['spacer'] = ['label' => 'Spacer', 'category' => 'layout', 'is_layout' => $isLayout];
+
+            return $types;
+        } );
+
+        $spacer = FormField::factory()->make( ['type' => 'spacer'] );
+
+        expect( array_column( FieldSettings::schema( $spacer ), 'key' ) )->toBe( [] );
+    } )->with( [1, '1'] );
+
     it( 'is not offered as a notification condition field', function (): void {
         $fields = Livewire::test( NotificationEditor::class, ['form' => $this->form] )
             ->instance()

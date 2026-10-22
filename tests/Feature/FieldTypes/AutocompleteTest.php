@@ -56,7 +56,8 @@ describe( 'autocomplete tokens', function (): void {
         expect( $setting )->toMatchArray( ['input' => 'select', 'tab' => 'advanced', 'store' => 'field_config'] )
             ->and( $setting['options'][0] )->toBe( ['value' => '', 'label' => 'Default (email)'] )
             ->and( array_slice( array_column( $setting['options'], 'value' ), 1 ) )->toBe( Autocomplete::TOKENS )
-            ->and( Autocomplete::TOKENS )->toContain( 'off', 'name', 'given-name', 'email', 'tel', 'street-address', 'postal-code', 'bday', 'one-time-code' );
+            ->and( Autocomplete::TOKENS )->toContain( 'off', 'name', 'given-name', 'email', 'tel', 'street-address', 'postal-code', 'bday', 'one-time-code' )
+            ->and( Autocomplete::TOKENS )->toContain( 'tel-country-code', 'tel-national', 'tel-area-code', 'tel-local', 'tel-local-prefix', 'tel-local-suffix', 'tel-extension' );
     } );
 
     it( 'stores a chosen token and clears it with the default option', function (): void {
