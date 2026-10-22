@@ -19,7 +19,7 @@ import type {
 	FormStep,
 	SubmitFormResponse,
 } from '../../types/artisanpack-forms';
-import { getErrorFieldName } from '../../shared/composite';
+import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composite';
 import { getHiddenFields } from '../../shared/conditionalLogic';
 import { getInitialFieldValue, resolveOtherChoices } from '../../shared/fieldSettings';
 import { validateFields } from '../../shared/validation';
@@ -195,19 +195,13 @@ export function useForm( options: UseFormOptions ) {
 	onMounted( fetchForm );
 
 	function setValue( name: string, value: unknown ): void {
+		const previous = values.value[name];
+
 		values.value = { ...values.value, [name]: value };
 
-		// A composite field's errors are keyed by sub-input.
-		const stale = Object.keys( errors.value ).filter( ( key ) => key === name || key.startsWith( `${name}.` ) );
-
-		if ( stale.length > 0 ) {
-			const next = { ...errors.value };
-
-			for ( const key of stale ) {
-				delete next[key];
-			}
-
-			errors.value = next;
+		// A composite field's errors are keyed by sub-input; only the changed parts are cleared.
+		if ( Object.keys( errors.value ).some( ( key ) => key === name || key.startsWith( `${name}.` ) ) ) {
+			errors.value = clearChangedFieldErrors( errors.value, name, previous, value );
 		}
 	}
 

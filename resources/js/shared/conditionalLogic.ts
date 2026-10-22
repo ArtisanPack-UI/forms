@@ -10,6 +10,7 @@
  * @since      1.1.0
  */
 
+import { formatCompositeForCondition } from './composite';
 import type {
 	ConditionalLogic,
 	ConditionalLogicRule,
@@ -301,12 +302,15 @@ export function evaluateRule(
 	}
 
 	const [fieldName, subKey] = resolveFieldReference( fieldRef, uuidToName, formData );
-	let fieldValue = formData[fieldName] ?? null;
+	let fieldValue: unknown = formData[fieldName] ?? null;
 
 	if ( subKey !== undefined ) {
 		fieldValue = fieldValue && typeof fieldValue === 'object' && !Array.isArray( fieldValue )
 			? ( fieldValue as Record<string, unknown> )[subKey] ?? null
 			: null;
+	} else {
+		// A rule on a whole composite field compares its formatted value.
+		fieldValue = formatCompositeForCondition( fieldValue );
 	}
 
 	return compareValues( fieldValue, rule.operator, rule.value ?? '' );

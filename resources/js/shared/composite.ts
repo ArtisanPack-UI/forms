@@ -102,6 +102,60 @@ export function getSubInputErrors( errors: Record<string, string[] | undefined>,
 	return subErrors;
 }
 
+/** Whether a value is a composite field's map of sub-input values. */
+function isPartsMap( value: unknown ): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray( value );
+}
+
+/**
+ * Drop the errors a field's new value may have fixed: the field's own error,
+ * and for a composite field only the sub-inputs whose part changed, so the
+ * other parts keep their errors and the field-level summary.
+ */
+export function clearChangedFieldErrors(
+	errors: Record<string, string[]>,
+	name: string,
+	previous: unknown,
+	value: unknown,
+): Record<string, string[]> {
+	const prefix = `${name}.`;
+	const next: Record<string, string[]> = {};
+
+	for ( const [key, messages] of Object.entries( errors ) ) {
+		if ( key === name ) {
+			continue;
+		}
+
+		if ( key.startsWith( prefix ) ) {
+			const part = key.slice( prefix.length );
+
+			if ( !isPartsMap( value ) || !isPartsMap( previous ) || value[part] !== previous[part] ) {
+				continue;
+			}
+		}
+
+		next[key] = messages;
+	}
+
+	return next;
+}
+
+/**
+ * Format a composite value for a conditional logic rule on the whole field:
+ * its filled parts joined with `, `, as `CompositeFieldType::format()` joins
+ * them by default. Other values are returned unchanged.
+ */
+export function formatCompositeForCondition( value: unknown ): unknown {
+	if ( !isPartsMap( value ) ) {
+		return value;
+	}
+
+	return Object.values( value )
+		.filter( ( part ) => ( typeof part === 'string' || typeof part === 'number' ) && String( part ).trim() !== '' )
+		.map( ( part ) => String( part ).trim() )
+		.join( ', ' );
+}
+
 /** Get the field name an error key belongs to (`address.city` → `address`). */
 export function getErrorFieldName( key: string ): string {
 	return key.split( '.' )[0];

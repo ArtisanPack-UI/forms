@@ -262,6 +262,23 @@ describe( 'conditional logic', function (): void {
             ->and( $service->shouldSendNotification( $notification, storeAddressSubmission( $this->form, ['street' => 'x', 'city' => 'Ogdenville'] )->fresh() ) )->toBeFalse();
     } );
 
+    it( 'compares a rule on the whole field against its formatted value', function (): void {
+        $service = app( ConditionalLogicService::class )->withFields( $this->form->fields()->get() );
+        $data    = ['address' => ['street' => '1 Main St', 'city' => 'Springfield', 'contact' => '']];
+
+        expect( $service->evaluateRule( ['field' => 'address', 'operator' => 'equals', 'value' => '1 Main St, Springfield'], $data ) )->toBeTrue()
+            ->and( $service->evaluateRule( ['field' => $this->address->uuid, 'operator' => 'contains', 'value' => 'Springfield'], $data ) )->toBeTrue()
+            ->and( $service->evaluateRule( ['field' => 'address', 'operator' => 'is_empty'], ['address' => ['street' => '', 'city' => '']] ) )->toBeTrue();
+    } );
+
+    it( 'decides a notification on the whole field without an array-to-string warning', function (): void {
+        $notification = FormNotification::factory()->for( $this->form )->create( [
+            'conditional_logic' => ['action' => 'send', 'logic' => 'all', 'rules' => [['field' => 'address', 'operator' => 'contains', 'value' => 'Springfield']]],
+        ] );
+
+        expect( app( NotificationService::class )->shouldSendNotification( $notification, storeAddressSubmission( $this->form, ['street' => 'x', 'city' => 'Springfield'] )->fresh() ) )->toBeTrue();
+    } );
+
     it( 'lists each enabled input as a target', function (): void {
         expect( $this->address->getConditionTargets() )->toBe( [
             ['name' => 'address.street', 'label' => 'Address: Street', 'type' => 'text', 'uuid' => $this->address->uuid . '.street', 'options' => []],

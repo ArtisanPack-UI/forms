@@ -312,6 +312,7 @@ function confirmDelete(): void {
 					<!-- A composite field's sub-inputs -->
 					<SubInputsEditor
 						v-if="isComposite"
+						:key="field.id"
 						:field="subInputsField"
 						@change="handleSubInputChange"
 					/>
@@ -388,6 +389,7 @@ function confirmDelete(): void {
 					<!-- Options editor for choice fields -->
 					<OptionsEditor
 						v-if="hasOptions"
+						:key="field.id"
 						:field="currentField"
 						:options="options"
 						:predefined-choices="predefinedChoices"

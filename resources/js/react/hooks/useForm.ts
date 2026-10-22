@@ -19,7 +19,7 @@ import type {
 	FormStep,
 	SubmitFormResponse,
 } from '../../types/artisanpack-forms';
-import { getErrorFieldName } from '../../shared/composite';
+import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composite';
 import { getHiddenFields } from '../../shared/conditionalLogic';
 import { getInitialFieldValue, resolveOtherChoices } from '../../shared/fieldSettings';
 import { validateFields } from '../../shared/validation';
@@ -266,21 +266,17 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		return Math.round( ( ( currentStep + 1 ) / totalSteps ) * 100 );
 	}, [currentStep, totalSteps] );
 
+	// The latest values, so setValue can compare a composite field's parts.
+	const valuesRef = useRef( values );
+	valuesRef.current = values;
+
 	const setValue = useCallback( ( name: string, value: unknown ) => {
+		const previous = valuesRef.current[name];
+
+		valuesRef.current = { ...valuesRef.current, [name]: value };
 		setValues( ( prev ) => ( { ...prev, [name]: value } ) );
-		setErrors( ( prev ) => {
-			const next = { ...prev };
-			delete next[name];
-
-			// A composite field's errors are keyed by sub-input.
-			for ( const key of Object.keys( next ) ) {
-				if ( key.startsWith( `${name}.` ) ) {
-					delete next[key];
-				}
-			}
-
-			return next;
-		} );
+		// A composite field's errors are keyed by sub-input; only the changed parts are cleared.
+		setErrors( ( prev ) => clearChangedFieldErrors( prev, name, previous, value ) );
 	}, [] );
 
 	const setFile = useCallback( ( name: string, file: File | File[] ) => {

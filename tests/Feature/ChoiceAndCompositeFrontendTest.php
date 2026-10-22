@@ -99,6 +99,22 @@ describe( 'shared helpers', function () use ( $resource, $between ): void {
             ->toContain( '( fieldValue as Record<string, unknown> )[subKey] ?? null' );
     } );
 
+    it( 'clear only the errors of the composite parts that changed', function () use ( $resource, $between ): void {
+        $clear = $between( $resource( 'shared/composite.ts' ), 'export function clearChangedFieldErrors(', "\n}\n" );
+
+        expect( $clear )->toContain( 'if ( !isPartsMap( value ) || !isPartsMap( previous ) || value[part] !== previous[part] ) {' )
+            ->and( $resource( 'react/hooks/useForm.ts' ) )
+            ->toContain( 'setErrors( ( prev ) => clearChangedFieldErrors( prev, name, previous, value ) );' )
+            ->and( $resource( 'vue/composables/useForm.ts' ) )
+            ->toContain( 'errors.value = clearChangedFieldErrors( errors.value, name, previous, value );' );
+    } );
+
+    it( 'compare a rule on a whole composite field against its formatted value', function () use ( $resource ): void {
+        expect( $resource( 'shared/conditionalLogic.ts' ) )->toContain( 'fieldValue = formatCompositeForCondition( fieldValue );' )
+            ->and( file_get_contents( __DIR__ . '/../../resources/views/livewire/form-renderer.blade.php' ) )
+            ->toContain( '// A rule on a whole composite field compares its filled parts, joined' );
+    } );
+
     it( 'validate composite fields one sub-input at a time', function () use ( $resource ): void {
         expect( $resource( 'shared/validation.ts' ) )
             ->toContain( 'export function validateCompositeField( field: FormField, value: unknown ): Record<string, string[]>' )
@@ -170,8 +186,7 @@ describe( 'React renderer', function () use ( $resource, $between ): void {
         expect( $resource( 'react/hooks/useForm.ts' ) )
             ->toContain( 'formDataObj.append( `data[${key}][${subKey}]`, String( part ?? \'\' ) );' )
             ->toContain( 'new Set( Object.keys( validationErrors ).map( getErrorFieldName ) )' )
-            ->toContain( 'new Set( Object.keys( serverErrors ).map( getErrorFieldName ) )' )
-            ->toContain( 'if ( key.startsWith( `${name}.` ) ) {' );
+            ->toContain( 'new Set( Object.keys( serverErrors ).map( getErrorFieldName ) )' );
     } );
 } );
 
@@ -184,8 +199,14 @@ describe( 'React builder', function () use ( $resource ): void {
             ->toContain( 'setBulkText( toBulkChoices( list.choices ) );' )
             ->toContain( "{t( 'Bulk Add / Predefined Choices' )}" )
             ->toContain( 'if ( source ) {' )
+            ->toContain( 'const match = /^option_(\\d+)$/.exec( option.value );' )
+            ->and( $resource( 'react/components/admin/FieldEditor.tsx' ) )
+            ->toContain( "<OptionsEditor\n\t\t\t\t\tkey={field.id}" )
+            ->and( $resource( 'react/components/admin/SubInputsEditor.tsx' ) )
+            ->toContain( '<tr key={`${field.id}-${subInput.key}`}>' )
             ->and( $resource( 'react/components/admin/FormBuilder.tsx' ) )
-            ->toContain( '/fields/predefined-choices' )
+            ->toContain( '`/${encodeURIComponent( formSlug )}/fields/predefined-choices`' )
+            ->toContain( '}, [get, form?.id, formSlug] );' )
             ->toContain( 'predefinedChoices={predefinedChoices}' );
     } );
 
@@ -257,6 +278,8 @@ describe( 'Vue builder', function () use ( $resource ): void {
         expect( $resource( 'vue/components/admin/OptionsEditor.vue' ) )
             ->toContain( "emit( 'change', applyBulkChoices( props.options, parseBulkChoices( bulkText.value ), mode ) );" )
             ->toContain( 'setOptionDefault( options, index' )
+            ->and( $resource( 'vue/components/admin/FieldEditor.vue' ) )
+            ->toContain( "v-if=\"hasOptions\"\n\t\t\t\t\t\t:key=\"field.id\"" )
             ->and( $resource( 'vue/components/admin/SubInputsEditor.vue' ) )
             ->toContain( 'const update = buildSubInputUpdate( props.field, key, setting, value );' )
             ->and( $resource( 'vue/components/admin/FormBuilder.vue' ) )

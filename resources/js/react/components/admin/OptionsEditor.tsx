@@ -135,10 +135,16 @@ export function OptionsEditor( { field, options, onChange, predefinedChoices = [
 				<Button
 					color="ghost"
 					size="sm"
-					onClick={() => onChange( [
-						...options,
-						{ label: t( 'Option :number', { number: options.length + 1 } ), value: `option_${options.length + 1}` },
-					] )}
+					onClick={() => {
+						// The highest `option_N` suffix plus one, so a removal cannot cause a duplicate value.
+						const next = options.reduce( ( max, option ) => {
+							const match = /^option_(\d+)$/.exec( option.value );
+
+							return match ? Math.max( max, Number( match[1] ) ) : max;
+						}, 0 ) + 1;
+
+						onChange( [...options, { label: t( 'Option :number', { number: next } ), value: `option_${next}` }] );
+					}}
 				>
 					{t( 'Add Option' )}
 				</Button>

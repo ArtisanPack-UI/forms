@@ -475,7 +475,15 @@
                 if (!fieldRef) return true;
 
                 // Get field value (fieldRef could be field name or UUID)
-                const fieldValue = this.getFieldValue(fieldRef, formData);
+                let fieldValue = this.getFieldValue(fieldRef, formData);
+
+                // A rule on a whole composite field compares its filled parts, joined
+                if (fieldValue && typeof fieldValue === 'object' && !Array.isArray(fieldValue)) {
+                    fieldValue = Object.values(fieldValue)
+                        .filter(part => part !== null && part !== undefined && String(part).trim() !== '')
+                        .map(part => String(part).trim())
+                        .join(', ');
+                }
 
                 return this.compareValues(fieldValue, operator, ruleValue);
             },

@@ -509,6 +509,7 @@ function GeneralTabContent( {
 			{/* Options editor for choice fields */}
 			{hasOptions && (
 				<OptionsEditor
+					key={field.id}
 					field={field}
 					options={options}
 					onChange={setOptions}

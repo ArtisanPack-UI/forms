@@ -61,7 +61,7 @@ export function SubInputsEditor( { field, onChange }: SubInputsEditorProps ): Re
 					</thead>
 					<tbody>
 						{( field.sub_inputs ?? [] ).map( ( subInput ) => (
-							<tr key={subInput.key}>
+							<tr key={`${field.id}-${subInput.key}`}>
 								<td>
 									<input
 										type="checkbox"

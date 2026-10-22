@@ -18,6 +18,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
 
+use ArtisanPackUI\Forms\FieldTypes\CompositeFieldType;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use Illuminate\Database\Eloquent\Collection;
@@ -170,12 +171,15 @@ class ConditionalLogicService
         [$fieldName, $subKey] = $this->resolveFieldReference( $fieldRef );
         $fieldValue           = $formData[ $fieldName ] ?? null;
 
-        if ( null !== $subKey ) {
-            $fieldValue = is_array( $fieldValue ) ? ( $fieldValue[ $subKey ] ?? null ) : null;
-        }
-
         // A rule on the "Other" choice matches any text typed into it
         $field = $this->fieldsByName[ $fieldName ] ?? null;
+
+        if ( null !== $subKey ) {
+            $fieldValue = is_array( $fieldValue ) ? ( $fieldValue[ $subKey ] ?? null ) : null;
+        } elseif ( is_array( $fieldValue ) && [] !== $fieldValue && ! array_is_list( $fieldValue ) ) {
+            // A rule on a whole composite field compares its formatted value, never the array
+            $fieldValue = $this->formatCompositeValue( $field, $fieldValue );
+        }
 
         if ( null === $subKey && FormField::OTHER_CHOICE_VALUE === $ruleValue && null !== $field && $field->allowsOtherChoice() ) {
             $fieldValue = $this->markOtherChoice( $field, $fieldValue );
@@ -409,6 +413,35 @@ class ConditionalLogicService
         }
 
         return is_scalar( $value ) && $field->isOtherChoiceValue( (string) $value ) ? FormField::OTHER_CHOICE_VALUE : $value;
+    }
+
+    /**
+     * Formats a composite field's value for a rule on the whole field.
+     *
+     * Uses the field's handler (see CompositeFieldType::format()) when the
+     * field is known, otherwise joins the filled parts with `, `.
+     *
+     * @since 1.6.0
+     *
+     * @param FormField|null           $field The field, when known.
+     * @param array<int|string, mixed> $parts The value's parts.
+     *
+     * @return string The formatted value.
+     */
+    protected function formatCompositeValue( ?FormField $field, array $parts ): string
+    {
+        $handler = $field?->fieldType();
+
+        if ( $handler instanceof CompositeFieldType ) {
+            return $handler->format( $field, $parts );
+        }
+
+        $filled = array_filter(
+            array_map( fn ( mixed $part ): string => is_scalar( $part ) ? trim( (string) $part ) : '', $parts ),
+            fn ( string $part ): bool => '' !== $part,
+        );
+
+        return implode( ', ', $filled );
     }
 
     /**

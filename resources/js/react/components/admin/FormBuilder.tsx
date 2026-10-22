@@ -223,14 +223,15 @@ export function FormBuilder( {
 	}, [loadForm] );
 
 	// Load the lists the options editor's bulk editor can insert, once per form.
+	// Keyed by the form's ID and the `formSlug` prop, which stays stable while the slug is edited.
 	useEffect( () => {
-		if ( !form?.slug ) {
+		if ( !form?.id || !formSlug ) {
 			return undefined;
 		}
 
 		let cancelled = false;
 
-		get<{ data: PredefinedChoiceList[] }>( `/${encodeURIComponent( form.slug )}/fields/predefined-choices` )
+		get<{ data: PredefinedChoiceList[] }>( `/${encodeURIComponent( formSlug )}/fields/predefined-choices` )
 			.then( ( response ) => {
 				if ( !cancelled ) {
 					setPredefinedChoices( response.data );
@@ -243,7 +244,7 @@ export function FormBuilder( {
 		return () => {
 			cancelled = true;
 		};
-	}, [get, form?.slug] );
+	}, [get, form?.id, formSlug] );
 
 	// Update form settings
 	const updateFormSetting = useCallback( ( updates: UpdateFormRequest ) => {
