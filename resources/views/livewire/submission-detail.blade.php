@@ -81,7 +81,7 @@
                     <div class="divide-y divide-base-300">
                         @forelse ($this->submission->values as $value)
                             <div class="py-4 first:pt-0 last:pb-0">
-                                <dt class="text-sm font-medium opacity-60">{{ $value->field_label }}</dt>
+                                <dt class="text-sm font-medium opacity-60">{{ $value->display_label }}</dt>
                                 <dd class="mt-1 text-sm">
                                     @if ($value->upload_id && $value->upload)
                                         <!-- File Upload -->

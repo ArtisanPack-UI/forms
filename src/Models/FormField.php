@@ -19,6 +19,9 @@ namespace ArtisanPackUI\Forms\Models;
 use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Contracts\FieldType;
 use ArtisanPackUI\Forms\Database\Factories\FormFieldFactory;
+use ArtisanPackUI\Forms\Support\Autocomplete;
+use ArtisanPackUI\Forms\Support\MergeTags;
+use ArtisanPackUI\Forms\Support\PopulationContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -83,6 +86,25 @@ class FormField extends Model
      * @var list<string>
      */
     public const CHOICE_TYPES = ['select', 'radio', 'checkbox_group', 'select_multiple'];
+
+    /**
+     * Rules whose failure means a value is missing, which the custom required
+     * message covers rather than the custom error message.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const PRESENCE_RULES = ['required', 'accepted', 'filled', 'present'];
+
+    /**
+     * Rules that never fail on their own, so they get no message.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const MESSAGELESS_RULES = ['nullable', 'sometimes', 'bail'];
 
     /**
      * Heading levels the heading renderer accepts.
@@ -505,6 +527,195 @@ class FormField extends Model
     }
 
     /**
+     * Gets the label shown in submissions, exports and admin notifications.
+     *
+     * The `admin_label` setting when set, otherwise the label.
+     *
+     * @since 1.6.0
+     *
+     * @return string The label.
+     */
+    public function getAdminLabel(): string
+    {
+        return $this->getStoredAdminLabel() ?? (string) $this->label;
+    }
+
+    /**
+     * Gets the `admin_label` setting.
+     *
+     * Capped at 255 characters to fit the `field_admin_label` column, since
+     * the field API can store a longer value than the builder allows.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null The admin label, or null when not set.
+     */
+    public function getStoredAdminLabel(): ?string
+    {
+        $adminLabel = $this->getConfig( 'admin_label' );
+
+        return is_string( $adminLabel ) && '' !== trim( $adminLabel ) ? mb_substr( trim( $adminLabel ), 0, 255 ) : null;
+    }
+
+    /**
+     * Gets the `autocomplete` token the field's input exposes.
+     *
+     * The `autocomplete` setting when it holds a valid token, otherwise the
+     * type's default (such as `email` for an email field). Types that do not
+     * offer the setting expose none.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null The token, or null for none.
+     */
+    public function getAutocomplete(): ?string
+    {
+        $definition = $this->fieldType()->definition();
+
+        if ( true !== ( $definition['supports_autocomplete'] ?? false ) ) {
+            return null;
+        }
+
+        $configured = $this->getConfig( 'autocomplete' );
+
+        if ( Autocomplete::isToken( $configured ) ) {
+            return $configured;
+        }
+
+        return Autocomplete::isToken( $definition['autocomplete'] ?? null ) ? $definition['autocomplete'] : null;
+    }
+
+    /**
+     * Gets the custom message shown when any rule but "required" fails.
+     *
+     * Passed through `__()`, so it may be a translation key.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null The message, or null when not set.
+     */
+    public function getCustomErrorMessage(): ?string
+    {
+        return $this->translatedConfig( 'error_message' );
+    }
+
+    /**
+     * Gets the custom message shown when a required field is left empty.
+     *
+     * Passed through `__()`, so it may be a translation key.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null The message, or null when not set.
+     */
+    public function getCustomRequiredMessage(): ?string
+    {
+        return $this->translatedConfig( 'required_message' );
+    }
+
+    /**
+     * Builds the validation messages for this field and any inputs nested under it.
+     *
+     * The type's own messages, with the custom error message replacing the
+     * message of every rule but the presence rules, and the custom required
+     * message replacing those. Keyed like FieldType::messages().
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, string> The messages.
+     */
+    public function buildValidationMessages(): array
+    {
+        if ( $this->isLayoutField() ) {
+            return [];
+        }
+
+        $messages        = $this->fieldType()->messages( $this );
+        $errorMessage    = $this->getCustomErrorMessage();
+        $requiredMessage = $this->getCustomRequiredMessage();
+
+        if ( null === $errorMessage && null === $requiredMessage ) {
+            return $messages;
+        }
+
+        foreach ( $this->buildKeyedValidationRules() as $inputKey => $rules ) {
+            $prefix = '' === $inputKey ? '' : "{$inputKey}.";
+
+            foreach ( $rules as $rule ) {
+                $name = is_string( $rule ) ? strtolower( trim( explode( ':', $rule, 2 )[0] ) ) : '';
+
+                if ( '' === $name || in_array( $name, self::MESSAGELESS_RULES, true ) ) {
+                    continue;
+                }
+
+                $custom = in_array( $name, self::PRESENCE_RULES, true ) ? $requiredMessage : $errorMessage;
+
+                if ( null !== $custom ) {
+                    $messages[ $prefix . $name ] = $custom;
+                }
+            }
+        }
+
+        return $messages;
+    }
+
+    /**
+     * Checks whether the field may be filled from the query string, the renderer's prefill or a filter.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when dynamic population is on and the type offers it.
+     */
+    public function allowsDynamicPopulation(): bool
+    {
+        return true === filter_var( $this->getConfig( 'dynamic_population', false ), FILTER_VALIDATE_BOOLEAN )
+            && $this->offersSetting( 'dynamic_population' );
+    }
+
+    /**
+     * Gets the parameter name the field is populated by.
+     *
+     * The `dynamic_parameter` setting, or the field name when it is blank.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null The parameter, or null when dynamic population is off.
+     */
+    public function getPopulationParameter(): ?string
+    {
+        if ( ! $this->allowsDynamicPopulation() ) {
+            return null;
+        }
+
+        $parameter = $this->getConfig( 'dynamic_parameter' );
+
+        return is_string( $parameter ) && '' !== trim( $parameter ) ? trim( $parameter ) : (string) $this->name;
+    }
+
+    /**
+     * Gets the default value with merge tags replaced.
+     *
+     * @since 1.6.0
+     *
+     * @param  PopulationContext|null  $context  The visitor and page, or null for the current visitor with page tags blanked.
+     *
+     * @return string|null The default value, or null when none is set.
+     */
+    public function getResolvedDefaultValue( ?PopulationContext $context = null ): ?string
+    {
+        if ( null === $this->default_value ) {
+            return null;
+        }
+
+        // Most defaults have no merge tags, so skip building a context for them.
+        if ( ! str_contains( (string) $this->default_value, '{' ) ) {
+            return (string) $this->default_value;
+        }
+
+        return MergeTags::resolve( (string) $this->default_value, $context ?? PopulationContext::trusted() );
+    }
+
+    /**
      * Normalizes a submitted time value.
      *
      * Browsers submit `H:i:s` when the field's step is under 60 seconds. A
@@ -650,17 +861,8 @@ class FormField extends Model
      */
     public function isReadOnly(): bool
     {
-        if ( true !== filter_var( $this->getConfig( 'read_only', false ), FILTER_VALIDATE_BOOLEAN ) ) {
-            return false;
-        }
-
-        foreach ( $this->fieldType()->definition()['settings'] ?? [] as $setting ) {
-            if ( 'read_only' === ( $setting['key'] ?? null ) ) {
-                return true;
-            }
-        }
-
-        return false;
+        return true === filter_var( $this->getConfig( 'read_only', false ), FILTER_VALIDATE_BOOLEAN )
+            && $this->offersSetting( 'read_only' );
     }
 
     /**
@@ -691,6 +893,48 @@ class FormField extends Model
     public function isLayoutField(): bool
     {
         return FieldTypes::isLayoutField( $this->type );
+    }
+
+    /**
+     * Checks whether the field's type offers a setting.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $key  The setting key.
+     *
+     * @return bool True when the type's settings schema has the setting.
+     */
+    protected function offersSetting( string $key ): bool
+    {
+        foreach ( $this->fieldType()->definition()['settings'] ?? [] as $setting ) {
+            if ( $key === ( $setting['key'] ?? null ) ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Gets a text setting passed through `__()`, or null when blank.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $key  The `field_config` key.
+     *
+     * @return string|null The translated text.
+     */
+    protected function translatedConfig( string $key ): ?string
+    {
+        $value = $this->getConfig( $key );
+
+        if ( ! is_string( $value ) || '' === trim( $value ) ) {
+            return null;
+        }
+
+        $translated = __( trim( $value ) );
+
+        return is_string( $translated ) ? $translated : trim( $value );
     }
 
     /**

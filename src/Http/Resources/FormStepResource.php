@@ -39,6 +39,13 @@ class FormStepResource extends JsonResource
     protected bool $includeSettingsSchema = true;
 
     /**
+     * Whether its fields include the value they start with in the renderer.
+     *
+     * @since 1.6.0
+     */
+    protected bool $includeResolvedDefaults = false;
+
+    /**
      * Leaves the settings schema out of the step's fields, for payloads that only render the form.
      *
      * @since 1.6.0
@@ -48,6 +55,20 @@ class FormStepResource extends JsonResource
     public function withoutSettingsSchema(): static
     {
         $this->includeSettingsSchema = false;
+
+        return $this;
+    }
+
+    /**
+     * Adds each field's `resolved_default_value` (see FormFieldResource::withResolvedDefault()).
+     *
+     * @since 1.6.0
+     *
+     * @return static The resource.
+     */
+    public function withResolvedDefaults(): static
+    {
+        $this->includeResolvedDefaults = true;
 
         return $this;
     }
@@ -90,6 +111,10 @@ class FormStepResource extends JsonResource
 
         if ( ! $this->includeSettingsSchema ) {
             $fields->collection->each( fn ( FormFieldResource $field ): FormFieldResource => $field->withoutSettingsSchema() );
+        }
+
+        if ( $this->includeResolvedDefaults ) {
+            $fields->collection->each( fn ( FormFieldResource $field ): FormFieldResource => $field->withResolvedDefault() );
         }
 
         return $fields;

@@ -8,6 +8,7 @@ use ArtisanPackUI\Forms\FieldTypes\AbstractFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ArrayFieldType;
 use ArtisanPackUI\Forms\FieldTypes\CheckboxFieldType;
 use ArtisanPackUI\Forms\FieldTypes\TextFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ToggleFieldType;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
@@ -182,11 +183,12 @@ describe( 'field type registry', function (): void {
             ->and( $field->buildValidationRules() )->toBe( ['nullable', 'string'] );
     } );
 
-    it( 'keeps checkbox behaviour for the unregistered toggle type', function (): void {
+    it( 'registers the toggle type with checkbox behaviour', function (): void {
         $field = FormField::factory()->required()->create( ['type' => 'toggle'] );
 
-        expect( FieldTypes::handler( 'toggle' ) )->toBeInstanceOf( CheckboxFieldType::class )
-            ->and( FieldTypes::typeExists( 'toggle' ) )->toBeFalse()
+        expect( FieldTypes::handler( 'toggle' ) )->toBeInstanceOf( ToggleFieldType::class )
+            ->and( FieldTypes::handler( 'toggle' ) )->toBeInstanceOf( CheckboxFieldType::class )
+            ->and( FieldTypes::typeExists( 'toggle' ) )->toBeTrue()
             ->and( $field->buildValidationRules() )->toBe( ['accepted', 'boolean'] );
     } );
 
@@ -277,8 +279,11 @@ describe( 'field type registry', function (): void {
 
         $settings = FieldTypes::handler( 'sku' )->definition()['settings'];
 
-        expect( array_column( $settings, 'key' ) )->toBe( ['min', 'max', 'pattern'] )
-            ->and( array_unique( array_column( $settings, 'tab' ) ) )->toBe( ['validation'] );
+        $fromValidationOptions = array_slice( $settings, 0, 3 );
+
+        expect( array_column( $fromValidationOptions, 'key' ) )->toBe( ['min', 'max', 'pattern'] )
+            ->and( array_unique( array_column( $fromValidationOptions, 'tab' ) ) )->toBe( ['validation'] )
+            ->and( array_column( $settings, 'key' ) )->not->toContain( 'unknown' );
 
         removeAllFilters( 'ap.forms.fieldTypes' );
     } );

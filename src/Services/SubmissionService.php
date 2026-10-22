@@ -282,6 +282,9 @@ class SubmissionService
     /**
      * Builds custom validation messages for fields.
      *
+     * The field type's messages, with the field's custom error and required
+     * messages applied (see FormField::buildValidationMessages()).
+     *
      * @since 1.0.0
      *
      * @param  Collection<int, FormField>  $fields  The form fields.
@@ -295,7 +298,7 @@ class SubmissionService
         foreach ( $fields as $field ) {
             $fieldKey = $this->validationKey( $field );
 
-            foreach ( $field->fieldType()->messages( $field ) as $rule => $message ) {
+            foreach ( $field->buildValidationMessages() as $rule => $message ) {
                 $messages[ "{$fieldKey}.{$rule}" ] = $message;
             }
         }
@@ -457,12 +460,13 @@ class SubmissionService
     protected function saveFieldValue( FormSubmission $submission, FormField $field, mixed $value ): FormSubmissionValue
     {
         $data = [
-            'submission_id' => $submission->id,
-            'field_id'      => $field->id,
-            'field_name'    => $field->name,
-            'field_label'   => $field->label,
-            'field_type'    => $field->type,
-            'created_at'    => now(),
+            'submission_id'     => $submission->id,
+            'field_id'          => $field->id,
+            'field_name'        => $field->name,
+            'field_label'       => $field->label,
+            'field_admin_label' => $field->getStoredAdminLabel(),
+            'field_type'        => $field->type,
+            'created_at'        => now(),
         ];
 
         $value = $field->fieldType()->normalize( $field, $value );
@@ -533,13 +537,14 @@ class SubmissionService
 
         // Create submission value linking to the upload
         FormSubmissionValue::create( [
-            'submission_id' => $submission->id,
-            'field_id'      => $field->id,
-            'field_name'    => $field->name,
-            'field_label'   => $field->label,
-            'field_type'    => $field->type,
-            'upload_id'     => $upload->id,
-            'created_at'    => now(),
+            'submission_id'     => $submission->id,
+            'field_id'          => $field->id,
+            'field_name'        => $field->name,
+            'field_label'       => $field->label,
+            'field_admin_label' => $field->getStoredAdminLabel(),
+            'field_type'        => $field->type,
+            'upload_id'         => $upload->id,
+            'created_at'        => now(),
         ] );
 
         return $upload;

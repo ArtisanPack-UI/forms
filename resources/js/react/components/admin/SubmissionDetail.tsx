@@ -333,7 +333,7 @@ export function SubmissionDetail( {
 						<dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3">
 							{submission.values.map( ( value: FormSubmissionValue ) => (
 								<React.Fragment key={value.id}>
-									<dt className="font-medium text-base-content/70">{value.field_label || value.field_name}</dt>
+									<dt className="font-medium text-base-content/70">{value.field_admin_label || value.field_label || value.field_name}</dt>
 									<dd>
 										{value.upload_id && submission.uploads ? (
 											<FileValue

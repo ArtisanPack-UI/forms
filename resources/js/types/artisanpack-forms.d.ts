@@ -35,6 +35,7 @@ export type BuiltInFieldType =
     | 'select'
     | 'radio'
     | 'checkbox'
+    | 'toggle'
     | 'checkbox_group'
     | 'select_multiple'
     | 'file'
@@ -219,6 +220,40 @@ export interface RatingFieldConfig extends BaseFieldConfig {
 }
 
 /**
+ * Configuration for toggle (switch) fields.
+ *
+ * @since 1.6.0
+ */
+export interface ToggleFieldConfig extends BaseFieldConfig {
+    /** Switch size. Defaults to `md`. */
+    size?: 'xs' | 'sm' | 'md' | 'lg';
+    /** daisyUI color. Defaults to `primary`. */
+    color?: 'primary' | 'secondary' | 'accent' | 'success' | 'warning' | 'error' | 'info';
+    /** Text shown for "on" in submissions, notifications and exports. Defaults to "Yes". */
+    checked_label?: string;
+    /** Text shown for "off". Defaults to "No". */
+    unchecked_label?: string;
+}
+
+/**
+ * Settings every input type offers (since 1.6.0), stored in `field_config`.
+ */
+export interface CommonFieldConfig extends BaseFieldConfig {
+    /** An `autocomplete` token overriding the type's default (WCAG 1.3.5). */
+    autocomplete?: string;
+    /** Label shown in submissions, exports and admin notifications instead of the label. */
+    admin_label?: string;
+    /** Message for every failed rule except the required one. May be a translation key. */
+    error_message?: string;
+    /** Message shown when a required field is left empty. May be a translation key. */
+    required_message?: string;
+    /** Whether the field may be populated from the prefill, query string or a filter. */
+    dynamic_population?: boolean;
+    /** The prefill key and query string parameter; defaults to the field name. */
+    dynamic_parameter?: string;
+}
+
+/**
  * Configuration for paragraph and HTML layout fields. A heading's text is
  * stored in the field `label`.
  */
@@ -234,6 +269,8 @@ export type FieldConfig =
     | OptionsFieldConfig
     | FileFieldConfig
     | RatingFieldConfig
+    | ToggleFieldConfig
+    | CommonFieldConfig
     | ContentFieldConfig
     | BaseFieldConfig
     | null;
@@ -310,6 +347,27 @@ export interface FormField {
      * filter (since 1.6.0). Present only when `is_read_only` is true.
      */
     read_only_value?: unknown;
+    /**
+     * The `autocomplete` token the input exposes: the field's setting or the
+     * type's default, or null for none (since 1.6.0).
+     */
+    autocomplete?: string | null;
+    /** The custom message for every failed rule except "required", translated (since 1.6.0). */
+    error_message?: string;
+    /** The custom message for a required field left empty, translated (since 1.6.0). */
+    required_message?: string;
+    /**
+     * The prefill key and query string parameter that populate the field, or
+     * null when dynamic population is off (since 1.6.0).
+     */
+    dynamic_parameter?: string | null;
+    /**
+     * The value the field starts with: its default value with server merge
+     * tags replaced, or the `ap.forms.fieldValue.{parameter}` filter's value.
+     * Page tags (`{embed_url}`, `{referer}`, `{query:…}`) are left for the
+     * client. Only in the public render payload (since 1.6.0).
+     */
+    resolved_default_value?: string | boolean | string[] | null;
     /**
      * The field type's settings schema (since 1.6.0). Left out of the public
      * render payload.
@@ -417,6 +475,8 @@ export interface FormSubmissionValue {
     field_id: number | null;
     field_name: string;
     field_label: string | null;
+    /** The field's admin label when the value was submitted (since 1.6.0). */
+    field_admin_label: string | null;
     field_type: FieldType;
     value: string | null;
     value_array: string[] | null;

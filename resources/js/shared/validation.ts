@@ -40,7 +40,44 @@ function stringLimit( value: unknown ): string | undefined {
 const TEXT_LENGTH_FIELDS = new Set( ['text', 'email', 'phone', 'url', 'textarea', 'hidden'] );
 
 /**
+ * Checks whether a required field is missing its value.
+ *
+ * Mirrors the server's presence rules: an unchecked checkbox or toggle fails
+ * `accepted` even after it was checked once, and a rating of 0 ("no rating")
+ * counts as missing.
+ */
+function isMissing(
+	field: FormField,
+	value: unknown,
+	files?: Record<string, File | File[]>,
+): boolean {
+	if ( field.type === 'file' ) {
+		const fileValue = files?.[field.name];
+
+		return !fileValue || ( Array.isArray( fileValue ) && fileValue.length === 0 );
+	}
+
+	if ( ACCEPTANCE_FIELD_TYPES.has( field.type ) ) {
+		return value !== true && value !== 1 && value !== '1' && value !== 'true' && value !== 'on' && value !== 'yes';
+	}
+
+	if ( field.type === 'rating' ) {
+		return !( Number( value ) > 0 );
+	}
+
+	if ( field.type === 'checkbox_group' || field.type === 'select_multiple' ) {
+		return !Array.isArray( value ) || value.length === 0;
+	}
+
+	return value === null || value === undefined || String( value ).trim() === '';
+}
+
+/**
  * Validates a single field value against its field definition.
+ *
+ * A field's custom messages replace the built-in ones, as on the server:
+ * `required_message` when a required field is empty, and `error_message`
+ * for any other failure (see `FormField::buildValidationMessages()`).
  *
  * @returns An array of error messages (empty if valid).
  */
@@ -49,51 +86,31 @@ export function validateField(
 	value: unknown,
 	files?: Record<string, File | File[]>,
 ): string[] {
-	const errors: string[] = [];
-
 	if ( LAYOUT_FIELDS.has( field.type ) ) {
-		return errors;
+		return [];
 	}
 
+	if ( field.is_required && isMissing( field, value, files ) ) {
+		return [field.required_message ?? `${field.label ?? field.name} is required.`];
+	}
+
+	const errors = validateValue( field, value, files );
+
+	return errors.length > 0 && field.error_message ? [field.error_message] : errors;
+}
+
+/**
+ * Validates a present value against the field's type and limits.
+ *
+ * @returns An array of error messages (empty if valid).
+ */
+function validateValue(
+	field: FormField,
+	value: unknown,
+	files?: Record<string, File | File[]>,
+): string[] {
+	const errors: string[] = [];
 	const rules = field.validation_rules;
-
-	// Required check
-	if ( field.is_required ) {
-		if ( field.type === 'file' ) {
-			const fileValue = files?.[field.name];
-
-			if ( !fileValue || ( Array.isArray( fileValue ) && fileValue.length === 0 ) ) {
-				errors.push( `${field.label ?? field.name} is required.` );
-
-				return errors;
-			}
-		} else if ( ACCEPTANCE_FIELD_TYPES.has( field.type ) ) {
-			// Mirrors the server's `accepted` rule: an unchecked box fails even
-			// after it was checked once.
-			if ( value !== true && value !== 1 && value !== '1' && value !== 'true' && value !== 'on' && value !== 'yes' ) {
-				errors.push( `${field.label ?? field.name} is required.` );
-
-				return errors;
-			}
-		} else if ( field.type === 'rating' ) {
-			// 0 is the "no rating" choice, so a required rating must be above it.
-			if ( !( Number( value ) > 0 ) ) {
-				errors.push( `${field.label ?? field.name} is required.` );
-
-				return errors;
-			}
-		} else if ( field.type === 'checkbox_group' || field.type === 'select_multiple' ) {
-			if ( !Array.isArray( value ) || value.length === 0 ) {
-				errors.push( `${field.label ?? field.name} is required.` );
-
-				return errors;
-			}
-		} else if ( value === null || value === undefined || String( value ).trim() === '' ) {
-			errors.push( `${field.label ?? field.name} is required.` );
-
-			return errors;
-		}
-	}
 
 	// Skip further validation if value is empty and not required (except file fields)
 	if ( field.type !== 'file' && ( value === null || value === undefined || String( value ).trim() === '' ) ) {

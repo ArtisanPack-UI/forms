@@ -174,9 +174,9 @@ describe( 'React read-only fields (issue #99)', function () use ( $resource, $be
 
     it( 'seeds a read-only field from the value the server stores', function () use ( $resource ): void {
         expect( $resource( 'shared/fieldSettings.ts' ) )
-            ->toContain( 'export function getInitialFieldValue( field: FormField ): unknown {' )
+            ->toContain( 'export function getInitialFieldValue( field: FormField, population: PopulationSource = {} ): unknown {' )
             ->toContain( 'isReadOnlyField( field ) && field.read_only_value !== undefined' )
-            ->and( substr_count( $resource( 'react/hooks/useForm.ts' ), 'defaults[field.name] = getInitialFieldValue( field );' ) )->toBe( 2 )
+            ->and( substr_count( $resource( 'react/hooks/useForm.ts' ), 'defaults[field.name] = getInitialFieldValue( field, { prefill: prefillRef.current } );' ) )->toBe( 2 )
             ->and( $resource( 'types/artisanpack-forms.d.ts' ) )->toContain( 'read_only_value?: unknown;' );
     } );
 

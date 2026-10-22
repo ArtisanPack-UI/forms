@@ -64,6 +64,13 @@ export interface FormRendererProps {
 	 * @since 1.5.2
 	 */
 	submitClassName?: string;
+	/**
+	 * Values for fields with dynamic population on, keyed by parameter name.
+	 * Takes precedence over the page's query string and the field's default.
+	 *
+	 * @since 1.6.0
+	 */
+	prefill?: Record<string, unknown>;
 }
 
 /**
@@ -134,6 +141,16 @@ function DefaultSuccess( { message }: { message: string } ) {
  *
  * @example
  * ```tsx
+ * // Populate fields that allow dynamic population
+ * <FormRenderer
+ *   baseUrl="/api/v1/forms"
+ *   formSlug="signup"
+ *   prefill={{ plan: 'pro', utm_source: 'newsletter' }}
+ * />
+ * ```
+ *
+ * @example
+ * ```tsx
  * // With custom components
  * <FormRenderer
  *   baseUrl="/api/v1/forms"
@@ -157,6 +174,7 @@ export function FormRenderer( {
 	fieldComponents,
 	layout = 'stacked',
 	submitClassName,
+	prefill,
 }: FormRendererProps ) {
 	const {
 		form,
@@ -185,6 +203,7 @@ export function FormRenderer( {
 		onSuccess,
 		onError,
 		clientValidation,
+		prefill,
 	} );
 
 	// Loading state

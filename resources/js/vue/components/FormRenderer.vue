@@ -44,11 +44,19 @@ const props = withDefaults( defineProps<{
 	 * @since 1.5.2
 	 */
 	submitClassName?: string;
+	/**
+	 * Values for fields with dynamic population on, keyed by parameter name.
+	 * Takes precedence over the page's query string and the field's default.
+	 *
+	 * @since 1.6.0
+	 */
+	prefill?: Record<string, unknown>;
 }>(), {
 	clientValidation: true,
 	formClass: undefined,
 	layout: 'stacked',
 	submitClassName: undefined,
+	prefill: undefined,
 } );
 
 const emit = defineEmits<{
@@ -81,6 +89,7 @@ const {
 	baseUrl: props.baseUrl,
 	formSlug: props.formSlug,
 	clientValidation: props.clientValidation,
+	prefill: props.prefill,
 	onSuccess: ( response ) => emit( 'success', response ),
 	onError: ( error ) => emit( 'error', error ),
 } );

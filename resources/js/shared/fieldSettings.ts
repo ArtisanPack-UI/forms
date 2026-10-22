@@ -32,6 +32,9 @@ import type {
 	ValidationRules,
 } from '../types/artisanpack-forms';
 
+import { getPopulatedValue } from './dynamicPopulation';
+import type { PopulationSource } from './dynamicPopulation';
+
 /** Field types whose content is edited in the builder's General tab. */
 export const CONTENT_LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'html'] );
 
@@ -478,15 +481,16 @@ export function isReadOnlyField( field: FormField ): boolean {
  * The value a field starts with in the renderer.
  *
  * A read-only field starts with the value the server will store
- * (`read_only_value`), so what is shown matches what is saved; other fields
- * start with their default value.
+ * (`read_only_value`), so what is shown matches what is saved. Other fields
+ * start with their resolved default value, or — when populated dynamically —
+ * the prefill or query string value (see `getPopulatedValue()`).
  *
  * @since 1.6.0
  */
-export function getInitialFieldValue( field: FormField ): unknown {
+export function getInitialFieldValue( field: FormField, population: PopulationSource = {} ): unknown {
 	const source: unknown = isReadOnlyField( field ) && field.read_only_value !== undefined
 		? field.read_only_value
-		: field.default_value;
+		: getPopulatedValue( field, population );
 
 	if ( field.type === 'checkbox_group' || field.type === 'select_multiple' ) {
 		if ( Array.isArray( source ) ) {
@@ -498,11 +502,33 @@ export function getInitialFieldValue( field: FormField ): unknown {
 			: [];
 	}
 
-	if ( field.type === 'checkbox' ) {
+	if ( ACCEPTANCE_FIELD_TYPES.has( field.type ) ) {
 		return source === true || source === '1' || source === 'true';
 	}
 
 	return source ?? '';
+}
+
+/** Switch sizes, mirroring `ToggleFieldType::SIZES`. */
+export const TOGGLE_SIZES = ['xs', 'sm', 'md', 'lg'] as const;
+
+/** daisyUI switch colors, mirroring `ToggleFieldType::COLORS`. */
+export const TOGGLE_COLORS = ['primary', 'secondary', 'accent', 'success', 'warning', 'error', 'info'] as const;
+
+export type ToggleColor = typeof TOGGLE_COLORS[number];
+
+/** Get a toggle's daisyUI size class (`toggle-xs` … `toggle-lg`, or none for `md`). */
+export function getToggleSizeClass( field: FormField ): string {
+	const size = readConfig( field, 'size' );
+
+	return size === 'xs' || size === 'sm' || size === 'lg' ? `toggle-${size}` : '';
+}
+
+/** Get a toggle's color, defaulting to `primary` as the Blade renderer does. */
+export function getToggleColor( field: FormField ): ToggleColor {
+	const color = readConfig( field, 'color' );
+
+	return ( TOGGLE_COLORS as readonly string[] ).includes( String( color ) ) ? color as ToggleColor : 'primary';
 }
 
 /** The largest number of stars a rating field may have, mirroring `RatingFieldType::MAX_STARS`. */

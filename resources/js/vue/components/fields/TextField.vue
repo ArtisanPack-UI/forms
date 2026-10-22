@@ -2,7 +2,8 @@
   Text-based field components wrapper.
 
   Renders text, email, phone, number, url, textarea, hidden,
-  and time input fields using @artisanpack-ui/vue components.
+  and time input fields using @artisanpack-ui/vue components. Inputs expose
+  the field's `autocomplete` token (WCAG 1.3.5).
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -13,6 +14,7 @@ import { computed } from 'vue';
 import { Input, Textarea } from '@artisanpack-ui/vue/form';
 import type { FormField, DisplayConfig } from '../../../types/artisanpack-forms';
 import { getTextareaRows, getTimeStep, isReadOnlyField } from '../../../shared/fieldSettings';
+import { vAutocomplete } from './autocomplete';
 
 const props = defineProps<{
 	field: FormField;
@@ -44,6 +46,7 @@ const ariaLabel = computed( () =>
 	<!-- Text -->
 	<Input
 		v-if="field.type === 'text'"
+		v-autocomplete="field.autocomplete"
 		:label="showLabel ? labelText : undefined"
 		:aria-label="ariaLabel"
 		:name="field.name"
@@ -65,6 +68,7 @@ const ariaLabel = computed( () =>
 	<!-- Email -->
 	<Input
 		v-else-if="field.type === 'email'"
+		v-autocomplete="field.autocomplete"
 		:label="showLabel ? labelText : undefined"
 		:aria-label="ariaLabel"
 		:name="field.name"
@@ -83,6 +87,7 @@ const ariaLabel = computed( () =>
 	<!-- Phone -->
 	<Input
 		v-else-if="field.type === 'phone'"
+		v-autocomplete="field.autocomplete"
 		:label="showLabel ? labelText : undefined"
 		:aria-label="ariaLabel"
 		:name="field.name"
@@ -102,6 +107,7 @@ const ariaLabel = computed( () =>
 	<!-- Number -->
 	<Input
 		v-else-if="field.type === 'number'"
+		v-autocomplete="field.autocomplete"
 		:label="showLabel ? labelText : undefined"
 		:aria-label="ariaLabel"
 		:name="field.name"
@@ -123,6 +129,7 @@ const ariaLabel = computed( () =>
 	<!-- URL -->
 	<Input
 		v-else-if="field.type === 'url'"
+		v-autocomplete="field.autocomplete"
 		:label="showLabel ? labelText : undefined"
 		:aria-label="ariaLabel"
 		:name="field.name"
@@ -141,6 +148,7 @@ const ariaLabel = computed( () =>
 	<!-- Textarea -->
 	<Textarea
 		v-else-if="field.type === 'textarea'"
+		v-autocomplete="field.autocomplete"
 		:label="showLabel ? labelText : undefined"
 		:aria-label="ariaLabel"
 		:name="field.name"

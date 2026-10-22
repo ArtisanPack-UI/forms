@@ -44,6 +44,7 @@
             class="toggle {{ $sizeClass }} {{ $colorClass }} {{ $field->css_classes }}"
             role="switch"
             @if($field->is_required) required aria-required="true" @endif
+            @if($field->isReadOnly()) disabled aria-readonly="true" @endif
             @if($ariaDescribedBy) aria-describedby="{{ $ariaDescribedBy }}" @endif
         />
         <span class="label-text">

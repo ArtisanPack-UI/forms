@@ -35,6 +35,7 @@ export function getFieldTypeLabel( type: string ): string {
 		select: t( 'Select' ),
 		radio: t( 'Radio' ),
 		checkbox: t( 'Checkbox' ),
+		toggle: t( 'Toggle' ),
 		checkbox_group: t( 'Checkbox Group' ),
 		select_multiple: t( 'Multi-Select' ),
 		file: t( 'File Upload' ),

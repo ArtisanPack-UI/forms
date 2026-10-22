@@ -325,7 +325,7 @@ describe( 'React Form Renderer', function (): void {
         } );
 
         it( 'initializes default values from field definitions', function (): void {
-            expect( $this->content )->toContain( 'getInitialFieldValue( field )' )
+            expect( $this->content )->toContain( 'getInitialFieldValue( field, { prefill: prefillRef.current } )' )
                 ->and( $this->content )->toContain( 'defaults' );
         } );
     } );

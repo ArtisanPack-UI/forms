@@ -37,6 +37,7 @@
         class="input input-bordered w-full {{ $field->css_classes }} @if($error) input-error @endif"
         @if(filled($minDate)) min="{{ $minDate }}" @endif
         @if(filled($maxDate)) max="{{ $maxDate }}" @endif
+        @if($field->getAutocomplete()) autocomplete="{{ $field->getAutocomplete() }}" @endif
         @if($field->isReadOnly()) readonly @endif
         @if($field->is_required) required aria-required="true" @endif
         @if($error) aria-invalid="true" @endif

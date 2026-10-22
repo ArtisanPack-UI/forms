@@ -58,6 +58,16 @@ export {
 	validateFields,
 } from '../shared/validation';
 
+// Dynamic population (since 1.6.0)
+export {
+	getPageContext,
+	getPopulatedValue,
+	resolvePageMergeTags,
+	sanitizePopulatedValue,
+	MERGE_TAGS,
+} from '../shared/dynamicPopulation';
+export type { PageContext, PopulationSource } from '../shared/dynamicPopulation';
+
 // Translations for the admin components (since 1.6.0)
 export {
 	t,

@@ -19,7 +19,9 @@ namespace ArtisanPackUI\Forms\Http\Resources;
 
 use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Models\FormField;
+use ArtisanPackUI\Forms\Support\DynamicPopulation;
 use ArtisanPackUI\Forms\Support\FieldSettings;
+use ArtisanPackUI\Forms\Support\PopulationContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -41,6 +43,13 @@ class FormFieldResource extends JsonResource
     protected bool $includeSettingsSchema = true;
 
     /**
+     * Whether to include the value the field starts with in the renderer.
+     *
+     * @since 1.6.0
+     */
+    protected bool $includeResolvedDefault = false;
+
+    /**
      * Leaves the settings schema out, for payloads that only render the form.
      *
      * @since 1.6.0
@@ -50,6 +59,24 @@ class FormFieldResource extends JsonResource
     public function withoutSettingsSchema(): static
     {
         $this->includeSettingsSchema = false;
+
+        return $this;
+    }
+
+    /**
+     * Adds the value the field starts with in the renderer as `resolved_default_value`.
+     *
+     * Merge tags the server knows (`{user:…}`, `{date}`, `{ip}`) are replaced
+     * and the `ap.forms.fieldValue.{parameter}` filter is applied; page tags
+     * and the query string are left for the client, which knows the page.
+     *
+     * @since 1.6.0
+     *
+     * @return static The resource.
+     */
+    public function withResolvedDefault(): static
+    {
+        $this->includeResolvedDefault = true;
 
         return $this;
     }
@@ -81,13 +108,21 @@ class FormFieldResource extends JsonResource
             'default_value'     => 'html' === $this->type && null !== $this->default_value
                 ? FormField::sanitizeHtml( $this->default_value )
                 : $this->default_value,
-            'conditional_logic' => $this->conditional_logic,
-            'width'             => $this->width,
-            'css_classes'       => $this->css_classes,
-            'sort_order'        => $this->sort_order,
-            'options'           => $this->when( FieldTypes::hasOptions( $this->type ) && ! empty( $this->options ), $this->options ),
-            'is_read_only'      => $this->resource->isReadOnly(),
-            'read_only_value'   => $this->when( $this->resource->isReadOnly(), fn (): mixed => $this->resource->getReadOnlyValue() ),
+            'conditional_logic'      => $this->conditional_logic,
+            'width'                  => $this->width,
+            'css_classes'            => $this->css_classes,
+            'sort_order'             => $this->sort_order,
+            'options'                => $this->when( FieldTypes::hasOptions( $this->type ) && ! empty( $this->options ), $this->options ),
+            'is_read_only'           => $this->resource->isReadOnly(),
+            'read_only_value'        => $this->when( $this->resource->isReadOnly(), fn (): mixed => $this->resource->getReadOnlyValue() ),
+            'autocomplete'           => $this->resource->getAutocomplete(),
+            'error_message'          => $this->when( null !== $this->resource->getCustomErrorMessage(), fn (): ?string => $this->resource->getCustomErrorMessage() ),
+            'required_message'       => $this->when( null !== $this->resource->getCustomRequiredMessage(), fn (): ?string => $this->resource->getCustomRequiredMessage() ),
+            'dynamic_parameter'      => $this->resource->getPopulationParameter(),
+            'resolved_default_value' => $this->when(
+                $this->includeResolvedDefault,
+                fn (): mixed => DynamicPopulation::initialValue( $this->resource, PopulationContext::fromApiRequest( $request ) ),
+            ),
             'settings_schema'   => $this->when( $this->includeSettingsSchema, fn (): array => FieldSettings::schema( $this->resource ) ),
             'created_at'        => $this->created_at?->toIso8601String(),
             'updated_at'        => $this->updated_at?->toIso8601String(),

@@ -79,6 +79,7 @@ export function DateField( { field, value, error, onChange, displayConfig }: Fie
 				error={error}
 				required={field.is_required}
 				className={field.css_classes ?? undefined}
+				autoComplete={field.autocomplete ?? undefined}
 				readOnly
 				onChange={() => undefined}
 				inline={displayConfig.label_position === 'beside'}
@@ -99,6 +100,7 @@ export function DateField( { field, value, error, onChange, displayConfig }: Fie
 			onChange={( e ) => onChange( e.target.value )}
 			min={field.validation_rules?.min_date ?? undefined}
 			max={field.validation_rules?.max_date ?? undefined}
+			autoComplete={field.autocomplete ?? undefined}
 			inline={displayConfig.label_position === 'beside'}
 		/>
 	);

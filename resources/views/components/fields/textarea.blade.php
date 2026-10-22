@@ -12,6 +12,7 @@
     :required="$field->is_required"
     wire:model.live="formData.{{ $field->name }}"
     id="field-{{ $field->name }}"
+    :autocomplete="$field->getAutocomplete()"
     :readonly="$field->isReadOnly()"
     :class="$field->css_classes"
     :rows="$rows"

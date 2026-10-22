@@ -15,6 +15,7 @@ namespace ArtisanPackUI\Forms\FieldTypes;
 use ArtisanPackUI\Forms\Contracts\FieldType;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
+use ArtisanPackUI\Forms\Support\Autocomplete;
 use ArtisanPackUI\Forms\Support\FieldSettings;
 
 /**
@@ -134,9 +135,14 @@ abstract class AbstractFieldType implements FieldType
             $this->definitionOverrides,
         );
 
-        $definition['settings'] = FieldSettings::normalizeSchema( array_merge(
+        $settings = array_merge(
             is_array( $definition['settings'] ) ? $definition['settings'] : [],
             $this->validationOptionSettings( $definition ),
+        );
+
+        $definition['settings'] = FieldSettings::normalizeSchema( array_merge(
+            $settings,
+            $this->commonSettings( $definition, $settings ),
         ) );
 
         return $this->resolvedDefinition = $definition;
@@ -199,7 +205,7 @@ abstract class AbstractFieldType implements FieldType
      */
     public function readOnlyValue( FormField $field ): mixed
     {
-        return $field->default_value ?? '';
+        return $field->getResolvedDefaultValue() ?? '';
     }
 
     /**
@@ -227,7 +233,7 @@ abstract class AbstractFieldType implements FieldType
      */
     public function exportColumns( FormField $field ): array
     {
-        return $this->isLayout() ? [] : [(string) $field->label];
+        return $this->isLayout() ? [] : [$field->getAdminLabel()];
     }
 
     /**
@@ -465,6 +471,90 @@ abstract class AbstractFieldType implements FieldType
         }
 
         return $settings;
+    }
+
+    /**
+     * Gets the settings every input type offers, leaving out any the type already declares.
+     *
+     * Validation tab: a custom error message and a custom required message.
+     * Advanced tab: the `autocomplete` token (for types with
+     * `supports_autocomplete`), an admin label and dynamic population (unless
+     * `supports_dynamic_population` is false). Layout types collect no input
+     * and get none of them.
+     *
+     * @since 1.6.0
+     *
+     * @param  array<string, mixed>  $definition  The definition being built.
+     * @param  list<mixed>  $settings  The type's own settings.
+     *
+     * @return list<array<string, mixed>> The settings to add.
+     */
+    protected function commonSettings( array $definition, array $settings ): array
+    {
+        if ( (bool) ( $definition['is_layout'] ?? false ) ) {
+            return [];
+        }
+
+        $common = [
+            [
+                'key'        => 'error_message',
+                'tab'        => 'validation',
+                'max_length' => 500,
+                'label'      => __( 'Custom Error Message' ),
+                'hint'       => __( 'Replaces every validation message except the required one. May be a translation key.' ),
+            ],
+            [
+                'key'        => 'required_message',
+                'tab'        => 'validation',
+                'max_length' => 500,
+                'label'      => __( 'Required Message' ),
+                'hint'       => __( 'Shown when a required field is left empty. May be a translation key.' ),
+            ],
+        ];
+
+        if ( true === ( $definition['supports_autocomplete'] ?? false ) ) {
+            $default  = $definition['autocomplete'] ?? null;
+            $common[] = Autocomplete::setting( Autocomplete::isToken( $default ) ? $default : null );
+        }
+
+        $common[] = [
+            'key'        => 'admin_label',
+            'tab'        => 'advanced',
+            'max_length' => 255,
+            'label'      => __( 'Admin Label' ),
+            'hint'       => __( 'Shown instead of the label in submissions, exports and admin notifications.' ),
+        ];
+
+        if ( false !== ( $definition['supports_dynamic_population'] ?? true ) ) {
+            $common[] = [
+                'key'   => 'dynamic_population',
+                'input' => 'toggle',
+                'tab'   => 'advanced',
+                'label' => __( 'Allow field to be populated dynamically' ),
+                'hint'  => __( 'Fill the value from the renderer prefill, the query string or the ap.forms.fieldValue filter. Read-only fields are not populated.' ),
+            ];
+            $common[] = [
+                'key'        => 'dynamic_parameter',
+                'tab'        => 'advanced',
+                'max_length' => 100,
+                'label'      => __( 'Parameter Name' ),
+                'hint'       => __( 'The prefill key and query string parameter. Defaults to the field name.' ),
+                'monospace'  => true,
+            ];
+        }
+
+        $declared = [];
+
+        foreach ( $settings as $setting ) {
+            if ( is_array( $setting ) && isset( $setting['key'] ) ) {
+                $declared[] = $setting['key'];
+            }
+        }
+
+        return array_values( array_filter(
+            $common,
+            fn ( array $setting ): bool => ! in_array( $setting['key'], $declared, true ),
+        ) );
     }
 
     /**

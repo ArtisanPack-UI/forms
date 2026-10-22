@@ -38,6 +38,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $field_id
  * @property string $field_name
  * @property string $field_label
+ * @property string|null $field_admin_label
  * @property string $field_type
  * @property string|null $value
  * @property array|null $value_array
@@ -47,6 +48,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read FormField|null $field
  * @property-read FormUpload|null $upload
  * @property-read string $display_value
+ * @property-read string $display_label
  * @property-read list<string> $display_values
  * @property-read bool $is_array_value
  * @property-read bool $is_file
@@ -78,6 +80,7 @@ class FormSubmissionValue extends Model
         'field_id',
         'field_name',
         'field_label',
+        'field_admin_label',
         'field_type',
         'value',
         'value_array',
@@ -146,6 +149,53 @@ class FormSubmissionValue extends Model
     public function getDisplayValueAttribute(): string
     {
         return FieldTypes::handler( (string) $this->field_type )->display( $this );
+    }
+
+    /**
+     * Gets the label shown for the value in submissions.
+     *
+     * The field's admin label as it was when the value was submitted, falling
+     * back to its label and then its name.
+     *
+     * @since 1.6.0
+     *
+     * @return string The label.
+     */
+    public function getDisplayLabelAttribute(): string
+    {
+        foreach ( [$this->field_admin_label, $this->field_label] as $label ) {
+            if ( is_string( $label ) && '' !== trim( $label ) ) {
+                return $label;
+            }
+        }
+
+        return (string) $this->field_name;
+    }
+
+    /**
+     * Gets the label shown for the value in a notification.
+     *
+     * Admin notifications prefer the admin label; other notifications, such as
+     * the autoresponder sent to the visitor, keep the public label. The field's
+     * current label is used while the field exists.
+     *
+     * @since 1.6.0
+     *
+     * @param  bool  $preferAdminLabel  Whether to use the admin label when one was set.
+     *
+     * @return string The label.
+     */
+    public function getNotificationLabel( bool $preferAdminLabel = true ): string
+    {
+        if ( $preferAdminLabel ) {
+            $adminLabel = null === $this->field ? $this->field_admin_label : $this->field->getStoredAdminLabel();
+
+            if ( is_string( $adminLabel ) && '' !== trim( $adminLabel ) ) {
+                return $adminLabel;
+            }
+        }
+
+        return $this->field?->label ?? $this->field_name;
     }
 
     /**

@@ -35,6 +35,13 @@ export interface UseFormOptions {
 	onError?: ( error: Error ) => void;
 	/** Whether to validate on the client before submitting. Defaults to true. */
 	clientValidation?: boolean;
+	/**
+	 * Values for fields with dynamic population on, keyed by parameter name.
+	 * Takes precedence over the page's query string and the field's default.
+	 *
+	 * @since 1.6.0
+	 */
+	prefill?: Record<string, unknown>;
 }
 
 /** Layout field types that do not collect data. */
@@ -43,7 +50,7 @@ const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );
 /**
  * Initializes default form values from field definitions.
  */
-function buildDefaults( fields: FormField[] ): Record<string, unknown> {
+function buildDefaults( fields: FormField[], prefill?: Record<string, unknown> ): Record<string, unknown> {
 	const defaults: Record<string, unknown> = {};
 
 	for ( const field of fields ) {
@@ -51,7 +58,7 @@ function buildDefaults( fields: FormField[] ): Record<string, unknown> {
 			continue;
 		}
 
-		defaults[field.name] = getInitialFieldValue( field );
+		defaults[field.name] = getInitialFieldValue( field, { prefill } );
 	}
 
 	return defaults;
@@ -79,6 +86,7 @@ export function useForm( options: UseFormOptions ) {
 		onSuccess,
 		onError,
 		clientValidation = true,
+		prefill,
 	} = options;
 
 	const form = ref<FormRenderData | null>( null );
@@ -168,7 +176,7 @@ export function useForm( options: UseFormOptions ) {
 			const data: { data: FormRenderData } = await response.json();
 			form.value = data.data;
 			formLoadedAt.value = Math.floor( Date.now() / 1000 );
-			values.value = buildDefaults( data.data.fields );
+			values.value = buildDefaults( data.data.fields, prefill );
 		} catch ( err ) {
 			loadError.value = err instanceof Error ? err.message : 'Failed to load form.';
 		} finally {
@@ -417,7 +425,7 @@ export function useForm( options: UseFormOptions ) {
 			return;
 		}
 
-		values.value = buildDefaults( form.value.fields );
+		values.value = buildDefaults( form.value.fields, prefill );
 		errors.value = {};
 		files.value = {};
 		isSubmitted.value = false;
