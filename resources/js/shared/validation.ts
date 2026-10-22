@@ -12,7 +12,17 @@
 
 import type { FormField, ValidationRules } from '../types/artisanpack-forms';
 
-import { ACCEPTANCE_FIELD_TYPES, getFileAllowedTypes, getFileMaxSize, getRatingMax, ratingAllowsHalf } from './fieldSettings';
+import {
+	ACCEPTANCE_FIELD_TYPES,
+	allowsOtherChoice,
+	getFileAllowedTypes,
+	getFileMaxSize,
+	getOtherChoiceLabel,
+	getRatingMax,
+	OTHER_CHOICE_MAX_LENGTH,
+	OTHER_CHOICE_VALUE,
+	ratingAllowsHalf,
+} from './fieldSettings';
 
 /** Layout field types that do not collect data. */
 const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );
@@ -115,6 +125,18 @@ function validateValue(
 	// Skip further validation if value is empty and not required (except file fields)
 	if ( field.type !== 'file' && ( value === null || value === undefined || String( value ).trim() === '' ) ) {
 		return errors;
+	}
+
+	// A selected "Other" choice needs its text, mirroring the `forms_other_choice` rule.
+	// Callers validate values with the text already resolved (see `resolveOtherChoices()`).
+	if ( allowsOtherChoice( field ) ) {
+		const items = Array.isArray( value ) ? value : [value];
+
+		if ( items.some( ( item ) => item === OTHER_CHOICE_VALUE || String( item ).length > OTHER_CHOICE_MAX_LENGTH ) ) {
+			errors.push( `Please specify ${getOtherChoiceLabel( field )} (up to ${OTHER_CHOICE_MAX_LENGTH} characters).` );
+
+			return errors;
+		}
 	}
 
 	// Rating validation reads `field_config`, so it runs even without validation rules

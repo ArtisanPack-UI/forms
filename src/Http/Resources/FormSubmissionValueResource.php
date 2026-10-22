@@ -17,6 +17,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Http\Resources;
 
+use ArtisanPackUI\Forms\Support\FieldPrivacy;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -33,6 +34,9 @@ class FormSubmissionValueResource extends JsonResource
     /**
      * Transforms the resource into an array.
      *
+     * A value whose field is masked in the admin is masked (see
+     * FieldPrivacy::mask()) unless the user may reveal it.
+     *
      * @since 1.1.0
      *
      * @param Request $request The incoming request.
@@ -41,6 +45,8 @@ class FormSubmissionValueResource extends JsonResource
      */
     public function toArray( Request $request ): array
     {
+        $masked = $this->resource->isMasked() && ! FieldPrivacy::canReveal( $request->user() );
+
         return [
             'id'                => $this->id,
             'submission_id'     => $this->submission_id,
@@ -49,10 +55,12 @@ class FormSubmissionValueResource extends JsonResource
             'field_label'       => $this->field_label,
             'field_admin_label' => $this->field_admin_label,
             'field_type'        => $this->field_type,
-            'value'             => $this->value,
-            'value_array'       => $this->value_array,
-            'display_value'     => $this->display_value,
-            'display_values'    => $this->display_values,
+            'value'             => $masked ? $this->resource->masked_display_value : $this->value,
+            'value_array'       => $masked ? null : $this->value_array,
+            'display_value'     => $masked ? $this->resource->masked_display_value : $this->display_value,
+            'display_values'    => $masked ? [] : $this->display_values,
+            'is_masked'         => $masked,
+            'is_redacted'       => $this->resource->isRedacted(),
             'upload_id'         => $this->upload_id,
             'created_at'        => $this->created_at?->toIso8601String(),
         ];

@@ -44,6 +44,7 @@ class UrlFieldType extends AbstractFieldType
             ],
             'settings' => [
                 ...$this->lengthSettings(),
+                $this->noDuplicatesSetting(),
                 $this->readOnlySetting(),
             ],
         ] );

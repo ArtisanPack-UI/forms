@@ -19,6 +19,9 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Console\Commands;
 
+use ArtisanPackUI\Forms\Models\FormField;
+use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use DateTimeInterface;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
@@ -59,7 +62,7 @@ class PruneFormSubmissions extends Command
      *
      * @var string
      */
-    protected $description = 'Delete form submissions and associated files older than the retention period';
+    protected $description = 'Redact field values past their field\'s redaction period, then delete form submissions and associated files older than the retention period';
 
     /**
      * Tracks the number of files deleted.
@@ -86,20 +89,24 @@ class PruneFormSubmissions extends Command
     {
         $retentionDays = $this->getRetentionDays();
 
+        if ( null !== $retentionDays && $retentionDays <= 0 ) {
+            $this->error( 'Retention days must be a positive integer.' );
+
+            return self::FAILURE;
+        }
+
+        $isDryRun = (bool) $this->option( 'dry-run' );
+
+        // Fields with "Redact after N days" are handled whatever the retention period
+        $this->redactExpiredValues( $isDryRun );
+
         if ( null === $retentionDays ) {
             $this->info( 'Retention days is not configured. Submissions will be kept forever.' );
 
             return self::SUCCESS;
         }
 
-        if ( ! is_int( $retentionDays ) || $retentionDays <= 0 ) {
-            $this->error( 'Retention days must be a positive integer.' );
-
-            return self::FAILURE;
-        }
-
         $cutoffDate = now()->subDays( $retentionDays );
-        $isDryRun   = $this->option( 'dry-run' );
 
         // Get submission IDs to delete
         $submissionIds = $this->getExpiredSubmissionIds( $cutoffDate );
@@ -118,6 +125,49 @@ class PruneFormSubmissions extends Command
         }
 
         return $this->handlePrune( $submissionIds, $uploads, $retentionDays );
+    }
+
+    /**
+     * Clears stored values of fields whose "Redact after N days" period has passed.
+     *
+     * The value is emptied and `redacted_at` set, so the admin shows it as
+     * redacted and later runs skip it. Age is measured from the submission.
+     *
+     * @since 1.6.0
+     *
+     * @param bool $isDryRun Whether to only count the values.
+     *
+     * @return int The number of values redacted, or that would be.
+     */
+    protected function redactExpiredValues( bool $isDryRun ): int
+    {
+        $total = 0;
+
+        // field_config is JSON, so the setting is read in PHP to stay portable across databases
+        foreach ( FormField::query()->whereNotNull( 'field_config' )->lazyById() as $field ) {
+            $days = $field->getRedactAfterDays();
+
+            if ( null === $days ) {
+                continue;
+            }
+
+            $query = FormSubmissionValue::query()
+                ->where( 'field_id', $field->getKey() )
+                ->whereNull( 'redacted_at' )
+                ->whereIn( 'submission_id', FormSubmission::query()->select( 'id' )->where( 'created_at', '<', now()->subDays( $days ) ) );
+
+            $total += $isDryRun
+                ? $query->count()
+                : $query->update( ['value' => null, 'value_array' => null, 'redacted_at' => now()] );
+        }
+
+        if ( $total > 0 ) {
+            $this->info( $isDryRun
+                ? "[Dry Run] Would redact {$total} field value(s) past their field's redaction period."
+                : "Redacted {$total} field value(s) past their field's redaction period." );
+        }
+
+        return $total;
     }
 
     /**

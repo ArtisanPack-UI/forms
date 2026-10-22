@@ -30,6 +30,7 @@ use Exception;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Validator;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -75,6 +76,18 @@ class FormRenderer extends Component
      */
     #[Locked]
     public array $initialFormData = [];
+
+    /**
+     * Text typed into each field's "Other" choice, keyed by field name.
+     *
+     * The choice itself stays selected in $formData as FormField::OTHER_CHOICE_VALUE
+     * and is replaced with this text when the form is validated and saved.
+     *
+     * @since 1.6.0
+     *
+     * @var array<string, string>
+     */
+    public array $otherValues = [];
 
     /**
      * Uploaded files keyed by field name.
@@ -157,6 +170,9 @@ class FormRenderer extends Component
     /**
      * Get fields for the current view (current step or all fields).
      *
+     * Administrative fields are left out, since admins fill them in on the
+     * submission.
+     *
      * @return Collection<int, FormField>
      */
     #[Computed]
@@ -165,12 +181,17 @@ class FormRenderer extends Component
         if ( $this->form->is_multi_step ) {
             $currentStep = $this->currentStep;
 
-            return $currentStep
+            $fields = $currentStep
                 ? $currentStep->fields()->orderBy( 'sort_order' )->get()
                 : collect();
+        } else {
+            $fields = $this->form->fields()->whereNull( 'step_id' )->orderBy( 'sort_order' )->get();
         }
 
-        return $this->form->fields()->whereNull( 'step_id' )->orderBy( 'sort_order' )->get();
+        return $fields
+            ->reject( fn ( FormField $field ): bool => $field->isAdministrative() )
+            ->each( fn ( FormField $field ): FormField => $field->withSettingsForm( $this->form ) )
+            ->values();
     }
 
     /**
@@ -408,7 +429,7 @@ class FormRenderer extends Component
             // Create the submission
             $submission = $this->submissionService->create(
                 $this->form,
-                $this->formData,
+                $this->resolvedFormData(),
                 $this->files,
                 $metadata,
             );
@@ -442,6 +463,7 @@ class FormRenderer extends Component
         $this->currentStepIndex = 0;
         $this->errorMessage     = null;
         $this->files            = [];
+        $this->otherValues      = [];
         $this->formLoadedAt     = time();
         $this->initializeFormData();
         $this->clearComputedProperties();
@@ -540,8 +562,9 @@ class FormRenderer extends Component
         $data = [];
 
         foreach ( $this->form->fields as $field ) {
-            // File inputs bind to $files, so seeding formData would only shadow them.
-            if ( $field->is_file_field ) {
+            // File inputs bind to $files, so seeding formData would only shadow them;
+            // administrative fields are not on the public form.
+            if ( $field->is_file_field || $field->isAdministrative() ) {
                 continue;
             }
 
@@ -573,7 +596,7 @@ class FormRenderer extends Component
             return true;
         }
 
-        $this->validate( $rules, $messages );
+        $this->withResolvedOtherChoices()->validate( $rules, $messages );
 
         return true;
     }
@@ -596,9 +619,38 @@ class FormRenderer extends Component
             return true;
         }
 
-        $this->validate( $rules, $messages );
+        $this->withResolvedOtherChoices()->validate( $rules, $messages );
 
         return true;
+    }
+
+    /**
+     * Validates the form data with each selected "Other" choice replaced by its text.
+     *
+     * The choice stays selected in $formData, so the radio or checkbox keeps
+     * its state; only the data the validator sees is resolved.
+     *
+     * @since 1.6.0
+     *
+     * @return static The component.
+     */
+    protected function withResolvedOtherChoices(): static
+    {
+        return $this->withValidator( function ( Validator $validator ): void {
+            $validator->setData( array_replace( $validator->getData(), ['formData' => $this->resolvedFormData()] ) );
+        } );
+    }
+
+    /**
+     * Gets the form data with each selected "Other" choice replaced by its text.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> The form data.
+     */
+    protected function resolvedFormData(): array
+    {
+        return $this->submissionService->resolveOtherChoices( $this->form->fields, $this->formData, $this->otherValues );
     }
 
     /**

@@ -18,6 +18,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Http\Requests\Api;
 
 use ArtisanPackUI\Forms\Models\Form;
+use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Support\FiresValidationHooks;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -84,6 +85,8 @@ class UpdateFormApiRequest extends FormRequest
             'is_multi_step'         => ['sometimes', 'nullable', 'boolean'],
             'show_progress_bar'     => ['sometimes', 'nullable', 'boolean'],
             'allow_step_navigation' => ['sometimes', 'nullable', 'boolean'],
+            'label_placement'       => ['sometimes', 'nullable', 'string', Rule::in( FormField::LABEL_PLACEMENTS )],
+            'description_placement' => ['sometimes', 'nullable', 'string', Rule::in( FormField::DESCRIPTION_PLACEMENTS )],
         ];
     }
 

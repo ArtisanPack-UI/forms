@@ -32,10 +32,13 @@ const props = defineProps<{
 	 * @since 1.5.2
 	 */
 	layout?: FormLayout;
+	/** Text typed into the field's "Other" choice (since 1.6.0). */
+	otherValue?: string;
 }>();
 
 const emit = defineEmits<{
 	'update:modelValue': [value: unknown];
+	'update:otherValue': [text: string];
 	'fileChange': [file: File | File[]];
 }>();
 
@@ -114,7 +117,9 @@ const componentGroup = computed( () => {
 			:model-value="modelValue"
 			:error="error"
 			:display-config="displayConfig"
+			:other-value="otherValue"
 			@update:model-value="emit( 'update:modelValue', $event )"
+			@update:other-value="emit( 'update:otherValue', $event )"
 		/>
 		<AdvancedField
 			v-else-if="componentGroup === 'advanced'"

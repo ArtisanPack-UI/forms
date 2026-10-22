@@ -2,7 +2,9 @@
  * SubmissionDetail component.
  *
  * Displays a single submission with field values, admin notes,
- * file downloads, metadata, and navigation between submissions.
+ * file downloads, metadata, and navigation between submissions. Values of
+ * fields masked in the admin arrive masked from the API; the form's
+ * administrative fields are edited here.
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -14,15 +16,27 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Badge, Button, Card, Loading, Textarea } from '@artisanpack-ui/react';
 
 import type {
+	DisplayConfig,
 	Form,
 	FormSubmission,
 	FormSubmissionValue,
 	FormUpload,
 	UpdateSubmissionRequest,
 } from '../../../types/artisanpack-forms';
+import { getAdministrativeFormState, resolveOtherChoices } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
-import { useApi } from '../../hooks/useApi';
+import { validateFields } from '../../../shared/validation';
+import { ApiValidationError, useApi } from '../../hooks/useApi';
 import type { UseApiOptions } from '../../hooks/useApi';
+import { FieldRenderer } from '../fields/FieldRenderer';
+
+/** Display settings for the administrative field inputs. */
+const ADMIN_FIELD_DISPLAY: DisplayConfig = {
+	label_position: 'above',
+	show_required_indicator: true,
+	required_indicator: '*',
+	error_display: 'below',
+};
 
 /** Check whether a URL uses a safe protocol (http or https). */
 function isSafeUrl( url: string ): boolean {
@@ -83,6 +97,20 @@ export function SubmissionDetail( {
 	const [adminNotes, setAdminNotes] = useState( '' );
 	const [isSavingNotes, setIsSavingNotes] = useState( false );
 	const [isUpdating, setIsUpdating] = useState( false );
+	const [adminValues, setAdminValues] = useState<Record<string, unknown>>( {} );
+	const [adminOtherValues, setAdminOtherValues] = useState<Record<string, string>>( {} );
+	const [adminErrors, setAdminErrors] = useState<Record<string, string[]>>( {} );
+	const [isSavingAdmin, setIsSavingAdmin] = useState( false );
+	const [adminSaved, setAdminSaved] = useState( false );
+
+	/** Seeds the administrative field inputs from a loaded submission. */
+	const seedAdministrativeFields = useCallback( ( loaded: FormSubmission ) => {
+		const state = getAdministrativeFormState( loaded.administrative_fields ?? [], loaded.values ?? [] );
+
+		setAdminValues( state.values );
+		setAdminOtherValues( state.otherValues );
+		setAdminErrors( {} );
+	}, [] );
 
 	// Load submission
 	const loadSubmission = useCallback( async () => {
@@ -97,6 +125,7 @@ export function SubmissionDetail( {
 			);
 			setSubmission( response.data );
 			setAdminNotes( response.data.admin_notes ?? '' );
+			seedAdministrativeFields( response.data );
 
 			// Auto-mark as read after successful fetch
 			if ( !response.data.is_read ) {
@@ -114,7 +143,7 @@ export function SubmissionDetail( {
 		} finally {
 			setIsLoading( false );
 		}
-	}, [get, put, form.id, submissionId] );
+	}, [get, put, form.id, submissionId, seedAdministrativeFields] );
 
 	useEffect( () => {
 		loadSubmission();
@@ -181,6 +210,47 @@ export function SubmissionDetail( {
 			setIsSavingNotes( false );
 		}
 	}, [adminNotes, updateSubmission] );
+
+	const saveAdministrativeFields = useCallback( async () => {
+		const fields = submission?.administrative_fields ?? [];
+		const values = resolveOtherChoices( fields, adminValues, adminOtherValues );
+		const clientErrors = validateFields( fields, values, {} );
+
+		setAdminSaved( false );
+
+		if ( Object.keys( clientErrors ).length > 0 ) {
+			setAdminErrors( clientErrors );
+
+			return;
+		}
+
+		setIsSavingAdmin( true );
+		setAdminErrors( {} );
+
+		try {
+			const response = await put<{ data: FormSubmission }>(
+				`/${form.id}/submissions/${submissionId}`,
+				{ admin_values: values },
+			);
+			setSubmission( response.data );
+			seedAdministrativeFields( response.data );
+			setAdminSaved( true );
+		} catch ( err ) {
+			if ( err instanceof ApiValidationError ) {
+				const serverErrors: Record<string, string[]> = {};
+
+				for ( const [key, messages] of Object.entries( err.errors ) ) {
+					serverErrors[key.replace( /^admin_values\./, '' )] = messages;
+				}
+
+				setAdminErrors( serverErrors );
+			} else {
+				setError( err instanceof Error ? err.message : t( 'Failed to update submission.' ) );
+			}
+		} finally {
+			setIsSavingAdmin( false );
+		}
+	}, [submission, adminValues, adminOtherValues, put, form.id, submissionId, seedAdministrativeFields] );
 
 	const deleteSubmission = useCallback( async () => {
 		if ( !window.confirm( t( 'Are you sure you want to delete this submission?' ) ) ) {
@@ -335,7 +405,14 @@ export function SubmissionDetail( {
 								<React.Fragment key={value.id}>
 									<dt className="font-medium text-base-content/70">{value.field_admin_label || value.field_label || value.field_name}</dt>
 									<dd>
-										{value.upload_id && submission.uploads ? (
+										{value.is_masked ? (
+											<span className="inline-flex items-center gap-2">
+												<span className="font-mono">{value.display_value}</span>
+												<Badge color="neutral" size="sm" value={t( 'Masked' )} />
+											</span>
+										) : value.is_redacted ? (
+											<span className="italic text-base-content/60">{value.display_value}</span>
+										) : value.upload_id && submission.uploads ? (
 											<FileValue
 												value={value}
 												uploads={submission.uploads}
@@ -390,6 +467,45 @@ export function SubmissionDetail( {
 								</div>
 							) )}
 						</div>
+					</Card>
+				)}
+
+				{/* Administrative fields */}
+				{submission.administrative_fields && submission.administrative_fields.length > 0 && (
+					<Card title={t( 'Administrative Fields' )} bordered>
+						<p className="text-sm text-base-content/60 mb-4">{t( 'Internal fields that are not shown on the public form' )}</p>
+						<form
+							className="flex flex-wrap gap-4"
+							onSubmit={( e ) => {
+								e.preventDefault();
+								saveAdministrativeFields();
+							}}
+						>
+							{submission.administrative_fields.map( ( field ) => (
+								<FieldRenderer
+									key={field.id}
+									field={field}
+									value={adminValues[field.name]}
+									error={adminErrors[field.name]?.[0]}
+									onChange={( value ) => {
+										setAdminValues( ( prev ) => ( { ...prev, [field.name]: value } ) );
+										setAdminSaved( false );
+									}}
+									otherValue={adminOtherValues[field.name] ?? ''}
+									onOtherChange={( text ) => {
+										setAdminOtherValues( ( prev ) => ( { ...prev, [field.name]: text } ) );
+										setAdminSaved( false );
+									}}
+									displayConfig={ADMIN_FIELD_DISPLAY}
+								/>
+							) )}
+							<div className="w-full flex items-center gap-3">
+								<Button type="submit" color="primary" size="sm" disabled={isSavingAdmin}>
+									{isSavingAdmin ? t( 'Saving...' ) : t( 'Save Administrative Fields' )}
+								</Button>
+								{adminSaved && <span className="text-sm text-success" role="status">{t( 'Saved.' )}</span>}
+							</div>
+						</form>
 					</Card>
 				)}
 

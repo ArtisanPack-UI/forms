@@ -21,6 +21,7 @@ export { default as ChoiceField } from './components/fields/ChoiceField.vue';
 export { default as AdvancedField } from './components/fields/AdvancedField.vue';
 export { default as LayoutField } from './components/fields/LayoutField.vue';
 export { default as RatingField } from './components/fields/RatingField.vue';
+export { default as FieldLayout } from './components/fields/FieldLayout.vue';
 
 // Composables
 export { useForm } from './composables/useForm';
@@ -57,6 +58,16 @@ export {
 	validateField,
 	validateFields,
 } from '../shared/validation';
+
+// Field layout and "Other" choice helpers (since 1.6.0)
+export {
+	OTHER_CHOICE_VALUE,
+	allowsOtherChoice,
+	getFieldLayout,
+	getOtherChoiceLabel,
+	resolveOtherChoices,
+} from '../shared/fieldSettings';
+export type { DescriptionPlacement, FieldLayout as FieldLayoutSettings, LabelPlacement } from '../shared/fieldSettings';
 
 // Dynamic population (since 1.6.0)
 export {

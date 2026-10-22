@@ -113,6 +113,22 @@ export type FieldWidth = 'full' | 'half' | 'third' | 'two-thirds';
 export type LabelPosition = 'above' | 'beside' | 'hidden';
 
 /**
+ * Where a field's label is shown (since 1.6.0). `left` sits beside the input
+ * from the `md` breakpoint up; `hidden` keeps it for screen readers.
+ */
+export type LabelPlacement = 'top' | 'left' | 'hidden';
+
+/**
+ * Where a field's description (help text) is shown relative to its input (since 1.6.0).
+ */
+export type DescriptionPlacement = 'above' | 'below';
+
+/**
+ * Whether a field is on the public form or only filled in by admins (since 1.6.0).
+ */
+export type FieldVisibility = 'visible' | 'administrative';
+
+/**
  * Error display mode options.
  */
 export type ErrorDisplay = 'below' | 'tooltip' | 'summary';
@@ -193,6 +209,10 @@ interface BaseFieldConfig {
  */
 export interface OptionsFieldConfig extends BaseFieldConfig {
     options: FieldOption[];
+    /** Whether radio and checkbox groups add an "Other" choice with a text input (since 1.6.0). */
+    enable_other?: boolean;
+    /** The "Other" choice's label. Defaults to "Other" (since 1.6.0). */
+    other_label?: string;
 }
 
 /**
@@ -251,6 +271,20 @@ export interface CommonFieldConfig extends BaseFieldConfig {
     dynamic_population?: boolean;
     /** The prefill key and query string parameter; defaults to the field name. */
     dynamic_parameter?: string;
+    /** Where the label is shown; unset keeps the form's default (since 1.6.0). */
+    label_placement?: LabelPlacement;
+    /** Where the description is shown; unset keeps the form's default (since 1.6.0). */
+    description_placement?: DescriptionPlacement;
+    /** `administrative` fields are left out of the public form and filled in on the submission (since 1.6.0). */
+    visibility?: FieldVisibility;
+    /** Rejects a value already submitted for the field (text, email, phone, number, url and hidden; since 1.6.0). */
+    no_duplicates?: boolean;
+    /** Sends the value to notifications and webhooks without saving it (since 1.6.0). */
+    do_not_store?: boolean;
+    /** Masks the value in the admin unless the user may reveal it (since 1.6.0). */
+    mask_in_admin?: boolean;
+    /** Days after which `forms:prune-submissions` redacts the value (since 1.6.0). */
+    redact_after_days?: number;
 }
 
 /**
@@ -361,6 +395,23 @@ export interface FormField {
      * null when dynamic population is off (since 1.6.0).
      */
     dynamic_parameter?: string | null;
+    /** Whether the field is left out of the public form and filled in on the submission (since 1.6.0). */
+    is_administrative?: boolean;
+    /**
+     * The label of the field's "Other" choice, present only when a radio or
+     * checkbox group offers one (since 1.6.0).
+     */
+    other_choice_label?: string;
+    /**
+     * The label placement set on the field or its form, or null when neither
+     * sets one. Only in the public render payload (since 1.6.0).
+     */
+    label_placement?: LabelPlacement | null;
+    /**
+     * The description placement set on the field or its form, or null when
+     * neither sets one. Only in the public render payload (since 1.6.0).
+     */
+    description_placement?: DescriptionPlacement | null;
     /**
      * The value the field starts with: its default value with server merge
      * tags replaced, or the `ap.forms.fieldValue.{parameter}` filter's value.
@@ -435,6 +486,10 @@ export interface Form {
     show_progress_bar: boolean;
     allow_step_navigation: boolean;
     is_active: boolean;
+    /** The form's default label placement, or null for top (since 1.6.0). */
+    label_placement: LabelPlacement | null;
+    /** The form's default description placement, or null for below (since 1.6.0). */
+    description_placement: DescriptionPlacement | null;
     created_at: string;
     updated_at: string;
     /** Included when the fields relationship is loaded. */
@@ -483,6 +538,14 @@ export interface FormSubmissionValue {
     display_value: string;
     /** Option labels for an array value, one per item (since 1.6.0). */
     display_values: string[];
+    /**
+     * Whether the value is masked because its field is masked in the admin
+     * and the user may not reveal it. `value` and `display_value` then hold
+     * the masked text (since 1.6.0).
+     */
+    is_masked: boolean;
+    /** Whether `forms:prune-submissions` redacted the value (since 1.6.0). */
+    is_redacted: boolean;
     upload_id: number | null;
     created_at: string;
 }
@@ -510,6 +573,11 @@ export interface FormSubmission {
     values?: FormSubmissionValue[];
     /** Included when the uploads relationship is loaded. */
     uploads?: FormUpload[];
+    /**
+     * The form's administrative fields, which admins fill in on the
+     * submission. Included by the single-submission endpoints (since 1.6.0).
+     */
+    administrative_fields?: FormField[];
 }
 
 // ---------------------------------------------------------------------------
@@ -591,6 +659,10 @@ export interface StoreFormRequest {
     is_multi_step?: boolean;
     show_progress_bar?: boolean;
     allow_step_navigation?: boolean;
+    /** The default label placement; null clears it (since 1.6.0). */
+    label_placement?: LabelPlacement | null;
+    /** The default description placement; null clears it (since 1.6.0). */
+    description_placement?: DescriptionPlacement | null;
 }
 
 /**
@@ -674,6 +746,11 @@ export interface UpdateSubmissionRequest {
     is_spam?: boolean;
     is_starred?: boolean;
     admin_notes?: string | null;
+    /**
+     * Values for the form's administrative fields, keyed by field name and
+     * validated with each field's rules (since 1.6.0).
+     */
+    admin_values?: Record<string, unknown>;
 }
 
 /**

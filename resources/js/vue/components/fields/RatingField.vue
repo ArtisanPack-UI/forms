@@ -13,12 +13,14 @@
 import { computed } from 'vue';
 import type { FormField, DisplayConfig } from '../../../types/artisanpack-forms';
 import {
+	getFieldLayout,
 	getRatingSizeClass,
 	getRatingSteps,
 	isReadOnlyField,
 	ratingAllowsHalf,
 } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
+import FieldLayout from './FieldLayout.vue';
 
 const props = defineProps<{
 	field: FormField;
@@ -48,8 +50,23 @@ const currentRating = computed( (): number => {
 	return Number.isFinite( value ) ? value : 0;
 } );
 
-const labelId = computed( () => ( props.field.label ? `${props.field.name}-label` : undefined ) );
-const hintId = computed( () => ( props.field.help_text && !props.error ? `${props.field.name}-hint` : undefined ) );
+/** Where the label and description go (see `FieldLayout.vue`). */
+const layout = computed( () => getFieldLayout( props.field, props.displayConfig ) );
+
+const labelId = computed( () => {
+	if ( !props.field.label ) {
+		return undefined;
+	}
+
+	return layout.value.custom ? layout.value.labelId : `${props.field.name}-label`;
+} );
+const hintId = computed( () => {
+	if ( layout.value.custom ) {
+		return props.field.help_text ? layout.value.descriptionId : undefined;
+	}
+
+	return props.field.help_text && !props.error ? `${props.field.name}-hint` : undefined;
+} );
 const errorId = computed( () => ( props.error ? `${props.field.name}-error` : undefined ) );
 const describedBy = computed( () => [hintId.value, errorId.value].filter( Boolean ).join( ' ' ) || undefined );
 const ariaLabel = computed( () =>
@@ -84,55 +101,57 @@ function select( value: number ): void {
 </script>
 
 <template>
-	<div class="fieldset">
-		<span
-			v-if="field.label"
-			:id="labelId"
-			:class="['fieldset-legend', displayConfig.label_position === 'hidden' ? 'sr-only' : '']"
-		>
-			{{ field.label }}
-			<span v-if="field.is_required" class="text-error ml-1">*</span>
-		</span>
+	<FieldLayout :field="field" :layout="layout" group>
+		<div class="fieldset">
+			<span
+				v-if="!layout.custom && field.label"
+				:id="labelId"
+				:class="['fieldset-legend', displayConfig.label_position === 'hidden' ? 'sr-only' : '']"
+			>
+				{{ field.label }}
+				<span v-if="field.is_required" class="text-error ml-1">*</span>
+			</span>
 
-		<div
-			role="radiogroup"
-			:class="groupClasses"
-			:aria-labelledby="labelId"
-			:aria-label="labelId ? undefined : ariaLabel"
-			:aria-describedby="describedBy"
-			:aria-required="field.is_required ? 'true' : undefined"
-			:aria-readonly="readOnly ? 'true' : undefined"
-			:aria-invalid="error ? 'true' : undefined"
-		>
-			<input
-				type="radio"
-				:name="field.name"
-				value="0"
-				class="rating-hidden"
-				:aria-label="t( 'No rating' )"
-				:checked="currentRating === 0"
-				:disabled="readOnly"
-				@change="select( 0 )"
-			/>
-			<input
-				v-for="value in steps"
-				:key="value"
-				type="radio"
-				:name="field.name"
-				:value="String( value )"
-				:class="starClasses( value )"
-				:aria-label="starLabel( value )"
-				:checked="currentRating === value"
-				:disabled="readOnly"
-				@change="select( value )"
-			/>
+			<div
+				role="radiogroup"
+				:class="groupClasses"
+				:aria-labelledby="labelId"
+				:aria-label="labelId ? undefined : ariaLabel"
+				:aria-describedby="describedBy"
+				:aria-required="field.is_required ? 'true' : undefined"
+				:aria-readonly="readOnly ? 'true' : undefined"
+				:aria-invalid="error ? 'true' : undefined"
+			>
+				<input
+					type="radio"
+					:name="field.name"
+					value="0"
+					class="rating-hidden"
+					:aria-label="t( 'No rating' )"
+					:checked="currentRating === 0"
+					:disabled="readOnly"
+					@change="select( 0 )"
+				/>
+				<input
+					v-for="value in steps"
+					:key="value"
+					type="radio"
+					:name="field.name"
+					:value="String( value )"
+					:class="starClasses( value )"
+					:aria-label="starLabel( value )"
+					:checked="currentRating === value"
+					:disabled="readOnly"
+					@change="select( value )"
+				/>
+			</div>
+
+			<p v-if="!layout.custom && hintId" :id="hintId" class="fieldset-label">
+				{{ field.help_text }}
+			</p>
+			<p v-if="error" :id="errorId" class="fieldset-label text-error" role="alert">
+				{{ error }}
+			</p>
 		</div>
-
-		<p v-if="field.help_text && !error" :id="hintId" class="fieldset-label">
-			{{ field.help_text }}
-		</p>
-		<p v-if="error" :id="errorId" class="fieldset-label text-error" role="alert">
-			{{ error }}
-		</p>
-	</div>
+	</FieldLayout>
 </template>

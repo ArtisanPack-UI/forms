@@ -13,7 +13,9 @@
 import { DatePicker, File as FileInput, Input } from '@artisanpack-ui/react/form';
 
 import {
+	getFieldLayout,
 	getFileAccept,
+	getInputLabelProps,
 	getRatingSizeClass,
 	getRatingSteps,
 	isReadOnlyField,
@@ -21,6 +23,7 @@ import {
 } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 
+import { FieldLayout } from './FieldLayout';
 import type { FieldComponentProps } from './types';
 
 /**
@@ -28,36 +31,38 @@ import type { FieldComponentProps } from './types';
  */
 export function FileField( { field, error, onFileChange, displayConfig }: FieldComponentProps ) {
 	const allowedTypes = getFileAccept( field );
+	const layout = getFieldLayout( field, displayConfig );
+	const { inline: _inline, ...labelProps } = getInputLabelProps( field, layout, displayConfig, error );
 
 	return (
-		<FileInput
-			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
-			name={field.name}
-			accept={allowedTypes}
-			hint={field.help_text ?? undefined}
-			error={error}
-			required={field.is_required}
-			className={field.css_classes ?? undefined}
-			withDragDrop
-			onFilesSelected={( fileList ) => {
-				if ( !onFileChange ) {
-					return;
-				}
+		<FieldLayout field={field} layout={layout}>
+			<FileInput
+				{...labelProps}
+				name={field.name}
+				accept={allowedTypes}
+				error={error}
+				required={field.is_required}
+				className={field.css_classes ?? undefined}
+				withDragDrop
+				onFilesSelected={( fileList ) => {
+					if ( !onFileChange ) {
+						return;
+					}
 
-				if ( !fileList || fileList.length === 0 ) {
-					onFileChange( [] );
+					if ( !fileList || fileList.length === 0 ) {
+						onFileChange( [] );
 
-					return;
-				}
+						return;
+					}
 
-				if ( fileList.length === 1 ) {
-					onFileChange( fileList[0] );
-				} else {
-					onFileChange( Array.from( fileList ) );
-				}
-			}}
-		/>
+					if ( fileList.length === 1 ) {
+						onFileChange( fileList[0] );
+					} else {
+						onFileChange( Array.from( fileList ) );
+					}
+				}}
+			/>
+		</FieldLayout>
 	);
 }
 
@@ -65,44 +70,45 @@ export function FileField( { field, error, onFileChange, displayConfig }: FieldC
  * Renders a date picker field.
  */
 export function DateField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
+	const layout = getFieldLayout( field, displayConfig );
+	const labelProps = getInputLabelProps( field, layout, displayConfig, error );
+
 	// DatePicker has no read-only state (its calendar still sets the value),
 	// so a read-only date is a plain readonly date input.
 	if ( isReadOnlyField( field ) ) {
 		return (
-			<Input
-				type="date"
-				label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-				aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
-				name={field.name}
-				value={String( value ?? '' )}
-				hint={field.help_text ?? undefined}
-				error={error}
-				required={field.is_required}
-				className={field.css_classes ?? undefined}
-				autoComplete={field.autocomplete ?? undefined}
-				readOnly
-				onChange={() => undefined}
-				inline={displayConfig.label_position === 'beside'}
-			/>
+			<FieldLayout field={field} layout={layout}>
+				<Input
+					type="date"
+					{...labelProps}
+					name={field.name}
+					value={String( value ?? '' )}
+					error={error}
+					required={field.is_required}
+					className={field.css_classes ?? undefined}
+					autoComplete={field.autocomplete ?? undefined}
+					readOnly
+					onChange={() => undefined}
+				/>
+			</FieldLayout>
 		);
 	}
 
 	return (
-		<DatePicker
-			label={displayConfig.label_position !== 'hidden' ? ( field.label ?? undefined ) : undefined}
-			aria-label={displayConfig.label_position === 'hidden' ? ( field.label ?? field.name ) : undefined}
-			name={field.name}
-			value={String( value ?? '' )}
-			hint={field.help_text ?? undefined}
-			error={error}
-			required={field.is_required}
-			className={field.css_classes ?? undefined}
-			onChange={( e ) => onChange( e.target.value )}
-			min={field.validation_rules?.min_date ?? undefined}
-			max={field.validation_rules?.max_date ?? undefined}
-			autoComplete={field.autocomplete ?? undefined}
-			inline={displayConfig.label_position === 'beside'}
-		/>
+		<FieldLayout field={field} layout={layout}>
+			<DatePicker
+				{...labelProps}
+				name={field.name}
+				value={String( value ?? '' )}
+				error={error}
+				required={field.is_required}
+				className={field.css_classes ?? undefined}
+				onChange={( e ) => onChange( e.target.value )}
+				min={field.validation_rules?.min_date ?? undefined}
+				max={field.validation_rules?.max_date ?? undefined}
+				autoComplete={field.autocomplete ?? undefined}
+			/>
+		</FieldLayout>
 	);
 }
 
@@ -129,64 +135,69 @@ export function RatingField( { field, value, error, onChange, displayConfig }: F
 	const current = Number( value );
 	const selected = Number.isFinite( current ) ? current : 0;
 
-	const labelId = field.label ? `${field.name}-label` : undefined;
-	const hintId = field.help_text && !error ? `${field.name}-hint` : undefined;
+	const layout = getFieldLayout( field, displayConfig );
+	const labelId = field.label ? ( layout.custom ? layout.labelId : `${field.name}-label` ) : undefined;
+	const hintId = layout.custom
+		? ( field.help_text ? layout.descriptionId : undefined )
+		: ( field.help_text && !error ? `${field.name}-hint` : undefined );
 	const errorId = error ? `${field.name}-error` : undefined;
 	const describedBy = [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
 	const labelHidden = displayConfig.label_position === 'hidden';
 
 	return (
-		<div className="fieldset">
-			{field.label && (
-				<span id={labelId} className={`fieldset-legend ${labelHidden ? 'sr-only' : ''}`}>
-					{field.label}
-					{field.is_required && <span className="text-error ml-1">*</span>}
-				</span>
-			)}
-			<div
-				role="radiogroup"
-				aria-labelledby={labelId}
-				aria-label={labelId ? undefined : field.name}
-				aria-describedby={describedBy}
-				aria-required={field.is_required ? 'true' : undefined}
-				aria-readonly={readOnly ? 'true' : undefined}
-				aria-invalid={error ? true : undefined}
-				className={`rating ${getRatingSizeClass( field )} ${allowHalf ? 'rating-half' : ''} ${RATING_GROUP_FOCUS_CLASSES} ${field.css_classes ?? ''}`}
-			>
-				<input
-					type="radio"
-					name={field.name}
-					value="0"
-					className="rating-hidden"
-					aria-label={t( 'No rating' )}
-					checked={selected === 0}
-					disabled={readOnly}
-					onChange={() => onChange( '0' )}
-				/>
-				{steps.map( ( step ) => {
-					const halfClass = allowHalf ? ( Number.isInteger( step ) ? 'mask-half-2' : 'mask-half-1' ) : '';
+		<FieldLayout field={field} layout={layout} group>
+			<div className="fieldset">
+				{!layout.custom && field.label && (
+					<span id={labelId} className={`fieldset-legend ${labelHidden ? 'sr-only' : ''}`}>
+						{field.label}
+						{field.is_required && <span className="text-error ml-1">*</span>}
+					</span>
+				)}
+				<div
+					role="radiogroup"
+					aria-labelledby={labelId}
+					aria-label={labelId ? undefined : field.name}
+					aria-describedby={describedBy}
+					aria-required={field.is_required ? 'true' : undefined}
+					aria-readonly={readOnly ? 'true' : undefined}
+					aria-invalid={error ? true : undefined}
+					className={`rating ${getRatingSizeClass( field )} ${allowHalf ? 'rating-half' : ''} ${RATING_GROUP_FOCUS_CLASSES} ${field.css_classes ?? ''}`}
+				>
+					<input
+						type="radio"
+						name={field.name}
+						value="0"
+						className="rating-hidden"
+						aria-label={t( 'No rating' )}
+						checked={selected === 0}
+						disabled={readOnly}
+						onChange={() => onChange( '0' )}
+					/>
+					{steps.map( ( step ) => {
+						const halfClass = allowHalf ? ( Number.isInteger( step ) ? 'mask-half-2' : 'mask-half-1' ) : '';
 
-					return (
-						<input
-							key={step}
-							type="radio"
-							name={field.name}
-							value={String( step )}
-							className={`mask mask-star-2 ${halfClass} bg-warning ${RATING_FOCUS_CLASSES}`}
-							aria-label={step === 1 ? t( ':count star', { count: step } ) : t( ':count stars', { count: step } )}
-							checked={selected === step}
-							disabled={readOnly}
-							onChange={() => onChange( String( step ) )}
-						/>
-					);
-				} )}
+						return (
+							<input
+								key={step}
+								type="radio"
+								name={field.name}
+								value={String( step )}
+								className={`mask mask-star-2 ${halfClass} bg-warning ${RATING_FOCUS_CLASSES}`}
+								aria-label={step === 1 ? t( ':count star', { count: step } ) : t( ':count stars', { count: step } )}
+								checked={selected === step}
+								disabled={readOnly}
+								onChange={() => onChange( String( step ) )}
+							/>
+						);
+					} )}
+				</div>
+				{!layout.custom && hintId && (
+					<p id={hintId} className="fieldset-label">{field.help_text}</p>
+				)}
+				{error && (
+					<p id={errorId} className="fieldset-label text-error" role="alert">{error}</p>
+				)}
 			</div>
-			{field.help_text && !error && (
-				<p id={hintId} className="fieldset-label">{field.help_text}</p>
-			)}
-			{error && (
-				<p id={errorId} className="fieldset-label text-error" role="alert">{error}</p>
-			)}
-		</div>
+		</FieldLayout>
 	);
 }

@@ -69,6 +69,8 @@ class FormFieldResource extends JsonResource
      * Merge tags the server knows (`{user:…}`, `{date}`, `{ip}`) are replaced
      * and the `ap.forms.fieldValue.{parameter}` filter is applied; page tags
      * and the query string are left for the client, which knows the page.
+     * Also adds the `label_placement` and `description_placement` set on the
+     * field or its form (null when neither sets one).
      *
      * @since 1.6.0
      *
@@ -119,6 +121,10 @@ class FormFieldResource extends JsonResource
             'error_message'          => $this->when( null !== $this->resource->getCustomErrorMessage(), fn (): ?string => $this->resource->getCustomErrorMessage() ),
             'required_message'       => $this->when( null !== $this->resource->getCustomRequiredMessage(), fn (): ?string => $this->resource->getCustomRequiredMessage() ),
             'dynamic_parameter'      => $this->resource->getPopulationParameter(),
+            'is_administrative'      => $this->resource->isAdministrative(),
+            'other_choice_label'     => $this->when( $this->resource->allowsOtherChoice(), fn (): string => $this->resource->getOtherChoiceLabel() ),
+            'label_placement'        => $this->when( $this->includeResolvedDefault, fn (): ?string => $this->resource->getConfiguredLabelPlacement() ),
+            'description_placement'  => $this->when( $this->includeResolvedDefault, fn (): ?string => $this->resource->getConfiguredDescriptionPlacement() ),
             'resolved_default_value' => $this->when(
                 $this->includeResolvedDefault,
                 fn (): mixed => DynamicPopulation::initialValue( $this->resource, PopulationContext::fromApiRequest( $request ) ),

@@ -38,7 +38,7 @@ describe( 'rating field type registration', function (): void {
                 'supports_default_value' => true,
                 'defaults'               => ['label' => 'Rating', 'field_config' => ['max_rating' => 5]],
             ] )
-            ->and( array_column( $config['settings'], 'key' ) )->toBe( ['max_rating', 'allow_half', 'size', 'read_only', 'error_message', 'required_message', 'admin_label', 'dynamic_population', 'dynamic_parameter'] );
+            ->and( array_column( $config['settings'], 'key' ) )->toBe( ['max_rating', 'allow_half', 'size', 'read_only', 'label_placement', 'description_placement', 'error_message', 'required_message', 'admin_label', 'dynamic_population', 'dynamic_parameter', 'visibility', 'do_not_store', 'mask_in_admin', 'redact_after_days'] );
     } );
 
     it( 'can be added from the Livewire builder palette', function (): void {

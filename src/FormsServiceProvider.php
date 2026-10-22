@@ -43,6 +43,7 @@ use ArtisanPackUI\Forms\Services\IntegrationService;
 use ArtisanPackUI\Forms\Services\NotificationService;
 use ArtisanPackUI\Forms\Services\StepService;
 use ArtisanPackUI\Forms\Services\SubmissionService;
+use Illuminate\Contracts\Validation\Factory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -127,6 +128,7 @@ class FormsServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Support\HookAliases::register();
+        $this->callAfterResolving( 'validator', fn ( Factory $validator ) => Support\SubmissionRules::register( $validator ) );
 
         $this->mergeConfiguration();
         $this->validateUserModelConfiguration();

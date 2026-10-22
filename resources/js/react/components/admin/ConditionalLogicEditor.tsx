@@ -14,6 +14,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { Button, Input, Select } from '@artisanpack-ui/react';
 
+import { getConditionOptions } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 
 import type {
@@ -189,14 +190,7 @@ export function ConditionalLogicEditor( {
 		( fieldUuid: string ) => {
 			const field = fields.find( ( f ) => f.uuid === fieldUuid );
 
-			if ( !field ) {
-				return null;
-			}
-
-			const options = field.options ??
-				( field.field_config as { options?: Array<{ label: string; value: string }> } )?.options;
-
-			return options && options.length > 0 ? options : null;
+			return field ? getConditionOptions( field ) : null;
 		},
 		[fields],
 	);

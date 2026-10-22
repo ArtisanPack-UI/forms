@@ -56,7 +56,8 @@ class SubmitFormApiRequest extends FormRequest
      * Gets the validation rules that apply to the request.
      *
      * Dynamically builds rules from the form's field definitions,
-     * respecting conditional logic for hidden fields.
+     * respecting conditional logic for hidden fields. Administrative fields
+     * are not validated, since the public form does not show them.
      *
      * @since 1.1.0
      *
@@ -95,7 +96,8 @@ class SubmitFormApiRequest extends FormRequest
                 continue;
             }
 
-            if ( $field->isLayoutField() ) {
+            // Layout fields collect nothing; administrative fields are not on the public form
+            if ( $field->isLayoutField() || $field->isAdministrative() ) {
                 continue;
             }
 
@@ -144,7 +146,7 @@ class SubmitFormApiRequest extends FormRequest
     }
 
     /**
-     * Gets the sanitized form data with hidden fields removed.
+     * Gets the sanitized form data with hidden and administrative fields removed.
      *
      * @since 1.1.0
      *
@@ -176,6 +178,13 @@ class SubmitFormApiRequest extends FormRequest
         foreach ( $hiddenFields as $fieldName => $isHidden ) {
             if ( $isHidden ) {
                 unset( $data[ $fieldName ] );
+            }
+        }
+
+        // Administrative fields are filled in by admins on the submission
+        foreach ( $form->fields as $field ) {
+            if ( $field->isAdministrative() ) {
+                unset( $data[ $field->name ] );
             }
         }
 

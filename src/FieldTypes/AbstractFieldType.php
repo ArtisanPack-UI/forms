@@ -17,6 +17,7 @@ use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use ArtisanPackUI\Forms\Support\Autocomplete;
 use ArtisanPackUI\Forms\Support\FieldSettings;
+use ArtisanPackUI\Forms\Support\SubmissionRules;
 
 /**
  * Default behaviour shared by every field type.
@@ -164,6 +165,7 @@ abstract class AbstractFieldType implements FieldType
                 [$this->presenceRule( $field )],
                 $this->typeRules( $field ),
                 $this->limitRules( $field ),
+                $this->settingRules( $field ),
             ),
         ];
     }
@@ -183,6 +185,18 @@ abstract class AbstractFieldType implements FieldType
 
         if ( $field->is_required ) {
             $messages[ $this->presenceRule( $field ) ] = __( 'The :field field is required.', ['field' => $field->label] );
+        }
+
+        if ( $field->rejectsDuplicates() ) {
+            $messages[ SubmissionRules::NO_DUPLICATES ] = __( 'This :field has already been submitted.', ['field' => $field->label] );
+        }
+
+        if ( $field->allowsOtherChoice() ) {
+            $messages[ SubmissionRules::OTHER_CHOICE ] = __( 'Please specify :other for :field (up to :max characters).', [
+                'other' => $field->getOtherChoiceLabel(),
+                'field' => $field->label,
+                'max'   => FormField::OTHER_CHOICE_MAX_LENGTH,
+            ] );
         }
 
         return array_merge( $messages, $this->typeMessages( $field ) );
@@ -367,6 +381,33 @@ abstract class AbstractFieldType implements FieldType
     }
 
     /**
+     * Gets the rules for the field's "No duplicates" and "Other" choice settings.
+     *
+     * The duplicate check needs a saved field, since it looks up earlier
+     * submissions by field ID.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     *
+     * @return list<string> The rules.
+     */
+    protected function settingRules( FormField $field ): array
+    {
+        $rules = [];
+
+        if ( $field->rejectsDuplicates() && null !== $field->getKey() ) {
+            $rules[] = SubmissionRules::NO_DUPLICATES . ':' . $field->getKey() . ( 'email' === $field->type ? ',ci' : '' );
+        }
+
+        if ( $field->allowsOtherChoice() ) {
+            $rules[] = SubmissionRules::OTHER_CHOICE;
+        }
+
+        return $rules;
+    }
+
+    /**
      * Gets a validation limit as a rule parameter, or null when it is not set.
      *
      * `0` and `'0'` count as set; null, blank strings and non-scalars do not.
@@ -476,11 +517,14 @@ abstract class AbstractFieldType implements FieldType
     /**
      * Gets the settings every input type offers, leaving out any the type already declares.
      *
-     * Validation tab: a custom error message and a custom required message.
-     * Advanced tab: the `autocomplete` token (for types with
-     * `supports_autocomplete`), an admin label and dynamic population (unless
-     * `supports_dynamic_population` is false). Layout types collect no input
-     * and get none of them.
+     * General tab: label and description placement (unless
+     * `supports_label_placement` is false). Validation tab: a custom error
+     * message and a custom required message. Advanced tab: the `autocomplete`
+     * token (for types with `supports_autocomplete`), an admin label, dynamic
+     * population (unless `supports_dynamic_population` is false), visibility
+     * (unless `supports_visibility` is false) and the privacy settings (unless
+     * `supports_privacy` is false). Layout types collect no input and get none
+     * of them.
      *
      * @since 1.6.0
      *
@@ -495,7 +539,10 @@ abstract class AbstractFieldType implements FieldType
             return [];
         }
 
-        $common = [
+        $common = false !== ( $definition['supports_label_placement'] ?? true ) ? $this->placementSettings() : [];
+
+        array_push(
+            $common,
             [
                 'key'        => 'error_message',
                 'tab'        => 'validation',
@@ -510,7 +557,7 @@ abstract class AbstractFieldType implements FieldType
                 'label'      => __( 'Required Message' ),
                 'hint'       => __( 'Shown when a required field is left empty. May be a translation key.' ),
             ],
-        ];
+        );
 
         if ( true === ( $definition['supports_autocomplete'] ?? false ) ) {
             $default  = $definition['autocomplete'] ?? null;
@@ -543,6 +590,25 @@ abstract class AbstractFieldType implements FieldType
             ];
         }
 
+        if ( false !== ( $definition['supports_visibility'] ?? true ) ) {
+            $common[] = [
+                'key'     => 'visibility',
+                'input'   => 'select',
+                'tab'     => 'advanced',
+                'default' => 'visible',
+                'label'   => __( 'Visibility' ),
+                'hint'    => __( 'Administrative fields are not shown on the public form. Admins fill them in on the submission.' ),
+                'options' => [
+                    ['value' => 'visible', 'label' => __( 'Visible' )],
+                    ['value' => 'administrative', 'label' => __( 'Administrative' )],
+                ],
+            ];
+        }
+
+        if ( false !== ( $definition['supports_privacy'] ?? true ) ) {
+            array_push( $common, ...$this->privacySettings() );
+        }
+
         $declared = [];
 
         foreach ( $settings as $setting ) {
@@ -555,6 +621,123 @@ abstract class AbstractFieldType implements FieldType
             $common,
             fn ( array $setting ): bool => ! in_array( $setting['key'], $declared, true ),
         ) );
+    }
+
+    /**
+     * Gets the label and description placement settings.
+     *
+     * Blank keeps the form's default (see FormField::getLabelPlacement()).
+     *
+     * @since 1.6.0
+     *
+     * @return list<array<string, mixed>> The settings.
+     */
+    protected function placementSettings(): array
+    {
+        return [
+            [
+                'key'     => 'label_placement',
+                'input'   => 'select',
+                'label'   => __( 'Label Placement' ),
+                'hint'    => __( 'Hidden labels are still read by screen readers.' ),
+                'options' => [
+                    ['value' => '', 'label' => __( 'Form default' )],
+                    ['value' => 'top', 'label' => __( 'Top' )],
+                    ['value' => 'left', 'label' => __( 'Left' )],
+                    ['value' => 'hidden', 'label' => __( 'Hidden' )],
+                ],
+            ],
+            [
+                'key'     => 'description_placement',
+                'input'   => 'select',
+                'label'   => __( 'Description Placement' ),
+                'options' => [
+                    ['value' => '', 'label' => __( 'Form default' )],
+                    ['value' => 'above', 'label' => __( 'Above the input' )],
+                    ['value' => 'below', 'label' => __( 'Below the input' )],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Gets the per-field privacy settings.
+     *
+     * @since 1.6.0
+     *
+     * @return list<array<string, mixed>> The settings.
+     */
+    protected function privacySettings(): array
+    {
+        return [
+            [
+                'key'   => 'do_not_store',
+                'input' => 'toggle',
+                'tab'   => 'advanced',
+                'label' => __( 'Do not store' ),
+                'hint'  => __( 'Sent to notifications and webhooks for the submission, but never saved.' ),
+            ],
+            [
+                'key'   => 'mask_in_admin',
+                'input' => 'toggle',
+                'tab'   => 'advanced',
+                'label' => __( 'Mask in admin' ),
+                'hint'  => __( 'Shows only the last characters in submissions and leaves the field out of exports, unless the user may reveal masked values.' ),
+            ],
+            [
+                'key'         => 'redact_after_days',
+                'input'       => 'integer',
+                'tab'         => 'advanced',
+                'min'         => 1,
+                'max'         => FormField::MAX_REDACT_DAYS,
+                'label'       => __( 'Redact after (days)' ),
+                'placeholder' => __( 'Keep' ),
+                'hint'        => __( 'forms:prune-submissions clears stored values older than this.' ),
+            ],
+        ];
+    }
+
+    /**
+     * Gets the setting that rejects a value already submitted for the field.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> The setting.
+     */
+    protected function noDuplicatesSetting(): array
+    {
+        return [
+            'key'   => 'no_duplicates',
+            'input' => 'toggle',
+            'tab'   => 'validation',
+            'label' => __( 'No duplicates' ),
+            'hint'  => __( 'Rejects a value already submitted on this form. Spam and quarantined submissions are ignored.' ),
+        ];
+    }
+
+    /**
+     * Gets the settings for an "Other" choice with a text input.
+     *
+     * @since 1.6.0
+     *
+     * @return list<array<string, mixed>> The settings.
+     */
+    protected function otherChoiceSettings(): array
+    {
+        return [
+            [
+                'key'   => 'enable_other',
+                'input' => 'toggle',
+                'label' => __( 'Enable "Other" choice' ),
+                'hint'  => __( 'Adds a last choice that reveals a text input.' ),
+            ],
+            [
+                'key'         => 'other_label',
+                'max_length'  => 255,
+                'label'       => __( '"Other" Label' ),
+                'placeholder' => __( 'Other' ),
+            ],
+        ];
     }
 
     /**

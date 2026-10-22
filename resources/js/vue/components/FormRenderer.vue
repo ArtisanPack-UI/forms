@@ -80,6 +80,8 @@ const {
 	loadError,
 	setValue,
 	setFile,
+	otherValues,
+	setOtherValue,
 	nextStep,
 	prevStep,
 	goToStep,
@@ -178,7 +180,9 @@ function handleFormSubmit( e: Event ): void {
 						:model-value="values[field.name]"
 						:error="errors[field.name]?.[0]"
 						:display-config="form.config.display"
+						:other-value="otherValues[field.name] ?? ''"
 						@update:model-value="setValue( field.name, $event )"
+						@update:other-value="setOtherValue( field.name, $event )"
 						@file-change="setFile( field.name, $event )"
 					/>
 				</template>
@@ -202,7 +206,9 @@ function handleFormSubmit( e: Event ): void {
 						:error="errors[field.name]?.[0]"
 						:display-config="form.config.display"
 						:layout="layout"
+						:other-value="otherValues[field.name] ?? ''"
 						@update:model-value="setValue( field.name, $event )"
+						@update:other-value="setOtherValue( field.name, $event )"
 						@file-change="setFile( field.name, $event )"
 					/>
 				</template>

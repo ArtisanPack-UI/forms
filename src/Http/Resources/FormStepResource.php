@@ -17,6 +17,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Http\Resources;
 
+use ArtisanPackUI\Forms\Models\FormField;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -46,6 +47,13 @@ class FormStepResource extends JsonResource
     protected bool $includeResolvedDefaults = false;
 
     /**
+     * Whether administrative fields are left out of the step's fields.
+     *
+     * @since 1.6.0
+     */
+    protected bool $excludeAdministrativeFields = false;
+
+    /**
      * Leaves the settings schema out of the step's fields, for payloads that only render the form.
      *
      * @since 1.6.0
@@ -69,6 +77,20 @@ class FormStepResource extends JsonResource
     public function withResolvedDefaults(): static
     {
         $this->includeResolvedDefaults = true;
+
+        return $this;
+    }
+
+    /**
+     * Leaves administrative fields out of the step's fields, for the public render payload.
+     *
+     * @since 1.6.0
+     *
+     * @return static The resource.
+     */
+    public function withoutAdministrativeFields(): static
+    {
+        $this->excludeAdministrativeFields = true;
 
         return $this;
     }
@@ -107,7 +129,13 @@ class FormStepResource extends JsonResource
      */
     protected function fieldResources(): AnonymousResourceCollection
     {
-        $fields = FormFieldResource::collection( $this->resource->fields );
+        $fields = $this->resource->fields;
+
+        if ( $this->excludeAdministrativeFields ) {
+            $fields = $fields->reject( fn ( FormField $field ): bool => $field->isAdministrative() )->values();
+        }
+
+        $fields = FormFieldResource::collection( $fields );
 
         if ( ! $this->includeSettingsSchema ) {
             $fields->collection->each( fn ( FormFieldResource $field ): FormFieldResource => $field->withoutSettingsSchema() );

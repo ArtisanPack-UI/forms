@@ -16,100 +16,67 @@
         'lg' => 'rating-lg',
         default => '',
     };
-
-    // Build aria-describedby with both hint and error IDs when applicable
-    $describedBy = [];
-    if ($error) {
-        $describedBy[] = 'error-' . $field->name;
-    }
-    if ($field->help_text) {
-        $describedBy[] = 'hint-' . $field->name;
-    }
-    $ariaDescribedBy = !empty($describedBy) ? implode(' ', $describedBy) : null;
 @endphp
 
-<div class="form-control">
-    @if($field->label)
-        <label class="label" id="label-{{ $field->name }}">
-            <span class="label-text">
-                {{ $field->label }}
-                @if($field->is_required)
-                    <span class="text-error">*</span>
-                @endif
-            </span>
-        </label>
-    @endif
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error])
+<div
+    class="rating {{ $sizeClasses }} {{ $allowHalf ? 'rating-half' : '' }} {{ $field->css_classes }}"
+    role="radiogroup"
+    @if($field->label) aria-labelledby="label-{{ $field->name }}" @endif
+    @if($field->is_required) aria-required="true" @endif
+    @if($readOnly) aria-readonly="true" @endif
+    @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
+>
+    {{-- Hidden "no rating" option for clearing --}}
+    <input
+        type="radio"
+        wire:model.live="formData.{{ $field->name }}"
+        name="{{ $field->name }}"
+        value="0"
+        class="rating-hidden"
+        aria-label="{{ __( 'No rating' ) }}"
+        @disabled($readOnly)
+        @if(empty($value) || $value == 0) checked @endif
+    />
 
-    <div
-        class="rating {{ $sizeClasses }} {{ $allowHalf ? 'rating-half' : '' }} {{ $field->css_classes }}"
-        role="radiogroup"
-        @if($field->label) aria-labelledby="label-{{ $field->name }}" @endif
-        @if($field->is_required) aria-required="true" @endif
-        @if($readOnly) aria-readonly="true" @endif
-        @if($ariaDescribedBy) aria-describedby="{{ $ariaDescribedBy }}" @endif
-    >
-        {{-- Hidden "no rating" option for clearing --}}
-        <input
-            type="radio"
-            wire:model.live="formData.{{ $field->name }}"
-            name="{{ $field->name }}"
-            value="0"
-            class="rating-hidden"
-            aria-label="{{ __( 'No rating' ) }}"
-            @disabled($readOnly)
-            @if(empty($value) || $value == 0) checked @endif
-        />
-
-        @if($allowHalf)
-            @for($i = 1; $i <= $maxRating; $i++)
-                {{-- Half star (left half) --}}
-                <input
-                    type="radio"
-                    wire:model.live="formData.{{ $field->name }}"
-                    name="{{ $field->name }}"
-                    value="{{ $i - 0.5 }}"
-                    class="mask mask-star-2 mask-half-1 bg-warning {{ $focusClasses }}"
-                    @disabled($readOnly)
-                    id="field-{{ $field->name }}-{{ $i }}-half"
-                    aria-label="{{ trans_choice( ':count star|:count stars', $i - 0.5, ['count' => $i - 0.5] ) }}"
-                />
-                {{-- Full star (right half) --}}
-                <input
-                    type="radio"
-                    wire:model.live="formData.{{ $field->name }}"
-                    name="{{ $field->name }}"
-                    value="{{ $i }}"
-                    class="mask mask-star-2 mask-half-2 bg-warning {{ $focusClasses }}"
-                    @disabled($readOnly)
-                    id="field-{{ $field->name }}-{{ $i }}"
-                    aria-label="{{ trans_choice( ':count star|:count stars', $i, ['count' => $i] ) }}"
-                />
-            @endfor
-        @else
-            @for($i = 1; $i <= $maxRating; $i++)
-                <input
-                    type="radio"
-                    wire:model.live="formData.{{ $field->name }}"
-                    name="{{ $field->name }}"
-                    value="{{ $i }}"
-                    class="mask mask-star-2 bg-warning {{ $focusClasses }}"
-                    @disabled($readOnly)
-                    id="field-{{ $field->name }}-{{ $i }}"
-                    aria-label="{{ trans_choice( ':count star|:count stars', $i, ['count' => $i] ) }}"
-                />
-            @endfor
-        @endif
-    </div>
-
-    @if($field->help_text)
-        <label class="label" id="hint-{{ $field->name }}">
-            <span class="label-text-alt">{{ $field->help_text }}</span>
-        </label>
-    @endif
-
-    @if($error)
-        <label class="label" id="error-{{ $field->name }}">
-            <span class="label-text-alt text-error">{{ $error }}</span>
-        </label>
+    @if($allowHalf)
+        @for($i = 1; $i <= $maxRating; $i++)
+            {{-- Half star (left half) --}}
+            <input
+                type="radio"
+                wire:model.live="formData.{{ $field->name }}"
+                name="{{ $field->name }}"
+                value="{{ $i - 0.5 }}"
+                class="mask mask-star-2 mask-half-1 bg-warning {{ $focusClasses }}"
+                @disabled($readOnly)
+                id="field-{{ $field->name }}-{{ $i }}-half"
+                aria-label="{{ trans_choice( ':count star|:count stars', $i - 0.5, ['count' => $i - 0.5] ) }}"
+            />
+            {{-- Full star (right half) --}}
+            <input
+                type="radio"
+                wire:model.live="formData.{{ $field->name }}"
+                name="{{ $field->name }}"
+                value="{{ $i }}"
+                class="mask mask-star-2 mask-half-2 bg-warning {{ $focusClasses }}"
+                @disabled($readOnly)
+                id="field-{{ $field->name }}-{{ $i }}"
+                aria-label="{{ trans_choice( ':count star|:count stars', $i, ['count' => $i] ) }}"
+            />
+        @endfor
+    @else
+        @for($i = 1; $i <= $maxRating; $i++)
+            <input
+                type="radio"
+                wire:model.live="formData.{{ $field->name }}"
+                name="{{ $field->name }}"
+                value="{{ $i }}"
+                class="mask mask-star-2 bg-warning {{ $focusClasses }}"
+                @disabled($readOnly)
+                id="field-{{ $field->name }}-{{ $i }}"
+                aria-label="{{ trans_choice( ':count star|:count stars', $i, ['count' => $i] ) }}"
+            />
+        @endfor
     @endif
 </div>
+@endcomponent

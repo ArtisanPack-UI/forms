@@ -191,7 +191,7 @@ describe( 'Vue read-only fields (issue #99)', function () use ( $resource, $betw
 
     it( 'seeds a read-only field from the value the server stores', function () use ( $resource ): void {
         expect( $resource( 'vue/composables/useForm.ts' ) )
-            ->toContain( "import { getInitialFieldValue } from '../../shared/fieldSettings';" )
+            ->toContain( "import { getInitialFieldValue, resolveOtherChoices } from '../../shared/fieldSettings';" )
             ->toContain( 'defaults[field.name] = getInitialFieldValue( field, { prefill } );' );
     } );
 } );

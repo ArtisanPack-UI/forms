@@ -54,6 +54,15 @@ class ConditionalLogicService
     protected array $uuidToFieldName = [];
 
     /**
+     * The current form's fields keyed by name.
+     *
+     * @since 1.6.0
+     *
+     * @var array<string, FormField>
+     */
+    protected array $fieldsByName = [];
+
+    /**
      * Evaluates conditional logic for all fields in a form.
      *
      * @since 1.0.0
@@ -161,7 +170,33 @@ class ConditionalLogicService
         $fieldName  = $this->resolveFieldName( $fieldRef );
         $fieldValue = $formData[ $fieldName ] ?? null;
 
+        // A rule on the "Other" choice matches any text typed into it
+        $field = $this->fieldsByName[ $fieldName ] ?? null;
+
+        if ( FormField::OTHER_CHOICE_VALUE === $ruleValue && null !== $field && $field->allowsOtherChoice() ) {
+            $fieldValue = $this->markOtherChoice( $field, $fieldValue );
+        }
+
         return $this->compareValues( $fieldValue, $operator, $ruleValue );
+    }
+
+    /**
+     * Sets the fields rules are evaluated against, for callers of evaluateRule().
+     *
+     * evaluateAllFields() does this itself. With the fields set, a rule may
+     * reference a field by UUID and test for its "Other" choice.
+     *
+     * @since 1.6.0
+     *
+     * @param Collection<int, FormField> $fields The form fields.
+     *
+     * @return static The service.
+     */
+    public function withFields( Collection $fields ): static
+    {
+        $this->buildFieldMaps( $fields );
+
+        return $this;
     }
 
     /**
@@ -332,11 +367,43 @@ class ConditionalLogicService
     {
         $this->fieldNameToUuid = [];
         $this->uuidToFieldName = [];
+        $this->fieldsByName    = [];
 
         foreach ( $fields as $field ) {
             $this->fieldNameToUuid[ $field->name ] = $field->uuid;
             $this->uuidToFieldName[ $field->uuid ] = $field->name;
+            $this->fieldsByName[ $field->name ]    = $field;
         }
+    }
+
+    /**
+     * Replaces text typed into a field's "Other" choice with FormField::OTHER_CHOICE_VALUE.
+     *
+     * Renderers hold the placeholder itself while the form is filled in, but
+     * submitted and stored values hold the typed text. A stored checkbox group
+     * value arrives comma-joined, so it is split first.
+     *
+     * @since 1.6.0
+     *
+     * @param FormField $field The field.
+     * @param mixed     $value The field's value.
+     *
+     * @return mixed The value with "Other" text replaced.
+     */
+    protected function markOtherChoice( FormField $field, mixed $value ): mixed
+    {
+        if ( is_string( $value ) && in_array( $field->type, ['checkbox_group', 'select_multiple'], true ) ) {
+            $value = '' === $value ? [] : explode( ', ', $value );
+        }
+
+        if ( is_array( $value ) ) {
+            return array_map(
+                fn ( mixed $item ): mixed => is_scalar( $item ) && $field->isOtherChoiceValue( (string) $item ) ? FormField::OTHER_CHOICE_VALUE : $item,
+                $value,
+            );
+        }
+
+        return is_scalar( $value ) && $field->isOtherChoiceValue( (string) $value ) ? FormField::OTHER_CHOICE_VALUE : $value;
     }
 
     /**

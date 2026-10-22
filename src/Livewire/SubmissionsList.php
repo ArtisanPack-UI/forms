@@ -22,6 +22,7 @@ use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Policies\SubmissionPolicy;
 use ArtisanPackUI\Forms\Services\ExportService;
+use ArtisanPackUI\Forms\Support\FieldPrivacy;
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -372,6 +373,17 @@ class SubmissionsList extends Component
     }
 
     /**
+     * Whether the current user may see values of fields masked in the admin.
+     *
+     * @since 1.6.0
+     */
+    #[Computed]
+    public function canRevealMaskedValues(): bool
+    {
+        return FieldPrivacy::canReveal();
+    }
+
+    /**
      * Get the count of submissions for each status.
      *
      * Respects ownership scope when restrict_by_owner is enabled.
@@ -539,13 +551,18 @@ class SubmissionsList extends Component
             $query->where( 'form_id', (int) $this->formFilter );
         }
 
-        // Apply search filter (escape special LIKE characters)
+        // Apply search filter (escape special LIKE characters). Masked values
+        // are not searched unless the user may reveal them, so a search can't
+        // be used to guess them.
         if ( '' !== $this->search ) {
-            $search = str_replace( ['%', '_'], ['\%', '\_'], $this->search );
-            $query->where( function ( $q ) use ( $search ): void {
+            $search         = str_replace( ['%', '_'], ['\%', '\_'], $this->search );
+            $maskedFieldIds = FieldPrivacy::canReveal() ? [] : FieldPrivacy::maskedFieldIds();
+
+            $query->where( function ( $q ) use ( $search, $maskedFieldIds ): void {
                 $q->where( 'submission_number', 'like', "%{$search}%" )
-                    ->orWhereHas( 'values', function ( $vq ) use ( $search ): void {
-                        $vq->where( 'value', 'like', "%{$search}%" );
+                    ->orWhereHas( 'values', function ( $vq ) use ( $search, $maskedFieldIds ): void {
+                        $vq->where( 'value', 'like', "%{$search}%" )
+                            ->when( [] !== $maskedFieldIds, fn ( $masked ) => $masked->whereNotIn( 'field_id', $maskedFieldIds ) );
                     } );
             } );
         }

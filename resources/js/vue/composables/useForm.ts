@@ -20,7 +20,7 @@ import type {
 	SubmitFormResponse,
 } from '../../types/artisanpack-forms';
 import { getHiddenFields } from '../../shared/conditionalLogic';
-import { getInitialFieldValue } from '../../shared/fieldSettings';
+import { getInitialFieldValue, resolveOtherChoices } from '../../shared/fieldSettings';
 import { validateFields } from '../../shared/validation';
 
 /** Configuration options for the useForm composable. */
@@ -93,6 +93,13 @@ export function useForm( options: UseFormOptions ) {
 	const values = ref<Record<string, unknown>>( {} );
 	const errors = ref<Record<string, string[]>>( {} );
 	const files = ref<Record<string, File | File[]>>( {} );
+
+	/**
+	 * Text typed into each field's "Other" choice, keyed by field name. The
+	 * choice stays selected in `values` and is replaced with this text on
+	 * submit (since 1.6.0).
+	 */
+	const otherValues = ref<Record<string, string>>( {} );
 	const isLoading = ref( true );
 	const isSubmitting = ref( false );
 	const isSubmitted = ref( false );
@@ -206,6 +213,16 @@ export function useForm( options: UseFormOptions ) {
 		}
 	}
 
+	function setOtherValue( name: string, text: string ): void {
+		otherValues.value = { ...otherValues.value, [name]: text };
+
+		if ( errors.value[name] ) {
+			const next = { ...errors.value };
+			delete next[name];
+			errors.value = next;
+		}
+	}
+
 	function removeFile( name: string ): void {
 		const next = { ...files.value };
 		delete next[name];
@@ -217,7 +234,12 @@ export function useForm( options: UseFormOptions ) {
 			return {};
 		}
 
-		return validateFields( fieldsToValidate, values.value, hiddenFields.value, files.value );
+		return validateFields(
+			fieldsToValidate,
+			resolveOtherChoices( fieldsToValidate, values.value, otherValues.value ),
+			hiddenFields.value,
+			files.value,
+		);
 	}
 
 	function nextStepFn(): boolean {
@@ -312,8 +334,8 @@ export function useForm( options: UseFormOptions ) {
 			const url = `${baseUrl}/${encodeURIComponent( formSlug )}/submit`;
 			const formDataObj = new FormData();
 
-			// Add form data values
-			for ( const [key, value] of Object.entries( values.value ) ) {
+			// Add form data values, with each "Other" choice replaced by its text
+			for ( const [key, value] of Object.entries( resolveOtherChoices( form.value.fields, values.value, otherValues.value ) ) ) {
 				if ( hiddenFields.value[key] ) {
 					continue;
 				}
@@ -428,6 +450,7 @@ export function useForm( options: UseFormOptions ) {
 		values.value = buildDefaults( form.value.fields, prefill );
 		errors.value = {};
 		files.value = {};
+		otherValues.value = {};
 		isSubmitted.value = false;
 		currentStep.value = 0;
 		formLoadedAt.value = Math.floor( Date.now() / 1000 );
@@ -438,6 +461,7 @@ export function useForm( options: UseFormOptions ) {
 		values,
 		errors,
 		files,
+		otherValues,
 		hiddenFields,
 		isLoading,
 		isSubmitting,
@@ -450,6 +474,7 @@ export function useForm( options: UseFormOptions ) {
 		loadError,
 		setValue,
 		setFile,
+		setOtherValue,
 		removeFile,
 		nextStep: nextStepFn,
 		prevStep: prevStepFn,

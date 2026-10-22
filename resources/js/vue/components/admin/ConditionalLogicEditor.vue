@@ -19,6 +19,7 @@ import type {
 	ConditionalOperator,
 	FormField,
 } from '../../../types/artisanpack-forms';
+import { getConditionOptions } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 
 /** Generic conditional logic shape that accepts any action string. */
@@ -163,14 +164,7 @@ function needsValue( operator: ConditionalOperator ): boolean {
 function getFieldOptions( fieldUuid: string ): Array<{ label: string; value: string }> | null {
 	const field = props.fields.find( ( f ) => f.uuid === fieldUuid );
 
-	if ( !field ) {
-		return null;
-	}
-
-	const options = field.options ??
-		( field.field_config as { options?: Array<{ label: string; value: string }> } )?.options;
-
-	return options && options.length > 0 ? options : null;
+	return field ? getConditionOptions( field ) : null;
 }
 </script>
 

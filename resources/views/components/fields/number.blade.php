@@ -4,13 +4,15 @@
     $step = $field->getValidationRule('step') ?? 'any';
     $min = $field->getValidationRule('min');
     $max = $field->getValidationRule('max');
+    // The input component renders a top label; the layout renders the others.
+    $layoutLabel = 'top' !== $field->getLabelPlacement();
 @endphp
 
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true, 'renderError' => false])
 <x-artisanpack-input
     type="number"
-    :label="$field->label"
+    :label="$layoutLabel ? null : $field->label"
     :placeholder="$field->placeholder"
-    :hint="$field->help_text"
     :error="$error"
     :required="$field->is_required"
     wire:model.live="formData.{{ $field->name }}"
@@ -22,5 +24,7 @@
     :min="$min"
     :max="$max"
     :aria-required="$field->is_required ? 'true' : 'false'"
-    :aria-describedby="$error ? 'error-' . $field->name : ($field->help_text ? 'hint-' . $field->name : null)"
+    :aria-labelledby="$layoutLabel && filled($field->label) ? 'label-' . $field->name : null"
+    :aria-describedby="$field->getDescribedBy($error)"
 />
+@endcomponent

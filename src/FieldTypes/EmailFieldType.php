@@ -44,6 +44,7 @@ class EmailFieldType extends AbstractFieldType
             ],
             'settings' => [
                 ...$this->lengthSettings(),
+                $this->noDuplicatesSetting(),
                 $this->readOnlySetting(),
             ],
         ] );

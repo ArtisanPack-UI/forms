@@ -83,7 +83,15 @@
                             <div class="py-4 first:pt-0 last:pb-0">
                                 <dt class="text-sm font-medium opacity-60">{{ $value->display_label }}</dt>
                                 <dd class="mt-1 text-sm">
-                                    @if ($value->upload_id && $value->upload)
+                                    @if ($value->isMasked() && !$this->canRevealMaskedValues)
+                                        <!-- Masked Value -->
+                                        <span class="inline-flex items-center gap-2">
+                                            <span class="font-mono">{{ $value->masked_display_value }}</span>
+                                            <x-artisanpack-badge :value="__( 'Masked' )" color="neutral" class="badge-sm" />
+                                        </span>
+                                    @elseif ($value->isRedacted())
+                                        <span class="italic opacity-60">{{ $value->display_value }}</span>
+                                    @elseif ($value->upload_id && $value->upload)
                                         <!-- File Upload -->
                                         <div class="flex items-center gap-2">
                                             <x-artisanpack-icon name="o-paper-clip" class="w-5 h-5 opacity-40" />
@@ -124,6 +132,38 @@
                         @endforelse
                     </div>
                 </x-artisanpack-card>
+
+                <!-- Administrative Fields -->
+                @if ($this->administrativeFields->isNotEmpty())
+                    <x-artisanpack-card :title="__( 'Administrative Fields' )" separator>
+                        <x-slot:subtitle>{{ __( 'Internal fields that are not shown on the public form' ) }}</x-slot:subtitle>
+                        <form wire:submit="saveAdministrativeFields" class="space-y-4">
+                            @foreach ($this->administrativeFields as $field)
+                                <div wire:key="admin-field-{{ $field->uuid }}">
+                                    {!! \ArtisanPackUI\Forms\Support\FieldRenderer::render(
+                                        $field,
+                                        $formData[$field->name] ?? null,
+                                        $errors->first('formData.' . $field->name),
+                                    ) !!}
+                                </div>
+                            @endforeach
+
+                            <div class="flex items-center gap-3">
+                                <x-artisanpack-button
+                                    type="submit"
+                                    :label="__( 'Save Administrative Fields' )"
+                                    color="primary"
+                                    class="btn-sm"
+                                    wire:loading.attr="disabled"
+                                    wire:target="saveAdministrativeFields"
+                                />
+                                @if ($administrativeFieldsSaved)
+                                    <span class="text-sm text-success" role="status">{{ __( 'Saved.' ) }}</span>
+                                @endif
+                            </div>
+                        </form>
+                    </x-artisanpack-card>
+                @endif
 
                 <!-- Admin Notes -->
                 <x-artisanpack-card :title="__( 'Admin Notes' )" separator>

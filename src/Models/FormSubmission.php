@@ -83,6 +83,19 @@ class FormSubmission extends Model
         'admin_notes',
     ];
 
+    /**
+     * Attributes of the values submitted for "Do not store" fields.
+     *
+     * Kept in memory only, so notifications and webhooks for the request can
+     * read them (see withTransientValues()). Jobs carry them in an encrypted
+     * payload; they are never written to the database.
+     *
+     * @since 1.6.0
+     *
+     * @var list<array<string, mixed>>
+     */
+    protected array $transientValues = [];
+
     // =========================================
     // Relationships
     // =========================================
@@ -390,6 +403,57 @@ class FormSubmission extends Model
         } );
 
         return $emailValue?->value;
+    }
+
+    /**
+     * Adds values that are not stored to the loaded `values` relation.
+     *
+     * Each entry holds FormSubmissionValue attributes. Unsaved values already
+     * in the relation are replaced, so calling this again does not duplicate
+     * them. Their `field` relation is set from `$fields`, or looked up.
+     *
+     * @since 1.6.0
+     *
+     * @param  list<array<string, mixed>>  $values  The value attributes.
+     * @param  iterable<FormField>|null  $fields  The fields the values belong to, when already loaded.
+     *
+     * @return static The submission.
+     */
+    public function withTransientValues( array $values, ?iterable $fields = null ): static
+    {
+        $this->transientValues = array_values( $values );
+
+        $fieldsById = [];
+
+        foreach ( $fields ?? FormField::query()->whereKey( array_filter( array_column( $values, 'field_id' ) ) )->get() as $field ) {
+            $fieldsById[ $field->getKey() ] = $field;
+        }
+
+        $transient = array_map( function ( array $attributes ) use ( $fieldsById ): FormSubmissionValue {
+            $value = ( new FormSubmissionValue() )->forceFill( $attributes );
+
+            if ( isset( $fieldsById[ $attributes['field_id'] ?? null ] ) ) {
+                $value->setRelation( 'field', $fieldsById[ $attributes['field_id'] ] );
+            }
+
+            return $value;
+        }, $this->transientValues );
+
+        $stored = $this->values->filter( fn ( FormSubmissionValue $value ): bool => $value->exists );
+
+        return $this->setRelation( 'values', $stored->concat( $transient )->values() );
+    }
+
+    /**
+     * Gets the attributes of the values that are not stored.
+     *
+     * @since 1.6.0
+     *
+     * @return list<array<string, mixed>> The value attributes.
+     */
+    public function getTransientValues(): array
+    {
+        return $this->transientValues;
     }
 
     /**

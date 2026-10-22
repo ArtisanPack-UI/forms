@@ -307,10 +307,16 @@ class NotificationService
             return true;
         }
 
+        $submission->loadMissing( 'form.fields' );
+
         $formData  = $submission->data_array;
         $action    = $logic['action'] ?? 'send'; // Default action for notifications
         $logicType = $logic['logic'] ?? 'all';
         $rules     = $logic['rules'];
+
+        if ( null !== $submission->form ) {
+            $this->conditionalLogicService->withFields( $submission->form->fields );
+        }
 
         // Evaluate all rules
         $results = [];
