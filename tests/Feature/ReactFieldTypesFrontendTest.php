@@ -162,7 +162,9 @@ describe( 'React rating field (issue #92)', function () use ( $resource, $betwee
 
 describe( 'React read-only fields (issue #99)', function () use ( $resource, $between ): void {
     it( 'keeps text-like inputs focusable with readOnly', function () use ( $resource ): void {
-        expect( substr_count( $resource( 'react/components/fields/TextField.tsx' ), 'readOnly={isReadOnlyField( field )}' ) )->toBe( 7 );
+        // The phone field reads it once for its input and country selector (#117).
+        expect( substr_count( $resource( 'react/components/fields/TextField.tsx' ), 'readOnly={isReadOnlyField( field )}' ) )->toBe( 6 )
+            ->and( $resource( 'react/components/fields/TextField.tsx' ) )->toContain( 'const readOnly = isReadOnlyField( field );' )->toContain( 'readOnly={readOnly}' );
     } );
 
     it( 'renders a read-only date as a plain readonly date input instead of the picker', function () use ( $resource, $between ): void {

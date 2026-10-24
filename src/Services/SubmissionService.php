@@ -16,11 +16,13 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
 
+use ArtisanPackUI\Forms\FieldTypes\PhoneFieldType;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use ArtisanPackUI\Forms\Models\FormUpload;
+use ArtisanPackUI\Forms\Support\NumberFormat;
 use ArtisanPackUI\Forms\Support\SubmissionRules;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -90,13 +92,16 @@ class SubmissionService
      * values for the notifications and webhooks of this request only. An
      * email field's confirmation (`{name}_confirmation`) and the token of a
      * type that stores no value (such as a CAPTCHA) are dropped before the
-     * filter runs.
+     * filter runs. Phone numbers checked by format are converted to E.164
+     * first, reading the country the visitor selected (`{name}_country`),
+     * which is then dropped too. A multi-file field's files are each stored
+     * as an upload, with one submission value listing them.
      *
      * @since 1.0.0
      *
      * @param  Form  $form  The form being submitted.
      * @param  array<string, mixed>  $formData  The submitted form data.
-     * @param  array<string, UploadedFile|null>  $files  Uploaded files keyed by field name.
+     * @param  array<string, array<array-key, UploadedFile>|UploadedFile|null>  $files  Uploaded files keyed by field name; a list for a multi-file field.
      * @param  array<string, mixed>  $metadata  Additional metadata (ip, user_agent, etc.).
      *
      * @throws RuntimeException If the submission cannot be created.
@@ -107,7 +112,10 @@ class SubmissionService
     {
         $fields = $form->fields()->get()->keyBy( 'name' );
 
-        // Confirmation inputs and challenge tokens are checked, never kept
+        // Phone numbers are stored in E.164 form, read in the selected country
+        $formData = $this->normalizePhoneNumbers( $fields, $formData );
+
+        // Confirmation inputs, phone countries and challenge tokens are checked, never kept
         $formData = $this->withoutTransientInputs( $fields, $formData );
 
         // Apply filter hook to allow modifying submission data before saving
@@ -164,17 +172,21 @@ class SubmissionService
 
             // Handle file uploads
             foreach ( $files as $fieldName => $file ) {
-                if ( ! $file instanceof UploadedFile ) {
-                    continue;
-                }
-
                 $field = $fields->get( $fieldName );
 
                 if ( ! $field || ! $field->is_file_field ) {
                     continue;
                 }
 
-                $this->handleFileUpload( $submission, $field, $file );
+                if ( is_array( $file ) && $field->allowsMultipleFiles() ) {
+                    $this->handleMultipleFileUploads( $submission, $field, $file );
+
+                    continue;
+                }
+
+                if ( $file instanceof UploadedFile ) {
+                    $this->handleFileUpload( $submission, $field, $file );
+                }
             }
 
             return $submission;
@@ -189,8 +201,8 @@ class SubmissionService
     /**
      * Removes the submitted inputs that are checked but never stored.
      *
-     * An email field's confirmation input (unless a field has that name) and
-     * the value of any field whose type definition sets `stores_value` to
+     * An email field's confirmation input and a phone field's country (unless
+     * a field has that name), and the value of any field whose type definition sets `stores_value` to
      * false (such as a CAPTCHA token).
      *
      * @since 1.6.0
@@ -213,8 +225,67 @@ class SubmissionService
                 unset( $formData[ $field->getConfirmationKey() ] );
             }
 
+            if ( 'phone' === $field->type && ! isset( $names[ $field->getPhoneCountryKey() ] ) ) {
+                unset( $formData[ $field->getPhoneCountryKey() ] );
+            }
+
             if ( false === ( $field->fieldType()->definition()['stores_value'] ?? true ) ) {
                 unset( $formData[ $field->name ] );
+            }
+        }
+
+        return $formData;
+    }
+
+    /**
+     * Converts phone numbers checked by format to E.164 form.
+     *
+     * Each number is read in the country submitted for it as `{name}_country`
+     * (the Livewire country selector), falling back to the field's default
+     * country. Numbers that do not parse are left as they are.
+     *
+     * @since 1.6.0
+     *
+     * @param  iterable<FormField>  $fields  The form fields.
+     * @param  array<string, mixed>  $formData  The submitted values keyed by field name.
+     *
+     * @return array<string, mixed> The values with phone numbers converted.
+     */
+    public function normalizePhoneNumbers( iterable $fields, array $formData ): array
+    {
+        foreach ( $fields as $field ) {
+            if ( 'phone' !== $field->type || ! array_key_exists( $field->name, $formData ) ) {
+                continue;
+            }
+
+            $country = $formData[ $field->getPhoneCountryKey() ] ?? null;
+
+            $formData[ $field->name ] = PhoneFieldType::toE164( $field, $formData[ $field->name ], is_string( $country ) ? $country : null );
+        }
+
+        return $formData;
+    }
+
+    /**
+     * Converts numbers typed in a number field's format to plain decimals.
+     *
+     * Runs before validation, so the `numeric`, `integer` and limit rules
+     * see the plain number (see NumberFormat).
+     *
+     * @since 1.6.0
+     *
+     * @param  iterable<FormField>  $fields  The form fields.
+     * @param  array<string, mixed>  $formData  The submitted values keyed by field name.
+     *
+     * @return array<string, mixed> The values with formatted numbers converted.
+     */
+    public function normalizeFormattedNumbers( iterable $fields, array $formData ): array
+    {
+        foreach ( $fields as $field ) {
+            $format = 'number' === $field->type ? $field->getNumberFormat() : null;
+
+            if ( null !== $format && array_key_exists( $field->name, $formData ) ) {
+                $formData[ $field->name ] = NumberFormat::normalize( $formData[ $field->name ], $format );
             }
         }
 
@@ -703,6 +774,91 @@ class SubmissionService
      */
     protected function handleFileUpload( FormSubmission $submission, FormField $field, UploadedFile $file ): FormUpload
     {
+        $upload = $this->storeUpload( $submission, $field, $file );
+
+        // Create submission value linking to the upload
+        FormSubmissionValue::create( $this->uploadValueAttributes( $submission, $field, $upload ) );
+
+        return $upload;
+    }
+
+    /**
+     * Stores each file of a multi-file field, with one submission value listing them all.
+     *
+     * The value points at the first upload in `upload_id` and lists every
+     * upload ID, in the order the files were added, in `value_array`.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormSubmission  $submission  The form submission.
+     * @param  FormField  $field  The file field.
+     * @param  array<array-key, mixed>  $files  The uploaded files.
+     *
+     * @throws InvalidArgumentException If a file extension is not allowed.
+     *
+     * @return list<FormUpload> The created upload records.
+     */
+    protected function handleMultipleFileUploads( FormSubmission $submission, FormField $field, array $files ): array
+    {
+        $uploads = [];
+
+        foreach ( $files as $file ) {
+            if ( $file instanceof UploadedFile ) {
+                $uploads[] = $this->storeUpload( $submission, $field, $file );
+            }
+        }
+
+        if ( [] === $uploads ) {
+            return [];
+        }
+
+        FormSubmissionValue::create( array_merge( $this->uploadValueAttributes( $submission, $field, $uploads[0] ), [
+            'value_array' => array_map( fn ( FormUpload $upload ): int => (int) $upload->id, $uploads ),
+        ] ) );
+
+        return $uploads;
+    }
+
+    /**
+     * Builds the attributes of the submission value that points at an upload.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormSubmission  $submission  The form submission.
+     * @param  FormField  $field  The file field.
+     * @param  FormUpload  $upload  The (first) upload.
+     *
+     * @return array<string, mixed> The FormSubmissionValue attributes.
+     */
+    protected function uploadValueAttributes( FormSubmission $submission, FormField $field, FormUpload $upload ): array
+    {
+        return [
+            'submission_id'     => $submission->id,
+            'field_id'          => $field->id,
+            'field_name'        => $field->name,
+            'field_label'       => $field->label,
+            'field_admin_label' => $field->getStoredAdminLabel(),
+            'field_type'        => $field->type,
+            'upload_id'         => $upload->id,
+            'created_at'        => now(),
+        ];
+    }
+
+    /**
+     * Stores an uploaded file and records it as an upload of the submission.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormSubmission  $submission  The form submission.
+     * @param  FormField  $field  The file field.
+     * @param  UploadedFile  $file  The uploaded file.
+     *
+     * @throws InvalidArgumentException If the file extension is not allowed.
+     *
+     * @return FormUpload The created upload record.
+     */
+    protected function storeUpload( FormSubmission $submission, FormField $field, UploadedFile $file ): FormUpload
+    {
         $disk      = config( 'artisanpack.forms.uploads.disk', 'local' );
         $directory = config( 'artisanpack.forms.uploads.directory', 'form-uploads' );
 
@@ -729,7 +885,7 @@ class SubmissionService
         }
 
         // Create the upload record
-        $upload = FormUpload::create( [
+        return FormUpload::create( [
             'submission_id' => $submission->id,
             'field_id'      => $field->id,
             'original_name' => $file->getClientOriginalName(),
@@ -739,20 +895,6 @@ class SubmissionService
             'mime_type'     => $file->getMimeType() ?? 'application/octet-stream',
             'size'          => $fileSize ?: 0,
         ] );
-
-        // Create submission value linking to the upload
-        FormSubmissionValue::create( [
-            'submission_id'     => $submission->id,
-            'field_id'          => $field->id,
-            'field_name'        => $field->name,
-            'field_label'       => $field->label,
-            'field_admin_label' => $field->getStoredAdminLabel(),
-            'field_type'        => $field->type,
-            'upload_id'         => $upload->id,
-            'created_at'        => now(),
-        ] );
-
-        return $upload;
     }
 
     /**

@@ -10,11 +10,14 @@
  * @since      1.1.0
  */
 
+import { useState } from 'react';
 import { DatePicker, File as FileInput, Input } from '@artisanpack-ui/react/form';
 
 import {
+	allowsMultipleFiles,
 	getFieldLayout,
 	getFileAccept,
+	getFileMaxCount,
 	getInputLabelProps,
 	getRatingSizeClass,
 	getRatingSteps,
@@ -28,8 +31,109 @@ import type { FieldComponentProps } from './types';
 
 /**
  * Renders a file upload field.
+ *
+ * A multi-file field (since 1.6.0) adds each file chosen or dropped to a
+ * list with a remove button, up to its max files, and a polite live region
+ * announces the changes. Files upload with the submission.
  */
-export function FileField( { field, error, onFileChange, displayConfig }: FieldComponentProps ) {
+export function FileField( props: FieldComponentProps ) {
+	if ( allowsMultipleFiles( props.field ) ) {
+		return <MultiFileField {...props} />;
+	}
+
+	return <SingleFileField {...props} />;
+}
+
+/**
+ * Renders a multi-file upload field: a drag-and-drop zone around a keyboard
+ * operable file input, and the list of files to upload.
+ *
+ * @since 1.6.0
+ */
+function MultiFileField( { field, error, onFileChange, displayConfig }: FieldComponentProps ) {
+	const layout = getFieldLayout( field, displayConfig );
+	const { inline: _inline, ...labelProps } = getInputLabelProps( field, layout, displayConfig, error );
+	const maxFiles = getFileMaxCount( field );
+	const [files, setFiles] = useState<File[]>( [] );
+	const [announcement, setAnnouncement] = useState( '' );
+
+	const update = ( next: File[], message: string ): void => {
+		setFiles( next );
+		setAnnouncement( message );
+		onFileChange?.( next );
+	};
+
+	const add = ( fileList: FileList | null ): void => {
+		const added = Array.from( fileList ?? [] );
+		const room = maxFiles === undefined ? added.length : Math.max( 0, maxFiles - files.length );
+		const accepted = added.slice( 0, room );
+
+		if ( accepted.length === 0 && added.length > 0 ) {
+			setAnnouncement( t( 'You may upload no more than :max files.', { max: maxFiles ?? 0 } ) );
+
+			return;
+		}
+
+		update(
+			[...files, ...accepted],
+			accepted.length < added.length
+				? t( 'You may upload no more than :max files.', { max: maxFiles ?? 0 } )
+				: t( ':count files ready to upload.', { count: files.length + accepted.length } ),
+		);
+	};
+
+	const remove = ( index: number ): void => {
+		const removed = files[index];
+
+		update( files.filter( ( _file, position ) => position !== index ), t( ':name removed.', { name: removed?.name ?? '' } ) );
+	};
+
+	return (
+		<FieldLayout field={field} layout={layout}>
+			<FileInput
+				{...labelProps}
+				name={field.name}
+				accept={getFileAccept( field )}
+				error={error}
+				className={field.css_classes ?? undefined}
+				multiple
+				withDragDrop
+				onFilesSelected={add}
+			/>
+
+			{files.length > 0 && (
+				<ul className="mt-3 flex flex-col gap-2" aria-label={t( 'Files for :field', { field: field.label ?? field.name } )}>
+					{files.map( ( file, index ) => (
+						<li key={`${file.name}-${file.size}-${file.lastModified}-${index}`} className="flex items-center gap-3 rounded-box bg-base-200 p-2">
+							<span className="min-w-0 grow truncate text-sm">{file.name}</span>
+							<span className="shrink-0 text-xs text-base-content/60">{formatFileSize( file.size )}</span>
+							<button
+								type="button"
+								className="btn btn-ghost btn-sm btn-square"
+								aria-label={t( 'Remove :name', { name: file.name } )}
+								onClick={() => remove( index )}
+							>
+								<span aria-hidden="true">✕</span>
+							</button>
+						</li>
+					) )}
+				</ul>
+			)}
+
+			<div className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
+		</FieldLayout>
+	);
+}
+
+/** Show a file size in KB or MB. */
+function formatFileSize( bytes: number ): string {
+	return bytes >= 1048576 ? `${( bytes / 1048576 ).toFixed( 1 )} MB` : `${Math.max( 1, Math.round( bytes / 1024 ) )} KB`;
+}
+
+/**
+ * Renders a single-file upload field.
+ */
+function SingleFileField( { field, error, onFileChange, displayConfig }: FieldComponentProps ) {
 	const allowedTypes = getFileAccept( field );
 	const layout = getFieldLayout( field, displayConfig );
 	const { inline: _inline, ...labelProps } = getInputLabelProps( field, layout, displayConfig, error );

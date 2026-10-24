@@ -77,6 +77,10 @@ FormField::create([
 | `max_size` | Maximum size in KB |
 | `multiple` | Allow multiple files |
 | `max_files` | Maximum number of files (if multiple) |
+| `max_total_size` | Maximum size of all files together in KB (if multiple) |
+| `min_width`, `max_width`, `min_height`, `max_height` | Pixel bounds for uploaded images; other files are not checked |
+
+A multi-file field stores one `form_uploads` row per file and one submission value that lists them all: `upload_id` is the first upload and `value_array` holds every upload ID in order. Use `$value->getUploads()` to get them.
 
 ## Storage
 

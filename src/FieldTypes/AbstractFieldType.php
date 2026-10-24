@@ -17,6 +17,7 @@ use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use ArtisanPackUI\Forms\Support\Autocomplete;
 use ArtisanPackUI\Forms\Support\FieldSettings;
+use ArtisanPackUI\Forms\Support\InputMask;
 use ArtisanPackUI\Forms\Support\SubmissionRules;
 
 /**
@@ -197,6 +198,14 @@ abstract class AbstractFieldType implements FieldType
                 'field' => $field->label,
                 'max'   => FormField::OTHER_CHOICE_MAX_LENGTH,
             ] );
+        }
+
+        if ( null !== ( $hint = $field->getInputMaskHint() ) ) {
+            $messages['regex'] = __( 'The :field must match the expected format. :hint', ['field' => $field->label, 'hint' => $hint] );
+        }
+
+        if ( null !== ( $maxWords = $field->getMaxWords() ) ) {
+            $messages[ SubmissionRules::MAX_WORDS ] = __( 'The :field may not be longer than :max words.', ['field' => $field->label, 'max' => $maxWords] );
         }
 
         return array_merge( $messages, $this->typeMessages( $field ) );
@@ -393,7 +402,7 @@ abstract class AbstractFieldType implements FieldType
     }
 
     /**
-     * Gets the rules for the field's "No duplicates" and "Other" choice settings.
+     * Gets the rules for the field's "No duplicates", "Other" choice, input mask and word limit settings.
      *
      * The duplicate check needs a saved field, since it looks up earlier
      * submissions by field ID.
@@ -414,6 +423,14 @@ abstract class AbstractFieldType implements FieldType
 
         if ( $field->allowsOtherChoice() ) {
             $rules[] = SubmissionRules::OTHER_CHOICE;
+        }
+
+        if ( null !== ( $mask = $field->getInputMask() ) ) {
+            $rules[] = 'regex:' . InputMask::toRegex( $mask );
+        }
+
+        if ( null !== ( $maxWords = $field->getMaxWords() ) ) {
+            $rules[] = SubmissionRules::MAX_WORDS . ':' . $maxWords;
         }
 
         return $rules;
@@ -848,6 +865,51 @@ abstract class AbstractFieldType implements FieldType
             'input' => 'toggle',
             'label' => __( 'Enable search' ),
             'hint'  => __( 'Lets visitors type to filter long option lists.' ),
+        ];
+    }
+
+    /**
+     * Gets the input mask settings shared by text and phone fields.
+     *
+     * @since 1.6.0
+     *
+     * @return list<array<string, mixed>> The settings.
+     */
+    protected function inputMaskSettings(): array
+    {
+        return [
+            [
+                'key'     => 'input_mask',
+                'input'   => 'select',
+                'label'   => __( 'Input Mask' ),
+                'hint'    => __( 'Formats the value as it is typed and checks it on submit. The format is shown below the input.' ),
+                'options' => InputMask::options(),
+            ],
+            [
+                'key'         => 'custom_mask',
+                'max_length'  => InputMask::MAX_LENGTH,
+                'label'       => __( 'Custom Mask' ),
+                'placeholder' => '999-aa-***',
+                'hint'        => __( 'Used when the input mask is Custom: 9 is a digit, a is a letter and * is a letter or digit.' ),
+                'monospace'   => true,
+            ],
+        ];
+    }
+
+    /**
+     * Gets the setting that shows a live character or word counter.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> The setting.
+     */
+    protected function counterSetting(): array
+    {
+        return [
+            'key'   => 'show_counter',
+            'input' => 'toggle',
+            'label' => __( 'Show character counter' ),
+            'hint'  => __( 'Shows how many characters (or words, with a word limit) are used, against the limit when one is set.' ),
         ];
     }
 

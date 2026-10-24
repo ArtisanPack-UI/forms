@@ -91,17 +91,21 @@
                                         </span>
                                     @elseif ($value->isRedacted())
                                         <span class="italic opacity-60">{{ $value->display_value }}</span>
-                                    @elseif ($value->upload_id && $value->upload)
-                                        <!-- File Upload -->
-                                        <div class="flex items-center gap-2">
-                                            <x-artisanpack-icon name="o-paper-clip" class="w-5 h-5 opacity-40" />
-                                            <a href="{{ route('forms.uploads.download', $value->upload) }}"
-                                               class="link link-primary"
-                                               target="_blank">
-                                                {{ $value->upload->original_name }}
-                                            </a>
-                                            <span class="opacity-40 text-xs">({{ $value->upload->humanFileSize() }})</span>
-                                        </div>
+                                    @elseif ($value->upload_id && [] !== ($valueUploads = $value->getUploads()))
+                                        <!-- File Upload(s) -->
+                                        <ul class="flex flex-col gap-1">
+                                            @foreach ($valueUploads as $valueUpload)
+                                                <li class="flex items-center gap-2" wire:key="value-upload-{{ $valueUpload->id }}">
+                                                    <x-artisanpack-icon name="o-paper-clip" class="w-5 h-5 opacity-40" />
+                                                    <a href="{{ route('forms.uploads.download', $valueUpload) }}"
+                                                       class="link link-primary"
+                                                       target="_blank">
+                                                        {{ $valueUpload->original_name }}
+                                                    </a>
+                                                    <span class="opacity-40 text-xs">({{ $valueUpload->humanFileSize() }})</span>
+                                                </li>
+                                            @endforeach
+                                        </ul>
                                     @elseif ($value->field_type === 'consent')
                                         <!-- Consent, with the text agreed to -->
                                         @php($consent = is_array($value->value_array) ? $value->value_array : [])

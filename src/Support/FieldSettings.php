@@ -14,6 +14,7 @@ namespace ArtisanPackUI\Forms\Support;
 
 use ArtisanPackUI\Forms\Captcha\CaptchaManager;
 use ArtisanPackUI\Forms\Config\FieldTypes;
+use ArtisanPackUI\Forms\FieldTypes\PhoneFieldType;
 use ArtisanPackUI\Forms\Models\FormField;
 
 /**
@@ -42,7 +43,8 @@ use ArtisanPackUI\Forms\Models\FormField;
  * - `options_from`: `choice_sources` to append the registered choice sources
  *   (see ChoiceSources) to a `select`'s options when the schema is read. The
  *   setting is left out while no source is registered. `captcha_drivers`
- *   appends the registered CAPTCHA drivers (see CaptchaManager).
+ *   appends the registered CAPTCHA drivers (see CaptchaManager), and
+ *   `phone_countries` the countries with a calling code (see PhoneFieldType).
  * - `monospace`: whether to show the input in a monospace font.
  *
  * @since 1.6.0
@@ -335,6 +337,13 @@ class FieldSettings
         $resolved = [];
 
         foreach ( $settings as $setting ) {
+            if ( 'phone_countries' === ( $setting['options_from'] ?? null ) ) {
+                $setting['options'] = array_merge( $setting['options'] ?? [], array_map(
+                    fn ( array $country ): array => ['value' => $country['value'], 'label' => $country['label']],
+                    PhoneFieldType::countries(),
+                ) );
+            }
+
             if ( 'captcha_drivers' === ( $setting['options_from'] ?? null ) ) {
                 $setting['options'] = array_merge( $setting['options'] ?? [], app( CaptchaManager::class )->options() );
             }

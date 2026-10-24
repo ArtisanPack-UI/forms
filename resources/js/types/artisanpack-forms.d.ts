@@ -242,6 +242,10 @@ export interface ValidationRules {
     max_size?: number;
     /** @deprecated since 1.6.0 — file fields store this in `field_config.allowed_types`. */
     allowed_types?: string[];
+    /** A textarea's word limit, checked by the `forms_max_words` rule (since 1.6.0). */
+    max_words?: number;
+    /** Whether a number field accepts whole numbers only (since 1.6.0). */
+    integer_only?: boolean;
 }
 
 /**
@@ -432,6 +436,83 @@ export interface FileFieldConfig extends BaseFieldConfig {
     max_size?: number;
     /** Allowed file extensions, without a leading dot (e.g. `pdf`). */
     allowed_types?: string[];
+    /**
+     * Whether the field takes several files, submitted as `files[{name}][]`
+     * (since 1.6.0). Each is stored as its own upload.
+     */
+    multiple?: boolean;
+    /** The most files a multi-file field takes (since 1.6.0). */
+    max_files?: number;
+    /** The largest total size in KB of a multi-file field's files (since 1.6.0). */
+    max_total_size?: number;
+    /** Image bounds in pixels; other files are not checked (since 1.6.0). */
+    min_width?: number;
+    max_width?: number;
+    min_height?: number;
+    max_height?: number;
+}
+
+/**
+ * An input mask preset, or `custom` for the `custom_mask` pattern (since 1.6.0).
+ */
+export type InputMaskPreset = 'us_phone' | 'zip' | 'zip_plus4' | 'ssn' | 'date' | 'custom';
+
+/**
+ * Configuration for text fields (since 1.6.0).
+ */
+export interface TextFieldConfig extends CommonFieldConfig {
+    /** The input mask preset; unset for none. */
+    input_mask?: InputMaskPreset | '';
+    /** The pattern of a `custom` mask: `9` a digit, `a` a letter, `*` either. */
+    custom_mask?: string;
+    /** Whether a text or textarea field shows a live character or word counter. */
+    show_counter?: boolean;
+}
+
+/**
+ * How a phone field checks numbers (since 1.6.0).
+ */
+export type PhoneFormat = 'any' | 'us' | 'international';
+
+/**
+ * A country an International phone field's selector offers (since 1.6.0).
+ */
+export interface PhoneCountry {
+    /** The ISO 3166-1 alpha-2 code. */
+    value: string;
+    /** The country name with its calling code, such as `United Kingdom (+44)`. */
+    label: string;
+    /** The calling code without the `+`, such as `44`. */
+    dial_code: string;
+}
+
+/**
+ * Configuration for phone fields (since 1.6.0).
+ */
+export interface PhoneFieldConfig extends CommonFieldConfig {
+    /** How numbers are checked. Defaults to `any`. */
+    phone_format?: PhoneFormat;
+    /** The ISO code an International field's selector starts at. Defaults to `US`. */
+    default_country?: string;
+    input_mask?: InputMaskPreset | '';
+    custom_mask?: string;
+}
+
+/**
+ * The format a number field reads typed numbers in (since 1.6.0).
+ */
+export type NumberFormat = 'decimal_dot' | 'decimal_comma' | 'currency';
+
+/**
+ * Configuration for number fields (since 1.6.0).
+ */
+export interface NumberFieldConfig extends CommonFieldConfig {
+    /** The format; unset for a plain number input. Stored values are plain decimals. */
+    number_format?: NumberFormat | '';
+    /** Text shown before the input, such as `$`. */
+    prefix?: string;
+    /** Text shown after the input, such as `kg`. */
+    suffix?: string;
 }
 
 /**
@@ -521,6 +602,9 @@ export type FieldConfig =
     | EmailFieldConfig
     | ConsentFieldConfig
     | CaptchaFieldConfig
+    | TextFieldConfig
+    | PhoneFieldConfig
+    | NumberFieldConfig
     | BaseFieldConfig
     | null;
 
@@ -652,6 +736,22 @@ export interface FormField {
      * keys (render nothing then; since 1.6.0). Present only for CAPTCHA fields.
      */
     captcha?: CaptchaWidget | null;
+    /**
+     * A text or phone field's resolved input mask and the format hint shown
+     * under it, present only when the field has a mask (since 1.6.0).
+     */
+    input_mask?: { mask: string; hint: string };
+    /**
+     * The description that gives a number field's prefix and suffix to screen
+     * readers, present only when it has either (since 1.6.0).
+     */
+    affix_description?: string;
+    /**
+     * How a phone field checks numbers, present only when it checks them
+     * (since 1.6.0). `countries` lists the selector's countries for the
+     * `international` format and is empty otherwise.
+     */
+    phone?: { format: PhoneFormat; default_country: string; countries: PhoneCountry[] };
     /**
      * The value the field starts with: its default value with server merge
      * tags replaced, the options marked as defaults, or the
@@ -789,6 +889,11 @@ export interface FormSubmissionValue {
     /** Whether `forms:prune-submissions` redacted the value (since 1.6.0). */
     is_redacted: boolean;
     upload_id: number | null;
+    /**
+     * Every upload a file value holds, in upload order: a multi-file value's
+     * uploads, or its single `upload_id` (since 1.6.0).
+     */
+    upload_ids: number[];
     created_at: string;
 }
 

@@ -36,8 +36,10 @@ import type {
 } from '../types/artisanpack-forms';
 
 import { getEnabledSubInputs, isCompositeField, matchSubInputOption, toCompositeValue } from './composite';
+import { showsCounter } from './counter';
 import { getPageContext, getPopulatedValue, sanitizePopulatedValue } from './dynamicPopulation';
 import type { PopulationSource } from './dynamicPopulation';
+import { getInputMaskHint } from './mask';
 
 /** Field types whose content is edited in the builder's General tab. */
 export const CONTENT_LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'html'] );
@@ -101,6 +103,30 @@ export function getFileAccept( field: FormField ): string | undefined {
 	const types = getFileAllowedTypes( field );
 
 	return types.length > 0 ? types.map( ( type ) => `.${type}` ).join( ',' ) : undefined;
+}
+
+/** Read a positive whole number from `field_config`, or undefined. */
+function positiveConfigInteger( field: FormField, key: string ): number | undefined {
+	const value = Number( field.field_config?.[key] );
+
+	return Number.isFinite( value ) && value > 0 ? Math.trunc( value ) : undefined;
+}
+
+/** Whether a file field takes several files (since 1.6.0). */
+export function allowsMultipleFiles( field: FormField ): boolean {
+	const value = field.field_config?.multiple;
+
+	return field.type === 'file' && ( value === true || value === 1 || value === '1' || value === 'true' );
+}
+
+/** Get the most files a multi-file field takes, or undefined when unlimited (since 1.6.0). */
+export function getFileMaxCount( field: FormField ): number | undefined {
+	return allowsMultipleFiles( field ) ? positiveConfigInteger( field, 'max_files' ) : undefined;
+}
+
+/** Get the largest total size in KB of a multi-file field's files, or undefined (since 1.6.0). */
+export function getFileMaxTotalSize( field: FormField ): number | undefined {
+	return allowsMultipleFiles( field ) ? positiveConfigInteger( field, 'max_total_size' ) : undefined;
 }
 
 /**
@@ -863,6 +889,40 @@ export function getInputLabelProps(
 		hint: field.help_text ?? undefined,
 		inline: displayConfig.label_position === 'beside',
 	};
+}
+
+/**
+ * The IDs of the notes a text-like input shows under it (since 1.6.0): its
+ * mask's expected format, its counter and its prefix and suffix description.
+ * Mirrors `FormField::getDescribedBy()`.
+ */
+export function getInputNoteIds( field: FormField ): string[] {
+	return [
+		getInputMaskHint( field ) !== undefined ? `field-${field.name}-mask` : undefined,
+		showsCounter( field ) ? `field-${field.name}-counter` : undefined,
+		field.affix_description ? `field-${field.name}-affix` : undefined,
+	].filter( ( id ): id is string => id !== undefined );
+}
+
+/**
+ * Adds note IDs to an input component's `aria-describedby` (since 1.6.0).
+ *
+ * The input components describe their input by its hint and error,
+ * `{id}-hint` and `{id}-error`; passing `aria-describedby` replaces that, so
+ * those IDs are kept here, which needs a known input ID.
+ */
+export function withInputNotes( props: InputLabelProps, field: FormField, error: string | undefined, noteIds: string[] ): InputLabelProps {
+	if ( noteIds.length === 0 ) {
+		return props;
+	}
+
+	const id = props.id ?? `field-${field.name}`;
+	const own = props['aria-describedby'] ?? [
+		props.hint && !error ? `${id}-hint` : undefined,
+		error ? `${id}-error` : undefined,
+	].filter( Boolean ).join( ' ' );
+
+	return { ...props, id, 'aria-describedby': [own, ...noteIds].filter( Boolean ).join( ' ' ) };
 }
 
 /** Label, hint and ID props for a single checkbox or toggle, whose label sits beside the box. */

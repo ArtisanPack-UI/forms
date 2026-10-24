@@ -70,6 +70,32 @@ class FieldRenderer
     }
 
     /**
+     * Gets the first error of a field's own value in the Livewire renderer.
+     *
+     * File inputs bind to `files.{name}`, other inputs to `formData.{name}`.
+     * A multi-file field also shows the first error of any one file
+     * (`files.{name}.*`), since each file is checked on its own.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     * @param  MessageBag|ViewErrorBag  $errors  The validation errors.
+     *
+     * @return string The error, or `''` for none.
+     */
+    public static function fieldError( FormField $field, MessageBag|ViewErrorBag $errors ): string
+    {
+        $key   = ( $field->is_file_field ? 'files.' : 'formData.' ) . $field->name;
+        $error = $errors->first( $key );
+
+        if ( '' === $error && $field->is_file_field && $field->allowsMultipleFiles() ) {
+            $error = $errors->first( "{$key}.*" );
+        }
+
+        return $error;
+    }
+
+    /**
      * Gets the first error for each of a composite field's sub-inputs.
      *
      * @since 1.6.0

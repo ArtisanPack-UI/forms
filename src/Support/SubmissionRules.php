@@ -17,6 +17,7 @@ use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use Illuminate\Contracts\Validation\Factory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Validation rules registered by name, so field settings can add them as
@@ -26,6 +27,11 @@ use Illuminate\Database\Eloquent\Builder;
  *   the value was already submitted for the field (`ci`: case-insensitively).
  * - `forms_other_choice` fails when an "Other" choice was submitted without its
  *   text, or with text longer than FormField::OTHER_CHOICE_MAX_LENGTH.
+ * - `forms_max_words:{max}` fails when a text has more than `max` words.
+ * - `forms_total_size:{kilobytes}` fails when a list of files is larger in total.
+ * - `forms_image_dimensions:{min_width},{max_width},{min_height},{max_height}`
+ *   fails when an image is outside the bounds; a blank bound is not checked
+ *   and files that are not images pass.
  *
  * @since 1.6.0
  */
@@ -50,6 +56,33 @@ class SubmissionRules
     public const OTHER_CHOICE = 'forms_other_choice';
 
     /**
+     * The name of the word limit rule.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const MAX_WORDS = 'forms_max_words';
+
+    /**
+     * The name of the total upload size rule.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const TOTAL_SIZE = 'forms_total_size';
+
+    /**
+     * The name of the image dimensions rule.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const IMAGE_DIMENSIONS = 'forms_image_dimensions';
+
+    /**
      * Registers the rules with the validator.
      *
      * @since 1.6.0
@@ -60,6 +93,116 @@ class SubmissionRules
     {
         $validator->extend( self::NO_DUPLICATES, fn ( string $attribute, mixed $value, array $parameters ): bool => self::isUnique( $value, $parameters ) );
         $validator->extend( self::OTHER_CHOICE, fn ( string $attribute, mixed $value ): bool => self::hasOtherText( $value ) );
+        $validator->extend( self::MAX_WORDS, fn ( string $attribute, mixed $value, array $parameters ): bool => self::withinWordLimit( $value, $parameters ) );
+        $validator->extend( self::TOTAL_SIZE, fn ( string $attribute, mixed $value, array $parameters ): bool => self::withinTotalSize( $value, $parameters ) );
+        $validator->extend( self::IMAGE_DIMENSIONS, fn ( string $attribute, mixed $value, array $parameters ): bool => self::withinImageDimensions( $value, $parameters ) );
+    }
+
+    /**
+     * Counts the words in a text: runs of characters between whitespace.
+     *
+     * `resources/js/shared/counter.ts` counts the same way.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $text  The text.
+     *
+     * @return int The number of words.
+     */
+    public static function countWords( string $text ): int
+    {
+        $text = trim( $text );
+
+        return '' === $text ? 0 : count( preg_split( '/\s+/u', $text ) ?: [] );
+    }
+
+    /**
+     * Checks that a text has no more words than the limit.
+     *
+     * @since 1.6.0
+     *
+     * @param  mixed  $value  The submitted value.
+     * @param  array<int, string>  $parameters  The word limit.
+     *
+     * @return bool True when within the limit.
+     */
+    public static function withinWordLimit( mixed $value, array $parameters ): bool
+    {
+        $max = filter_var( $parameters[0] ?? null, FILTER_VALIDATE_INT );
+
+        if ( false === $max || ! is_scalar( $value ) || is_bool( $value ) ) {
+            return true;
+        }
+
+        return self::countWords( (string) $value ) <= $max;
+    }
+
+    /**
+     * Checks that a list of uploaded files is no larger in total than the limit.
+     *
+     * @since 1.6.0
+     *
+     * @param  mixed  $value  The submitted files.
+     * @param  array<int, string>  $parameters  The limit in kilobytes.
+     *
+     * @return bool True when within the limit.
+     */
+    public static function withinTotalSize( mixed $value, array $parameters ): bool
+    {
+        $max = filter_var( $parameters[0] ?? null, FILTER_VALIDATE_INT );
+
+        if ( false === $max || ! is_array( $value ) ) {
+            return true;
+        }
+
+        $bytes = 0;
+
+        foreach ( $value as $file ) {
+            if ( $file instanceof UploadedFile ) {
+                $bytes += (int) $file->getSize();
+            }
+        }
+
+        return $bytes <= $max * 1024;
+    }
+
+    /**
+     * Checks that an uploaded image's width and height are within the bounds.
+     *
+     * Files that are not raster images, or whose size cannot be read, pass:
+     * the type rules decide which files are allowed.
+     *
+     * @since 1.6.0
+     *
+     * @param  mixed  $value  The submitted file.
+     * @param  array<int, string>  $parameters  The minimum width, maximum width, minimum height and maximum height in pixels.
+     *
+     * @return bool True when within the bounds.
+     */
+    public static function withinImageDimensions( mixed $value, array $parameters ): bool
+    {
+        if ( ! $value instanceof UploadedFile || ! str_starts_with( (string) $value->getMimeType(), 'image/' ) || 'image/svg+xml' === $value->getMimeType() ) {
+            return true;
+        }
+
+        $size = @getimagesize( $value->getRealPath() ?: '' );
+
+        if ( false === $size ) {
+            return true;
+        }
+
+        [$width, $height] = $size;
+        $bounds           = array_map(
+            fn ( ?string $bound ): ?int => false === filter_var( $bound, FILTER_VALIDATE_INT ) ? null : (int) $bound,
+            array_pad( array_slice( $parameters, 0, 4 ), 4, null ),
+        );
+
+        [$minWidth, $maxWidth, $minHeight, $maxHeight] = $bounds;
+
+        return ! ( ( null !== $minWidth && $width < $minWidth )
+            || ( null !== $maxWidth && $width > $maxWidth )
+            || ( null !== $minHeight && $height < $minHeight )
+            || ( null !== $maxHeight && $height > $maxHeight ) );
     }
 
     /**

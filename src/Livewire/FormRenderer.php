@@ -446,7 +446,7 @@ class FormRenderer extends Component
             $submission = $this->submissionService->create(
                 $this->form,
                 $this->resolvedFormData(),
-                $this->files,
+                $this->visibleFiles(),
                 $metadata,
             );
 
@@ -471,6 +471,28 @@ class FormRenderer extends Component
             // The challenge token was spent, so a retry needs a new one
             $this->dispatch( 'forms-captcha-reset', formId: $this->form->id );
         }
+    }
+
+    /**
+     * Removes one file from a multi-file field before the form is submitted.
+     *
+     * The drop zone uploads each file under its own key in
+     * `$files[$fieldName]`, so removing one leaves the others in place.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $fieldName  The file field's name.
+     * @param  string  $key  The key the file was uploaded under.
+     */
+    public function removeFile( string $fieldName, string $key ): void
+    {
+        if ( ! isset( $this->files[ $fieldName ] ) || ! is_array( $this->files[ $fieldName ] ) ) {
+            return;
+        }
+
+        unset( $this->files[ $fieldName ][ $key ] );
+
+        $this->resetValidation( "files.{$fieldName}" );
     }
 
     /**
@@ -593,6 +615,11 @@ class FormRenderer extends Component
             if ( $field->requiresEmailConfirmation() && ! array_key_exists( $field->getConfirmationKey(), $data ) ) {
                 $data[ $field->getConfirmationKey() ] = is_string( $data[ $field->name ] ) ? $data[ $field->name ] : '';
             }
+
+            // The country selector starts at the field's default country
+            if ( $field->usesPhoneCountrySelector() && ! array_key_exists( $field->getPhoneCountryKey(), $data ) ) {
+                $data[ $field->getPhoneCountryKey() ] = $field->getPhoneDefaultCountry();
+            }
         }
 
         return $data;
@@ -709,13 +736,37 @@ class FormRenderer extends Component
     /**
      * Gets the form data with each selected "Other" choice replaced by its text.
      *
+     * Numbers typed in a number field's format are converted to plain
+     * decimals as well, while $formData keeps what the visitor typed.
+     *
      * @since 1.6.0
      *
      * @return array<string, mixed> The form data.
      */
     protected function resolvedFormData(): array
     {
-        return $this->submissionService->resolveOtherChoices( $this->form->fields, $this->formData, $this->otherValues );
+        $formData = $this->submissionService->resolveOtherChoices( $this->form->fields, $this->formData, $this->otherValues );
+
+        return $this->submissionService->normalizeFormattedNumbers( $this->form->fields, $formData );
+    }
+
+    /**
+     * Gets the uploaded files of the fields conditional logic shows.
+     *
+     * Hidden fields are not validated, so their files are not stored either,
+     * as the submit API drops them (SubmitFormApiRequest::sanitizedFiles()).
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> The files keyed by field name.
+     */
+    protected function visibleFiles(): array
+    {
+        return array_filter(
+            $this->files,
+            fn ( string $fieldName ): bool => $this->isFieldVisible( $fieldName ),
+            ARRAY_FILTER_USE_KEY,
+        );
     }
 
     /**

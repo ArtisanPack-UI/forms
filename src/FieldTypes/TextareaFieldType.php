@@ -44,7 +44,17 @@ class TextareaFieldType extends AbstractFieldType
             ],
             'settings' => [
                 ['key' => 'rows', 'input' => 'integer', 'min' => 1, 'max' => 50, 'default' => 4, 'placeholder' => '4', 'label' => __( 'Rows' )],
+                $this->counterSetting(),
                 ...$this->lengthSettings(),
+                [
+                    'key'   => 'max_words',
+                    'input' => 'integer',
+                    'store' => 'validation_rules',
+                    'tab'   => 'validation',
+                    'min'   => 1,
+                    'label' => __( 'Max Words' ),
+                    'hint'  => __( 'The counter counts words instead of characters when set.' ),
+                ],
                 $this->readOnlySetting(),
             ],
         ] );

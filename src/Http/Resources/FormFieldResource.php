@@ -20,6 +20,7 @@ namespace ArtisanPackUI\Forms\Http\Resources;
 use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ConsentFieldType;
+use ArtisanPackUI\Forms\FieldTypes\PhoneFieldType;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Support\DynamicPopulation;
 use ArtisanPackUI\Forms\Support\FieldSettings;
@@ -134,6 +135,16 @@ class FormFieldResource extends JsonResource
                 'description' => ConsentFieldType::description( $this->resource ),
             ] ),
             'captcha'                => $this->when( CaptchaFieldType::TYPE === $this->type, fn (): ?array => CaptchaFieldType::widget( $this->resource ) ),
+            'input_mask'             => $this->when( null !== $this->resource->getInputMask(), fn (): array => [
+                'mask' => $this->resource->getInputMask(),
+                'hint' => $this->resource->getInputMaskHint(),
+            ] ),
+            'affix_description'      => $this->when( null !== $this->resource->getAffixDescription(), fn (): ?string => $this->resource->getAffixDescription() ),
+            'phone'                  => $this->when( 'phone' === $this->type && 'any' !== $this->resource->getPhoneFormat(), fn (): array => [
+                'format'          => $this->resource->getPhoneFormat(),
+                'default_country' => $this->resource->getPhoneDefaultCountry(),
+                'countries'       => $this->resource->usesPhoneCountrySelector() ? PhoneFieldType::countries() : [],
+            ] ),
             'label_placement'        => $this->when( $this->includeResolvedDefault, fn (): ?string => $this->resource->getConfiguredLabelPlacement() ),
             'description_placement'  => $this->when( $this->includeResolvedDefault, fn (): ?string => $this->resource->getConfiguredDescriptionPlacement() ),
             'resolved_default_value' => $this->when(

@@ -190,8 +190,12 @@ interface ValidationRules {
     max_date?: string;
     max_size?: number;       // in KB
     allowed_types?: string[];  // MIME types
+    max_words?: number;      // textarea word limit (since 1.6.0)
+    integer_only?: boolean;  // number fields (since 1.6.0)
 }
 ```
+
+Since 1.6.0 text, phone, number and file fields have typed configs (`TextFieldConfig`, `PhoneFieldConfig`, `NumberFieldConfig`, `FileFieldConfig`) for input masks, counters, phone formats, number formats and multi-file uploads, along with the `InputMaskPreset`, `PhoneFormat`, `PhoneCountry` and `NumberFormat` types. The render payload adds `input_mask`, `affix_description` and `phone` to a field, and a submission value has `upload_ids`.
 
 ## Conditional Logic
 

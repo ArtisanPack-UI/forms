@@ -22,7 +22,9 @@ use ArtisanPackUI\Forms\Database\Factories\FormFieldFactory;
 use ArtisanPackUI\Forms\FieldTypes\CompositeFieldType;
 use ArtisanPackUI\Forms\Support\Autocomplete;
 use ArtisanPackUI\Forms\Support\ChoiceSources;
+use ArtisanPackUI\Forms\Support\InputMask;
 use ArtisanPackUI\Forms\Support\MergeTags;
+use ArtisanPackUI\Forms\Support\NumberFormat;
 use ArtisanPackUI\Forms\Support\PopulationContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -225,6 +227,17 @@ class FormField extends Model
      * @var string
      */
     public const OTHER_CHOICE_VALUE = '__other__';
+
+    /**
+     * Formats a phone field may validate numbers against: `any` skips the
+     * check, `us` takes US numbers and `international` any country's, with
+     * a country selector.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const PHONE_FORMATS = ['any', 'us', 'international'];
 
     /**
      * The longest "Other" text a submission may hold.
@@ -606,6 +619,264 @@ class FormField extends Model
         }
 
         return array_values( array_unique( $normalized ) );
+    }
+
+    /**
+     * Checks whether a file field accepts more than one file.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the `multiple` setting is on and the type offers it.
+     */
+    public function allowsMultipleFiles(): bool
+    {
+        return $this->configFlag( 'multiple' ) && $this->offersSetting( 'multiple' );
+    }
+
+    /**
+     * Gets the most files a multi-file field accepts.
+     *
+     * @since 1.6.0
+     *
+     * @return int|null The count, or null when unlimited or the field takes one file.
+     */
+    public function getFileMaxCount(): ?int
+    {
+        return $this->allowsMultipleFiles() ? $this->positiveConfigInteger( 'max_files' ) : null;
+    }
+
+    /**
+     * Gets the largest total size in kilobytes a multi-file field accepts.
+     *
+     * @since 1.6.0
+     *
+     * @return int|null The size, or null when unlimited or the field takes one file.
+     */
+    public function getFileMaxTotalSize(): ?int
+    {
+        return $this->allowsMultipleFiles() ? $this->positiveConfigInteger( 'max_total_size' ) : null;
+    }
+
+    /**
+     * Gets the pixel bounds uploaded images must fit.
+     *
+     * @since 1.6.0
+     *
+     * @return array{min_width: int|null, max_width: int|null, min_height: int|null, max_height: int|null} The bounds; null when unset.
+     */
+    public function getImageDimensionLimits(): array
+    {
+        $limits = [];
+
+        foreach ( ['min_width', 'max_width', 'min_height', 'max_height'] as $key ) {
+            $limits[ $key ] = $this->offersSetting( $key ) ? $this->positiveConfigInteger( $key ) : null;
+        }
+
+        return $limits;
+    }
+
+    /**
+     * Gets the input mask of a text or phone field.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null The mask (see InputMask), or null when none is set.
+     */
+    public function getInputMask(): ?string
+    {
+        if ( ! $this->offersSetting( 'input_mask' ) ) {
+            return null;
+        }
+
+        return InputMask::resolve( $this->getConfig( 'input_mask' ), $this->getConfig( 'custom_mask' ) );
+    }
+
+    /**
+     * Gets the hint that tells visitors the format the field's mask expects.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null The hint, or null when the field has no mask.
+     */
+    public function getInputMaskHint(): ?string
+    {
+        $mask = $this->getInputMask();
+
+        return null === $mask ? null : InputMask::hint( $mask );
+    }
+
+    /**
+     * Checks whether a text or textarea field shows a live character or word counter.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the `show_counter` setting is on and the type offers it.
+     */
+    public function showsCounter(): bool
+    {
+        return $this->configFlag( 'show_counter' ) && $this->offersSetting( 'show_counter' );
+    }
+
+    /**
+     * Gets a text field's length limit, for the `minlength` and `maxlength` attributes.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $key  `min` or `max`.
+     *
+     * @return int|null The limit, or null when unset or the type limits a number rather than a length.
+     */
+    public function getLengthLimit( string $key ): ?int
+    {
+        if ( ! in_array( $this->type, ['text', 'textarea'], true ) ) {
+            return null;
+        }
+
+        $limit = $this->getValidationRule( $key );
+
+        return is_numeric( $limit ) && (int) $limit >= 0 ? (int) $limit : null;
+    }
+
+    /**
+     * Gets a textarea's word limit.
+     *
+     * @since 1.6.0
+     *
+     * @return int|null The limit, or null when unset.
+     */
+    public function getMaxWords(): ?int
+    {
+        if ( ! $this->offersSetting( 'max_words' ) ) {
+            return null;
+        }
+
+        $limit = $this->getValidationRule( 'max_words' );
+
+        return is_numeric( $limit ) && (int) $limit > 0 ? (int) $limit : null;
+    }
+
+    /**
+     * Gets the format a number field reads typed numbers in.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null One of NumberFormat::FORMATS, or null for a plain number input.
+     */
+    public function getNumberFormat(): ?string
+    {
+        $format = $this->offersSetting( 'number_format' ) ? $this->getConfig( 'number_format' ) : null;
+
+        return is_string( $format ) && in_array( $format, NumberFormat::FORMATS, true ) ? $format : null;
+    }
+
+    /**
+     * Checks whether a number field accepts whole numbers only.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the `integer_only` rule is on and the type offers it.
+     */
+    public function isIntegerOnly(): bool
+    {
+        return true === filter_var( $this->getValidationRule( 'integer_only', false ), FILTER_VALIDATE_BOOLEAN )
+            && $this->offersSetting( 'integer_only' );
+    }
+
+    /**
+     * Gets the text shown before and after a number field's input.
+     *
+     * @since 1.6.0
+     *
+     * @return array{prefix: string|null, suffix: string|null} The prefix and suffix; null when unset.
+     */
+    public function getAffixes(): array
+    {
+        $affixes = [];
+
+        foreach ( ['prefix', 'suffix'] as $key ) {
+            $value           = $this->offersSetting( $key ) ? $this->getConfig( $key ) : null;
+            $affixes[ $key ] = is_string( $value ) && '' !== trim( $value ) ? trim( $value ) : null;
+        }
+
+        return $affixes;
+    }
+
+    /**
+     * Gets the description that gives a number field's prefix and suffix to assistive technology.
+     *
+     * The renderers show the affixes beside the input and hide them from
+     * screen readers, so this text (referenced by `aria-describedby`) is
+     * how they are announced.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null The description, or null when the field has neither.
+     */
+    public function getAffixDescription(): ?string
+    {
+        ['prefix' => $prefix, 'suffix' => $suffix] = $this->getAffixes();
+
+        return match ( true ) {
+            null !== $prefix && null !== $suffix => __( 'Prefix: :prefix. Suffix: :suffix.', ['prefix' => $prefix, 'suffix' => $suffix] ),
+            null !== $prefix                     => __( 'Prefix: :prefix.', ['prefix' => $prefix] ),
+            null !== $suffix                     => __( 'Suffix: :suffix.', ['suffix' => $suffix] ),
+            default                              => null,
+        };
+    }
+
+    /**
+     * Gets the format a phone field validates numbers against.
+     *
+     * @since 1.6.0
+     *
+     * @return string `any` (no check), `us` or `international`.
+     */
+    public function getPhoneFormat(): string
+    {
+        $format = $this->offersSetting( 'phone_format' ) ? $this->getConfig( 'phone_format' ) : null;
+
+        return is_string( $format ) && in_array( $format, self::PHONE_FORMATS, true ) ? $format : 'any';
+    }
+
+    /**
+     * Gets the country an international phone field starts with and reads national numbers in.
+     *
+     * @since 1.6.0
+     *
+     * @return string The ISO 3166-1 alpha-2 code.
+     */
+    public function getPhoneDefaultCountry(): string
+    {
+        $country = $this->getConfig( 'default_country' );
+
+        return is_string( $country ) && 1 === preg_match( '/^[A-Z]{2}$/', $country ) ? $country : 'US';
+    }
+
+    /**
+     * Checks whether a phone field shows a country selector.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True for the `international` format.
+     */
+    public function usesPhoneCountrySelector(): bool
+    {
+        return 'international' === $this->getPhoneFormat();
+    }
+
+    /**
+     * Gets the key the Livewire renderer submits a phone field's selected country under.
+     *
+     * The `phone` rule reads `{attribute}_country`, and the country is
+     * dropped once the number is stored in E.164 form.
+     *
+     * @since 1.6.0
+     *
+     * @return string The key, `{name}_country`.
+     */
+    public function getPhoneCountryKey(): string
+    {
+        return $this->name . '_country';
     }
 
     /**
@@ -1196,6 +1467,9 @@ class FormField extends Model
         $ids = array_filter( [
             filled( $error ) ? 'error-' . $this->name : null,
             filled( $this->help_text ) ? 'hint-' . $this->name : null,
+            null !== $this->getInputMask() ? 'mask-' . $this->name : null,
+            $this->showsCounter() ? 'counter-' . $this->name : null,
+            null !== $this->getAffixDescription() ? 'affix-' . $this->name : null,
         ] );
 
         return [] === $ids ? null : implode( ' ', $ids );
@@ -1789,6 +2063,22 @@ class FormField extends Model
     protected function configFlag( string $key ): bool
     {
         return true === filter_var( $this->getConfig( $key, false ), FILTER_VALIDATE_BOOLEAN );
+    }
+
+    /**
+     * Gets a positive whole number stored in `field_config`.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $key  The `field_config` key.
+     *
+     * @return int|null The number, or null when unset or not positive.
+     */
+    protected function positiveConfigInteger( string $key ): ?int
+    {
+        $value = $this->getConfig( $key );
+
+        return is_numeric( $value ) && (int) $value > 0 ? (int) $value : null;
     }
 
     /**
