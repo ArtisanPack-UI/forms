@@ -90,7 +90,11 @@ export function loadCaptchaScript( widget: CaptchaWidget ): Promise<void> {
 			script.src = widget.script;
 			script.async = true;
 			script.defer = true;
-			script.onerror = () => reject( new Error( 'CAPTCHA script failed to load' ) );
+			// A failed tag is removed, so a later call adds a fresh one and retries.
+			script.addEventListener( 'error', () => {
+				script.remove();
+				reject( new Error( 'CAPTCHA script failed to load' ) );
+			}, { once: true } );
 			document.head.appendChild( script );
 		}
 

@@ -116,12 +116,13 @@ describe( 'Vue consent field', function () use ( $resource ): void {
     it( 'renders the label as a heading and the checkbox with its consent text', function () use ( $resource ): void {
         expect( $resource( 'vue/components/fields/ConsentField.vue' ) )
             ->toContain( 'const labelId = computed( () => `label-${props.field.name}` );' )
+            ->toContain( ':aria-labelledby="field.label ? `${labelId} consent-text-${field.name}` : undefined"' )
+            ->toContain( '<span :id="`consent-text-${field.name}`" class="label-text whitespace-normal">{{ consentText }}</span>' )
             ->toContain( "<p v-if=\"field.label\" :id=\"labelId\" :class=\"['label-text font-medium', hiddenLabel ? 'sr-only' : '']\">" )
             ->toContain( 'type="checkbox"' )
             ->toContain( ':checked="isChecked"' )
             ->toContain( "@change=\"emit( 'update:modelValue', ( \$event.target as HTMLInputElement ).checked )\"" )
-            ->toContain( "const consentText = computed( () => props.field.consent?.text ?? '' );" )
-            ->toContain( '<span class="label-text whitespace-normal">{{ consentText }}</span>' );
+            ->toContain( "const consentText = computed( () => props.field.consent?.text ?? '' );" );
     } );
 
     it( 'renders the sanitized description and describes the checkbox by it', function () use ( $resource ): void {

@@ -92,9 +92,10 @@ const describedBy = computed( () => [
 					:aria-required="field.is_required ? 'true' : undefined"
 					:aria-invalid="error ? true : undefined"
 					:aria-describedby="describedBy"
+					:aria-labelledby="field.label ? `${labelId} consent-text-${field.name}` : undefined"
 					@change="emit( 'update:modelValue', ( $event.target as HTMLInputElement ).checked )"
 				/>
-				<span class="label-text whitespace-normal">{{ consentText }}</span>
+				<span :id="`consent-text-${field.name}`" class="label-text whitespace-normal">{{ consentText }}</span>
 			</label>
 
 			<!-- Sanitized with kses by the server (`ConsentFieldType::description()`). -->

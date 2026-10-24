@@ -165,6 +165,8 @@ describe( 'rendering', function (): void {
             ->toContain( 'I agree to the privacy policy.' )
             ->toContain( 'href="https://example.com/privacy"' )
             ->toContain( 'aria-describedby="consent-description-gdpr' )
+            ->toContain( 'aria-labelledby="label-gdpr consent-text-gdpr"' )
+            ->toContain( 'id="consent-text-gdpr"' )
             ->not->toContain( '<script>alert(1)</script>' );
     } );
 

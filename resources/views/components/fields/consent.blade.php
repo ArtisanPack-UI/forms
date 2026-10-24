@@ -1,8 +1,10 @@
 {{--
     A consent checkbox: the field label as a heading, the checkbox with its
     consent text, and the sanitized consent description (links allowed)
-    below. The description is part of the checkbox's description, so screen
-    readers announce what is being agreed to.
+    below. The checkbox is named by the field label and the consent text, so
+    two consent fields with the same text can be told apart, and the
+    description is part of its description, so screen readers announce what
+    is being agreed to.
 
     Variables:
     - $field The FormField.
@@ -39,8 +41,9 @@
             @if($field->is_required) required aria-required="true" @endif
             @if(filled($error)) aria-invalid="true" @endif
             @if($describedBy) aria-describedby="{{ $describedBy }}" @endif
+            @if(filled($field->label)) aria-labelledby="label-{{ $field->name }} consent-text-{{ $field->name }}" @endif
         />
-        <span class="label-text whitespace-normal">{{ \ArtisanPackUI\Forms\FieldTypes\ConsentFieldType::checkboxText($field) }}</span>
+        <span class="label-text whitespace-normal" id="consent-text-{{ $field->name }}">{{ \ArtisanPackUI\Forms\FieldTypes\ConsentFieldType::checkboxText($field) }}</span>
     </label>
 
     @if('' !== $description)

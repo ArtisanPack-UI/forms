@@ -43,7 +43,8 @@ class CaptchaVerifier
      * Checks the token submitted for each CAPTCHA field.
      *
      * Fields hidden by conditional logic, administrative fields and fields
-     * whose provider has no keys are skipped.
+     * whose provider is missing or has no keys are skipped; a skipped
+     * provider is logged as a warning.
      *
      * @since 1.6.0
      *
@@ -66,6 +67,15 @@ class CaptchaVerifier
             $driver = CaptchaFieldType::driver( $field );
 
             if ( null === $driver || ! $driver->isConfigured() ) {
+                // Documented to fail open; logged so a typo or missing key is noticed
+                if ( config( 'artisanpack.forms.security.logging_enabled', true ) ) {
+                    Log::warning( '[Forms] CAPTCHA field skipped: provider missing or not configured', [
+                        'form_id'  => $field->form_id,
+                        'field'    => $field->name,
+                        'provider' => $field->getConfig( 'captcha_provider' ),
+                    ] );
+                }
+
                 continue;
             }
 

@@ -639,13 +639,17 @@
                 return Boolean(window.grecaptcha?.render);
             };
 
-            window.__formsCaptchaScripts[src] = new Promise((resolve, reject) => {
+            const promise = new Promise((resolve, reject) => {
                 if (!document.querySelector(`script[src="${src}"]`)) {
                     const script = document.createElement('script');
                     script.src = src;
                     script.async = true;
                     script.defer = true;
-                    script.onerror = reject;
+                    // A failed tag is removed, so a later load adds a fresh one and retries.
+                    script.addEventListener('error', (error) => {
+                        script.remove();
+                        reject(error);
+                    }, { once: true });
                     document.head.appendChild(script);
                 }
 
@@ -663,7 +667,10 @@
                 poll();
             });
 
-            return window.__formsCaptchaScripts[src];
+            window.__formsCaptchaScripts[src] = promise;
+            promise.catch(() => { delete window.__formsCaptchaScripts[src]; });
+
+            return promise;
         };
 
         Alpine.data('formsCaptcha', (config) => ({

@@ -60,9 +60,11 @@ export function ConsentField( { field, value, error, onChange, displayConfig }: 
 						aria-required={field.is_required ? 'true' : undefined}
 						aria-invalid={error ? true : undefined}
 						aria-describedby={describedBy}
+						// Named by the field label and the text, so two consent fields with the same text differ.
+						aria-labelledby={field.label ? `label-${field.name} consent-text-${field.name}` : undefined}
 						onChange={( e ) => onChange( e.target.checked )}
 					/>
-					<span className="label-text whitespace-normal">{text}</span>
+					<span id={`consent-text-${field.name}`} className="label-text whitespace-normal">{text}</span>
 				</label>
 
 				{descriptionId && (

@@ -24,6 +24,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Livewire\Livewire;
 
 /**
@@ -213,6 +214,24 @@ describe( 'field', function (): void {
 
         expect( $this->captcha->fresh()->buildValidationRules() )->toBe( [] )
             ->and( FieldRenderer::render( $this->captcha->fresh() ) )->not->toContain( 'formsCaptcha' );
+    } );
+
+    it( 'logs a warning when it skips a CAPTCHA whose provider is missing or has no keys', function (): void {
+        Log::spy();
+        $this->captcha->update( ['field_config' => ['captcha_provider' => 'typo']] );
+
+        expect( app( CaptchaVerifier::class )->verify( $this->form->fields()->get(), ['verify' => ''] ) )->toBe( [] );
+
+        Log::shouldHaveReceived( 'warning' )->withArgs( fn ( string $message, array $context ): bool => str_contains( $message, 'CAPTCHA field skipped' ) && 'typo' === $context['provider'] )->once();
+    } );
+
+    it( 'removes a failed provider script so a later load can retry', function (): void {
+        $shared = file_get_contents( __DIR__ . '/../../../resources/js/shared/captcha.ts' );
+        $view   = file_get_contents( __DIR__ . '/../../../resources/views/livewire/form-renderer.blade.php' );
+
+        expect( $shared )->toContain( "script.addEventListener( 'error', () => {\n\t\t\t\tscript.remove();" )
+            ->and( $view )->toContain( 'script.remove();' )
+            ->toContain( 'delete window.__formsCaptchaScripts[src];' );
     } );
 
     it( 'is never exported, tagged or offered to conditional logic', function (): void {
