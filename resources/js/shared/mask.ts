@@ -131,7 +131,7 @@ export function maskToRegExp( mask: string ): RegExp {
 				return '[a-zA-Z0-9]';
 			}
 
-			return character.replace( /[.*+?^${}()|[\]\\/-]/g, '\\$&' );
+			return character.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' );
 		} )
 		.join( '' );
 

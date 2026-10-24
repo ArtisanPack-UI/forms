@@ -34,6 +34,7 @@ describe( 'shared helpers', function () use ( $resource, $between ): void {
             ->toContain( "'*': /[a-zA-Z0-9]/," )
             ->toContain( 'if ( previous !== undefined && value.length === previous.length - 1 ) {' )
             ->toContain( 'return buildUp( mask, stripDown( mask, value ) );' )
+            ->toContain( "return character.replace( /[.*+?^\${}()|[\\]\\\\]/g, '\\\\$&' );" )
             ->toContain( "return new RegExp( `^\${pattern}$`, 'u' );" );
     } );
 

@@ -93,7 +93,7 @@ class NumberFieldType extends AbstractFieldType
      */
     protected function typeRules( FormField $field ): array
     {
-        return $field->isIntegerOnly() ? ['numeric', 'integer'] : ['numeric'];
+        return $field->isIntegerOnly() ? ['numeric', 'multiple_of:1'] : ['numeric'];
     }
 
     /**
@@ -103,6 +103,6 @@ class NumberFieldType extends AbstractFieldType
      */
     protected function typeMessages( FormField $field ): array
     {
-        return $field->isIntegerOnly() ? ['integer' => __( 'Please enter a whole number for :field.', ['field' => $field->label] )] : [];
+        return $field->isIntegerOnly() ? ['multiple_of' => __( 'Please enter a whole number for :field.', ['field' => $field->label] )] : [];
     }
 }

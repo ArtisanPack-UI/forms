@@ -91,27 +91,43 @@ describe( 'validation and storage', function (): void {
         ] )->assertUnprocessable()->assertJsonValidationErrors( 'data.amount' );
     } );
 
-    it( 'adds the integer rule for whole numbers only', function (): void {
+    it( 'adds the whole-number rule for whole numbers only', function (): void {
         $this->amount->update( ['field_config' => [], 'validation_rules' => ['integer_only' => true]] );
         $field = $this->amount->fresh();
 
-        expect( $field->buildValidationRules() )->toContain( 'numeric', 'integer' )
-            ->and( $field->buildValidationMessages()['integer'] )->toBe( 'Please enter a whole number for Amount.' );
+        expect( $field->buildValidationRules() )->toContain( 'numeric', 'multiple_of:1' )
+            ->and( $field->buildValidationMessages()['multiple_of'] )->toBe( 'Please enter a whole number for Amount.' );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
             ->set( 'formLoadedAt', time() - 10 )
             ->set( 'formData.amount', '2.5' )
             ->call( 'submit' )
-            ->assertHasErrors( ['formData.amount' => 'integer'] )
+            ->assertHasErrors( ['formData.amount' => 'multiple_of'] )
             ->set( 'formData.amount', '3' )
             ->call( 'submit' )
             ->assertHasNoErrors();
     } );
 
+    it( 'accepts a whole currency amount, which is stored with two decimals', function (): void {
+        $this->amount->update( ['field_config' => ['number_format' => 'currency'], 'validation_rules' => ['integer_only' => true]] );
+
+        $this->postJson( route( 'api.forms.submit', $this->form ), [
+            'data'            => ['amount' => '$1,200.5'],
+            '_form_loaded_at' => time() - 10,
+        ] )->assertUnprocessable()->assertJsonValidationErrors( 'data.amount' );
+
+        $this->postJson( route( 'api.forms.submit', $this->form ), [
+            'data'            => ['amount' => '$1,200'],
+            '_form_loaded_at' => time() - 10,
+        ] )->assertCreated();
+
+        expect( $this->form->submissions()->first()->values->first()->value )->toBe( '1200.00' );
+    } );
+
     it( 'leaves a plain number field unchanged', function (): void {
         $this->amount->update( ['field_config' => []] );
 
-        expect( $this->amount->fresh()->buildValidationRules() )->not->toContain( 'integer' );
+        expect( $this->amount->fresh()->buildValidationRules() )->not->toContain( 'multiple_of:1' );
 
         $this->postJson( route( 'api.forms.submit', $this->form ), [
             'data'            => ['amount' => '1,234'],
