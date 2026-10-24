@@ -7,6 +7,7 @@
 @endphp
 
 @component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true, 'renderError' => false])
+@component('forms::components.fields.partials.counter', ['field' => $field])
 <x-artisanpack-textarea
     :label="$layoutLabel ? null : $field->label"
     :placeholder="$field->placeholder"
@@ -21,5 +22,8 @@
     :aria-required="$field->is_required ? 'true' : 'false'"
     :aria-labelledby="$layoutLabel && filled($field->label) ? 'label-' . $field->name : null"
     :aria-describedby="$field->getDescribedBy($error)"
+    :minlength="$field->getLengthLimit('min')"
+    :maxlength="$field->getLengthLimit('max')"
 />
+@endcomponent
 @endcomponent

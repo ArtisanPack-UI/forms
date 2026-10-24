@@ -13,46 +13,79 @@
  * @since      1.1.0
  */
 
+import { useState } from 'react';
 import { Input, Textarea } from '@artisanpack-ui/react/form';
 
 import { getSubLabelPlacement } from '../../../shared/composite';
+import { getLengthLimit } from '../../../shared/counter';
 import {
 	getConfirmationKey,
 	getFieldLayout,
 	getInputLabelProps,
+	getInputNoteIds,
 	getTextareaRows,
 	getTimeStep,
 	isReadOnlyField,
 	requiresEmailConfirmation,
+	withInputNotes,
 } from '../../../shared/fieldSettings';
+import type { FieldLayout as FieldLayoutState } from '../../../shared/fieldSettings';
+import { t } from '../../../shared/i18n';
+import { applyMask, getInputMask } from '../../../shared/mask';
+import { getAffixes, getNumberFormat, isIntegerOnly } from '../../../shared/numberFormat';
+import {
+	composePhoneNumber,
+	findPhoneCountry,
+	getPhoneCountries,
+	getPhoneDefaultCountry,
+	splitPhoneNumber,
+} from '../../../shared/phone';
+import type { DisplayConfig, FormField } from '../../../types/artisanpack-forms';
 
 import { FieldLayout } from './FieldLayout';
+import { InputNotes } from './InputNotes';
 import type { FieldComponentProps } from './types';
+
+/**
+ * Gets an input's label props with its notes (mask format, counter, prefix
+ * and suffix) added to `aria-describedby` (since 1.6.0).
+ */
+function getNotedLabelProps( field: FormField, layout: FieldLayoutState, displayConfig: DisplayConfig, error?: string ) {
+	return withInputNotes(
+		getInputLabelProps( field, layout, displayConfig, error ),
+		field,
+		error,
+		getInputNoteIds( field ),
+	);
+}
 
 /**
  * Renders a single-line text input field.
  */
 export function TextField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
 	const layout = getFieldLayout( field, displayConfig );
+	const text = String( value ?? '' );
+	const mask = getInputMask( field );
 
 	return (
 		<FieldLayout field={field} layout={layout}>
 			<Input
-				{...getInputLabelProps( field, layout, displayConfig, error )}
+				{...getNotedLabelProps( field, layout, displayConfig, error )}
 				name={field.name}
 				type="text"
-				value={String( value ?? '' )}
+				value={text}
 				placeholder={field.placeholder ?? undefined}
 				error={error}
 				required={field.is_required}
 				autoComplete={field.autocomplete ?? undefined}
 				readOnly={isReadOnlyField( field )}
 				className={field.css_classes ?? undefined}
-				onChange={( e ) => onChange( e.target.value )}
-				minLength={field.validation_rules?.min}
-				maxLength={field.validation_rules?.max}
+				onChange={( e ) => onChange( mask ? applyMask( e.target.value, mask, text ) : e.target.value )}
+				minLength={getLengthLimit( field, 'min' )}
+				maxLength={getLengthLimit( field, 'max' )}
 				pattern={field.validation_rules?.pattern ?? undefined}
 			/>
+			<InputNotes field={field} value={text} />
 		</FieldLayout>
 	);
 }
@@ -187,23 +220,58 @@ function ConfirmedEmailField( { field, value, error, onChange, displayConfig, co
  */
 export function PhoneField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
 	const layout = getFieldLayout( field, displayConfig );
+	const text = String( value ?? '' );
+	const mask = getInputMask( field );
+	const readOnly = isReadOnlyField( field );
+	const countries = getPhoneCountries( field );
+	const [countryCode, setCountryCode] = useState( () => findPhoneCountry( text, countries, getPhoneDefaultCountry( field ) )?.value );
+	const country = countries.find( ( entry ) => entry.value === countryCode );
+	const national = splitPhoneNumber( text, country );
+
+	const input = (
+		<Input
+			{...getNotedLabelProps( field, layout, displayConfig, error )}
+			name={field.name}
+			type="tel"
+			value={national}
+			placeholder={field.placeholder ?? undefined}
+			error={error}
+			required={field.is_required}
+			autoComplete={field.autocomplete ?? undefined}
+			readOnly={readOnly}
+			className={field.css_classes ?? undefined}
+			onChange={( e ) => onChange( composePhoneNumber( mask ? applyMask( e.target.value, mask, national ) : e.target.value, country ) )}
+			pattern={field.validation_rules?.pattern ?? undefined}
+		/>
+	);
 
 	return (
 		<FieldLayout field={field} layout={layout}>
-			<Input
-				{...getInputLabelProps( field, layout, displayConfig, error )}
-				name={field.name}
-				type="tel"
-				value={String( value ?? '' )}
-				placeholder={field.placeholder ?? undefined}
-				error={error}
-				required={field.is_required}
-				autoComplete={field.autocomplete ?? undefined}
-				readOnly={isReadOnlyField( field )}
-				className={field.css_classes ?? undefined}
-				onChange={( e ) => onChange( e.target.value )}
-				pattern={field.validation_rules?.pattern ?? undefined}
-			/>
+			{countries.length > 0 ? (
+				<div className="flex items-end gap-2">
+					{/* The selected country's calling code is added to a number typed without one (since 1.6.0). */}
+					<select
+						id={`field-${field.name}-country`}
+						className="select select-bordered w-auto max-w-48"
+						value={countryCode ?? ''}
+						autoComplete="country"
+						aria-label={t( ':field country', { field: field.label ?? field.name } )}
+						disabled={readOnly}
+						onChange={( e ) => {
+							const next = countries.find( ( entry ) => entry.value === e.target.value );
+
+							setCountryCode( next?.value );
+							onChange( composePhoneNumber( national, next ) );
+						}}
+					>
+						{countries.map( ( entry ) => (
+							<option key={entry.value} value={entry.value}>{entry.label}</option>
+						) )}
+					</select>
+					<div className="grow">{input}</div>
+				</div>
+			) : input}
+			<InputNotes field={field} value={national} />
 		</FieldLayout>
 	);
 }
@@ -213,25 +281,34 @@ export function PhoneField( { field, value, error, onChange, displayConfig }: Fi
  */
 export function NumberField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
 	const layout = getFieldLayout( field, displayConfig );
+	const text = String( value ?? '' );
+	const format = getNumberFormat( field );
+	const integerOnly = isIntegerOnly( field );
+	const { prefix, suffix } = getAffixes( field );
 
+	// A formatted number is typed into a text input with a numeric keypad (since 1.6.0).
 	return (
 		<FieldLayout field={field} layout={layout}>
 			<Input
-				{...getInputLabelProps( field, layout, displayConfig, error )}
+				{...getNotedLabelProps( field, layout, displayConfig, error )}
 				name={field.name}
-				type="number"
-				value={String( value ?? '' )}
+				type={format ? 'text' : 'number'}
+				inputMode={format ? ( integerOnly ? 'numeric' : 'decimal' ) : undefined}
+				value={text}
 				placeholder={field.placeholder ?? undefined}
 				error={error}
 				required={field.is_required}
 				autoComplete={field.autocomplete ?? undefined}
 				readOnly={isReadOnlyField( field )}
 				className={field.css_classes ?? undefined}
+				prefix={prefix}
+				suffix={suffix}
 				onChange={( e ) => onChange( e.target.value )}
-				min={field.validation_rules?.min}
-				max={field.validation_rules?.max}
-				step={field.validation_rules?.step}
+				min={format ? undefined : field.validation_rules?.min}
+				max={format ? undefined : field.validation_rules?.max}
+				step={format ? undefined : field.validation_rules?.step ?? ( integerOnly ? 1 : undefined )}
 			/>
+			<InputNotes field={field} value={text} />
 		</FieldLayout>
 	);
 }
@@ -266,13 +343,14 @@ export function UrlField( { field, value, error, onChange, displayConfig }: Fiel
  */
 export function TextareaField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
 	const layout = getFieldLayout( field, displayConfig );
+	const text = String( value ?? '' );
 
 	return (
 		<FieldLayout field={field} layout={layout}>
 			<Textarea
-				{...getInputLabelProps( field, layout, displayConfig, error )}
+				{...getNotedLabelProps( field, layout, displayConfig, error )}
 				name={field.name}
-				value={String( value ?? '' )}
+				value={text}
 				placeholder={field.placeholder ?? undefined}
 				error={error}
 				required={field.is_required}
@@ -280,10 +358,11 @@ export function TextareaField( { field, value, error, onChange, displayConfig }:
 				readOnly={isReadOnlyField( field )}
 				className={field.css_classes ?? undefined}
 				onChange={( e ) => onChange( e.target.value )}
-				minLength={field.validation_rules?.min}
-				maxLength={field.validation_rules?.max}
+				minLength={getLengthLimit( field, 'min' )}
+				maxLength={getLengthLimit( field, 'max' )}
 				rows={getTextareaRows( field )}
 			/>
+			<InputNotes field={field} value={text} />
 		</FieldLayout>
 	);
 }

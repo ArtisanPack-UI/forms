@@ -28,6 +28,9 @@ class InputStub extends Component
         public ?string $hint = null,
         public ?string $error = null,
         public bool $required = false,
+        public ?string $prefix = null,
+        public ?string $suffix = null,
+        public mixed $prepend = null,
     ) {
     }
 

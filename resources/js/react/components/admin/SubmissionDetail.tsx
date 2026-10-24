@@ -593,27 +593,43 @@ interface FileValueProps {
 }
 
 function FileValue( { value, uploads, onDownload }: FileValueProps ): React.ReactElement {
-	const upload = uploads.find( ( u ) => u.id === value.upload_id );
+	const valueUploads = getValueUploads( value, uploads );
 
-	if ( !upload ) {
+	if ( valueUploads.length === 0 ) {
 		return <span>{value.display_value || t( 'File not found' )}</span>;
 	}
 
 	return (
-		<div className="flex items-center gap-3">
-			{upload.is_image && (
-				<img
-					src={upload.url}
-					alt={upload.original_name}
-					className="w-10 h-10 rounded object-cover"
-				/>
-			)}
-			<span className="text-sm">{upload.original_name} ({upload.human_size})</span>
-			<Button color="ghost" size="xs" onClick={() => onDownload( upload )}>
-				{t( 'Download' )}
-			</Button>
-		</div>
+		<ul className="flex flex-col gap-2">
+			{valueUploads.map( ( upload ) => (
+				<li key={upload.id} className="flex items-center gap-3">
+					{upload.is_image && (
+						<img
+							src={upload.url}
+							alt={upload.original_name}
+							className="w-10 h-10 rounded object-cover"
+						/>
+					)}
+					<span className="text-sm">{upload.original_name} ({upload.human_size})</span>
+					<Button color="ghost" size="xs" onClick={() => onDownload( upload )}>
+						{t( 'Download' )}
+					</Button>
+				</li>
+			) )}
+		</ul>
 	);
+}
+
+/**
+ * Gets every upload a file value holds, in upload order: the `upload_ids` of
+ * a multi-file value, or its single `upload_id` (since 1.6.0).
+ */
+function getValueUploads( value: FormSubmissionValue, uploads: FormUpload[] ): FormUpload[] {
+	const ids = value.upload_ids && value.upload_ids.length > 0 ? value.upload_ids : [value.upload_id];
+
+	return ids
+		.map( ( id ) => uploads.find( ( u ) => u.id === id ) )
+		.filter( ( upload ): upload is FormUpload => upload !== undefined );
 }
 
 /**

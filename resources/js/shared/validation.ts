@@ -22,10 +22,13 @@ import {
 } from './composite';
 import {
 	ACCEPTANCE_FIELD_TYPES,
+	allowsMultipleFiles,
 	allowsOtherChoice,
 	getConfirmationKey,
 	getFileAllowedTypes,
+	getFileMaxCount,
 	getFileMaxSize,
+	getFileMaxTotalSize,
 	getOtherChoiceLabel,
 	getRatingMax,
 	OTHER_CHOICE_MAX_LENGTH,
@@ -33,7 +36,11 @@ import {
 	ratingAllowsHalf,
 	requiresEmailConfirmation,
 } from './fieldSettings';
+import { countWords, getMaxWords } from './counter';
 import { t } from './i18n';
+import { getInputMask, getInputMaskHint, maskToRegExp } from './mask';
+import { getNumberFormat, isIntegerOnly, normalizeFormattedNumber } from './numberFormat';
+import { getPhoneFormat, isPlausiblePhoneNumber } from './phone';
 
 /** Layout field types that do not collect data. */
 const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );
@@ -164,8 +171,41 @@ function validateValue(
 		if ( fileValue ) {
 			const fileList = Array.isArray( fileValue ) ? fileValue : [fileValue];
 
+			validateFileListRules( fileList, field, errors );
+
 			for ( const file of fileList ) {
 				validateFileRules( file, field, errors );
+			}
+		}
+	}
+
+	// Input masks, phone formats and number formats read `field_config` too
+	if ( typeof value === 'string' ) {
+		const mask = getInputMask( field );
+
+		if ( mask && !maskToRegExp( mask ).test( value ) ) {
+			errors.push( t( 'Please match the expected format. :hint', { hint: getInputMaskHint( field ) ?? mask } ) );
+		}
+
+		if ( field.type === 'phone' && !isPlausiblePhoneNumber( value, getPhoneFormat( field ) ) ) {
+			errors.push( t( 'Please enter a valid phone number.' ) );
+		}
+	}
+
+	if ( field.type === 'number' && ( typeof value === 'string' || typeof value === 'number' ) ) {
+		const format = getNumberFormat( field );
+		const plain = format ? normalizeFormattedNumber( String( value ), format ) : String( value );
+		const num = Number( plain );
+
+		if ( plain.trim() === '' || isNaN( num ) ) {
+			errors.push( 'Please enter a valid number.' );
+		} else {
+			if ( isIntegerOnly( field ) && !Number.isInteger( num ) ) {
+				errors.push( t( 'Please enter a whole number.' ) );
+			}
+
+			if ( rules ) {
+				validateNumericRules( num, rules, errors );
 			}
 		}
 	}
@@ -218,15 +258,11 @@ function validateValue(
 		}
 	}
 
-	// Numeric validation
-	if ( field.type === 'number' && typeof value === 'string' ) {
-		const num = Number( value );
+	// A textarea's word limit, mirroring the `forms_max_words` rule
+	const maxWords = getMaxWords( field );
 
-		if ( isNaN( num ) ) {
-			errors.push( 'Please enter a valid number.' );
-		} else {
-			validateNumericRules( num, rules, errors );
-		}
+	if ( typeof value === 'string' && maxWords !== undefined && countWords( value ) > maxWords ) {
+		errors.push( t( 'Must be no more than :max words.', { max: maxWords } ) );
 	}
 
 	// Date validation
@@ -362,6 +398,31 @@ function validateRating( field: FormField, value: unknown, errors: string[] ): v
 
 	if ( Math.abs( rating / step - Math.round( rating / step ) ) > 1e-9 ) {
 		errors.push( step === 1 ? 'Please choose a whole star.' : 'Please choose a whole or half star.' );
+	}
+}
+
+/**
+ * Validates a multi-file field's count and total size, mirroring
+ * `FileFieldType::rules()` (since 1.6.0).
+ */
+function validateFileListRules(
+	fileList: File[],
+	field: FormField,
+	errors: string[],
+): void {
+	if ( !allowsMultipleFiles( field ) ) {
+		return;
+	}
+
+	const maxFiles = getFileMaxCount( field );
+	const maxTotalSize = getFileMaxTotalSize( field );
+
+	if ( maxFiles !== undefined && fileList.length > maxFiles ) {
+		errors.push( t( 'You may upload no more than :max files.', { max: maxFiles } ) );
+	}
+
+	if ( maxTotalSize !== undefined && fileList.reduce( ( total, file ) => total + file.size, 0 ) > maxTotalSize * 1024 ) {
+		errors.push( t( 'The files must not exceed :size KB in total.', { size: maxTotalSize } ) );
 	}
 }
 

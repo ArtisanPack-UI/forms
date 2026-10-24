@@ -33,6 +33,7 @@ These packages are automatically installed as dependencies:
 | `livewire/livewire` | ^3.6.4 \| ^4.0 | Reactive UI components |
 | `artisanpack-ui/hooks` | ^1.0 | Filter and action hooks |
 | `artisanpack-ui/accessibility` | ^1.0 | WCAG compliance utilities |
+| `propaganistas/laravel-phone` | ^6.1 | Phone number validation and E.164 formatting (libphonenumber) |
 
 ## Optional Packages
 

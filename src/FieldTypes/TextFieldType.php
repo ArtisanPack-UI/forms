@@ -42,6 +42,8 @@ class TextFieldType extends AbstractFieldType
                 'placeholder' => '',
             ],
             'settings' => [
+                ...$this->inputMaskSettings(),
+                $this->counterSetting(),
                 ...$this->lengthSettings(),
                 $this->patternSetting(),
                 $this->noDuplicatesSetting(),

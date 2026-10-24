@@ -87,7 +87,9 @@ describe( 'React renderer', function () use ( $resource, $between ): void {
             ->toContain( "layout.label === 'hidden' ? 'sr-only' : ''" )
             ->toContain( '<label id={layout.labelId} htmlFor={layout.inputId} className={labelClass}>' )
             ->toContain( "{layout.description === 'above' && description}" )
-            ->and( substr_count( $resource( 'react/components/fields/TextField.tsx' ), '{...getInputLabelProps( field, layout, displayConfig, error )}' ) )->toBe( 7 )
+            // Text, phone, number and textarea add their notes' IDs through getNotedLabelProps() (#115, #116, #118).
+            ->and( substr_count( $resource( 'react/components/fields/TextField.tsx' ), '{...getInputLabelProps( field, layout, displayConfig, error )}' ) )->toBe( 3 )
+            ->and( substr_count( $resource( 'react/components/fields/TextField.tsx' ), '{...getNotedLabelProps( field, layout, displayConfig, error )}' ) )->toBe( 4 )
             ->and( $resource( 'shared/fieldSettings.ts' ) )->toContain( "'aria-describedby': getLayoutDescribedBy( field, layout, error )," );
     } );
 

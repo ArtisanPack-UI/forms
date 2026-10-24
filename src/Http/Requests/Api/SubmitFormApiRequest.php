@@ -237,7 +237,8 @@ class SubmitFormApiRequest extends FormRequest
      * Fires the before-validate hook and replaces submitted read-only field values.
      *
      * A read-only field keeps its own value whatever the client sent, so that
-     * value is what gets validated and stored.
+     * value is what gets validated and stored. Numbers typed in a number
+     * field's format are converted to plain decimals (since 1.6.0).
      *
      * @since 1.6.0
      */
@@ -254,8 +255,13 @@ class SubmitFormApiRequest extends FormRequest
 
         $form->loadMissing( 'fields' );
 
+        $submissionService = app( SubmissionService::class );
+
         $this->merge( [
-            'data' => app( SubmissionService::class )->applyReadOnlyValues( $form->fields, $data ),
+            'data' => $submissionService->normalizeFormattedNumbers(
+                $form->fields,
+                $submissionService->applyReadOnlyValues( $form->fields, $data ),
+            ),
         ] );
     }
 }

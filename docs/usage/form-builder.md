@@ -102,6 +102,83 @@ Each field has common and type-specific settings:
 ]
 ```
 
+### Input Masks
+
+Text and phone fields have an **Input Mask** setting that formats the value as it is typed and checks it on submit. Choose a preset or **Custom**:
+
+| Preset | Mask | Example |
+|--------|------|---------|
+| US Phone | `(999) 999-9999` | `(555) 555-0123` |
+| US ZIP Code | `99999` | `12345` |
+| US ZIP+4 | `99999-9999` | `12345-6789` |
+| Social Security Number | `999-99-9999` | `123-45-6789` |
+| Date | `99/99/9999` | `10/24/2026` |
+
+A **Custom Mask** uses `9` for a digit, `a` for a letter and `*` for a letter or digit; every other character is typed for the visitor (for example `999-aa-***`). The value is stored with those characters.
+
+The expected format is shown under the input (`mask-{name}`, referenced by its `aria-describedby`), and the server rejects a value that does not match the whole mask with a `regex` rule, so the custom error message applies. The Livewire renderer uses Alpine's mask plugin (bundled with Livewire); React and Vue use `resources/js/shared/mask.ts`, which follows the same rules. The mask only changes the input's text, so screen readers announce the typed value as usual.
+
+```php
+FormField::create( [
+    'form_id'      => $form->id,
+    'type'         => 'text',
+    'name'         => 'member_id',
+    'label'        => 'Member ID',
+    'field_config' => ['input_mask' => 'custom', 'custom_mask' => 'aa-9999'],
+] );
+```
+
+### Character and Word Counters
+
+Text and textarea fields set `minlength` and `maxlength` on the input from their **Min Length** and **Max Length** rules, so browsers stop typing at the limit. **Show character counter** adds a live counter under the input, such as "42 of 280 characters" ("42 characters" without a max).
+
+Textareas have a **Max Words** rule (`validation_rules.max_words`, checked on the server by the `forms_max_words` rule and in `validation.ts`). With a word limit the counter counts words instead: "120 of 250 words". Words are runs of characters between whitespace.
+
+The counter is referenced by the input's `aria-describedby` (`counter-{name}`). A separate polite live region repeats the count once typing pauses for a second, so screen readers are not interrupted on every keystroke.
+
+### Phone Formats
+
+A phone field's **Phone Format** decides how numbers are checked:
+
+| Format | Validation |
+|--------|------------|
+| **Any** (default) | Any text, plus the optional pattern and input mask. |
+| **US** | A valid US number. |
+| **International** | A valid number in any country, with a country selector that starts at the **Default Country**. |
+
+US and International numbers are checked with [`propaganistas/laravel-phone`](https://github.com/Propaganistas/Laravel-Phone) (libphonenumber), stored in E.164 form (`+15555550123`) so notifications, webhooks and exports get one consistent value, and shown formatted in submissions (national form for US, international otherwise).
+
+With International, a number typed without a `+` country code is read in the selected country. The Livewire renderer submits the selected country as `{name}_country`, which the `phone` rule reads and which is not stored. React and Vue add the country's calling code to the number instead (`+44 20 7946 0958`). The countries come from the `ap.forms.countries` list (see Address); the API returns them with their calling codes in each field's `phone.countries`.
+
+```php
+FormField::create( [
+    'form_id'      => $form->id,
+    'type'         => 'phone',
+    'name'         => 'mobile',
+    'label'        => 'Mobile',
+    'field_config' => ['phone_format' => 'international', 'default_country' => 'GB'],
+] );
+```
+
+### Number Options
+
+Number fields have three more settings:
+
+- **Number Format**: a plain number input (default), `9,999.99`, `9.999,99` or **Currency** (`9,999.99`, rounded to two decimal places). With a format the input is a text input with a decimal keypad, so visitors can type thousands separators. Spaces and symbols are ignored, and the value is converted to a plain decimal (`1234.56`) before validation, so Min Value, Max Value and Step apply, and stored that way.
+- **Whole numbers only** (`validation_rules.integer_only`): adds the `multiple_of:1` rule, separate from the step increment. Unlike `integer`, it accepts a whole number written with zero decimals, such as the `3.00` a Currency format stores.
+- **Prefix** and **Suffix**: text shown before and after the input, such as `$` or `kg`. Screen readers get them from a description (`affix-{name}`, "Prefix: $. Suffix: USD.") referenced by the input's `aria-describedby`, since the visible text is decoration.
+
+```php
+FormField::create( [
+    'form_id'          => $form->id,
+    'type'             => 'number',
+    'name'             => 'budget',
+    'label'            => 'Budget',
+    'field_config'     => ['number_format' => 'currency', 'prefix' => '$'],
+    'validation_rules' => ['min' => 100],
+] );
+```
+
 ### Selection Fields
 
 ```php
@@ -180,6 +257,19 @@ Each field has common and type-specific settings:
     'multiple' => false,
 ]
 ```
+
+**Allow multiple files** turns the field into a drop zone around a normal, keyboard-operable file input. The validation tab adds:
+
+| Setting | Description |
+|---------|-------------|
+| **Max Files** (`max_files`) | The most files the field takes. Blank for no limit. |
+| **Max File Size** (`max_size`) | The limit for each file, in KB. |
+| **Max Total Size** (`max_total_size`) | The limit for all files together, in KB. |
+| **Min / Max Image Width and Height** (`min_width`, `max_width`, `min_height`, `max_height`) | Pixel bounds for images (single or multiple files). Other allowed files are not checked. |
+
+In the Livewire renderer each file uploads as soon as it is added, with its own progress bar and a remove button; a polite live region announces when each upload starts and finishes. React and Vue list the files with their sizes and remove buttons, and send them with the submission (`files[{name}][]`).
+
+Each file is stored as its own `form_uploads` row. The field's submission value points at the first upload in `upload_id` and lists every upload ID, in order, in `value_array`; `FormSubmissionValue::getUploads()` returns them, and the API returns `upload_ids`. Submissions, notifications and exports list every file name. See [File Uploads](file-uploads.md).
 
 ### Name
 

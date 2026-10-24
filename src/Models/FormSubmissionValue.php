@@ -222,12 +222,18 @@ class FormSubmissionValue extends Model
     /**
      * Gets the display labels for an array value, one per selected item.
      *
+     * A file value gives its file names (since 1.6.0).
+     *
      * @since 1.6.0
      *
      * @return list<string> The display labels, or an empty list for a scalar value.
      */
     public function getDisplayValuesAttribute(): array
     {
+        if ( 'file' === $this->field_type ) {
+            return array_map( fn ( FormUpload $upload ): string => $upload->original_name, $this->getUploads() );
+        }
+
         if ( empty( $this->value_array ) ) {
             return [];
         }
@@ -245,7 +251,7 @@ class FormSubmissionValue extends Model
      * Gets the stored value as a string, without mapping it to labels.
      *
      * Array values are comma-joined and file values give the uploaded file
-     * name. Used where the submitted value matters rather than its label,
+     * names, comma-joined. Used where the submitted value matters rather than its label,
      * such as conditional logic, webhooks and the JSON export.
      *
      * @since 1.6.0
@@ -254,6 +260,10 @@ class FormSubmissionValue extends Model
      */
     public function getRawValue(): string
     {
+        if ( 'file' === $this->field_type ) {
+            return implode( ', ', array_map( fn ( FormUpload $upload ): string => $upload->original_name, $this->getUploads() ) );
+        }
+
         if ( ! empty( $this->value_array ) ) {
             return implode( ', ', $this->value_array );
         }
@@ -294,7 +304,44 @@ class FormSubmissionValue extends Model
      */
     public function getIsArrayValueAttribute(): bool
     {
-        return ! empty( $this->value_array );
+        return 'file' !== $this->field_type && ! empty( $this->value_array );
+    }
+
+    /**
+     * Gets the uploads a file value holds, in upload order.
+     *
+     * Multi-file values list their upload IDs in `value_array` (since 1.6.0);
+     * single-file values point at their upload with `upload_id`. Only the
+     * value's own submission's uploads are returned. Uses the submission's
+     * `uploads` relation when it is loaded.
+     *
+     * @since 1.6.0
+     *
+     * @return list<FormUpload> The uploads; empty when none remain.
+     */
+    public function getUploads(): array
+    {
+        if ( 'file' !== $this->field_type ) {
+            return [];
+        }
+
+        $ids = is_array( $this->value_array ) && [] !== $this->value_array && array_is_list( $this->value_array )
+            ? array_values( array_filter( array_map( 'intval', $this->value_array ) ) )
+            : array_filter( [$this->upload_id] );
+
+        if ( [] === $ids ) {
+            return [];
+        }
+
+        if ( [$this->upload_id] === $ids && $this->upload ) {
+            return [$this->upload];
+        }
+
+        $uploads = $this->relationLoaded( 'submission' ) && $this->submission?->relationLoaded( 'uploads' )
+            ? $this->submission->uploads->where( 'submission_id', $this->submission_id )->whereIn( 'id', $ids )
+            : FormUpload::query()->where( 'submission_id', $this->submission_id )->whereIn( 'id', $ids )->get();
+
+        return $uploads->sortBy( fn ( FormUpload $upload ): int|false => array_search( $upload->id, $ids, true ) )->values()->all();
     }
 
     /**

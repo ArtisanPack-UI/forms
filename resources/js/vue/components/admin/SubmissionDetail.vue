@@ -343,9 +343,16 @@ const isNotesDirty = computed(
 	() => adminNotes.value !== ( submission.value?.admin_notes ?? '' ),
 );
 
-/** Find the upload associated with a submission value. */
-function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
-	return submission.value?.uploads?.find( ( u ) => u.id === value.upload_id );
+/**
+ * Find every upload a submission value holds, in upload order: the
+ * `upload_ids` of a multi-file value, or its single `upload_id`.
+ */
+function findUploads( value: FormSubmissionValue ): FormUpload[] {
+	const ids = value.upload_ids && value.upload_ids.length > 0 ? value.upload_ids : [value.upload_id];
+
+	return ids
+		.map( ( id ) => submission.value?.uploads?.find( ( u ) => u.id === id ) )
+		.filter( ( upload ): upload is FormUpload => upload !== undefined );
 }
 
 /**
@@ -512,26 +519,26 @@ function isConsented( value: FormSubmissionValue ): boolean {
 							<span v-else-if="value.is_redacted" class="italic text-base-content/60">{{ value.display_value }}</span>
 							<!-- File value -->
 							<template v-else-if="value.upload_id && submission.uploads">
-								<template v-if="findUpload( value )">
-									<div class="flex items-center gap-3">
+								<ul v-if="findUploads( value ).length > 0" class="flex flex-col gap-2">
+									<li v-for="upload in findUploads( value )" :key="upload.id" class="flex items-center gap-3">
 										<img
-											v-if="findUpload( value )!.is_image"
-											:src="findUpload( value )!.url"
-											:alt="findUpload( value )!.original_name"
+											v-if="upload.is_image"
+											:src="upload.url"
+											:alt="upload.original_name"
 											class="w-10 h-10 rounded object-cover"
 										/>
 										<span class="text-sm">
-											{{ findUpload( value )!.original_name }} ({{ findUpload( value )!.human_size }})
+											{{ upload.original_name }} ({{ upload.human_size }})
 										</span>
 										<Button
 											color="ghost"
 											size="xs"
-											@click="downloadFile( findUpload( value )! )"
+											@click="downloadFile( upload )"
 										>
 											{{ t( 'Download' ) }}
 										</Button>
-									</div>
-								</template>
+									</li>
+								</ul>
 								<span v-else>{{ value.display_value || t( 'File not found' ) }}</span>
 							</template>
 							<!-- Consent, with the text agreed to (since 1.6.0) -->

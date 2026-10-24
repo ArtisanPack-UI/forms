@@ -63,8 +63,32 @@ class FormSubmissionValueResource extends JsonResource
             'is_masked'         => $masked,
             'is_redacted'       => $this->resource->isRedacted(),
             'upload_id'         => $this->upload_id,
+            'upload_ids'        => $this->uploadIds(),
             'created_at'        => $this->created_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Gets the IDs of every upload a file value holds, in upload order.
+     *
+     * A multi-file value lists them in `value_array`; a single file is its
+     * `upload_id`.
+     *
+     * @since 1.6.0
+     *
+     * @return list<int> The upload IDs; empty for other values.
+     */
+    protected function uploadIds(): array
+    {
+        if ( 'file' !== $this->field_type ) {
+            return [];
+        }
+
+        if ( is_array( $this->value_array ) && [] !== $this->value_array && array_is_list( $this->value_array ) ) {
+            return array_values( array_filter( array_map( 'intval', $this->value_array ) ) );
+        }
+
+        return null === $this->upload_id ? [] : [(int) $this->upload_id];
     }
 
     /**
