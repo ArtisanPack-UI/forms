@@ -17,6 +17,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Http\Resources;
 
+use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Support\FieldPrivacy;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -56,7 +57,7 @@ class FormSubmissionValueResource extends JsonResource
             'field_admin_label' => $this->field_admin_label,
             'field_type'        => $this->field_type,
             'value'             => $masked ? $this->resource->masked_display_value : $this->value,
-            'value_array'       => $masked ? null : $this->value_array,
+            'value_array'       => $masked ? null : $this->safeValueArray(),
             'display_value'     => $masked ? $this->resource->masked_display_value : $this->display_value,
             'display_values'    => $masked ? [] : $this->display_values,
             'is_masked'         => $masked,
@@ -64,5 +65,27 @@ class FormSubmissionValueResource extends JsonResource
             'upload_id'         => $this->upload_id,
             'created_at'        => $this->created_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Gets the stored value array, with a consent description sanitized.
+     *
+     * The React and Vue submission views show the consent description as
+     * HTML. It was sanitized when stored; it is sanitized again here so a
+     * value written some other way cannot inject markup.
+     *
+     * @since 1.6.0
+     *
+     * @return array<int|string, mixed>|null The value array.
+     */
+    protected function safeValueArray(): ?array
+    {
+        $values = $this->value_array;
+
+        if ( 'consent' === $this->field_type && is_array( $values ) && is_string( $values['description'] ?? null ) ) {
+            $values['description'] = FormField::sanitizeHtml( $values['description'] );
+        }
+
+        return $values;
     }
 }

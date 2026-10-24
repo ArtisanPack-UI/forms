@@ -42,6 +42,10 @@ export type BuiltInFieldType =
     | 'date'
     | 'time'
     | 'rating'
+    | 'name'
+    | 'address'
+    | 'consent'
+    | 'captcha'
     | 'heading'
     | 'paragraph'
     | 'divider'
@@ -146,7 +150,28 @@ export type CompositeExportFormat = 'columns' | 'single';
 /**
  * The input type of a composite field's sub-input (since 1.6.0).
  */
-export type SubInputType = 'text' | 'email' | 'tel' | 'url' | 'number';
+export type SubInputType = 'text' | 'email' | 'tel' | 'url' | 'number' | 'select';
+
+/**
+ * A Name field's format (since 1.6.0): one `full` input, first and last, or
+ * all five parts.
+ */
+export type NameFormat = 'simple' | 'normal' | 'extended';
+
+/**
+ * An Address field's type (since 1.6.0). `us` and `canada` use a state or
+ * province select, check the postal code and fix the country.
+ */
+export type AddressType = 'international' | 'us' | 'canada';
+
+/**
+ * A built-in CAPTCHA provider (since 1.6.0). Apps may register others
+ * through the `ap.forms.captchaDrivers` filter.
+ */
+export type CaptchaProvider = 'turnstile' | 'hcaptcha' | 'recaptcha_v2' | 'recaptcha_v3' | ( string & {} );
+
+/** A CAPTCHA widget's size (since 1.6.0). `invisible` runs the check on submit. */
+export type CaptchaSize = 'normal' | 'compact' | 'invisible';
 
 /**
  * Error display mode options.
@@ -256,6 +281,10 @@ export interface SubInputConfig {
     required?: boolean;
     label?: string;
     placeholder?: string;
+    /** The value the input starts with (since 1.6.0). */
+    default?: string;
+    /** The prefill key and query string parameter that populates the input (since 1.6.0). */
+    parameter?: string;
 }
 
 /**
@@ -286,6 +315,104 @@ export interface SubInputDefinition {
     required: boolean;
     autocomplete: string | null;
     type: SubInputType;
+    /** Whether the input spans the whole row (since 1.6.0). */
+    wide?: boolean;
+    /** A `select` input's options (since 1.6.0); empty for other types. */
+    options?: Array<{ value: string; label: string }>;
+    /** The value the input starts with (since 1.6.0). */
+    default?: string | null;
+    /** The prefill key and query string parameter that populates the input (since 1.6.0). */
+    parameter?: string | null;
+}
+
+/**
+ * Configuration for Name fields (since 1.6.0).
+ */
+export interface NameFieldConfig extends CompositeFieldConfig {
+    /** Defaults to `normal`. */
+    name_format?: NameFormat;
+    /** The prefix select's choices; unset for the default list. */
+    prefix_choices?: string[];
+    /** Whether the suffix is free text (default) or a select of `suffix_choices`. */
+    suffix_input?: 'text' | 'select';
+    suffix_choices?: string[];
+}
+
+/**
+ * Configuration for Address fields (since 1.6.0).
+ */
+export interface AddressFieldConfig extends CompositeFieldConfig {
+    /** Defaults to `international`. */
+    address_type?: AddressType;
+    /** An ISO 3166-1 alpha-2 code from the `ap.forms.countries` list. */
+    default_country?: string;
+    /** Stores the default country without asking (international addresses only). */
+    hide_country?: boolean;
+    /** The state's default; a two-letter code for U.S. and Canada addresses. */
+    default_state?: string;
+}
+
+/**
+ * Configuration for Email fields (since 1.6.0).
+ */
+export interface EmailFieldConfig extends CommonFieldConfig {
+    /** Asks for the email twice, submitted as `{name}` and `{name}_confirmation`. */
+    confirm_email?: boolean;
+    email_sub_label?: string;
+    confirm_sub_label?: string;
+    confirm_placeholder?: string;
+}
+
+/**
+ * Configuration for Consent fields (since 1.6.0).
+ */
+export interface ConsentFieldConfig extends CommonFieldConfig {
+    /** The text beside the checkbox. */
+    consent_text?: string;
+    /** HTML shown below the checkbox; sanitized with kses by the server. */
+    consent_description?: string;
+}
+
+/**
+ * Configuration for CAPTCHA fields (since 1.6.0).
+ */
+export interface CaptchaFieldConfig extends BaseFieldConfig {
+    /** Unset for the default provider (`spam_protection.captcha.driver`). */
+    captcha_provider?: CaptchaProvider;
+    /** Defaults to `normal`. */
+    captcha_size?: CaptchaSize;
+    /** Defaults to `auto`. */
+    captcha_theme?: 'auto' | 'light' | 'dark';
+}
+
+/**
+ * What a renderer needs to show a CAPTCHA field's challenge (since 1.6.0).
+ * Holds only public values; never the secret key.
+ */
+export interface CaptchaWidget {
+    provider: CaptchaProvider;
+    site_key: string;
+    /** The provider's script URL. */
+    script: string;
+    size: CaptchaSize;
+    theme: 'auto' | 'light' | 'dark';
+    /** The action a reCAPTCHA v3 token is requested for. */
+    action?: string;
+}
+
+/**
+ * The value stored for a Consent field (since 1.6.0), in `value_array`.
+ */
+export interface ConsentValue {
+    consented: '1' | '0';
+    /** The checkbox text agreed to, unless `privacy.consent.store_text` is off. */
+    text?: string;
+    /** The description agreed to, as sanitized HTML. */
+    description?: string;
+    /** A SHA-256 hash of the text and description. */
+    revision?: string;
+    /** When the visitor submitted, in ISO 8601. */
+    consented_at?: string;
 }
 
 /**
@@ -389,6 +516,11 @@ export type FieldConfig =
     | CommonFieldConfig
     | ContentFieldConfig
     | CompositeFieldConfig
+    | NameFieldConfig
+    | AddressFieldConfig
+    | EmailFieldConfig
+    | ConsentFieldConfig
+    | CaptchaFieldConfig
     | BaseFieldConfig
     | null;
 
@@ -397,7 +529,7 @@ export type FieldConfig =
  *
  * @since 1.6.0
  */
-export type FieldSettingInput = 'text' | 'integer' | 'number' | 'select' | 'toggle' | 'date' | 'time' | 'list';
+export type FieldSettingInput = 'text' | 'textarea' | 'integer' | 'number' | 'select' | 'toggle' | 'date' | 'time' | 'list';
 
 /**
  * One type-specific setting from a field type's settings schema
@@ -504,6 +636,22 @@ export interface FormField {
     required_sub_inputs?: string[];
     /** Where a composite field shows its sub-input labels (since 1.6.0). */
     sub_label_placement?: SubLabelPlacement;
+    /**
+     * An email field's two sub-labels and the confirm input's placeholder,
+     * present only when email confirmation is on (since 1.6.0). The
+     * confirmation is submitted as `data[{name}_confirmation]`.
+     */
+    email_confirmation?: { email: string; confirm: string; confirm_placeholder: string | null };
+    /**
+     * A consent field's checkbox text and sanitized description HTML (since
+     * 1.6.0). Present only for consent fields.
+     */
+    consent?: { text: string; description: string };
+    /**
+     * A CAPTCHA field's widget settings, or null when its provider has no
+     * keys (render nothing then; since 1.6.0). Present only for CAPTCHA fields.
+     */
+    captcha?: CaptchaWidget | null;
     /**
      * The value the field starts with: its default value with server merge
      * tags replaced, the options marked as defaults, or the
@@ -628,7 +776,7 @@ export interface FormSubmissionValue {
     field_admin_label: string | null;
     field_type: FieldType;
     value: string | null;
-    value_array: string[] | null;
+    value_array: string[] | Record<string, string> | null;
     display_value: string;
     /** Option labels for an array value, one per item (since 1.6.0). */
     display_values: string[];

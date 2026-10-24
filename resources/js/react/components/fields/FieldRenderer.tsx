@@ -22,7 +22,9 @@ import {
 	SelectMultipleField,
 	ToggleField,
 } from './ChoiceField';
+import { CaptchaField } from './CaptchaField';
 import { CompositeField } from './CompositeField';
+import { ConsentField } from './ConsentField';
 import { DividerField, HeadingField, HtmlField, ParagraphField } from './LayoutField';
 import {
 	EmailField,
@@ -61,6 +63,13 @@ export interface FieldRendererProps {
 	 */
 	subErrors?: Record<string, string>;
 	/**
+	 * The text typed into an email field's confirmation input, submitted as
+	 * `{name}_confirmation` (since 1.6.0).
+	 */
+	confirmValue?: string;
+	/** Callback to update an email field's confirmation text (since 1.6.0). */
+	onConfirmChange?: ( text: string ) => void;
+	/**
 	 * Host-supplied field components that overlay the built-ins. Takes
 	 * precedence over the module-level registry (see `registerFieldComponent`)
 	 * and the built-in components for the same type.
@@ -95,6 +104,10 @@ const FIELD_COMPONENTS: Record<BuiltInFieldType, FieldComponent> = {
 	date: DateField,
 	time: TimeField,
 	rating: RatingField,
+	name: CompositeField,
+	address: CompositeField,
+	consent: ConsentField,
+	captcha: CaptchaField,
 	heading: HeadingField,
 	paragraph: ParagraphField,
 	divider: DividerField,
@@ -146,6 +159,8 @@ export function FieldRenderer( {
 	otherValue,
 	onOtherChange,
 	subErrors,
+	confirmValue,
+	onConfirmChange,
 	fieldComponents,
 	layout = 'stacked',
 }: FieldRendererProps ) {
@@ -181,6 +196,8 @@ export function FieldRenderer( {
 				otherValue={otherValue}
 				onOtherChange={onOtherChange}
 				subErrors={subErrors}
+				confirmValue={confirmValue}
+				onConfirmChange={onConfirmChange}
 			/>
 		</div>
 	);

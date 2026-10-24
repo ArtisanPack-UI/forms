@@ -10,11 +10,13 @@
   @since      1.1.0
 -->
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, provide } from 'vue';
 import { Button } from '@artisanpack-ui/vue/form';
 import { getSubInputErrors } from '../../shared/composite';
-import type { FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
+import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
+import type { FormField, FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
 import { useForm } from '../composables/useForm';
+import { SUBMIT_HOOKS_KEY } from '../composables/submitHooks';
 import FieldRenderer from './fields/FieldRenderer.vue';
 import HoneypotField from './HoneypotField.vue';
 import MultiStepForm from './MultiStepForm.vue';
@@ -88,6 +90,7 @@ const {
 	goToStep,
 	submit,
 	reset,
+	submitHooks,
 } = useForm( {
 	baseUrl: props.baseUrl,
 	formSlug: props.formSlug,
@@ -96,6 +99,22 @@ const {
 	onSuccess: ( response ) => emit( 'success', response ),
 	onError: ( error ) => emit( 'error', error ),
 } );
+
+// Fields such as the CAPTCHA register their submit hooks with the form (since 1.6.0).
+provide( SUBMIT_HOOKS_KEY, submitHooks );
+
+/**
+ * The confirmation an email field that asks for the address twice holds,
+ * or undefined for other fields (since 1.6.0).
+ */
+function getConfirmValue( field: FormField ): string | undefined {
+	return requiresEmailConfirmation( field ) ? String( values.value[getConfirmationKey( field )] ?? '' ) : undefined;
+}
+
+/** Store an email field's confirmation (since 1.6.0). */
+function setConfirmValue( field: FormField, text: string ): void {
+	setValue( getConfirmationKey( field ), text );
+}
 
 /** Whether the single-step form renders its submit button in the field row. */
 const isInline = computed( () => props.layout === 'inline' );
@@ -182,9 +201,11 @@ function handleFormSubmit( e: Event ): void {
 						:error="errors[field.name]?.[0]"
 						:display-config="form.config.display"
 						:other-value="otherValues[field.name] ?? ''"
+						:confirm-value="getConfirmValue( field )"
 						:sub-errors="getSubInputErrors( errors, field.name )"
 						@update:model-value="setValue( field.name, $event )"
 						@update:other-value="setOtherValue( field.name, $event )"
+						@update:confirm-value="setConfirmValue( field, $event )"
 						@file-change="setFile( field.name, $event )"
 					/>
 				</template>
@@ -209,9 +230,11 @@ function handleFormSubmit( e: Event ): void {
 						:display-config="form.config.display"
 						:layout="layout"
 						:other-value="otherValues[field.name] ?? ''"
+						:confirm-value="getConfirmValue( field )"
 						:sub-errors="getSubInputErrors( errors, field.name )"
 						@update:model-value="setValue( field.name, $event )"
 						@update:other-value="setOtherValue( field.name, $event )"
+						@update:confirm-value="setConfirmValue( field, $event )"
 						@file-change="setFile( field.name, $event )"
 					/>
 				</template>

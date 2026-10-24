@@ -358,7 +358,8 @@ export function getHiddenFields(
 	const hidden: Record<string, boolean> = {};
 
 	for ( const field of fields ) {
-		const isVisible = evaluateFieldVisibility(
+		// A CAPTCHA is always shown, mirroring `ConditionalLogicService::evaluateField()`.
+		const isVisible = field.type === 'captcha' || evaluateFieldVisibility(
 			field.conditional_logic,
 			formData,
 			uuidToName,

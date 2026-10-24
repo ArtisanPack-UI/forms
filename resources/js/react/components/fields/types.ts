@@ -31,4 +31,8 @@ export interface FieldComponentProps {
 	onOtherChange?: ( text: string ) => void;
 	/** A composite field's first error per sub-input, keyed by sub-input (since 1.6.0). */
 	subErrors?: Record<string, string>;
+	/** The text typed into an email field's confirmation input (since 1.6.0). */
+	confirmValue?: string;
+	/** Callback to update an email field's confirmation text (since 1.6.0). */
+	onConfirmChange?: ( text: string ) => void;
 }

@@ -62,6 +62,12 @@ export type { ComboboxProps } from './components/fields/Combobox';
 
 export { CompositeField } from './components/fields/CompositeField';
 
+export { ConsentField } from './components/fields/ConsentField';
+
+export { CaptchaField } from './components/fields/CaptchaField';
+
+export { SubmitHooksContext, useSubmitHooks } from './components/fields/SubmitHooksContext';
+
 export type { FieldComponentProps } from './components/fields/types';
 
 // Field extensibility registry
@@ -185,6 +191,26 @@ export {
 export type { ConditionTarget, SubInputSetting } from '../shared/composite';
 
 export { validateCompositeField } from '../shared/validation';
+
+// Email confirmation helpers (since 1.6.0)
+export {
+	getConfirmationKey,
+	requiresEmailConfirmation,
+} from '../shared/fieldSettings';
+
+export { validateCaptchaField, validateEmailConfirmation } from '../shared/validation';
+
+// CAPTCHA and submit hook helpers (since 1.6.0)
+export {
+	CAPTCHA_SCRIPT_TIMEOUT,
+	createCaptchaController,
+	createSubmitHooks,
+	hasCaptchaWidget,
+	loadCaptchaScript,
+	runsOnSubmit,
+	SubmitHookError,
+} from '../shared/captcha';
+export type { CaptchaController, SubmitHook, SubmitHooks } from '../shared/captcha';
 
 // Dynamic population (since 1.6.0)
 export {

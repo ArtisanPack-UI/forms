@@ -16,6 +16,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Badge, Button, Card, Loading, Textarea } from '@artisanpack-ui/react';
 
 import type {
+	ConsentValue,
 	DisplayConfig,
 	Form,
 	FormSubmission,
@@ -419,6 +420,10 @@ export function SubmissionDetail( {
 												uploads={submission.uploads}
 												onDownload={downloadFile}
 											/>
+										) : value.field_type === 'consent' ? (
+											<ConsentValueDetails value={value} />
+										) : isCompositeValue( value.value_array ) ? (
+											<div className="whitespace-pre-line">{value.display_value}</div>
 										) : value.value_array ? (
 											<ul className="list-disc list-inside">
 												{( value.display_values ?? value.value_array ).map( ( v, i ) => (
@@ -608,5 +613,58 @@ function FileValue( { value, uploads, onDownload }: FileValueProps ): React.Reac
 				{t( 'Download' )}
 			</Button>
 		</div>
+	);
+}
+
+/**
+ * Whether a stored value array is a map of parts (a composite field such as
+ * a name or an address) rather than a list (since 1.6.0).
+ */
+function isCompositeValue( valueArray: unknown ): boolean {
+	return valueArray !== null && typeof valueArray === 'object' && !Array.isArray( valueArray );
+}
+
+interface ConsentValueDetailsProps {
+	value: FormSubmissionValue;
+}
+
+/**
+ * Shows a consent value and, when the visitor consented, the text agreed to
+ * with its time and revision. The description is HTML the API sanitized
+ * (`FormSubmissionValueResource`). Mirrors the Livewire submission detail.
+ *
+ * @since 1.6.0
+ */
+function ConsentValueDetails( { value }: ConsentValueDetailsProps ): React.ReactElement {
+	const consent = ( isCompositeValue( value.value_array ) ? value.value_array : {} ) as unknown as Partial<ConsentValue>;
+	const consented = consent.consented === '1';
+
+	return (
+		<>
+			<span>{value.display_value}</span>
+			{consented && (
+				<details className="mt-2">
+					<summary className="link link-primary cursor-pointer">{t( 'View consent text' )}</summary>
+					<div className="mt-2 space-y-2 rounded-box bg-base-200 p-3">
+						{consent.text && <p>{consent.text}</p>}
+						{consent.description && (
+							<div
+								className="prose prose-sm max-w-none"
+								// Sanitized with kses by the API (FormSubmissionValueResource).
+								dangerouslySetInnerHTML={{ __html: consent.description }}
+							/>
+						)}
+						{!consent.text && (
+							<p className="italic opacity-60">{t( 'The consent text was not stored.' )}</p>
+						)}
+						<p className="text-xs opacity-60">
+							{t( 'Consented at :time', { time: consent.consented_at ?? '—' } )}
+							{' · '}
+							{t( 'Revision :revision', { revision: String( consent.revision ?? '' ).slice( 0, 12 ) } )}
+						</p>
+					</div>
+				</details>
+			)}
+		</>
 	);
 }

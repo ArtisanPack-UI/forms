@@ -80,7 +80,7 @@ class FormField extends Model
      *
      * @var list<string>
      */
-    public const ACCEPTANCE_TYPES = ['checkbox', 'toggle'];
+    public const ACCEPTANCE_TYPES = ['checkbox', 'toggle', 'consent'];
 
     /**
      * Field types whose submitted values are option values.
@@ -136,7 +136,7 @@ class FormField extends Model
      *
      * @var list<string>
      */
-    public const SUB_INPUT_TYPES = ['text', 'email', 'tel', 'url', 'number'];
+    public const SUB_INPUT_TYPES = ['text', 'email', 'tel', 'url', 'number', 'select'];
 
     /**
      * Rules whose failure means a value is missing, which the custom required
@@ -834,27 +834,32 @@ class FormField extends Model
     /**
      * Gets a composite field's sub-inputs, with the field's own settings applied.
      *
-     * Only types whose handler extends CompositeFieldType have sub-inputs. The type's `sub_inputs` definition gives each sub-input's key, default
-     * label and placeholder, whether it is enabled and required by default,
-     * its `autocomplete` token, input `type` and extra validation `rules`.
-     * The field's `field_config.sub_inputs.{key}` may change `enabled`,
-     * `label`, `placeholder` and `required`.
+     * Only types whose handler extends CompositeFieldType have sub-inputs. The
+     * handler's sub-input definitions (see
+     * CompositeFieldType::subInputDefinitions()) give each sub-input's key,
+     * default label and placeholder, whether it is enabled and required by
+     * default, its `autocomplete` token, input `type`, whether it is `wide`
+     * (spans the whole row), a select's `options`, its `default` value and
+     * population `parameter`, and extra validation `rules`. The field's `field_config.sub_inputs.{key}` may change
+     * `enabled`, `label`, `placeholder`, `required`, `default` and `parameter`.
      *
      * @since 1.6.0
      *
-     * @return array<string, array{key: string, label: string, default_label: string, placeholder: string|null, enabled: bool, required: bool, autocomplete: string|null, type: string, rules: list<mixed>}> The sub-inputs by key, in definition order.
+     * @return array<string, array{key: string, label: string, default_label: string, placeholder: string|null, enabled: bool, required: bool, autocomplete: string|null, type: string, wide: bool, options: list<array{value: string, label: string}>, default: string|null, parameter: string|null, rules: list<mixed>}> The sub-inputs by key, in definition order.
      */
     public function getSubInputs(): array
     {
-        if ( ! $this->fieldType() instanceof CompositeFieldType ) {
+        $handler = $this->fieldType();
+
+        if ( ! $handler instanceof CompositeFieldType ) {
             return [];
         }
 
-        $definitions = $this->fieldType()->definition()['sub_inputs'] ?? [];
+        $definitions = $handler->subInputDefinitions( $this );
         $configured  = $this->getConfig( 'sub_inputs', [] );
         $subInputs   = [];
 
-        foreach ( is_array( $definitions ) ? $definitions : [] as $definition ) {
+        foreach ( $definitions as $definition ) {
             $key = is_array( $definition ) ? ( $definition['key'] ?? null ) : null;
 
             if ( ! is_string( $key ) || 1 !== preg_match( '/^[A-Za-z0-9_]+$/', $key ) || isset( $subInputs[ $key ] ) ) {
@@ -866,7 +871,11 @@ class FormField extends Model
             $label        = $config['label'] ?? null;
             $placeholder  = $config['placeholder'] ?? $definition['placeholder'] ?? null;
             $type         = $definition['type'] ?? 'text';
+            $type         = in_array( $type, self::SUB_INPUT_TYPES, true ) ? $type : 'text';
             $rules        = $definition['rules'] ?? [];
+            $options      = 'select' === $type ? self::normalizeSubInputOptions( $definition['options'] ?? [] ) : [];
+            $default      = $this->subInputText( $config, $definition, 'default' );
+            $parameter    = $this->subInputText( $config, $definition, 'parameter' );
 
             $subInputs[ $key ] = [
                 'key'           => $key,
@@ -876,7 +885,11 @@ class FormField extends Model
                 'enabled'       => $this->subInputFlag( $config, $definition, 'enabled', true ),
                 'required'      => $this->subInputFlag( $config, $definition, 'required', false ),
                 'autocomplete'  => Autocomplete::isToken( $definition['autocomplete'] ?? null ) ? $definition['autocomplete'] : null,
-                'type'          => in_array( $type, self::SUB_INPUT_TYPES, true ) ? $type : 'text',
+                'type'          => $type,
+                'wide'          => true === ( $definition['wide'] ?? false ),
+                'options'       => $options,
+                'default'       => $default,
+                'parameter'     => null === $parameter ? null : ( (string) preg_replace( CompositeFieldType::PARAMETER_PATTERN, '', $parameter ) ?: null ),
                 'rules'         => is_array( $rules ) ? array_values( $rules ) : [$rules],
             ];
         }
@@ -916,6 +929,52 @@ class FormField extends Model
         $required = array_keys( array_filter( $enabled, fn ( array $subInput ): bool => $subInput['required'] ) );
 
         return [] === $required ? array_keys( $enabled ) : $required;
+    }
+
+    /**
+     * Checks whether an email field asks for the address twice.
+     *
+     * A read-only email field never does, since the visitor cannot type it,
+     * nor does an administrative one, which admins fill in on the submission.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when `confirm_email` is on for an editable, public email field.
+     */
+    public function requiresEmailConfirmation(): bool
+    {
+        return 'email' === $this->type && $this->configFlag( 'confirm_email' ) && ! $this->isReadOnly() && ! $this->isAdministrative();
+    }
+
+    /**
+     * Gets the data key an email field's confirmation is submitted under.
+     *
+     * Laravel's `confirmed` rule reads it from beside the field's own value.
+     *
+     * @since 1.6.0
+     *
+     * @return string `{name}_confirmation`.
+     */
+    public function getConfirmationKey(): string
+    {
+        return $this->name . '_confirmation';
+    }
+
+    /**
+     * Gets the sub-labels of an email field's two inputs when confirmation is on.
+     *
+     * @since 1.6.0
+     *
+     * @return array{email: string, confirm: string, confirm_placeholder: string|null} The sub-labels and the
+     *                                                                                 confirm input's placeholder.
+     */
+    public function getEmailConfirmationLabels(): array
+    {
+        return [
+            'email'               => $this->translatedConfig( 'email_sub_label' ) ?? __( 'Enter Email' ),
+            'confirm'             => $this->translatedConfig( 'confirm_sub_label' ) ?? __( 'Confirm Email' ),
+            'confirm_placeholder' => $this->translatedConfig( 'confirm_placeholder' ) ?? $this->placeholder,
+        ];
     }
 
     /**
@@ -1659,6 +1718,63 @@ class FormField extends Model
         $value = $config[ $key ] ?? $definition[ $key ] ?? $default;
 
         return true === filter_var( $value, FILTER_VALIDATE_BOOLEAN );
+    }
+
+    /**
+     * Reads a sub-input text setting from the field's settings, falling back to the type's definition.
+     *
+     * @since 1.6.0
+     *
+     * @param  array<string, mixed>  $config  The sub-input's `field_config.sub_inputs` entry.
+     * @param  array<string, mixed>  $definition  The sub-input's definition.
+     * @param  string  $key  The setting.
+     *
+     * @return string|null The trimmed text, or null when neither sets it.
+     */
+    protected function subInputText( array $config, array $definition, string $key ): ?string
+    {
+        foreach ( [$config[ $key ] ?? null, $definition[ $key ] ?? null] as $value ) {
+            if ( is_scalar( $value ) && ! is_bool( $value ) && '' !== trim( (string) $value ) ) {
+                return trim( (string) $value );
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Normalizes a select sub-input's options to a list of value/label pairs.
+     *
+     * Takes value/label pairs or a value => label map; blank and repeated
+     * values are dropped.
+     *
+     * @since 1.6.0
+     *
+     * @param  mixed  $options  The options.
+     *
+     * @return list<array{value: string, label: string}> The options.
+     */
+    protected static function normalizeSubInputOptions( mixed $options ): array
+    {
+        $normalized = [];
+
+        foreach ( is_array( $options ) ? $options : [] as $key => $option ) {
+            if ( is_array( $option ) ) {
+                $value = $option['value'] ?? null;
+                $label = $option['label'] ?? $value;
+            } else {
+                $value = is_string( $key ) ? $key : $option;
+                $label = $option;
+            }
+
+            if ( ! is_scalar( $value ) || is_bool( $value ) || '' === trim( (string) $value ) || isset( $normalized[ (string) $value ] ) ) {
+                continue;
+            }
+
+            $normalized[ (string) $value ] = ['value' => (string) $value, 'label' => is_scalar( $label ) ? (string) $label : (string) $value];
+        }
+
+        return array_values( $normalized );
     }
 
     /**

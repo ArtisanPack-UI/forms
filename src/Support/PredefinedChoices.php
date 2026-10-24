@@ -18,7 +18,9 @@ namespace ArtisanPackUI\Forms\Support;
  *
  * The built-in lists are countries (ISO 3166-1 alpha-2 codes), U.S. states,
  * Canadian provinces and territories, months, days of the week, age ranges
- * and satisfaction, agreement and importance scales. Values stay the same
+ * and satisfaction, agreement and importance scales. The country list also
+ * passes through the `ap.forms.countries` filter (see countries()), which the
+ * Address field shares. Values stay the same
  * in every locale; labels are translated. Apps add their own lists through
  * the `ap.forms.predefinedChoices` filter, which receives the lists keyed by
  * name, each `['label' => …, 'choices' => […]]`, where choices may be
@@ -259,6 +261,127 @@ class PredefinedChoices
     }
 
     /**
+     * Gets the countries, keyed by ISO 3166-1 alpha-2 code.
+     *
+     * Applies the `ap.forms.countries` filter, which receives the built-in
+     * `code => name` map and may add, rename or remove countries. Entries
+     * that are not a non-empty string name under a non-empty key are dropped;
+     * a filter that returns something other than an array is ignored.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, string> The country names by code.
+     */
+    public static function countries(): array
+    {
+        $countries = applyFilters( 'ap.forms.countries', self::builtInCountries() );
+
+        if ( ! is_array( $countries ) ) {
+            return self::builtInCountries();
+        }
+
+        $valid = [];
+
+        foreach ( $countries as $code => $name ) {
+            if ( is_scalar( $name ) && ! is_bool( $name ) && '' !== trim( (string) $name ) && '' !== trim( (string) $code ) ) {
+                $valid[ (string) $code ] = (string) $name;
+            }
+        }
+
+        return $valid;
+    }
+
+    /**
+     * Gets the U.S. states and the District of Columbia, keyed by postal code.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, string> The state names by code.
+     */
+    public static function usStates(): array
+    {
+        return [
+            'AL' => __( 'Alabama' ),
+            'AK' => __( 'Alaska' ),
+            'AZ' => __( 'Arizona' ),
+            'AR' => __( 'Arkansas' ),
+            'CA' => __( 'California' ),
+            'CO' => __( 'Colorado' ),
+            'CT' => __( 'Connecticut' ),
+            'DE' => __( 'Delaware' ),
+            'DC' => __( 'District of Columbia' ),
+            'FL' => __( 'Florida' ),
+            'GA' => __( 'Georgia' ),
+            'HI' => __( 'Hawaii' ),
+            'ID' => __( 'Idaho' ),
+            'IL' => __( 'Illinois' ),
+            'IN' => __( 'Indiana' ),
+            'IA' => __( 'Iowa' ),
+            'KS' => __( 'Kansas' ),
+            'KY' => __( 'Kentucky' ),
+            'LA' => __( 'Louisiana' ),
+            'ME' => __( 'Maine' ),
+            'MD' => __( 'Maryland' ),
+            'MA' => __( 'Massachusetts' ),
+            'MI' => __( 'Michigan' ),
+            'MN' => __( 'Minnesota' ),
+            'MS' => __( 'Mississippi' ),
+            'MO' => __( 'Missouri' ),
+            'MT' => __( 'Montana' ),
+            'NE' => __( 'Nebraska' ),
+            'NV' => __( 'Nevada' ),
+            'NH' => __( 'New Hampshire' ),
+            'NJ' => __( 'New Jersey' ),
+            'NM' => __( 'New Mexico' ),
+            'NY' => __( 'New York' ),
+            'NC' => __( 'North Carolina' ),
+            'ND' => __( 'North Dakota' ),
+            'OH' => __( 'Ohio' ),
+            'OK' => __( 'Oklahoma' ),
+            'OR' => __( 'Oregon' ),
+            'PA' => __( 'Pennsylvania' ),
+            'RI' => __( 'Rhode Island' ),
+            'SC' => __( 'South Carolina' ),
+            'SD' => __( 'South Dakota' ),
+            'TN' => __( 'Tennessee' ),
+            'TX' => __( 'Texas' ),
+            'UT' => __( 'Utah' ),
+            'VT' => __( 'Vermont' ),
+            'VA' => __( 'Virginia' ),
+            'WA' => __( 'Washington' ),
+            'WV' => __( 'West Virginia' ),
+            'WI' => __( 'Wisconsin' ),
+            'WY' => __( 'Wyoming' ),
+        ];
+    }
+
+    /**
+     * Gets the Canadian provinces and territories, keyed by postal abbreviation.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, string> The names by code.
+     */
+    public static function canadianProvinces(): array
+    {
+        return [
+            'AB' => __( 'Alberta' ),
+            'BC' => __( 'British Columbia' ),
+            'MB' => __( 'Manitoba' ),
+            'NB' => __( 'New Brunswick' ),
+            'NL' => __( 'Newfoundland and Labrador' ),
+            'NT' => __( 'Northwest Territories' ),
+            'NS' => __( 'Nova Scotia' ),
+            'NU' => __( 'Nunavut' ),
+            'ON' => __( 'Ontario' ),
+            'PE' => __( 'Prince Edward Island' ),
+            'QC' => __( 'Quebec' ),
+            'SK' => __( 'Saskatchewan' ),
+            'YT' => __( 'Yukon' ),
+        ];
+    }
+
+    /**
      * Gets the built-in lists.
      *
      * @since 1.6.0
@@ -355,13 +478,13 @@ class PredefinedChoices
     }
 
     /**
-     * Gets the countries, keyed by ISO 3166-1 alpha-2 code.
+     * Gets the built-in countries, keyed by ISO 3166-1 alpha-2 code.
      *
      * @since 1.6.0
      *
      * @return array<string, string> The country names by code.
      */
-    protected static function countries(): array
+    protected static function builtInCountries(): array
     {
         return [
             'AF' => __( 'Afghanistan' ),
@@ -613,96 +736,6 @@ class PredefinedChoices
             'YE' => __( 'Yemen' ),
             'ZM' => __( 'Zambia' ),
             'ZW' => __( 'Zimbabwe' ),
-        ];
-    }
-
-    /**
-     * Gets the U.S. states and the District of Columbia, keyed by postal code.
-     *
-     * @since 1.6.0
-     *
-     * @return array<string, string> The state names by code.
-     */
-    protected static function usStates(): array
-    {
-        return [
-            'AL' => __( 'Alabama' ),
-            'AK' => __( 'Alaska' ),
-            'AZ' => __( 'Arizona' ),
-            'AR' => __( 'Arkansas' ),
-            'CA' => __( 'California' ),
-            'CO' => __( 'Colorado' ),
-            'CT' => __( 'Connecticut' ),
-            'DE' => __( 'Delaware' ),
-            'DC' => __( 'District of Columbia' ),
-            'FL' => __( 'Florida' ),
-            'GA' => __( 'Georgia' ),
-            'HI' => __( 'Hawaii' ),
-            'ID' => __( 'Idaho' ),
-            'IL' => __( 'Illinois' ),
-            'IN' => __( 'Indiana' ),
-            'IA' => __( 'Iowa' ),
-            'KS' => __( 'Kansas' ),
-            'KY' => __( 'Kentucky' ),
-            'LA' => __( 'Louisiana' ),
-            'ME' => __( 'Maine' ),
-            'MD' => __( 'Maryland' ),
-            'MA' => __( 'Massachusetts' ),
-            'MI' => __( 'Michigan' ),
-            'MN' => __( 'Minnesota' ),
-            'MS' => __( 'Mississippi' ),
-            'MO' => __( 'Missouri' ),
-            'MT' => __( 'Montana' ),
-            'NE' => __( 'Nebraska' ),
-            'NV' => __( 'Nevada' ),
-            'NH' => __( 'New Hampshire' ),
-            'NJ' => __( 'New Jersey' ),
-            'NM' => __( 'New Mexico' ),
-            'NY' => __( 'New York' ),
-            'NC' => __( 'North Carolina' ),
-            'ND' => __( 'North Dakota' ),
-            'OH' => __( 'Ohio' ),
-            'OK' => __( 'Oklahoma' ),
-            'OR' => __( 'Oregon' ),
-            'PA' => __( 'Pennsylvania' ),
-            'RI' => __( 'Rhode Island' ),
-            'SC' => __( 'South Carolina' ),
-            'SD' => __( 'South Dakota' ),
-            'TN' => __( 'Tennessee' ),
-            'TX' => __( 'Texas' ),
-            'UT' => __( 'Utah' ),
-            'VT' => __( 'Vermont' ),
-            'VA' => __( 'Virginia' ),
-            'WA' => __( 'Washington' ),
-            'WV' => __( 'West Virginia' ),
-            'WI' => __( 'Wisconsin' ),
-            'WY' => __( 'Wyoming' ),
-        ];
-    }
-
-    /**
-     * Gets the Canadian provinces and territories, keyed by postal abbreviation.
-     *
-     * @since 1.6.0
-     *
-     * @return array<string, string> The names by code.
-     */
-    protected static function canadianProvinces(): array
-    {
-        return [
-            'AB' => __( 'Alberta' ),
-            'BC' => __( 'British Columbia' ),
-            'MB' => __( 'Manitoba' ),
-            'NB' => __( 'New Brunswick' ),
-            'NL' => __( 'Newfoundland and Labrador' ),
-            'NT' => __( 'Northwest Territories' ),
-            'NS' => __( 'Nova Scotia' ),
-            'NU' => __( 'Nunavut' ),
-            'ON' => __( 'Ontario' ),
-            'PE' => __( 'Prince Edward Island' ),
-            'QC' => __( 'Quebec' ),
-            'SK' => __( 'Saskatchewan' ),
-            'YT' => __( 'Yukon' ),
         ];
     }
 }

@@ -2,8 +2,10 @@
   Sub-input editor for composite fields.
 
   A table that turns each of a composite field's sub-inputs on or off,
-  relabels it, sets its placeholder and whether a required field requires
-  it. The last shown input cannot be turned off. Mirrors the React
+  relabels it, sets its placeholder, default value and population parameter
+  (since 1.6.0) and whether a required field requires it. A select
+  sub-input's default is one of its options. The last shown input cannot be
+  turned off. Mirrors the React
   `SubInputsEditor` and the Livewire builder's `sub-inputs-editor` partial.
 
   @package    ArtisanPack_UI
@@ -51,6 +53,8 @@ function change( key: string, setting: SubInputSetting, value: unknown ): void {
 						<th scope="col">{{ t( 'Show' ) }}</th>
 						<th scope="col">{{ t( 'Sub-Label' ) }}</th>
 						<th scope="col">{{ t( 'Placeholder' ) }}</th>
+						<th scope="col">{{ t( 'Default' ) }}</th>
+						<th scope="col">{{ t( 'Parameter' ) }}</th>
 						<th scope="col">{{ t( 'Required' ) }}</th>
 					</tr>
 				</thead>
@@ -88,6 +92,39 @@ function change( key: string, setting: SubInputSetting, value: unknown ): void {
 							/>
 						</td>
 						<td>
+							<select
+								v-if="subInput.type === 'select'"
+								class="select select-xs select-bordered w-full"
+								:aria-label="t( ':input default value', { input: subInput.default_label } )"
+								:value="subInput.default ?? ''"
+								@change="change( subInput.key, 'default', ( $event.target as HTMLSelectElement ).value )"
+							>
+								<option value="">{{ t( 'None' ) }}</option>
+								<option v-for="option in subInput.options ?? []" :key="option.value" :value="option.value">
+									{{ option.label }}
+								</option>
+							</select>
+							<input
+								v-else
+								type="text"
+								class="input input-xs input-bordered w-full"
+								:aria-label="t( ':input default value', { input: subInput.default_label } )"
+								:value="subInput.default ?? ''"
+								maxlength="255"
+								@change="change( subInput.key, 'default', ( $event.target as HTMLInputElement ).value )"
+							/>
+						</td>
+						<td>
+							<input
+								type="text"
+								class="input input-xs input-bordered w-full font-mono"
+								:aria-label="t( ':input population parameter', { input: subInput.default_label } )"
+								:value="subInput.parameter ?? ''"
+								maxlength="100"
+								@change="change( subInput.key, 'parameter', ( $event.target as HTMLInputElement ).value )"
+							/>
+						</td>
+						<td>
 							<input
 								type="checkbox"
 								class="checkbox checkbox-xs checkbox-primary"
@@ -102,6 +139,7 @@ function change( key: string, setting: SubInputSetting, value: unknown ): void {
 		</div>
 		<p :id="hintId" class="text-xs text-base-content/60">
 			{{ t( 'Required inputs apply when the field is required. With none checked, every shown input is required.' ) }}
+			{{ t( 'A parameter fills the input from the renderer prefill or the query string.' ) }}
 		</p>
 	</div>
 </template>

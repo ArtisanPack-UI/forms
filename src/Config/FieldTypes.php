@@ -18,9 +18,12 @@ namespace ArtisanPackUI\Forms\Config;
 
 use ArtisanPackUI\Forms\Contracts\FieldType;
 use ArtisanPackUI\Forms\FieldTypes\AbstractFieldType;
+use ArtisanPackUI\Forms\FieldTypes\AddressFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ArrayFieldType;
+use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
 use ArtisanPackUI\Forms\FieldTypes\CheckboxFieldType;
 use ArtisanPackUI\Forms\FieldTypes\CheckboxGroupFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ConsentFieldType;
 use ArtisanPackUI\Forms\FieldTypes\DateFieldType;
 use ArtisanPackUI\Forms\FieldTypes\DividerFieldType;
 use ArtisanPackUI\Forms\FieldTypes\EmailFieldType;
@@ -28,6 +31,7 @@ use ArtisanPackUI\Forms\FieldTypes\FileFieldType;
 use ArtisanPackUI\Forms\FieldTypes\HeadingFieldType;
 use ArtisanPackUI\Forms\FieldTypes\HiddenFieldType;
 use ArtisanPackUI\Forms\FieldTypes\HtmlFieldType;
+use ArtisanPackUI\Forms\FieldTypes\NameFieldType;
 use ArtisanPackUI\Forms\FieldTypes\NumberFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ParagraphFieldType;
 use ArtisanPackUI\Forms\FieldTypes\PhoneFieldType;
@@ -64,7 +68,7 @@ class FieldTypes
     public const CATEGORY_FIELDS = [
         'basic'    => ['text', 'email', 'phone', 'number', 'url', 'textarea', 'hidden'],
         'choice'   => ['select', 'radio', 'checkbox', 'toggle', 'checkbox_group', 'select_multiple'],
-        'advanced' => ['file', 'date', 'time', 'rating'],
+        'advanced' => ['file', 'date', 'time', 'rating', 'name', 'address', 'consent', 'captcha'],
         'layout'   => ['heading', 'paragraph', 'divider', 'html'],
     ];
 
@@ -85,6 +89,7 @@ class FieldTypes
      *     supports_label_placement?: bool,
      *     supports_visibility?: bool,
      *     supports_privacy?: bool,
+     *     stores_value?: bool,
      *     validation_options: array<string>
      * }>
      */
@@ -240,6 +245,48 @@ class FieldTypes
             'supports_default_value' => true,
             'validation_options'     => [],
         ],
+        'name' => [
+            'icon'                        => 'o-user',
+            'category'                    => 'advanced',
+            'has_options'                 => false,
+            'supports_placeholder'        => false,
+            'supports_default_value'      => false,
+            'supports_autocomplete'       => false,
+            'supports_dynamic_population' => false,
+            'validation_options'          => [],
+        ],
+        'address' => [
+            'icon'                        => 'o-map-pin',
+            'category'                    => 'advanced',
+            'has_options'                 => false,
+            'supports_placeholder'        => false,
+            'supports_default_value'      => false,
+            'supports_autocomplete'       => false,
+            'supports_dynamic_population' => false,
+            'validation_options'          => [],
+        ],
+        'consent' => [
+            'icon'                        => 'o-clipboard-document-check',
+            'category'                    => 'advanced',
+            'has_options'                 => false,
+            'supports_placeholder'        => false,
+            'supports_default_value'      => false,
+            'supports_dynamic_population' => false,
+            'supports_visibility'         => false,
+            'validation_options'          => [],
+        ],
+        'captcha' => [
+            'icon'                        => 'o-shield-check',
+            'category'                    => 'advanced',
+            'has_options'                 => false,
+            'supports_placeholder'        => false,
+            'supports_default_value'      => false,
+            'supports_dynamic_population' => false,
+            'supports_visibility'         => false,
+            'supports_privacy'            => false,
+            'stores_value'                => false,
+            'validation_options'          => [],
+        ],
         'heading' => [
             'icon'                   => 'o-h1',
             'category'               => 'layout',
@@ -303,6 +350,10 @@ class FieldTypes
         'phone'           => PhoneFieldType::class,
         'time'            => TimeFieldType::class,
         'rating'          => RatingFieldType::class,
+        'name'            => NameFieldType::class,
+        'address'         => AddressFieldType::class,
+        'consent'         => ConsentFieldType::class,
+        'captcha'         => CaptchaFieldType::class,
         'heading'         => HeadingFieldType::class,
         'paragraph'       => ParagraphFieldType::class,
         'divider'         => DividerFieldType::class,

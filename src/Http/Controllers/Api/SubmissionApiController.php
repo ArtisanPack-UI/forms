@@ -19,6 +19,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Http\Controllers\Api;
 
+use ArtisanPackUI\Forms\Captcha\CaptchaVerifier;
 use ArtisanPackUI\Forms\Http\Requests\Api\BulkSubmissionApiRequest;
 use ArtisanPackUI\Forms\Http\Requests\Api\SubmitFormApiRequest;
 use ArtisanPackUI\Forms\Http\Requests\Api\UpdateSubmissionApiRequest;
@@ -27,6 +28,7 @@ use ArtisanPackUI\Forms\Http\Resources\PaginatedResourceCollection;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Models\FormUpload;
+use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\ExportService;
 use ArtisanPackUI\Forms\Services\SubmissionService;
 use Exception;
@@ -58,9 +60,11 @@ class SubmissionApiController extends Controller
      * @since 1.1.0
      *
      * @param SubmissionService $submissionService The submission service instance.
+     * @param CaptchaVerifier   $captchaVerifier   The CAPTCHA verifier (since 1.6.0).
      */
     public function __construct(
         protected SubmissionService $submissionService,
+        protected CaptchaVerifier $captchaVerifier,
     ) {
     }
 
@@ -189,6 +193,8 @@ class SubmissionApiController extends Controller
      *
      * Handles validation, spam checks, rate limiting, file uploads,
      * and notification triggering — same logic as the Livewire FormRenderer.
+     * CAPTCHA tokens are checked last, just before the submission is saved;
+     * a failed check answers 422 with the error under `data.{field}`.
      *
      * @since 1.1.0
      *
@@ -237,6 +243,25 @@ class SubmissionApiController extends Controller
             }
 
             return response()->json( $response, 201 );
+        }
+
+        // Check CAPTCHA tokens last, since a provider accepts each token once
+        $data          = $request->input( 'data', [] );
+        $data          = is_array( $data ) ? $data : [];
+        $captchaErrors = $this->captchaVerifier->verify(
+            $form->fields,
+            $data,
+            app( ConditionalLogicService::class )->getHiddenFields( $form->fields, $data ),
+            $request->ip(),
+        );
+
+        if ( [] !== $captchaErrors ) {
+            return response()->json( [
+                'message' => reset( $captchaErrors ),
+                'errors'  => collect( $captchaErrors )
+                    ->mapWithKeys( fn ( string $message, string $name ): array => ["data.{$name}" => [$message]] )
+                    ->all(),
+            ], 422 );
         }
 
         try {

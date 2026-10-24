@@ -103,6 +103,11 @@ return [
     | a hidden field that bots typically fill out, and rate limiting prevents
     | rapid-fire submissions from the same IP address.
     |
+    | The CAPTCHA settings are used by the CAPTCHA field, which authors place
+    | in a form. 'driver' is the provider a field uses unless it picks one:
+    | 'turnstile', 'hcaptcha', 'recaptcha_v2' or 'recaptcha_v3'. A provider
+    | without both keys renders nothing and checks nothing.
+    |
     */
 
     'spam_protection' => [
@@ -114,6 +119,30 @@ return [
             'enabled'  => true,
             'attempts' => 5,
             'decay'    => 60, // seconds
+        ],
+        'captcha' => [
+            'driver'  => env( 'FORMS_CAPTCHA_DRIVER', 'turnstile' ),
+            'timeout' => 5, // seconds to wait for the provider
+            'drivers' => [
+                'turnstile' => [
+                    'site_key'   => env( 'FORMS_TURNSTILE_SITE_KEY' ),
+                    'secret_key' => env( 'FORMS_TURNSTILE_SECRET_KEY' ),
+                ],
+                'hcaptcha' => [
+                    'site_key'   => env( 'FORMS_HCAPTCHA_SITE_KEY' ),
+                    'secret_key' => env( 'FORMS_HCAPTCHA_SECRET_KEY' ),
+                ],
+                'recaptcha_v2' => [
+                    'site_key'   => env( 'FORMS_RECAPTCHA_V2_SITE_KEY' ),
+                    'secret_key' => env( 'FORMS_RECAPTCHA_V2_SECRET_KEY' ),
+                ],
+                'recaptcha_v3' => [
+                    'site_key'        => env( 'FORMS_RECAPTCHA_V3_SITE_KEY' ),
+                    'secret_key'      => env( 'FORMS_RECAPTCHA_V3_SECRET_KEY' ),
+                    'score_threshold' => env( 'FORMS_RECAPTCHA_V3_THRESHOLD', 0.5 ),
+                    'action'          => 'forms_submit',
+                ],
+            ],
         ],
     ],
 
@@ -209,6 +238,13 @@ return [
 
             // Include user agent in submission metadata
             'include_user_agent' => env( 'FORMS_INCLUDE_USER_AGENT', true ),
+        ],
+
+        // Consent fields store what each visitor agreed to
+        'consent' => [
+            // Store the checkbox text and description with each consent. When false,
+            // only the revision hash and the time are stored.
+            'store_text' => env( 'FORMS_CONSENT_STORE_TEXT', true ),
         ],
 
         // Webhook/Export settings (what gets sent externally) - defaults to false for privacy

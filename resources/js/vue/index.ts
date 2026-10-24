@@ -24,10 +24,16 @@ export { default as RatingField } from './components/fields/RatingField.vue';
 export { default as FieldLayout } from './components/fields/FieldLayout.vue';
 export { default as Combobox } from './components/fields/Combobox.vue';
 export { default as CompositeField } from './components/fields/CompositeField.vue';
+export { default as EmailConfirmationField } from './components/fields/EmailConfirmationField.vue';
+export { default as ConsentField } from './components/fields/ConsentField.vue';
+export { default as CaptchaField } from './components/fields/CaptchaField.vue';
 
 // Composables
 export { useForm } from './composables/useForm';
 export type { UseFormOptions } from './composables/useForm';
+
+// Submit hooks fields register with their form (since 1.6.0)
+export { SUBMIT_HOOKS_KEY, useSubmitHooks } from './composables/submitHooks';
 
 export { useApi, ApiError, ApiValidationError } from './composables/useApi';
 export type { UseApiOptions, UseApiReturn } from './composables/useApi';
@@ -97,6 +103,22 @@ export {
 export type { ConditionTarget, SubInputSetting } from '../shared/composite';
 
 export { validateCompositeField } from '../shared/validation';
+
+// Email confirmation helpers (since 1.6.0)
+export { getConfirmationKey, requiresEmailConfirmation } from '../shared/fieldSettings';
+export { validateCaptchaField, validateEmailConfirmation } from '../shared/validation';
+
+// CAPTCHA helpers (since 1.6.0)
+export {
+	CAPTCHA_SCRIPT_TIMEOUT,
+	SubmitHookError,
+	createCaptchaController,
+	createSubmitHooks,
+	hasCaptchaWidget,
+	loadCaptchaScript,
+	runsOnSubmit,
+} from '../shared/captcha';
+export type { CaptchaController, SubmitHook, SubmitHooks } from '../shared/captcha';
 
 // Dynamic population (since 1.6.0)
 export {

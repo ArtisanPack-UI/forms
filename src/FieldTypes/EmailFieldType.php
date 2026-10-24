@@ -18,6 +18,11 @@ use ArtisanPackUI\Forms\Models\FormField;
 /**
  * Email address input.
  *
+ * With `confirm_email` on, the field shows a second "Confirm Email" input
+ * bound to `{name}_confirmation` and Laravel's `confirmed` rule requires the
+ * two to match. Only the email itself is stored, so display, notifications
+ * and exports are unchanged (see FormField::requiresEmailConfirmation()).
+ *
  * @since 1.6.0
  */
 class EmailFieldType extends AbstractFieldType
@@ -43,6 +48,15 @@ class EmailFieldType extends AbstractFieldType
                 'placeholder' => __( 'you@example.com' ),
             ],
             'settings' => [
+                [
+                    'key'   => 'confirm_email',
+                    'input' => 'toggle',
+                    'label' => __( 'Enable email confirmation' ),
+                    'hint'  => __( 'Asks for the email twice and checks that both match.' ),
+                ],
+                ['key' => 'email_sub_label', 'max_length' => 255, 'label' => __( 'Email Sub-Label' ), 'placeholder' => __( 'Enter Email' )],
+                ['key' => 'confirm_sub_label', 'max_length' => 255, 'label' => __( 'Confirm Sub-Label' ), 'placeholder' => __( 'Confirm Email' )],
+                ['key' => 'confirm_placeholder', 'max_length' => 255, 'label' => __( 'Confirm Placeholder' )],
                 ...$this->lengthSettings(),
                 $this->noDuplicatesSetting(),
                 $this->readOnlySetting(),
@@ -57,7 +71,7 @@ class EmailFieldType extends AbstractFieldType
      */
     protected function typeRules( FormField $field ): array
     {
-        return ['email'];
+        return $field->requiresEmailConfirmation() ? ['email', 'confirmed'] : ['email'];
     }
 
     /**
@@ -67,6 +81,12 @@ class EmailFieldType extends AbstractFieldType
      */
     protected function typeMessages( FormField $field ): array
     {
-        return ['email' => __( 'Please enter a valid email address for :field.', ['field' => $field->label] )];
+        $messages = ['email' => __( 'Please enter a valid email address for :field.', ['field' => $field->label] )];
+
+        if ( $field->requiresEmailConfirmation() ) {
+            $messages['confirmed'] = __( 'The email addresses entered for :field do not match.', ['field' => $field->label] );
+        }
+
+        return $messages;
     }
 }

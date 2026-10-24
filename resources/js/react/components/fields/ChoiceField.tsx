@@ -51,7 +51,7 @@ import type { FieldComponentProps } from './types';
  * Normalizes a value to a boolean for checkbox/toggle fields.
  * Handles string representations from API responses correctly.
  */
-function isChecked( value: unknown ): boolean {
+export function isChecked( value: unknown ): boolean {
 	if ( typeof value === 'boolean' ) {
 		return value;
 	}

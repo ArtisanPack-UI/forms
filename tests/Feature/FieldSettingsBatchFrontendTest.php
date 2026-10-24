@@ -85,7 +85,7 @@ describe( 'Autocomplete tokens in React and Vue (issue #94)', function () use ( 
     } );
 
     it( 'is passed to every React text, select and date input', function () use ( $resource ): void {
-        expect( substr_count( $resource( 'react/components/fields/TextField.tsx' ), 'autoComplete={field.autocomplete ?? undefined}' ) )->toBe( 6 )
+        expect( substr_count( $resource( 'react/components/fields/TextField.tsx' ), 'autoComplete={field.autocomplete ?? undefined}' ) )->toBe( 7 )
             ->and( substr_count( $resource( 'react/components/fields/ChoiceField.tsx' ), 'autoComplete={field.autocomplete ?? undefined}' ) )->toBe( 1 )
             ->and( substr_count( $resource( 'react/components/fields/AdvancedField.tsx' ), 'autoComplete={field.autocomplete ?? undefined}' ) )->toBe( 2 );
     } );

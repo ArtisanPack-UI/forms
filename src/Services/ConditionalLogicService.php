@@ -18,7 +18,9 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
 
+use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
 use ArtisanPackUI\Forms\FieldTypes\CompositeFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ConsentFieldType;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use Illuminate\Database\Eloquent\Collection;
@@ -115,8 +117,10 @@ class ConditionalLogicService
      */
     public function evaluateField( FormField $field, array $formData ): bool
     {
-        // If no conditional logic, field is always visible
-        if ( ! $field->has_conditional_logic ) {
+        // If no conditional logic, field is always visible. A CAPTCHA is always
+        // shown, since the visitor's own data decides visibility and could
+        // otherwise hide the challenge to skip it.
+        if ( ! $field->has_conditional_logic || CaptchaFieldType::TYPE === $field->type ) {
             return true;
         }
 
@@ -176,6 +180,9 @@ class ConditionalLogicService
 
         if ( null !== $subKey ) {
             $fieldValue = is_array( $fieldValue ) ? ( $fieldValue[ $subKey ] ?? null ) : null;
+        } elseif ( is_array( $fieldValue ) && 'consent' === $field?->type ) {
+            // A stored consent value records the text agreed to; rules test whether it was given
+            $fieldValue = ConsentFieldType::isConsented( $fieldValue );
         } elseif ( is_array( $fieldValue ) && [] !== $fieldValue && ! array_is_list( $fieldValue ) ) {
             // A rule on a whole composite field compares its formatted value, never the array
             $fieldValue = $this->formatCompositeValue( $field, $fieldValue );
@@ -249,6 +256,7 @@ class ConditionalLogicService
      * This filters out:
      * - The field itself (can't reference itself)
      * - Layout fields (they don't have values)
+     * - Fields whose value is not stored, such as a CAPTCHA (since 1.6.0)
      * - Fields in later steps (for multi-step forms)
      *
      * @since 1.0.0
@@ -266,8 +274,8 @@ class ConditionalLogicService
                 return false;
             }
 
-            // Can't reference layout fields
-            if ( $targetField->isLayoutField() ) {
+            // Can't reference layout fields, or fields whose value is never kept (such as a CAPTCHA)
+            if ( $targetField->isLayoutField() || false === ( $targetField->fieldType()->definition()['stores_value'] ?? true ) ) {
                 return false;
             }
 

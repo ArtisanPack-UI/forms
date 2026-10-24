@@ -52,6 +52,10 @@ const ICON_PATHS: Record<string, string> = {
 	paragraph: 'M6 1h8v2h-2v11h-2V3H8v11H6V9a4 4 0 010-8z',
 	divider: 'M1 7h14v2H1V7z',
 	rating: 'M8 1l2.1 4.3 4.7.7-3.4 3.3.8 4.7L8 11.8 3.8 14l.8-4.7L1.2 6l4.7-.7L8 1z',
+	name: 'M8 1a3.5 3.5 0 110 7 3.5 3.5 0 010-7zM2 14c0-3 2.7-5 6-5s6 2 6 5v1H2v-1z',
+	address: 'M8 1a5 5 0 00-5 5c0 3.5 5 9 5 9s5-5.5 5-9a5 5 0 00-5-5zm0 3a2 2 0 100 4 2 2 0 000-4z',
+	consent: 'M8 1l6 2v5c0 3.5-2.6 6.2-6 7-3.4-.8-6-3.5-6-7V3l6-2zm2.8 4.3L7 9.1 5.2 7.3 4.1 8.4 7 11.3l4.9-4.9-1.1-1.1z',
+	captcha: 'M8 1a3 3 0 00-3 3v2H4a1 1 0 00-1 1v7a1 1 0 001 1h8a1 1 0 001-1V7a1 1 0 00-1-1h-1V4a3 3 0 00-3-3zm0 1.5A1.5 1.5 0 019.5 4v2h-3V4A1.5 1.5 0 018 2.5zM8 9a1.25 1.25 0 100 2.5A1.25 1.25 0 008 9z',
 	html: 'M4.5 4L1 8l3.5 4 1.4-1.2L3.2 8l2.7-2.8L4.5 4zm7 0l-1.4 1.2L12.8 8l-2.7 2.8L11.5 12 15 8l-3.5-4z',
 };
 
@@ -94,6 +98,10 @@ function getFieldPalette(): FieldPaletteGroup[] {
 				{ type: 'date', label: t( 'Date' ), icon: 'date', category: 'advanced' },
 				{ type: 'time', label: t( 'Time' ), icon: 'time', category: 'advanced' },
 				{ type: 'rating', label: t( 'Rating' ), icon: 'rating', category: 'advanced' },
+				{ type: 'name', label: t( 'Name' ), icon: 'name', category: 'advanced' },
+				{ type: 'address', label: t( 'Address' ), icon: 'address', category: 'advanced' },
+				{ type: 'consent', label: t( 'Consent' ), icon: 'consent', category: 'advanced' },
+				{ type: 'captcha', label: t( 'CAPTCHA' ), icon: 'captcha', category: 'advanced' },
 			],
 		},
 		{

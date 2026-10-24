@@ -44,6 +44,16 @@
                     </option>
                 @endforeach
             </select>
+        @elseif ('textarea' === $setting['input'])
+            <textarea
+                id="{{ $settingId }}"
+                class="textarea textarea-sm textarea-bordered w-full"
+                rows="4"
+                @if (isset($setting['max_length'])) maxlength="{{ $setting['max_length'] }}" @endif
+                @if (filled($setting['placeholder'] ?? null)) placeholder="{{ $setting['placeholder'] }}" @endif
+                @if ($hintId) aria-describedby="{{ $hintId }}" @endif
+                wire:change="updateSetting(@js($settingKey), $event.target.value)"
+            >{{ $settingValue }}</textarea>
         @else
             <input
                 type="{{ $inputType }}"

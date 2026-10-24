@@ -47,8 +47,9 @@ class DynamicPopulation
      * Read-only fields start with their read-only value, which the client
      * cannot change, so they are not populated from the prefill or query
      * string. Choice fields start with the options marked as defaults, or
-     * else their default value. Composite fields start with every enabled
-     * sub-input blank and are not populated.
+     * else their default value. Composite fields start with each enabled
+     * sub-input's default, or the prefill, query string or filter value of
+     * its population parameter when it has one (see compositeValue()).
      *
      * @since 1.6.0
      *
@@ -66,7 +67,7 @@ class DynamicPopulation
         }
 
         if ( $field->isComposite() ) {
-            return self::emptyValue( $field );
+            return self::compositeValue( $field, $context, $prefill );
         }
 
         $default = self::defaultValue( $field, $context );
@@ -105,6 +106,85 @@ class DynamicPopulation
         $value = (string) preg_replace( '/[\x00-\x1F\x7F]/u', '', $value );
 
         return mb_substr( trim( $value ), 0, self::MAX_LENGTH );
+    }
+
+    /**
+     * Gets the value a composite field starts with.
+     *
+     * Each enabled sub-input starts with its default. One with a population
+     * parameter takes, in order, the prefill, the query string, or the
+     * `ap.forms.fieldValue.{parameter}` filter value (which receives the
+     * default, the field, the context and the sub-input key). A select input
+     * keeps a populated value only when it matches an option, by value or by
+     * label ignoring case.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The composite field.
+     * @param  PopulationContext  $context  The visitor and page.
+     * @param  array<string, mixed>  $prefill  Values passed to the renderer, keyed by parameter name.
+     *
+     * @return array<string, string> The value, keyed by sub-input.
+     */
+    protected static function compositeValue( FormField $field, PopulationContext $context, array $prefill ): array
+    {
+        $value = [];
+
+        foreach ( $field->getEnabledSubInputs() as $key => $subInput ) {
+            $default   = (string) ( $subInput['default'] ?? '' );
+            $parameter = $subInput['parameter'] ?? null;
+
+            if ( null === $parameter ) {
+                $value[ $key ] = $default;
+
+                continue;
+            }
+
+            if ( array_key_exists( $parameter, $prefill ) ) {
+                $raw = $prefill[ $parameter ];
+            } elseif ( null !== $context->queryValue( $parameter ) ) {
+                $raw = $context->queryValue( $parameter );
+            } else {
+                $raw = applyFilters( "ap.forms.fieldValue.{$parameter}", $default, $field, $context, $key );
+            }
+
+            $raw = is_scalar( $raw ) && ! is_bool( $raw ) ? self::sanitize( (string) $raw ) : '';
+
+            if ( 'select' === $subInput['type'] && '' !== $raw ) {
+                $raw = self::matchSubInputOption( $subInput['options'], $raw ) ?? $default;
+            }
+
+            $value[ $key ] = '' === $raw ? $default : $raw;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Finds the option of a select sub-input a populated value selects.
+     *
+     * @since 1.6.0
+     *
+     * @param  list<array{value: string, label: string}>  $options  The sub-input's options.
+     * @param  string  $value  The value or label.
+     *
+     * @return string|null The option's value, or null when none matches.
+     */
+    protected static function matchSubInputOption( array $options, string $value ): ?string
+    {
+        foreach ( $options as $option ) {
+            if ( $option['value'] === $value ) {
+                return $option['value'];
+            }
+        }
+
+        foreach ( $options as $option ) {
+            if ( 0 === strcasecmp( $option['label'], $value ) ) {
+                return $option['value'];
+            }
+        }
+
+        return null;
     }
 
     /**

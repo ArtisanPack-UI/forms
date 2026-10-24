@@ -2,8 +2,10 @@
   Field renderer component.
 
   Maps a form field definition to the appropriate Vue component
-  based on its field type. A type with sub-inputs that has no component of
-  its own renders as a composite field (since 1.6.0).
+  based on its field type. An email field that asks for the address twice
+  renders `EmailConfirmationField`. Name and address fields, and any type with
+  sub-inputs that has no component of its own, render as a composite field;
+  consent and CAPTCHA fields have components of their own (since 1.6.0).
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -19,8 +21,12 @@ import AdvancedField from './AdvancedField.vue';
 import LayoutField from './LayoutField.vue';
 import RatingField from './RatingField.vue';
 import CompositeField from './CompositeField.vue';
+import EmailConfirmationField from './EmailConfirmationField.vue';
+import ConsentField from './ConsentField.vue';
+import CaptchaField from './CaptchaField.vue';
 import { isCompositeField } from '../../../shared/composite';
 import { WIDTH_CLASSES } from '../../../shared/fieldSettings';
+import { requiresEmailConfirmation } from '../../../shared/fieldSettings';
 
 const props = defineProps<{
 	field: FormField;
@@ -37,6 +43,8 @@ const props = defineProps<{
 	layout?: FormLayout;
 	/** Text typed into the field's "Other" choice (since 1.6.0). */
 	otherValue?: string;
+	/** An email field's confirmation, when it asks for the address twice (since 1.6.0). */
+	confirmValue?: string;
 	/** A composite field's first error per sub-input, keyed by sub-input (since 1.6.0). */
 	subErrors?: Record<string, string>;
 }>();
@@ -44,6 +52,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:modelValue': [value: unknown];
 	'update:otherValue': [text: string];
+	'update:confirmValue': [text: string];
 	'fileChange': [file: File | File[]];
 }>();
 
@@ -53,6 +62,9 @@ const CHOICE_TYPES = new Set( ['select', 'radio', 'checkbox', 'toggle', 'checkbo
 const ADVANCED_TYPES = new Set( ['file', 'date'] );
 const RATING_TYPES = new Set( ['rating'] );
 const LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'divider', 'html'] );
+const COMPOSITE_TYPES = new Set( ['name', 'address'] );
+const CONSENT_TYPES = new Set( ['consent'] );
+const CAPTCHA_TYPES = new Set( ['captcha'] );
 
 /**
  * Returns the wrapper class for a field in an inline row.
@@ -82,6 +94,10 @@ const widthClass = computed( () => (
 ) );
 
 const componentGroup = computed( () => {
+	if ( requiresEmailConfirmation( props.field ) ) {
+		return 'email_confirmation';
+	}
+
 	if ( TEXT_TYPES.has( props.field.type ) ) {
 		return 'text';
 	}
@@ -102,6 +118,18 @@ const componentGroup = computed( () => {
 		return 'layout';
 	}
 
+	if ( CONSENT_TYPES.has( props.field.type ) ) {
+		return 'consent';
+	}
+
+	if ( CAPTCHA_TYPES.has( props.field.type ) ) {
+		return 'captcha';
+	}
+
+	if ( COMPOSITE_TYPES.has( props.field.type ) ) {
+		return 'composite';
+	}
+
 	if ( isCompositeField( props.field ) ) {
 		return 'composite';
 	}
@@ -119,6 +147,16 @@ const componentGroup = computed( () => {
 			:error="error"
 			:display-config="displayConfig"
 			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<EmailConfirmationField
+			v-else-if="componentGroup === 'email_confirmation'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			:confirm-value="confirmValue"
+			@update:model-value="emit( 'update:modelValue', $event )"
+			@update:confirm-value="emit( 'update:confirmValue', $event )"
 		/>
 		<ChoiceField
 			v-else-if="componentGroup === 'choice'"
@@ -157,6 +195,22 @@ const componentGroup = computed( () => {
 			:model-value="modelValue"
 			:error="error"
 			:sub-errors="subErrors"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<ConsentField
+			v-else-if="componentGroup === 'consent'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<CaptchaField
+			v-else-if="componentGroup === 'captcha'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
 			:display-config="displayConfig"
 			@update:model-value="emit( 'update:modelValue', $event )"
 		/>

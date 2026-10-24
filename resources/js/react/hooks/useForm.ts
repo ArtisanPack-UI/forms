@@ -3,7 +3,9 @@
  *
  * Fetches a form definition from the API, manages field values,
  * validation errors, file uploads, conditional logic, multi-step
- * navigation, and form submission.
+ * navigation, and form submission. Fields can add values to a submission
+ * through the form's submit hooks, such as an invisible CAPTCHA's token
+ * (since 1.6.0).
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -19,9 +21,17 @@ import type {
 	FormStep,
 	SubmitFormResponse,
 } from '../../types/artisanpack-forms';
+import { createSubmitHooks, SubmitHookError } from '../../shared/captcha';
+import type { SubmitHooks } from '../../shared/captcha';
 import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composite';
 import { getHiddenFields } from '../../shared/conditionalLogic';
-import { getInitialFieldValue, resolveOtherChoices } from '../../shared/fieldSettings';
+import {
+	getConfirmationKey,
+	getInitialFieldValue,
+	requiresEmailConfirmation,
+	resolveOtherChoices,
+} from '../../shared/fieldSettings';
+import { t } from '../../shared/i18n';
 import { validateFields } from '../../shared/validation';
 
 /** Configuration options for the useForm hook. */
@@ -99,6 +109,14 @@ export interface UseFormReturn {
 	submit: () => Promise<void>;
 	/** Resets the form to its initial state. */
 	reset: () => void;
+	/**
+	 * The form's submit hook registry. Field components register with it
+	 * (through `SubmitHooksContext`) to add values just before the form is
+	 * sent and to learn how the submission went.
+	 *
+	 * @since 1.6.0
+	 */
+	submitHooks: SubmitHooks;
 }
 
 /** Layout field types that do not collect data. */
@@ -142,6 +160,15 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 	const formLoadedAt = useRef<number>( 0 );
 
+	// One registry for the hook's lifetime, so fields keep their registrations across renders.
+	const submitHooksRef = useRef<SubmitHooks | null>( null );
+
+	if ( !submitHooksRef.current ) {
+		submitHooksRef.current = createSubmitHooks();
+	}
+
+	const submitHooks = submitHooksRef.current;
+
 	// Kept in a ref so a new prefill object on each render does not refetch the form.
 	const prefillRef = useRef( prefill );
 	prefillRef.current = prefill;
@@ -180,6 +207,11 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 					}
 
 					defaults[field.name] = getInitialFieldValue( field, { prefill: prefillRef.current } );
+
+					// The confirmation starts as the email, mirroring Livewire's `buildInitialFormData()`.
+					if ( requiresEmailConfirmation( field ) && typeof defaults[field.name] === 'string' ) {
+						defaults[getConfirmationKey( field )] = defaults[field.name];
+					}
 				}
 
 				setValues( defaults );
@@ -270,13 +302,42 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 	const valuesRef = useRef( values );
 	valuesRef.current = values;
 
+	// Email fields by their confirmation key, so a confirmation change clears the email's errors.
+	const confirmationFields = useMemo( () => {
+		const map: Record<string, string> = {};
+
+		for ( const field of allFields ) {
+			if ( requiresEmailConfirmation( field ) ) {
+				map[getConfirmationKey( field )] = field.name;
+			}
+		}
+
+		return map;
+	}, [allFields] );
+
+	const confirmationFieldsRef = useRef( confirmationFields );
+	confirmationFieldsRef.current = confirmationFields;
+
 	const setValue = useCallback( ( name: string, value: unknown ) => {
 		const previous = valuesRef.current[name];
+		const confirmedField = Object.prototype.hasOwnProperty.call( confirmationFieldsRef.current, name )
+			? confirmationFieldsRef.current[name]
+			: undefined;
 
 		valuesRef.current = { ...valuesRef.current, [name]: value };
 		setValues( ( prev ) => ( { ...prev, [name]: value } ) );
 		// A composite field's errors are keyed by sub-input; only the changed parts are cleared.
 		setErrors( ( prev ) => clearChangedFieldErrors( prev, name, previous, value ) );
+
+		// A confirmation mismatch is its email field's error.
+		if ( confirmedField !== undefined ) {
+			setErrors( ( prev ) => {
+				const next = { ...prev };
+				delete next[confirmedField];
+
+				return next;
+			} );
+		}
 	}, [] );
 
 	const setFile = useCallback( ( name: string, file: File | File[] ) => {
@@ -418,13 +479,37 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		setIsSubmitting( true );
 		setErrors( {} );
 
+		// Values fields add just before sending, such as an invisible CAPTCHA's token.
+		let collected: Record<string, unknown>;
+
+		try {
+			collected = await submitHooks.collect();
+		} catch ( err ) {
+			if ( err instanceof SubmitHookError ) {
+				setErrors( { [err.field]: [t( 'The verification check failed. Please try again.' )] } );
+			} else {
+				onError?.( err instanceof Error ? err : new Error( 'Form submission failed.' ) );
+			}
+
+			setIsSubmitting( false );
+
+			return;
+		}
+
 		try {
 			const url = `${baseUrl}/${encodeURIComponent( formSlug )}/submit`;
 			const formDataObj = new FormData();
 
 			// Add form data values, with each "Other" choice replaced by its text
 			for ( const [key, value] of Object.entries( resolveOtherChoices( allFields, values, otherValues ) ) ) {
-				if ( hiddenFields[key] ) {
+				if ( hiddenFields[key] || Object.prototype.hasOwnProperty.call( collected, key ) ) {
+					continue;
+				}
+
+				// An email confirmation is skipped with its hidden email field.
+				const confirmedField = Object.prototype.hasOwnProperty.call( confirmationFields, key ) ? confirmationFields[key] : undefined;
+
+				if ( confirmedField !== undefined && hiddenFields[confirmedField] ) {
 					continue;
 				}
 
@@ -438,6 +523,13 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 						formDataObj.append( `data[${key}][${subKey}]`, String( part ?? '' ) );
 					}
 				} else if ( value !== null && value !== undefined ) {
+					formDataObj.append( `data[${key}]`, String( value ) );
+				}
+			}
+
+			// Add the values the submit hooks collected
+			for ( const [key, value] of Object.entries( collected ) ) {
+				if ( value !== null && value !== undefined ) {
 					formDataObj.append( `data[${key}]`, String( value ) );
 				}
 			}
@@ -486,6 +578,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				}
 
 				setErrors( serverErrors );
+				submitHooks.settle( { ok: false, errors: serverErrors } );
 
 				// Navigate to the first step with server errors (multi-step forms)
 				if ( form.is_multi_step && sortedSteps.length > 0 ) {
@@ -507,6 +600,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 			}
 
 			if ( response.status === 429 ) {
+				submitHooks.settle( { ok: false, errors: {} } );
 				setErrors( {
 					_form: ['Too many submissions. Please try again later.'],
 				} );
@@ -519,6 +613,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 			}
 
 			const result: SubmitFormResponse = await response.json();
+			submitHooks.settle( { ok: true, errors: {} } );
 			setIsSubmitted( true );
 
 			if ( result.redirect_url ) {
@@ -532,6 +627,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 			const error =
 				err instanceof Error ? err : new Error( 'Form submission failed.' );
 
+			submitHooks.settle( { ok: false, errors: {} } );
 			onError?.( error );
 		} finally {
 			setIsSubmitting( false );
@@ -548,6 +644,8 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		values,
 		otherValues,
 		files,
+		confirmationFields,
+		submitHooks,
 		onSuccess,
 		onError,
 	] );
@@ -565,6 +663,11 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 			}
 
 			defaults[field.name] = getInitialFieldValue( field, { prefill: prefillRef.current } );
+
+			// The confirmation starts as the email, mirroring Livewire's `buildInitialFormData()`.
+			if ( requiresEmailConfirmation( field ) && typeof defaults[field.name] === 'string' ) {
+				defaults[getConfirmationKey( field )] = defaults[field.name];
+			}
 		}
 
 		setValues( defaults );
@@ -601,5 +704,6 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		goToStep,
 		submit,
 		reset,
+		submitHooks,
 	};
 }

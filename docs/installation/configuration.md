@@ -99,6 +99,23 @@ Configure built-in spam protection:
         'attempts' => 5,        // Max submissions
         'decay' => 60,          // Time window in seconds
     ],
+
+    // CAPTCHA field providers (see Spam Protection)
+    'captcha' => [
+        'driver'  => env('FORMS_CAPTCHA_DRIVER', 'turnstile'),
+        'timeout' => 5,         // Seconds to wait for the provider
+        'drivers' => [
+            'turnstile'    => ['site_key' => env('FORMS_TURNSTILE_SITE_KEY'), 'secret_key' => env('FORMS_TURNSTILE_SECRET_KEY')],
+            'hcaptcha'     => ['site_key' => env('FORMS_HCAPTCHA_SITE_KEY'), 'secret_key' => env('FORMS_HCAPTCHA_SECRET_KEY')],
+            'recaptcha_v2' => ['site_key' => env('FORMS_RECAPTCHA_V2_SITE_KEY'), 'secret_key' => env('FORMS_RECAPTCHA_V2_SECRET_KEY')],
+            'recaptcha_v3' => [
+                'site_key'        => env('FORMS_RECAPTCHA_V3_SITE_KEY'),
+                'secret_key'      => env('FORMS_RECAPTCHA_V3_SECRET_KEY'),
+                'score_threshold' => env('FORMS_RECAPTCHA_V3_THRESHOLD', 0.5),
+                'action'          => 'forms_submit',
+            ],
+        ],
+    ],
 ],
 ```
 
@@ -185,6 +202,12 @@ Configure privacy and PII handling:
 
         // Include user agent in submissions
         'include_user_agent' => env('FORMS_INCLUDE_USER_AGENT', true),
+    ],
+
+    // Consent fields: store the checkbox text and description with each
+    // consent (false keeps only the revision hash and time)
+    'consent' => [
+        'store_text' => env('FORMS_CONSENT_STORE_TEXT', true),
     ],
 
     // External sharing (webhooks, exports)

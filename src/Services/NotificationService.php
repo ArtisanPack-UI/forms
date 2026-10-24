@@ -477,7 +477,7 @@ class NotificationService
 
         foreach ( $submission->values as $value ) {
             $label        = e( $value->getNotificationLabel( $useAdminLabels ) );
-            $displayValue = e( $value->display_value ?? '' );
+            $displayValue = nl2br( e( $value->display_value ?? '' ), false );
 
             $rows[] = "<tr><td style=\"padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: 500;\">{$label}</td><td style=\"padding: 8px; border-bottom: 1px solid #e5e7eb;\">{$displayValue}</td></tr>";
         }

@@ -3,7 +3,8 @@
  *
  * Main component that fetches a form definition from the API and renders
  * all fields with conditional logic, multi-step navigation, validation,
- * honeypot protection, and submission handling.
+ * honeypot protection, and submission handling. Fields reach the form's
+ * submit hooks through `SubmitHooksContext` (since 1.6.0).
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -14,10 +15,12 @@
 import { Button } from '@artisanpack-ui/react/form';
 
 import { getSubInputErrors } from '../../shared/composite';
+import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
 import type { FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
 import { useForm } from '../hooks/useForm';
 import { FieldRenderer } from './fields/FieldRenderer';
 import type { FieldComponentMap } from './fields/registry';
+import { SubmitHooksContext } from './fields/SubmitHooksContext';
 import { MultiStepForm } from './MultiStepForm';
 
 /** Props for the FormRenderer component. */
@@ -200,6 +203,7 @@ export function FormRenderer( {
 		goToStep,
 		submit,
 		reset,
+		submitHooks,
 	} = useForm( {
 		baseUrl,
 		formSlug,
@@ -258,54 +262,60 @@ export function FormRenderer( {
 		</Button>
 	);
 
-	// Render form fields
+	// Render form fields; they reach the form's submit hooks through the context
 	const renderedFields = (
-		<div className="flex flex-wrap gap-4">
-			{currentFields.map( ( field ) => {
-				if ( hiddenFields[field.name] ) {
-					return null;
-				}
+		<SubmitHooksContext.Provider value={submitHooks}>
+			<div className="flex flex-wrap gap-4">
+				{currentFields.map( ( field ) => {
+					if ( hiddenFields[field.name] ) {
+						return null;
+					}
 
-				return (
-					<FieldRenderer
-						key={field.id}
-						field={field}
-						value={values[field.name]}
-						error={errors[field.name]?.[0]}
-						onChange={( value ) => setValue( field.name, value )}
-						onFileChange={( file ) => setFile( field.name, file )}
-						displayConfig={form.config.display}
-						otherValue={otherValues[field.name] ?? ''}
-						onOtherChange={( text ) => setOtherValue( field.name, text )}
-						subErrors={getSubInputErrors( errors, field.name )}
-						fieldComponents={fieldComponents}
-						layout={isInline ? 'inline' : 'stacked'}
-					/>
-				);
-			} )}
+					const confirms = requiresEmailConfirmation( field );
 
-			{/* Honeypot field (hidden from real users) */}
-			{form.config.honeypot.enabled && (
-				<div
-					style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, overflow: 'hidden' }}
-					aria-hidden="true"
-				>
-					<label htmlFor={`ap-hp-${form.slug}`}>
-						Leave this field empty
-					</label>
-					<input
-						type="text"
-						id={`ap-hp-${form.slug}`}
-						name={form.config.honeypot.field_name}
-						tabIndex={-1}
-						autoComplete="off"
-					/>
-				</div>
-			)}
+					return (
+						<FieldRenderer
+							key={field.id}
+							field={field}
+							value={values[field.name]}
+							error={errors[field.name]?.[0]}
+							onChange={( value ) => setValue( field.name, value )}
+							onFileChange={( file ) => setFile( field.name, file )}
+							displayConfig={form.config.display}
+							otherValue={otherValues[field.name] ?? ''}
+							onOtherChange={( text ) => setOtherValue( field.name, text )}
+							subErrors={getSubInputErrors( errors, field.name )}
+							confirmValue={confirms ? String( values[getConfirmationKey( field )] ?? '' ) : undefined}
+							onConfirmChange={confirms ? ( text ) => setValue( getConfirmationKey( field ), text ) : undefined}
+							fieldComponents={fieldComponents}
+							layout={isInline ? 'inline' : 'stacked'}
+						/>
+					);
+				} )}
 
-			{/* Inline layout: the submit button is the last item in the field row */}
-			{isInline && submitButton}
-		</div>
+				{/* Honeypot field (hidden from real users) */}
+				{form.config.honeypot.enabled && (
+					<div
+						style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, overflow: 'hidden' }}
+						aria-hidden="true"
+					>
+						<label htmlFor={`ap-hp-${form.slug}`}>
+							Leave this field empty
+						</label>
+						<input
+							type="text"
+							id={`ap-hp-${form.slug}`}
+							name={form.config.honeypot.field_name}
+							tabIndex={-1}
+							autoComplete="off"
+						/>
+					</div>
+				)}
+
+				{/* Inline layout: the submit button is the last item in the field row */}
+				{isInline && submitButton}
+			</div>
+		</SubmitHooksContext.Provider>
 	);
 
 	// Form-level errors
