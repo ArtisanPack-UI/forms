@@ -63,7 +63,13 @@ const LAYOUT_FIELD_TYPES: Set<FieldType> = new Set( [
 ] );
 
 /** Field types without a placeholder. */
-const NO_PLACEHOLDER_TYPES: Set<FieldType> = new Set( ['checkbox', 'toggle', 'radio', 'rating'] );
+const NO_PLACEHOLDER_TYPES: Set<FieldType> = new Set( ['checkbox', 'toggle', 'radio', 'rating', 'consent', 'captcha'] );
+
+/**
+ * Field types without a default value: a consent box is never pre-checked
+ * and a CAPTCHA token comes from the provider (since 1.6.0).
+ */
+const NO_DEFAULT_VALUE_TYPES: Set<FieldType> = new Set( ['consent', 'captcha'] );
 
 /** Get the width options, translated at render. */
 function getWidthOptions(): Array<{ value: FieldWidth; label: string }> {
@@ -433,14 +439,14 @@ function GeneralTabContent( {
 			)}
 
 			{/* Default value */}
-			{!isLayoutField && !isComposite && field.type !== 'file' && (
+			{!isLayoutField && !isComposite && field.type !== 'file' && ( !NO_DEFAULT_VALUE_TYPES.has( field.type ) && (
 				<Input
 					label={t( 'Default Value' )}
 					value={field.default_value ?? ''}
 					onChange={( e ) => updateField( { default_value: e.target.value || null } )}
 					hint={t( 'Merge tags: :tags', { tags: MERGE_TAGS.join( ', ' ) } )}
 				/>
-			)}
+			) )}
 
 			{/* Required toggle */}
 			{!isLayoutField && (
@@ -581,7 +587,8 @@ function htmlInputType( input: FieldSettingDefinition['input'] ): string {
 /**
  * Renders one setting from a field type's settings schema.
  *
- * Toggles and selects save as they change. Typed inputs keep a local draft
+ * Toggles and selects save as they change. Typed inputs and textareas
+ * (since 1.6.0) keep a local draft
  * of exactly what was typed — a trailing comma in a list, a space between
  * words, `0.` in a number — and save the parsed value, so parsing never
  * rewrites the text under the cursor. The draft resets when another field
@@ -628,6 +635,24 @@ function SettingControl( { field, setting, updateField }: SettingControlProps ):
 				optionValue="value"
 				optionLabel="label"
 				onChange={( e ) => updateField( buildSettingUpdate( field, setting, e.target.value ) )}
+			/>
+		);
+	}
+
+	if ( setting.input === 'textarea' ) {
+		return (
+			<Textarea
+				label={setting.label}
+				hint={setting.hint}
+				value={draft}
+				placeholder={setting.placeholder}
+				rows={4}
+				maxLength={setting.max_length}
+				className="textarea textarea-sm textarea-bordered w-full"
+				onChange={( e ) => {
+					setDraft( e.target.value );
+					updateField( buildSettingUpdate( field, setting, e.target.value ) );
+				}}
 			/>
 		);
 	}

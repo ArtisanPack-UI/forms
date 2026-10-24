@@ -2,7 +2,9 @@
   SubmissionDetail component.
 
   Displays a single submission with field values, admin notes,
-  file downloads, metadata, and navigation between submissions.
+  file downloads, metadata, and navigation between submissions. A consent
+  value shows the text agreed to, and a composite value (name, address) its
+  formatted lines (since 1.6.0). Mirrors the Livewire `submission-detail`.
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -14,6 +16,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { Alert, Badge, Button, Card, Loading, Textarea } from '@artisanpack-ui/vue';
 
 import type {
+	ConsentValue,
 	DisplayConfig,
 	Form,
 	FormSubmission,
@@ -344,6 +347,26 @@ const isNotesDirty = computed(
 function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 	return submission.value?.uploads?.find( ( u ) => u.id === value.upload_id );
 }
+
+/**
+ * Whether a value's `value_array` is a map rather than a list: a composite
+ * value (name, address) or a consent record (since 1.6.0).
+ */
+function isKeyedValue( value: FormSubmissionValue ): boolean {
+	const stored: unknown = value.value_array;
+
+	return stored !== null && typeof stored === 'object' && !Array.isArray( stored );
+}
+
+/** A consent value's stored record, or an empty one (since 1.6.0). */
+function getConsentValue( value: FormSubmissionValue ): Partial<ConsentValue> {
+	return isKeyedValue( value ) ? ( value.value_array as unknown as Partial<ConsentValue> ) : {};
+}
+
+/** Whether a consent value records that the visitor consented (since 1.6.0). */
+function isConsented( value: FormSubmissionValue ): boolean {
+	return getConsentValue( value ).consented === '1';
+}
 </script>
 
 <template>
@@ -511,6 +534,31 @@ function findUpload( value: FormSubmissionValue ): FormUpload | undefined {
 								</template>
 								<span v-else>{{ value.display_value || t( 'File not found' ) }}</span>
 							</template>
+							<!-- Consent, with the text agreed to (since 1.6.0) -->
+							<template v-else-if="value.field_type === 'consent'">
+								<span>{{ value.display_value }}</span>
+								<details v-if="isConsented( value )" class="mt-2">
+									<summary class="link link-primary cursor-pointer">{{ t( 'View consent text' ) }}</summary>
+									<div class="mt-2 space-y-2 rounded-box bg-base-200 p-3">
+										<p v-if="getConsentValue( value ).text">{{ getConsentValue( value ).text }}</p>
+										<!-- Sanitized with kses by the API (`FormSubmissionValueResource`). -->
+										<div
+											v-if="getConsentValue( value ).description"
+											class="prose prose-sm max-w-none"
+											v-html="getConsentValue( value ).description"
+										/>
+										<p v-if="!getConsentValue( value ).text" class="italic opacity-60">
+											{{ t( 'The consent text was not stored.' ) }}
+										</p>
+										<p class="text-xs opacity-60">
+											{{ t( 'Consented at :time', { time: getConsentValue( value ).consented_at ?? '—' } ) }}
+											· {{ t( 'Revision :revision', { revision: String( getConsentValue( value ).revision ?? '' ).slice( 0, 12 ) } ) }}
+										</p>
+									</div>
+								</details>
+							</template>
+							<!-- Composite value (name, address), formatted (since 1.6.0) -->
+							<div v-else-if="isKeyedValue( value )" class="whitespace-pre-line">{{ value.display_value }}</div>
 							<!-- Array value -->
 							<ul v-else-if="value.value_array" class="list-disc list-inside">
 								<li v-for="( v, i ) in ( value.display_values ?? value.value_array )" :key="i">{{ v }}</li>

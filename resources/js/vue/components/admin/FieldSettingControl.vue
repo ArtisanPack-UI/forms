@@ -3,8 +3,9 @@
 
   Renders one type-specific setting from a field's `settings_schema` (see
   `FieldSettings` on the server) and emits the field update that stores it.
-  Text, number, list, date and time inputs keep a local draft so typing is
-  not rewritten by parsing (a trailing comma in a list, a half-typed number).
+  Text, textarea, number, list, date and time inputs keep a local draft so
+  typing is not rewritten by parsing (a trailing comma in a list, a
+  half-typed number).
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -82,6 +83,10 @@ function handleDraftInput( value: unknown ): void {
 	emit( 'update', buildSettingUpdate( props.field, props.setting, draft.value ) );
 }
 
+/** The IDs a textarea setting's label and hint use (since 1.6.0). */
+const textareaId = computed( (): string => `field-setting-${props.field.id}-${props.setting.key}` );
+const textareaHintId = computed( (): string | undefined => ( props.setting.hint ? `${textareaId.value}-hint` : undefined ) );
+
 function handleChange( value: unknown ): void {
 	emit( 'update', buildSettingUpdate( props.field, props.setting, value ) );
 }
@@ -105,6 +110,20 @@ function handleChange( value: unknown ): void {
 		option-label="label"
 		@update:model-value="handleChange( $event )"
 	/>
+	<div v-else-if="setting.input === 'textarea'" class="fieldset">
+		<label :for="textareaId" class="fieldset-legend">{{ setting.label }}</label>
+		<textarea
+			:id="textareaId"
+			class="textarea textarea-sm textarea-bordered w-full"
+			rows="4"
+			:maxlength="setting.max_length"
+			:placeholder="setting.placeholder"
+			:aria-describedby="textareaHintId"
+			:value="draft"
+			@input="handleDraftInput( ( $event.target as HTMLTextAreaElement ).value )"
+		/>
+		<p v-if="textareaHintId" :id="textareaHintId" class="fieldset-label">{{ setting.hint }}</p>
+	</div>
 	<Input
 		v-else
 		:label="setting.label"

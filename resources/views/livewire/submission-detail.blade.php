@@ -102,6 +102,33 @@
                                             </a>
                                             <span class="opacity-40 text-xs">({{ $value->upload->humanFileSize() }})</span>
                                         </div>
+                                    @elseif ($value->field_type === 'consent')
+                                        <!-- Consent, with the text agreed to -->
+                                        @php($consent = is_array($value->value_array) ? $value->value_array : [])
+                                        <span>{{ $value->display_value }}</span>
+                                        @if (\ArtisanPackUI\Forms\FieldTypes\ConsentFieldType::isConsented($consent))
+                                            <details class="mt-2">
+                                                <summary class="link link-primary cursor-pointer">{{ __( 'View consent text' ) }}</summary>
+                                                <div class="mt-2 space-y-2 rounded-box bg-base-200 p-3">
+                                                    @if (filled($consent['text'] ?? null))
+                                                        <p>{{ $consent['text'] }}</p>
+                                                    @endif
+                                                    @if (filled($consent['description'] ?? null))
+                                                        <div class="prose prose-sm max-w-none">{!! \ArtisanPackUI\Forms\Models\FormField::sanitizeHtml($consent['description']) !!}</div>
+                                                    @endif
+                                                    @if (! filled($consent['text'] ?? null))
+                                                        <p class="italic opacity-60">{{ __( 'The consent text was not stored.' ) }}</p>
+                                                    @endif
+                                                    <p class="text-xs opacity-60">
+                                                        {{ __( 'Consented at :time', ['time' => $consent['consented_at'] ?? '—'] ) }}
+                                                        · {{ __( 'Revision :revision', ['revision' => \Illuminate\Support\Str::limit( (string) ( $consent['revision'] ?? '' ), 12, '' )] ) }}
+                                                    </p>
+                                                </div>
+                                            </details>
+                                        @endif
+                                    @elseif ($value->value_array && ! array_is_list($value->value_array))
+                                        <!-- Composite Value (name, address), formatted -->
+                                        <div class="whitespace-pre-line">{{ $value->display_value }}</div>
                                     @elseif ($value->value_array)
                                         <!-- Array Value (checkbox groups, multi-select) -->
                                         <ul class="list-disc list-inside space-y-1">

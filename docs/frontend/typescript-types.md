@@ -26,6 +26,7 @@ type BuiltInFieldType =
     | 'text' | 'email' | 'textarea' | 'select' | 'select_multiple'
     | 'checkbox' | 'checkbox_group' | 'radio'
     | 'number' | 'phone' | 'url' | 'file' | 'date' | 'time'
+    | 'toggle' | 'rating' | 'name' | 'address' | 'consent' | 'captcha'
     | 'heading' | 'paragraph' | 'divider' | 'html' | 'hidden';
 
 // Built-in literals (for autocomplete) plus any host-registered string type.

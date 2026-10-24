@@ -19,6 +19,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire;
 
+use ArtisanPackUI\Forms\Captcha\CaptchaVerifier;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormStep;
@@ -432,6 +433,11 @@ class FormRenderer extends Component
         // Record the attempt for rate limiting
         $this->submissionService->recordAttempt( $ipAddress, $this->form->id );
 
+        // Check CAPTCHA tokens last, since a provider accepts each token once
+        if ( ! $this->passesCaptcha( request()->ip() ) ) {
+            return;
+        }
+
         try {
             // Get metadata
             $metadata = $this->submissionService->getRequestMetadata( request() );
@@ -461,6 +467,9 @@ class FormRenderer extends Component
             ] );
 
             $this->errorMessage = 'An error occurred while submitting the form. Please try again.';
+
+            // The challenge token was spent, so a retry needs a new one
+            $this->dispatch( 'forms-captcha-reset', formId: $this->form->id );
         }
     }
 
@@ -579,6 +588,11 @@ class FormRenderer extends Component
             }
 
             $data[ $field->name ] = DynamicPopulation::initialValue( $field, $context, $prefill );
+
+            // A populated email is confirmed with the same value
+            if ( $field->requiresEmailConfirmation() && ! array_key_exists( $field->getConfirmationKey(), $data ) ) {
+                $data[ $field->getConfirmationKey() ] = is_string( $data[ $field->name ] ) ? $data[ $field->name ] : '';
+            }
         }
 
         return $data;
@@ -632,6 +646,47 @@ class FormRenderer extends Component
         $this->withResolvedOtherChoices()->validate( $rules, $messages );
 
         return true;
+    }
+
+    /**
+     * Checks the form's CAPTCHA tokens with their providers.
+     *
+     * On a failure the field gets the error, a multi-step form moves to the
+     * field's step, and `forms-captcha-reset` is dispatched so the widget
+     * asks for a new token.
+     *
+     * @since 1.6.0
+     *
+     * @param  string|null  $ipAddress  The visitor's IP address.
+     *
+     * @return bool True when every token passed.
+     */
+    protected function passesCaptcha( ?string $ipAddress ): bool
+    {
+        $errors = app( CaptchaVerifier::class )->verify( $this->form->fields, $this->formData, $this->hiddenFields, $ipAddress );
+
+        if ( [] === $errors ) {
+            return true;
+        }
+
+        foreach ( $errors as $fieldName => $message ) {
+            $this->formData[ $fieldName ] = '';
+            $this->addError( "formData.{$fieldName}", $message );
+        }
+
+        if ( $this->form->is_multi_step ) {
+            $stepId = $this->form->fields->firstWhere( 'name', array_key_first( $errors ) )?->step_id;
+            $index  = $this->steps->search( fn ( FormStep $step ): bool => $step->id === $stepId );
+
+            if ( false !== $index ) {
+                $this->currentStepIndex = (int) $index;
+                $this->clearComputedProperties();
+            }
+        }
+
+        $this->dispatch( 'forms-captcha-reset', formId: $this->form->id );
+
+        return false;
     }
 
     /**

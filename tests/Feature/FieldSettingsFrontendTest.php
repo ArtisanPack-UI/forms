@@ -146,11 +146,11 @@ describe( 'Builders and renderers use the shared contract (issues #79, #82)', fu
 } );
 
 describe( 'Client-side required acceptance (issue #81)', function () use ( $resource, $between ): void {
-    it( 'treats checkbox and toggle as acceptance fields', function () use ( $resource, $between ): void {
+    it( 'treats checkbox, toggle and consent as acceptance fields', function () use ( $resource, $between ): void {
         $validation = $resource( 'shared/validation.ts' );
         $required   = $between( $validation, 'function isMissing(', 'export function validateField(' );
 
-        expect( $resource( 'shared/fieldSettings.ts' ) )->toContain( "export const ACCEPTANCE_FIELD_TYPES = new Set( ['checkbox', 'toggle'] );" )
+        expect( $resource( 'shared/fieldSettings.ts' ) )->toContain( "export const ACCEPTANCE_FIELD_TYPES = new Set( ['checkbox', 'toggle', 'consent'] );" )
             ->and( $required )->toContain( 'ACCEPTANCE_FIELD_TYPES.has( field.type )' );
     } );
 } );

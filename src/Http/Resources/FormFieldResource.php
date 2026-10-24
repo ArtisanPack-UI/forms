@@ -18,6 +18,8 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Http\Resources;
 
 use ArtisanPackUI\Forms\Config\FieldTypes;
+use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ConsentFieldType;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Support\DynamicPopulation;
 use ArtisanPackUI\Forms\Support\FieldSettings;
@@ -126,6 +128,12 @@ class FormFieldResource extends JsonResource
             'sub_inputs'             => $this->when( $this->resource->isComposite(), fn (): array => $this->subInputs() ),
             'required_sub_inputs'    => $this->when( $this->resource->isComposite(), fn (): array => $this->resource->getRequiredSubInputKeys() ),
             'sub_label_placement'    => $this->when( $this->resource->isComposite(), fn (): string => $this->resource->getSubLabelPlacement() ),
+            'email_confirmation'     => $this->when( $this->resource->requiresEmailConfirmation(), fn (): array => $this->resource->getEmailConfirmationLabels() ),
+            'consent'                => $this->when( 'consent' === $this->type, fn (): array => [
+                'text'        => ConsentFieldType::checkboxText( $this->resource ),
+                'description' => ConsentFieldType::description( $this->resource ),
+            ] ),
+            'captcha'                => $this->when( CaptchaFieldType::TYPE === $this->type, fn (): ?array => CaptchaFieldType::widget( $this->resource ) ),
             'label_placement'        => $this->when( $this->includeResolvedDefault, fn (): ?string => $this->resource->getConfiguredLabelPlacement() ),
             'description_placement'  => $this->when( $this->includeResolvedDefault, fn (): ?string => $this->resource->getConfiguredDescriptionPlacement() ),
             'resolved_default_value' => $this->when(
@@ -158,7 +166,7 @@ class FormFieldResource extends JsonResource
     }
 
     /**
-     * Gets the field config with an html field's content sanitized.
+     * Gets the field config with an html field's content and a consent field's description sanitized.
      *
      * The React and Vue renderers inject html content as raw HTML, so it is
      * sanitized here exactly like the legacy `default_value` copy.
@@ -173,6 +181,10 @@ class FormFieldResource extends JsonResource
 
         if ( 'html' === $this->type && is_array( $config ) && is_string( $config['content'] ?? null ) ) {
             $config['content'] = FormField::sanitizeHtml( $config['content'] );
+        }
+
+        if ( 'consent' === $this->type && is_array( $config ) && is_string( $config['consent_description'] ?? null ) ) {
+            $config['consent_description'] = FormField::sanitizeHtml( $config['consent_description'] );
         }
 
         return $config;

@@ -2,9 +2,10 @@
  * Sub-input editor for composite fields.
  *
  * A table that turns each of a composite field's sub-inputs on or off,
- * relabels it, sets its placeholder and whether a required field requires
- * it. The last shown input cannot be turned off. Mirrors the Livewire
- * builder's `sub-inputs-editor` partial.
+ * relabels it, sets its placeholder, default value and population parameter
+ * (since 1.6.0), and whether a required field requires it. A select
+ * sub-input's default is one of its options. The last shown input cannot be
+ * turned off. Mirrors the Livewire builder's `sub-inputs-editor` partial.
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -14,7 +15,7 @@
 
 import React from 'react';
 
-import { buildSubInputUpdate, getEnabledSubInputs } from '../../../shared/composite';
+import { buildSubInputUpdate, getEnabledSubInputs, sanitizeSubInputParameter } from '../../../shared/composite';
 import type { SubInputSetting } from '../../../shared/composite';
 import { t } from '../../../shared/i18n';
 import type { FormField, UpdateFieldRequest } from '../../../types/artisanpack-forms';
@@ -56,6 +57,8 @@ export function SubInputsEditor( { field, onChange }: SubInputsEditorProps ): Re
 							<th scope="col">{t( 'Show' )}</th>
 							<th scope="col">{t( 'Sub-Label' )}</th>
 							<th scope="col">{t( 'Placeholder' )}</th>
+							<th scope="col">{t( 'Default' )}</th>
+							<th scope="col">{t( 'Parameter' )}</th>
 							<th scope="col">{t( 'Required' )}</th>
 						</tr>
 					</thead>
@@ -94,6 +97,44 @@ export function SubInputsEditor( { field, onChange }: SubInputsEditorProps ): Re
 									/>
 								</td>
 								<td>
+									{subInput.type === 'select' ? (
+										<select
+											className="select select-xs select-bordered w-full"
+											aria-label={t( ':input default value', { input: subInput.default_label } )}
+											defaultValue={subInput.default ?? ''}
+											onChange={( e ) => change( subInput.key, 'default', e.target.value )}
+										>
+											<option value="">{t( 'None' )}</option>
+											{( subInput.options ?? [] ).map( ( option ) => (
+												<option key={option.value} value={option.value}>{option.label}</option>
+											) )}
+										</select>
+									) : (
+										<input
+											type="text"
+											className="input input-xs input-bordered w-full"
+											aria-label={t( ':input default value', { input: subInput.default_label } )}
+											defaultValue={subInput.default ?? ''}
+											maxLength={255}
+											onBlur={( e ) => change( subInput.key, 'default', e.target.value )}
+										/>
+									)}
+								</td>
+								<td>
+									<input
+										type="text"
+										className="input input-xs input-bordered w-full font-mono"
+										aria-label={t( ':input population parameter', { input: subInput.default_label } )}
+										defaultValue={subInput.parameter ?? ''}
+										maxLength={100}
+										onBlur={( e ) => {
+											// Show the parameter as it is saved: letters, digits, `_`, `.` and `-`.
+											e.target.value = sanitizeSubInputParameter( e.target.value.trim() );
+											change( subInput.key, 'parameter', e.target.value );
+										}}
+									/>
+								</td>
+								<td>
 									<input
 										type="checkbox"
 										className="checkbox checkbox-xs checkbox-primary"
@@ -109,6 +150,8 @@ export function SubInputsEditor( { field, onChange }: SubInputsEditorProps ): Re
 			</div>
 			<p id={hintId} className="text-xs text-base-content/60">
 				{t( 'Required inputs apply when the field is required. With none checked, every shown input is required.' )}
+				{' '}
+				{t( 'A parameter fills the input from the renderer prefill or the query string.' )}
 			</p>
 		</div>
 	);

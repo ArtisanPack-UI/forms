@@ -43,6 +43,10 @@ const ICON_PATHS: Record<string, string> = {
 	divider: 'M1 7h14v2H1V7z',
 	html: 'M4.5 4L1 8l3.5 4 1.4-1.2L3.2 8l2.7-2.8L4.5 4zm7 0l-1.4 1.2L12.8 8l-2.7 2.8L11.5 12 15 8l-3.5-4z',
 	rating: 'M8 1l2.1 4.3 4.7.7-3.4 3.3.8 4.7L8 11.8 3.8 14l.8-4.7L1.2 6l4.7-.7L8 1z',
+	name: 'M8 1a3.5 3.5 0 110 7 3.5 3.5 0 010-7zm0 1.5a2 2 0 100 4 2 2 0 000-4zM2 15c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5h-1.5c0-2.4-2-4-4.5-4s-4.5 1.6-4.5 4H2z',
+	address: 'M8 0a5.5 5.5 0 015.5 5.5C13.5 10 8 16 8 16S2.5 10 2.5 5.5A5.5 5.5 0 018 0zm0 1.5a4 4 0 00-4 4c0 2.6 2.6 6.2 4 8 1.4-1.8 4-5.4 4-8a4 4 0 00-4-4zM8 3.5a2 2 0 110 4 2 2 0 010-4z',
+	consent: 'M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm.5 1.5v11h7v-11h-7zM6 4h4v1.5H6V4zm4.4 4.3l1 1.1L7.6 13 5.6 11l1-1.1 1 1 2.8-2.6z',
+	captcha: 'M8 0l6 2.5v4.5c0 4-2.6 7.6-6 9-3.4-1.4-6-5-6-9V2.5L8 0zm0 1.6L3.5 3.5V7c0 3.2 2 6.1 4.5 7.3 2.5-1.2 4.5-4.1 4.5-7.3V3.5L8 1.6zm2.4 3.7l1 1.1L7.2 10.6 4.8 8.2l1-1.1 1.4 1.4 3.2-3.2z',
 };
 
 /** Default field palette organized by category, translated at render. */
@@ -77,6 +81,10 @@ const FIELD_PALETTE = computed( (): FieldPaletteGroup[] => [
 			{ type: 'date', label: t( 'Date' ), icon: 'date', category: 'advanced' },
 			{ type: 'time', label: t( 'Time' ), icon: 'time', category: 'advanced' },
 			{ type: 'rating', label: t( 'Rating' ), icon: 'rating', category: 'advanced' },
+			{ type: 'name', label: t( 'Name' ), icon: 'name', category: 'advanced' },
+			{ type: 'address', label: t( 'Address' ), icon: 'address', category: 'advanced' },
+			{ type: 'consent', label: t( 'Consent' ), icon: 'consent', category: 'advanced' },
+			{ type: 'captcha', label: t( 'CAPTCHA' ), icon: 'captcha', category: 'advanced' },
 		],
 	},
 	{

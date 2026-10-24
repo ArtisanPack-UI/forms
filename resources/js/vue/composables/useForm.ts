@@ -19,9 +19,13 @@ import type {
 	FormStep,
 	SubmitFormResponse,
 } from '../../types/artisanpack-forms';
+import { createSubmitHooks, SubmitHookError } from '../../shared/captcha';
+import type { SubmitHooks } from '../../shared/captcha';
 import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composite';
 import { getHiddenFields } from '../../shared/conditionalLogic';
 import { getInitialFieldValue, resolveOtherChoices } from '../../shared/fieldSettings';
+import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
+import { t } from '../../shared/i18n';
 import { validateFields } from '../../shared/validation';
 
 /** Configuration options for the useForm composable. */
@@ -50,6 +54,11 @@ const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );
 
 /**
  * Initializes default form values from field definitions.
+ *
+ * An email field that asks for the address twice seeds its confirmation
+ * with the email's initial value, so a prefilled address is not reported
+ * as a mismatch. Mirrors the Livewire renderer's `buildInitialFormData()`
+ * (since 1.6.0).
  */
 function buildDefaults( fields: FormField[], prefill?: Record<string, unknown> ): Record<string, unknown> {
 	const defaults: Record<string, unknown> = {};
@@ -60,9 +69,25 @@ function buildDefaults( fields: FormField[], prefill?: Record<string, unknown> )
 		}
 
 		defaults[field.name] = getInitialFieldValue( field, { prefill } );
+
+		if ( requiresEmailConfirmation( field ) ) {
+			const email = defaults[field.name];
+
+			defaults[getConfirmationKey( field )] = typeof email === 'string' ? email : '';
+		}
 	}
 
 	return defaults;
+}
+
+/**
+ * Map each email confirmation key to the name of the email field it
+ * confirms (since 1.6.0).
+ */
+function getConfirmationFields( fields: FormField[] ): Record<string, string> {
+	return Object.fromEntries(
+		fields.filter( requiresEmailConfirmation ).map( ( field ) => [getConfirmationKey( field ), field.name] ),
+	);
 }
 
 /**
@@ -107,6 +132,12 @@ export function useForm( options: UseFormOptions ) {
 	const currentStep = ref( 0 );
 	const loadError = ref<string | null>( null );
 	const formLoadedAt = ref( 0 );
+
+	/** The form's submit hooks, which fields such as the CAPTCHA register with (since 1.6.0). */
+	const submitHooks: SubmitHooks = createSubmitHooks();
+
+	/** Each email confirmation key, mapped to its email field's name (since 1.6.0). */
+	const confirmationFields = computed( () => getConfirmationFields( form.value?.fields ?? [] ) );
 
 	// Computed: hidden fields from conditional logic
 	const hiddenFields = computed( () => {
@@ -202,6 +233,15 @@ export function useForm( options: UseFormOptions ) {
 		// A composite field's errors are keyed by sub-input; only the changed parts are cleared.
 		if ( Object.keys( errors.value ).some( ( key ) => key === name || key.startsWith( `${name}.` ) ) ) {
 			errors.value = clearChangedFieldErrors( errors.value, name, previous, value );
+		}
+
+		// A mismatched confirmation is its email field's error.
+		const confirmedField = confirmationFields.value[name];
+
+		if ( confirmedField && errors.value[confirmedField] ) {
+			const next = { ...errors.value };
+			delete next[confirmedField];
+			errors.value = next;
 		}
 	}
 
@@ -332,13 +372,42 @@ export function useForm( options: UseFormOptions ) {
 		isSubmitting.value = true;
 		errors.value = {};
 
+		/** How the request went, told to every submit hook once it was sent. */
+		let outcome: { ok: boolean; errors: Record<string, string[]> } | null = null;
+
 		try {
+			// Values fields add when the form is submitted, such as an invisible CAPTCHA's token.
+			let collected: Record<string, unknown>;
+
+			try {
+				collected = await submitHooks.collect();
+			} catch ( hookError ) {
+				if ( hookError instanceof SubmitHookError ) {
+					errors.value = { [hookError.field]: [t( 'The verification check failed. Please try again.' )] };
+
+					return;
+				}
+
+				throw hookError;
+			}
+
 			const url = `${baseUrl}/${encodeURIComponent( formSlug )}/submit`;
 			const formDataObj = new FormData();
+			const submitted = {
+				...resolveOtherChoices( form.value.fields, values.value, otherValues.value ),
+				...collected,
+			};
 
 			// Add form data values, with each "Other" choice replaced by its text
-			for ( const [key, value] of Object.entries( resolveOtherChoices( form.value.fields, values.value, otherValues.value ) ) ) {
+			for ( const [key, value] of Object.entries( submitted ) ) {
 				if ( hiddenFields.value[key] ) {
+					continue;
+				}
+
+				// An email confirmation is left out with its hidden email field.
+				const confirmedField = confirmationFields.value[key];
+
+				if ( confirmedField && hiddenFields.value[confirmedField] ) {
 					continue;
 				}
 
@@ -379,6 +448,8 @@ export function useForm( options: UseFormOptions ) {
 			// Add form loaded timestamp for bot detection
 			formDataObj.append( '_form_loaded_at', String( formLoadedAt.value ) );
 
+			outcome = { ok: false, errors: {} };
+
 			const response = await fetch( url, {
 				method: 'POST',
 				body: formDataObj,
@@ -399,6 +470,7 @@ export function useForm( options: UseFormOptions ) {
 				}
 
 				errors.value = serverErrors;
+				outcome = { ok: false, errors: serverErrors };
 
 				// Navigate to first step with server errors (multi-step)
 				if ( form.value.is_multi_step && sortedSteps.value.length > 0 ) {
@@ -433,6 +505,7 @@ export function useForm( options: UseFormOptions ) {
 
 			const result: SubmitFormResponse = await response.json();
 			isSubmitted.value = true;
+			outcome = { ok: true, errors: {} };
 
 			if ( result.redirect_url ) {
 				window.location.href = result.redirect_url;
@@ -446,6 +519,11 @@ export function useForm( options: UseFormOptions ) {
 			onError?.( error );
 		} finally {
 			isSubmitting.value = false;
+
+			// Fields learn how the submission went, e.g. a spent CAPTCHA token is reset.
+			if ( outcome ) {
+				submitHooks.settle( outcome );
+			}
 		}
 	}
 
@@ -483,6 +561,15 @@ export function useForm( options: UseFormOptions ) {
 		setFile,
 		setOtherValue,
 		removeFile,
+		/**
+		 * The form's submit hook registry. `FormRenderer` provides it to its
+		 * fields under `SUBMIT_HOOKS_KEY`; a field registers a hook to add
+		 * values when the form is submitted (`beforeSubmit`) and to hear how
+		 * the submission went (`afterSubmit`).
+		 *
+		 * @since 1.6.0
+		 */
+		submitHooks,
 		nextStep: nextStepFn,
 		prevStep: prevStepFn,
 		goToStep: goToStepFn,

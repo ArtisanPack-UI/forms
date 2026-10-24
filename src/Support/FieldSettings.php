@@ -12,6 +12,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Support;
 
+use ArtisanPackUI\Forms\Captcha\CaptchaManager;
 use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Models\FormField;
 
@@ -27,19 +28,21 @@ use ArtisanPackUI\Forms\Models\FormField;
  *
  * - `key`: the storage key.
  * - `label`, `hint`, `placeholder`: builder copy (translated).
- * - `input`: `text`, `integer`, `number`, `select`, `toggle`, `date`, `time` or
- *   `list` (comma-separated values). Defaults to `text`.
+ * - `input`: `text`, `textarea`, `integer`, `number`, `select`, `toggle`,
+ *   `date`, `time` or `list` (comma-separated values). Defaults to `text`.
  * - `store`: `field_config` (default) or `validation_rules`.
  * - `legacy_store`: a column an older copy may still live in. It takes
  *   precedence when read and is cleared on write.
  * - `tab`: the builder tab, `general` (default), `validation` or `advanced`.
  * - `default`: the value the renderer falls back to when the setting is unset.
- * - `min`, `max`: bounds for `integer` and `number`; `max_length` for `text`.
+ * - `min`, `max`: bounds for `integer` and `number`; `max_length` for `text`
+ *   and `textarea`.
  * - `step`: the `step` attribute of a `number` input.
  * - `options`: a list of `['value' => …, 'label' => …]` for `select`.
  * - `options_from`: `choice_sources` to append the registered choice sources
  *   (see ChoiceSources) to a `select`'s options when the schema is read. The
- *   setting is left out while no source is registered.
+ *   setting is left out while no source is registered. `captcha_drivers`
+ *   appends the registered CAPTCHA drivers (see CaptchaManager).
  * - `monospace`: whether to show the input in a monospace font.
  *
  * @since 1.6.0
@@ -53,7 +56,7 @@ class FieldSettings
      *
      * @var list<string>
      */
-    public const INPUTS = ['text', 'integer', 'number', 'select', 'toggle', 'date', 'time', 'list'];
+    public const INPUTS = ['text', 'textarea', 'integer', 'number', 'select', 'toggle', 'date', 'time', 'list'];
 
     /**
      * The builder tabs a setting may appear in.
@@ -332,6 +335,10 @@ class FieldSettings
         $resolved = [];
 
         foreach ( $settings as $setting ) {
+            if ( 'captcha_drivers' === ( $setting['options_from'] ?? null ) ) {
+                $setting['options'] = array_merge( $setting['options'] ?? [], app( CaptchaManager::class )->options() );
+            }
+
             if ( 'choice_sources' === ( $setting['options_from'] ?? null ) ) {
                 $sources = app( ChoiceSources::class )->options();
 

@@ -24,7 +24,15 @@ import type {
 export const SUB_INPUT_MAX_LENGTH = 255;
 
 /** The sub-input settings a field may change, mirroring `CompositeFieldType::SUB_INPUT_SETTINGS`. */
-export type SubInputSetting = 'enabled' | 'required' | 'label' | 'placeholder';
+export type SubInputSetting = 'enabled' | 'required' | 'label' | 'placeholder' | 'default' | 'parameter';
+
+/** The characters a sub-input's parameter may not use, mirroring `CompositeFieldType::PARAMETER_PATTERN`. */
+export const SUB_INPUT_PARAMETER_PATTERN = /[^A-Za-z0-9_.\-]/g;
+
+/** Clean a sub-input's population parameter: letters, digits, `_`, `.` and `-`, up to 100 characters. */
+export function sanitizeSubInputParameter( value: string ): string {
+	return value.replace( SUB_INPUT_PARAMETER_PATTERN, '' ).slice( 0, 100 );
+}
 
 /** Whether a field collects several inputs stored together. */
 export function isCompositeField( field: FormField ): boolean {
@@ -63,7 +71,10 @@ export function getSubLabelPlacement( field: FormField ): SubLabelPlacement {
 	return placement === 'above' || placement === 'hidden' ? placement : 'below';
 }
 
-/** Get the value a composite field starts with: a blank string per enabled sub-input. */
+/**
+ * Get a blank composite value: an empty string per enabled sub-input. See
+ * `getInitialFieldValue()` for the value a field starts with.
+ */
 export function getEmptyCompositeValue( field: FormField ): Record<string, string> {
 	return Object.fromEntries( getEnabledSubInputs( field ).map( ( subInput ) => [subInput.key, ''] ) );
 }
@@ -141,6 +152,17 @@ export function clearChangedFieldErrors(
 }
 
 /**
+ * Find the option of a select sub-input a populated value selects, by value
+ * or by label ignoring case. Mirrors `DynamicPopulation::matchSubInputOption()`.
+ */
+export function matchSubInputOption( subInput: SubInputDefinition, value: string ): string | undefined {
+	const options = subInput.options ?? [];
+
+	return options.find( ( option ) => option.value === value )?.value
+		?? options.find( ( option ) => option.label.toLowerCase() === value.toLowerCase() )?.value;
+}
+
+/**
  * Format a composite value for a conditional logic rule on the whole field:
  * its filled parts joined with `, `, as `CompositeFieldType::format()` joins
  * them by default. Other values are returned unchanged.
@@ -193,7 +215,11 @@ export function buildSubInputUpdate(
 
 		entry[setting] = flag;
 	} else {
-		const text = typeof value === 'string' || typeof value === 'number' ? String( value ).trim().slice( 0, 255 ) : '';
+		let text = typeof value === 'string' || typeof value === 'number' ? String( value ).trim().slice( 0, 255 ) : '';
+
+		if ( setting === 'parameter' ) {
+			text = sanitizeSubInputParameter( text );
+		}
 
 		if ( text === '' ) {
 			delete entry[setting];
@@ -224,11 +250,17 @@ export function applySubInputUpdate( field: FormField, key: string, setting: Sub
 				return { ...subInput, [setting]: Boolean( value ) };
 			}
 
-			const text = String( value ?? '' ).trim();
+			let text = String( value ?? '' ).trim();
 
-			return setting === 'label'
-				? { ...subInput, label: text !== '' ? text : subInput.default_label }
-				: { ...subInput, placeholder: text !== '' ? text : null };
+			if ( setting === 'label' ) {
+				return { ...subInput, label: text !== '' ? text : subInput.default_label };
+			}
+
+			if ( setting === 'parameter' ) {
+				text = sanitizeSubInputParameter( text );
+			}
+
+			return { ...subInput, [setting]: text !== '' ? text : null };
 		} ),
 	};
 }

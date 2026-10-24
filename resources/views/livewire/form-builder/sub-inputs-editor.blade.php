@@ -1,6 +1,6 @@
 {{-- A composite field's sub-inputs: turn each on or off, relabel it, set its
-     placeholder and whether a required field requires it
-     (see CompositeFieldType::updateSubInputConfig()). --}}
+     placeholder, default value and population parameter, and whether a
+     required field requires it (see CompositeFieldType::updateSubInputConfig()). --}}
 @php
     $subInputs = $field->getSubInputs();
     $enabledCount = count($field->getEnabledSubInputs());
@@ -18,6 +18,8 @@
                     <th scope="col">{{ __( 'Show' ) }}</th>
                     <th scope="col">{{ __( 'Sub-Label' ) }}</th>
                     <th scope="col">{{ __( 'Placeholder' ) }}</th>
+                    <th scope="col">{{ __( 'Default' ) }}</th>
+                    <th scope="col">{{ __( 'Parameter' ) }}</th>
                     <th scope="col">{{ __( 'Required' ) }}</th>
                 </tr>
             </thead>
@@ -56,6 +58,39 @@
                             />
                         </td>
                         <td>
+                            @if ('select' === $subInput['type'])
+                                <select
+                                    class="select select-xs select-bordered w-full"
+                                    aria-label="{{ __( ':input default value', ['input' => $subInput['default_label']] ) }}"
+                                    wire:change="updateSubInput(@js($key), 'default', $event.target.value)"
+                                >
+                                    <option value="">{{ __( 'None' ) }}</option>
+                                    @foreach ($subInput['options'] as $option)
+                                        <option value="{{ $option['value'] }}" @selected($subInput['default'] === $option['value'])>{{ $option['label'] }}</option>
+                                    @endforeach
+                                </select>
+                            @else
+                                <input
+                                    type="text"
+                                    class="input input-xs input-bordered w-full"
+                                    aria-label="{{ __( ':input default value', ['input' => $subInput['default_label']] ) }}"
+                                    value="{{ $subInput['default'] }}"
+                                    maxlength="255"
+                                    wire:change="updateSubInput(@js($key), 'default', $event.target.value)"
+                                />
+                            @endif
+                        </td>
+                        <td>
+                            <input
+                                type="text"
+                                class="input input-xs input-bordered w-full font-mono"
+                                aria-label="{{ __( ':input population parameter', ['input' => $subInput['default_label']] ) }}"
+                                value="{{ $subInput['parameter'] }}"
+                                maxlength="100"
+                                wire:change="updateSubInput(@js($key), 'parameter', $event.target.value)"
+                            />
+                        </td>
+                        <td>
                             <input
                                 type="checkbox"
                                 class="checkbox checkbox-xs checkbox-primary"
@@ -73,6 +108,7 @@
     <span class="label" id="sub-inputs-hint-{{ $field->uuid }}">
         <span class="label-text-alt text-xs text-base-content/50">
             {{ __( 'Required inputs apply when the field is required. With none checked, every shown input is required.' ) }}
+            {{ __( 'A parameter fills the input from the renderer prefill or the query string.' ) }}
         </span>
     </span>
 </div>

@@ -616,3 +616,166 @@
     });
 </script>
 @endpush
+
+@push('scripts')
+<script>
+    document.addEventListener('alpine:init', () => {
+        /**
+         * Loads a CAPTCHA provider's script once per page and resolves when
+         * its global API is ready.
+         */
+        const loadCaptchaScript = (provider, src) => {
+            window.__formsCaptchaScripts = window.__formsCaptchaScripts || {};
+
+            if (window.__formsCaptchaScripts[src]) {
+                return window.__formsCaptchaScripts[src];
+            }
+
+            const ready = () => {
+                if (provider === 'turnstile') return Boolean(window.turnstile?.render);
+                if (provider === 'hcaptcha') return Boolean(window.hcaptcha?.render);
+                if (provider === 'recaptcha_v3') return Boolean(window.grecaptcha?.ready);
+
+                return Boolean(window.grecaptcha?.render);
+            };
+
+            window.__formsCaptchaScripts[src] = new Promise((resolve, reject) => {
+                if (!document.querySelector(`script[src="${src}"]`)) {
+                    const script = document.createElement('script');
+                    script.src = src;
+                    script.async = true;
+                    script.defer = true;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                }
+
+                const started = Date.now();
+                const poll = () => {
+                    if (ready()) {
+                        resolve();
+                    } else if (Date.now() - started > 15000) {
+                        reject(new Error('CAPTCHA script timed out'));
+                    } else {
+                        setTimeout(poll, 50);
+                    }
+                };
+
+                poll();
+            });
+
+            return window.__formsCaptchaScripts[src];
+        };
+
+        Alpine.data('formsCaptcha', (config) => ({
+            widgetId: null,
+            token: '',
+            failed: false,
+            pendingSubmit: false,
+
+            init() {
+                this.form = this.$el.closest('form');
+
+                loadCaptchaScript(config.provider, config.script)
+                    .then(() => this.render())
+                    .catch(() => { this.failed = true; });
+
+                this.onReset = (event) => {
+                    const detail = Array.isArray(event.detail) ? event.detail[0] : event.detail;
+
+                    if (!detail?.formId || String(detail.formId) === String(config.formId)) {
+                        this.reset();
+                    }
+                };
+                window.addEventListener('forms-captcha-reset', this.onReset);
+
+                // Invisible modes fetch a token when the form is submitted; the
+                // listener runs in the capture phase, before Livewire's.
+                this.onSubmit = (event) => {
+                    if (event.target !== this.form || this.token || !this.runsOnSubmit()) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    this.pendingSubmit = true;
+                    this.execute();
+                };
+                document.addEventListener('submit', this.onSubmit, true);
+            },
+
+            destroy() {
+                window.removeEventListener('forms-captcha-reset', this.onReset);
+                document.removeEventListener('submit', this.onSubmit, true);
+            },
+
+            runsOnSubmit() {
+                return config.size === 'invisible';
+            },
+
+            render() {
+                const options = {
+                    sitekey: config.site_key,
+                    size: config.size,
+                    callback: (token) => this.setToken(token),
+                    'expired-callback': () => this.setToken(''),
+                    'error-callback': () => this.setToken(''),
+                };
+
+                if (config.provider === 'turnstile') {
+                    this.widgetId = window.turnstile.render(this.$refs.widget, { ...options, theme: config.theme });
+                } else if (config.provider === 'hcaptcha') {
+                    this.widgetId = window.hcaptcha.render(this.$refs.widget, {
+                        ...options,
+                        'close-callback': () => { this.pendingSubmit = false; },
+                        theme: config.theme === 'dark' ? 'dark' : 'light',
+                    });
+                } else if (config.provider === 'recaptcha_v2') {
+                    this.widgetId = window.grecaptcha.render(this.$refs.widget, { ...options, theme: config.theme === 'dark' ? 'dark' : 'light' });
+                }
+            },
+
+            execute() {
+                if (config.provider === 'recaptcha_v3') {
+                    window.grecaptcha.ready(() => {
+                        window.grecaptcha.execute(config.site_key, { action: config.action })
+                            .then((token) => this.setToken(token))
+                            .catch(() => { this.pendingSubmit = false; this.failed = true; });
+                    });
+                } else if (config.provider === 'hcaptcha') {
+                    window.hcaptcha.execute(this.widgetId);
+                } else if (config.provider === 'recaptcha_v2') {
+                    window.grecaptcha.execute(this.widgetId);
+                }
+            },
+
+            setToken(token) {
+                this.token = token || '';
+                this.$wire.set(config.model, this.token, false);
+
+                if (this.token && this.pendingSubmit) {
+                    this.pendingSubmit = false;
+                    this.form?.requestSubmit();
+                }
+            },
+
+            reset() {
+                this.token = '';
+                this.pendingSubmit = false;
+                this.$wire.set(config.model, '', false);
+
+                if (this.widgetId === null) {
+                    return;
+                }
+
+                if (config.provider === 'turnstile') {
+                    window.turnstile?.reset(this.widgetId);
+                } else if (config.provider === 'hcaptcha') {
+                    window.hcaptcha?.reset(this.widgetId);
+                } else if (config.provider === 'recaptcha_v2') {
+                    window.grecaptcha?.reset(this.widgetId);
+                }
+            },
+        }));
+    });
+</script>
+@endpush

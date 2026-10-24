@@ -35,15 +35,15 @@ import type {
 	ValidationRules,
 } from '../types/artisanpack-forms';
 
-import { getEmptyCompositeValue, isCompositeField, toCompositeValue } from './composite';
-import { getPopulatedValue } from './dynamicPopulation';
+import { getEnabledSubInputs, isCompositeField, matchSubInputOption, toCompositeValue } from './composite';
+import { getPageContext, getPopulatedValue, sanitizePopulatedValue } from './dynamicPopulation';
 import type { PopulationSource } from './dynamicPopulation';
 
 /** Field types whose content is edited in the builder's General tab. */
 export const CONTENT_LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'html'] );
 
 /** Field types whose required state means "must be checked". */
-export const ACCEPTANCE_FIELD_TYPES = new Set( ['checkbox', 'toggle'] );
+export const ACCEPTANCE_FIELD_TYPES = new Set( ['checkbox', 'toggle', 'consent'] );
 
 type FileSettingKey = 'max_size' | 'allowed_types';
 
@@ -488,15 +488,42 @@ export function isReadOnlyField( field: FormField ): boolean {
  * (`read_only_value`), so what is shown matches what is saved. Other fields
  * start with their resolved default value, or — when populated dynamically —
  * the prefill or query string value (see `getPopulatedValue()`). A
- * composite field starts with a blank string per enabled sub-input.
+ * composite field starts with the server's value per enabled sub-input (its
+ * default, or the filter value of its parameter), and a sub-input with a
+ * population parameter takes the prefill or query string value first; a
+ * select sub-input keeps only a value that matches an option. Mirrors
+ * `DynamicPopulation::compositeValue()`.
  *
  * @since 1.6.0
  */
 export function getInitialFieldValue( field: FormField, population: PopulationSource = {} ): unknown {
 	if ( isCompositeField( field ) ) {
 		const resolved = toCompositeValue( field.resolved_default_value );
+		const page = population.page ?? getPageContext();
 
-		return Object.fromEntries( Object.keys( getEmptyCompositeValue( field ) ).map( ( key ) => [key, resolved[key] ?? ''] ) );
+		return Object.fromEntries( getEnabledSubInputs( field ).map( ( subInput ) => {
+			const base = resolved[subInput.key] ?? subInput.default ?? '';
+			const parameter = subInput.parameter;
+			let raw: unknown;
+
+			if ( parameter && population.prefill && Object.prototype.hasOwnProperty.call( population.prefill, parameter ) ) {
+				raw = population.prefill[parameter];
+			} else if ( parameter && page?.query.has( parameter ) ) {
+				raw = page.query.get( parameter );
+			}
+
+			if ( typeof raw !== 'string' && typeof raw !== 'number' ) {
+				return [subInput.key, base];
+			}
+
+			let value = sanitizePopulatedValue( String( raw ) );
+
+			if ( subInput.type === 'select' && value !== '' ) {
+				value = matchSubInputOption( subInput, value ) ?? base;
+			}
+
+			return [subInput.key, value === '' ? base : value];
+		} ) );
 	}
 
 	const source: unknown = isReadOnlyField( field ) && field.read_only_value !== undefined
@@ -518,6 +545,19 @@ export function getInitialFieldValue( field: FormField, population: PopulationSo
 	}
 
 	return source ?? '';
+}
+
+/** Whether an email field asks for the address twice (since 1.6.0). */
+export function requiresEmailConfirmation( field: FormField ): boolean {
+	return field.type === 'email' && field.email_confirmation !== undefined && field.email_confirmation !== null;
+}
+
+/**
+ * Get the data key an email field's confirmation is submitted under,
+ * mirroring `FormField::getConfirmationKey()` (since 1.6.0).
+ */
+export function getConfirmationKey( field: FormField ): string {
+	return `${field.name}_confirmation`;
 }
 
 /** Switch sizes, mirroring `ToggleFieldType::SIZES`. */

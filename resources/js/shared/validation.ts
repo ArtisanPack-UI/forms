@@ -12,6 +12,7 @@
 
 import type { FormField, ValidationRules } from '../types/artisanpack-forms';
 
+import { hasCaptchaWidget, runsOnSubmit } from './captcha';
 import {
 	getEnabledSubInputs,
 	getRequiredSubInputKeys,
@@ -22,6 +23,7 @@ import {
 import {
 	ACCEPTANCE_FIELD_TYPES,
 	allowsOtherChoice,
+	getConfirmationKey,
 	getFileAllowedTypes,
 	getFileMaxSize,
 	getOtherChoiceLabel,
@@ -29,6 +31,7 @@ import {
 	OTHER_CHOICE_MAX_LENGTH,
 	OTHER_CHOICE_VALUE,
 	ratingAllowsHalf,
+	requiresEmailConfirmation,
 } from './fieldSettings';
 import { t } from './i18n';
 
@@ -414,6 +417,8 @@ export function validateCompositeField( field: FormField, value: unknown ): Reco
 			message = required.has( subInput.key )
 				? field.required_message ?? t( ':field: :part is required.', replacements )
 				: undefined;
+		} else if ( subInput.type === 'select' && ( subInput.options ?? [] ).length > 0 && !( subInput.options ?? [] ).some( ( option ) => option.value === part ) ) {
+			message = t( ':field: please choose a valid :part.', replacements );
 		} else if ( subInput.type === 'number' ) {
 			message = Number.isFinite( Number( part ) ) ? undefined : t( ':field: :part must be a number.', replacements );
 		} else if ( part.length > SUB_INPUT_MAX_LENGTH ) {
@@ -444,9 +449,45 @@ function isValidUrl( value: string ): boolean {
 }
 
 /**
+ * Validates an email field's confirmation, mirroring Laravel's `confirmed`
+ * rule: a filled-in email must match `{name}_confirmation`. The field's
+ * custom error message replaces the built-in one (since 1.6.0).
+ *
+ * @returns An array of error messages (empty if valid).
+ */
+export function validateEmailConfirmation( field: FormField, value: unknown, confirmation: unknown ): string[] {
+	const email = value === null || value === undefined ? '' : String( value );
+
+	if ( email.trim() === '' || email === String( confirmation ?? '' ) ) {
+		return [];
+	}
+
+	return [field.error_message ?? t( 'The email addresses entered for :field do not match.', { field: field.label ?? field.name } )];
+}
+
+/**
+ * Validates a CAPTCHA field: a token is required while its provider is set
+ * up, except for invisible widgets, which fetch it when the form is
+ * submitted. The server checks the token itself (since 1.6.0).
+ *
+ * @returns An array of error messages (empty if valid).
+ */
+export function validateCaptchaField( field: FormField, value: unknown ): string[] {
+	if ( !hasCaptchaWidget( field ) || runsOnSubmit( field.captcha ) ) {
+		return [];
+	}
+
+	return typeof value === 'string' && value !== ''
+		? []
+		: [field.required_message ?? t( 'Please complete the verification check.' )];
+}
+
+/**
  * Validates all visible fields in a form.
  *
- * A composite field's errors are keyed `{field}.{key}` (since 1.6.0).
+ * A composite field's errors are keyed `{field}.{key}` (since 1.6.0). An
+ * email field's confirmation is read from `{name}_confirmation` and a
+ * mismatch is the email field's error (since 1.6.0).
  *
  * @returns A map of field names to their error arrays.
  */
@@ -473,7 +514,21 @@ export function validateFields(
 			continue;
 		}
 
+		if ( field.type === 'captcha' ) {
+			const captchaErrors = validateCaptchaField( field, formData[field.name] );
+
+			if ( captchaErrors.length > 0 ) {
+				errors[field.name] = captchaErrors;
+			}
+
+			continue;
+		}
+
 		const fieldErrors = validateField( field, formData[field.name], files );
+
+		if ( fieldErrors.length === 0 && requiresEmailConfirmation( field ) ) {
+			fieldErrors.push( ...validateEmailConfirmation( field, formData[field.name], formData[getConfirmationKey( field )] ) );
+		}
 
 		if ( fieldErrors.length > 0 ) {
 			errors[field.name] = fieldErrors;

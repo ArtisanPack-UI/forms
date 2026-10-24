@@ -5,8 +5,12 @@
   an address: a `<fieldset>` whose `<legend>` is the field label, with one
   labelled input per enabled sub-input carrying its `autocomplete` token and
   its own error, and a field-level summary when any part is invalid.
-  Sub-labels sit below or above their input, or are visually hidden. Mirrors
-  the React `CompositeField` and the Blade `composite` partial.
+  Sub-labels sit below or above their input, or are visually hidden. A
+  `select` sub-input renders its options and a `wide` one spans the row.
+  Each input carries `data-forms-part="{key}"` and the fieldset
+  `data-forms-composite="{type}"`, so address autocomplete providers can
+  find them. Mirrors the React `CompositeField` and the Blade `composite`
+  partial.
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -81,7 +85,12 @@ function subLabelClass(): string {
 </script>
 
 <template>
-	<fieldset :id="`field-${field.name}`" :class="['fieldset', field.css_classes ?? '']" :aria-describedby="describedBy">
+	<fieldset
+		:id="`field-${field.name}`"
+		:class="['fieldset', field.css_classes ?? '']"
+		:data-forms-composite="field.type"
+		:aria-describedby="describedBy"
+	>
 		<legend v-if="field.label" :class="['fieldset-legend', hiddenLabel ? 'sr-only' : '']">
 			{{ field.label }}
 			<span v-if="field.is_required" class="text-error ml-1" aria-hidden="true">*</span>
@@ -92,15 +101,40 @@ function subLabelClass(): string {
 		</p>
 
 		<div :class="['grid grid-cols-1 gap-3', subInputs.length > 1 ? 'sm:grid-cols-2' : '']">
-			<div v-for="subInput in subInputs" :key="subInput.key" class="flex flex-col gap-1">
+			<div
+				v-for="subInput in subInputs"
+				:key="subInput.key"
+				:class="['flex flex-col gap-1', subInput.wide && subInputs.length > 1 ? 'sm:col-span-2' : '']"
+			>
 				<label v-if="subLabelPlacement !== 'below'" :for="getSubInputId( field, subInput.key )" :class="subLabelClass()">
 					{{ subInput.label }}
 					<span v-if="required.has( subInput.key )" class="text-error ml-1" aria-hidden="true">*</span>
 				</label>
+				<select
+					v-if="subInput.type === 'select'"
+					:id="getSubInputId( field, subInput.key )"
+					:name="`${field.name}[${subInput.key}]`"
+					:data-forms-part="subInput.key"
+					:class="['select select-bordered w-full', subErrors[subInput.key] ? 'select-error' : '']"
+					:value="parts[subInput.key] ?? ''"
+					:autocomplete="subInput.autocomplete ?? undefined"
+					:required="required.has( subInput.key )"
+					:aria-required="required.has( subInput.key ) ? 'true' : undefined"
+					:aria-invalid="subErrors[subInput.key] ? true : undefined"
+					:aria-describedby="subErrors[subInput.key] ? `${getSubInputId( field, subInput.key )}-error` : undefined"
+					@change="update( subInput.key, ( $event.target as HTMLSelectElement ).value )"
+				>
+					<option value="">{{ subInput.placeholder || t( 'Select…' ) }}</option>
+					<option v-for="option in subInput.options ?? []" :key="option.value" :value="option.value">
+						{{ option.label }}
+					</option>
+				</select>
 				<input
+					v-else
 					:id="getSubInputId( field, subInput.key )"
 					:type="subInput.type"
 					:name="`${field.name}[${subInput.key}]`"
+					:data-forms-part="subInput.key"
 					:class="['input input-bordered w-full', subErrors[subInput.key] ? 'input-error' : '']"
 					:value="parts[subInput.key] ?? ''"
 					:placeholder="subInput.placeholder ?? undefined"

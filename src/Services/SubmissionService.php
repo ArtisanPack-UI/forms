@@ -87,7 +87,10 @@ class SubmissionService
      * Values for administrative fields are dropped, since admins fill those in
      * on the submission (see updateAdministrativeValues()). Values of "Do not
      * store" fields are not saved; they are added to the submission's loaded
-     * values for the notifications and webhooks of this request only.
+     * values for the notifications and webhooks of this request only. An
+     * email field's confirmation (`{name}_confirmation`) and the token of a
+     * type that stores no value (such as a CAPTCHA) are dropped before the
+     * filter runs.
      *
      * @since 1.0.0
      *
@@ -102,10 +105,13 @@ class SubmissionService
      */
     public function create( Form $form, array $formData, array $files = [], array $metadata = [] ): FormSubmission
     {
+        $fields = $form->fields()->get()->keyBy( 'name' );
+
+        // Confirmation inputs and challenge tokens are checked, never kept
+        $formData = $this->withoutTransientInputs( $fields, $formData );
+
         // Apply filter hook to allow modifying submission data before saving
         $formData = applyFilters( 'ap.forms.submissionData', $formData, $form );
-
-        $fields = $form->fields()->get()->keyBy( 'name' );
 
         // Read-only fields keep their own value whatever the client sent
         $formData = $this->applyReadOnlyValues( $fields, $formData, true );
@@ -178,6 +184,41 @@ class SubmissionService
         $this->sendNotifications( $submission );
 
         return $submission;
+    }
+
+    /**
+     * Removes the submitted inputs that are checked but never stored.
+     *
+     * An email field's confirmation input (unless a field has that name) and
+     * the value of any field whose type definition sets `stores_value` to
+     * false (such as a CAPTCHA token).
+     *
+     * @since 1.6.0
+     *
+     * @param  iterable<FormField>  $fields  The form fields.
+     * @param  array<string, mixed>  $formData  The submitted values keyed by field name.
+     *
+     * @return array<string, mixed> The values without those inputs.
+     */
+    public function withoutTransientInputs( iterable $fields, array $formData ): array
+    {
+        $names = [];
+
+        foreach ( $fields as $field ) {
+            $names[ $field->name ] = true;
+        }
+
+        foreach ( $fields as $field ) {
+            if ( 'email' === $field->type && ! isset( $names[ $field->getConfirmationKey() ] ) ) {
+                unset( $formData[ $field->getConfirmationKey() ] );
+            }
+
+            if ( false === ( $field->fieldType()->definition()['stores_value'] ?? true ) ) {
+                unset( $formData[ $field->name ] );
+            }
+        }
+
+        return $formData;
     }
 
     /**

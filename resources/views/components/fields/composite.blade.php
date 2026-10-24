@@ -6,7 +6,12 @@
     its sub-input's `autocomplete` token and its own error; a field-level
     summary follows when any part is invalid. Sub-labels sit below or above
     their input, or are visually hidden. A `left` label placement shows the
-    legend on top, since a legend cannot sit beside its group.
+    legend on top, since a legend cannot sit beside its group. A `select`
+    sub-input renders its options; a `wide` one spans the row. Each input
+    carries `data-forms-part="{key}"` and the fieldset
+    `data-forms-composite="{type}"`, so address autocomplete providers can
+    find them; an address field also renders the `ap.forms.addressAutocomplete`
+    filter's HTML after the fieldset.
 
     Variables:
     - $field     The FormField.
@@ -32,6 +37,7 @@
 <fieldset
     class="fieldset {{ $field->css_classes }}"
     id="field-{{ $field->name }}"
+    data-forms-composite="{{ $field->type }}"
     @if($describedBy) aria-describedby="{{ $describedBy }}" @endif
 >
     @if(filled($field->label))
@@ -54,7 +60,7 @@
                 $subError = $subErrors[$key] ?? null;
                 $isRequired = in_array($key, $requiredKeys, true);
             @endphp
-            <div class="flex flex-col gap-1" wire:key="sub-input-{{ $field->uuid }}-{{ $key }}">
+            <div @class(['flex flex-col gap-1', 'sm:col-span-2' => $subInput['wide'] && count($subInputs) > 1]) wire:key="sub-input-{{ $field->uuid }}-{{ $key }}">
                 @if('below' !== $subLabelPlacement)
                     <label for="{{ $inputId }}" @class(['label text-sm', 'sr-only' => 'hidden' === $subLabelPlacement])>
                         {{ $subInput['label'] }}
@@ -64,17 +70,36 @@
                     </label>
                 @endif
 
-                <input
-                    type="{{ $subInput['type'] }}"
-                    id="{{ $inputId }}"
-                    name="{{ $field->name }}[{{ $key }}]"
-                    wire:model.live="formData.{{ $field->name }}.{{ $key }}"
-                    @class(['input input-bordered w-full', 'input-error' => filled($subError)])
-                    @if(filled($subInput['placeholder'])) placeholder="{{ $subInput['placeholder'] }}" @endif
-                    @if(filled($subInput['autocomplete'])) autocomplete="{{ $subInput['autocomplete'] }}" @endif
-                    @if($isRequired) required aria-required="true" @endif
-                    @if(filled($subError)) aria-invalid="true" aria-describedby="error-{{ $field->name }}-{{ $key }}" @endif
-                />
+                @if('select' === $subInput['type'])
+                    <select
+                        id="{{ $inputId }}"
+                        name="{{ $field->name }}[{{ $key }}]"
+                        data-forms-part="{{ $key }}"
+                        wire:model.live="formData.{{ $field->name }}.{{ $key }}"
+                        @class(['select select-bordered w-full', 'select-error' => filled($subError)])
+                        @if(filled($subInput['autocomplete'])) autocomplete="{{ $subInput['autocomplete'] }}" @endif
+                        @if($isRequired) required aria-required="true" @endif
+                        @if(filled($subError)) aria-invalid="true" aria-describedby="error-{{ $field->name }}-{{ $key }}" @endif
+                    >
+                        <option value="">{{ filled($subInput['placeholder']) ? $subInput['placeholder'] : __( 'Select…' ) }}</option>
+                        @foreach($subInput['options'] as $option)
+                            <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                        @endforeach
+                    </select>
+                @else
+                    <input
+                        type="{{ $subInput['type'] }}"
+                        id="{{ $inputId }}"
+                        name="{{ $field->name }}[{{ $key }}]"
+                        data-forms-part="{{ $key }}"
+                        wire:model.live="formData.{{ $field->name }}.{{ $key }}"
+                        @class(['input input-bordered w-full', 'input-error' => filled($subError)])
+                        @if(filled($subInput['placeholder'])) placeholder="{{ $subInput['placeholder'] }}" @endif
+                        @if(filled($subInput['autocomplete'])) autocomplete="{{ $subInput['autocomplete'] }}" @endif
+                        @if($isRequired) required aria-required="true" @endif
+                        @if(filled($subError)) aria-invalid="true" aria-describedby="error-{{ $field->name }}-{{ $key }}" @endif
+                    />
+                @endif
 
                 @if('below' === $subLabelPlacement)
                     <label for="{{ $inputId }}" class="fieldset-label text-xs">
@@ -102,3 +127,7 @@
         </p>
     @endif
 </fieldset>
+
+@if('address' === $field->type)
+    {!! applyFilters( 'ap.forms.addressAutocomplete', '', $field ) !!}
+@endif

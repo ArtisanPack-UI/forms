@@ -5,8 +5,11 @@
  * an address: a `<fieldset>` whose `<legend>` is the field label, with one
  * labelled input per enabled sub-input carrying its `autocomplete` token and
  * its own error, and a field-level summary when any part is invalid.
- * Sub-labels sit below or above their input, or are visually hidden.
- * Mirrors the Blade `composite` partial.
+ * Sub-labels sit below or above their input, or are visually hidden. A
+ * `select` sub-input renders its options and a `wide` one spans the row.
+ * Each input carries `data-forms-part="{key}"` and the fieldset
+ * `data-forms-composite="{type}"`, so address autocomplete providers can
+ * find them. Mirrors the Blade `composite` partial.
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -51,7 +54,12 @@ export function CompositeField( { field, value, error, subErrors = {}, onChange,
 	};
 
 	return (
-		<fieldset id={`field-${field.name}`} className={`fieldset ${field.css_classes ?? ''}`} aria-describedby={describedBy}>
+		<fieldset
+			id={`field-${field.name}`}
+			className={`fieldset ${field.css_classes ?? ''}`}
+			data-forms-composite={field.type}
+			aria-describedby={describedBy}
+		>
 			{field.label && (
 				<legend className={`fieldset-legend ${hiddenLabel ? 'sr-only' : ''}`}>
 					{field.label}
@@ -76,24 +84,48 @@ export function CompositeField( { field, value, error, subErrors = {}, onChange,
 						</label>
 					);
 
+					const isWide = Boolean( subInput.wide ) && subInputs.length > 1;
+
 					return (
-						<div key={subInput.key} className="flex flex-col gap-1">
+						<div key={subInput.key} className={`flex flex-col gap-1 ${isWide ? 'sm:col-span-2' : ''}`}>
 							{subLabelPlacement !== 'below' && label}
-							<input
-								id={inputId}
-								type={subInput.type}
-								name={`${field.name}[${subInput.key}]`}
-								className={`input input-bordered w-full ${subError ? 'input-error' : ''}`}
-								value={parts[subInput.key] ?? ''}
-								placeholder={subInput.placeholder ?? undefined}
-								autoComplete={subInput.autocomplete ?? undefined}
-								maxLength={subInput.type === 'number' ? undefined : SUB_INPUT_MAX_LENGTH}
-								required={isRequired}
-								aria-required={isRequired ? 'true' : undefined}
-								aria-invalid={subError ? true : undefined}
-								aria-describedby={subError ? `${inputId}-error` : undefined}
-								onChange={( e ) => handleChange( subInput.key, e.target.value )}
-							/>
+							{subInput.type === 'select' ? (
+								<select
+									id={inputId}
+									name={`${field.name}[${subInput.key}]`}
+									data-forms-part={subInput.key}
+									value={parts[subInput.key] ?? ''}
+									autoComplete={subInput.autocomplete ?? undefined}
+									required={isRequired}
+									aria-required={isRequired ? 'true' : undefined}
+									aria-invalid={subError ? true : undefined}
+									aria-describedby={subError ? `${inputId}-error` : undefined}
+									className={`select select-bordered w-full ${subError ? 'select-error' : ''}`}
+									onChange={( e ) => handleChange( subInput.key, e.target.value )}
+								>
+									<option value="">{subInput.placeholder || t( 'Select…' )}</option>
+									{( subInput.options ?? [] ).map( ( option ) => (
+										<option key={option.value} value={option.value}>{option.label}</option>
+									) )}
+								</select>
+							) : (
+								<input
+									id={inputId}
+									name={`${field.name}[${subInput.key}]`}
+									data-forms-part={subInput.key}
+									value={parts[subInput.key] ?? ''}
+									autoComplete={subInput.autocomplete ?? undefined}
+									required={isRequired}
+									aria-required={isRequired ? 'true' : undefined}
+									aria-invalid={subError ? true : undefined}
+									aria-describedby={subError ? `${inputId}-error` : undefined}
+									type={subInput.type}
+									className={`input input-bordered w-full ${subError ? 'input-error' : ''}`}
+									placeholder={subInput.placeholder ?? undefined}
+									maxLength={subInput.type === 'number' ? undefined : SUB_INPUT_MAX_LENGTH}
+									onChange={( e ) => handleChange( subInput.key, e.target.value )}
+								/>
+							)}
 							{subLabelPlacement === 'below' && label}
 							{subError && <p id={`${inputId}-error`} className="text-xs text-error">{subError}</p>}
 						</div>

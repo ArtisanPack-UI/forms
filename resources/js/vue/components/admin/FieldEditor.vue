@@ -53,6 +53,12 @@ const OPTION_FIELD_TYPES = new Set<FieldType>( [
 /** Field types without a placeholder. */
 const NO_PLACEHOLDER_TYPES = new Set<FieldType>( ['checkbox', 'toggle', 'radio', 'rating'] );
 
+/**
+ * Field types without a placeholder or a default value (since 1.6.0). Name
+ * and address fields are composites, whose inputs have their own.
+ */
+const NO_VALUE_SETTING_TYPES = new Set<FieldType>( ['consent', 'captcha'] );
+
 /** Field types that don't collect user data. */
 const LAYOUT_FIELD_TYPES = new Set<FieldType>( [
 	'heading',
@@ -302,12 +308,14 @@ function confirmDelete(): void {
 					/>
 
 					<!-- Placeholder (non-layout only; a composite field's inputs have their own) -->
-					<Input
-						v-if="!isLayoutField && !isComposite && !NO_PLACEHOLDER_TYPES.has( field.type )"
-						:label="t( 'Placeholder' )"
-						:model-value="field.placeholder ?? ''"
-						@update:model-value="updateField( { placeholder: ($event as string) || null } )"
-					/>
+					<template v-if="!NO_VALUE_SETTING_TYPES.has( field.type )">
+						<Input
+							v-if="!isLayoutField && !isComposite && !NO_PLACEHOLDER_TYPES.has( field.type )"
+							:label="t( 'Placeholder' )"
+							:model-value="field.placeholder ?? ''"
+							@update:model-value="updateField( { placeholder: ($event as string) || null } )"
+						/>
+					</template>
 
 					<!-- A composite field's sub-inputs -->
 					<SubInputsEditor
@@ -327,7 +335,7 @@ function confirmDelete(): void {
 
 					<!-- Default value -->
 					<Input
-						v-if="!isLayoutField && !isComposite && field.type !== 'file'"
+						v-if="!isLayoutField && !isComposite && field.type !== 'file' && !NO_VALUE_SETTING_TYPES.has( field.type )"
 						:label="t( 'Default Value' )"
 						:model-value="field.default_value ?? ''"
 						:hint="t( 'Merge tags: :tags', { tags: MERGE_TAGS.join( ', ' ) } )"

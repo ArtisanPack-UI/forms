@@ -351,6 +351,10 @@ describe( 'rendering', function (): void {
                 'required'      => true,
                 'autocomplete'  => 'street-address',
                 'type'          => 'text',
+                'wide'          => false,
+                'options'       => [],
+                'default'       => null,
+                'parameter'     => null,
             ] )
             ->and( $fields[0]['required_sub_inputs'] )->toBe( ['street', 'city'] )
             ->and( $fields[0]['sub_label_placement'] )->toBe( 'below' )

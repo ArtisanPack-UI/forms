@@ -14,6 +14,7 @@ namespace ArtisanPackUI\Forms\FieldTypes;
 
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
+use Illuminate\Validation\Rule;
 
 /**
  * A field made of several inputs that are stored together, such as a name or
@@ -29,11 +30,20 @@ use ArtisanPackUI\Forms\Models\FormSubmissionValue;
  * - `required`: whether a required field requires the input (default false;
  *   when no enabled input is marked, a required field requires them all).
  * - `autocomplete`: the input's `autocomplete` token.
- * - `type`: `text` (default), `email`, `tel`, `url` or `number`.
+ * - `type`: `text` (default), `email`, `tel`, `url`, `number` or `select`.
+ * - `wide`: whether the input spans the whole row (default false).
+ * - `options`: a `select` input's choices, as value/label pairs or a
+ *   value => label map; the value must be one of them.
+ * - `default`: the value the input starts with.
+ * - `parameter`: the prefill key and query string parameter that populates
+ *   the input (see DynamicPopulation).
  * - `rules`: extra validation rules for the input.
  *
- * Admins enable, relabel, and mark inputs required per field in
- * `field_config.sub_inputs` (see FormField::getSubInputs()). The value is
+ * A subclass whose inputs depend on the field's settings (such as an address
+ * whose state input becomes a select for the United States) overrides
+ * subInputDefinitions(). Admins enable, relabel, mark required, and set the
+ * default and parameter of inputs per field in `field_config.sub_inputs`
+ * (see FormField::getSubInputs()). The value is
  * stored as a map of input keys in `value_array`; it is shown as the filled
  * inputs joined by the definition's `format_separator` (default `, `),
  * exported as one column per enabled input or one formatted column, and
@@ -60,21 +70,32 @@ abstract class CompositeFieldType extends AbstractFieldType
      *
      * @var list<string>
      */
-    public const SUB_INPUT_SETTINGS = ['enabled', 'required', 'label', 'placeholder'];
+    public const SUB_INPUT_SETTINGS = ['enabled', 'required', 'label', 'placeholder', 'default', 'parameter'];
+
+    /**
+     * The characters a sub-input's population parameter may use.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const PARAMETER_PATTERN = '/[^A-Za-z0-9_.\-]/';
 
     /**
      * Builds the field config that changes one of a field's sub-input settings.
      *
-     * `enabled` and `required` are stored as booleans; `label` and
-     * `placeholder` are trimmed and capped at 255 characters, and a blank one
-     * falls back to the definition. The last enabled sub-input cannot be
-     * turned off. `resources/js/shared/composite.ts` mirrors this.
+     * `enabled` and `required` are stored as booleans; `label`,
+     * `placeholder` and `default` are trimmed and capped at 255 characters,
+     * and `parameter` keeps letters, digits, `_`, `.` and `-` up to 100
+     * characters. A blank text falls back to the definition. The last enabled
+     * sub-input cannot be turned off. `resources/js/shared/composite.ts`
+     * mirrors this.
      *
      * @since 1.6.0
      *
      * @param  FormField  $field  The composite field.
      * @param  string  $key  The sub-input key.
-     * @param  string  $setting  `enabled`, `required`, `label` or `placeholder`.
+     * @param  string  $setting  One of SUB_INPUT_SETTINGS.
      * @param  mixed  $value  The raw input value.
      *
      * @return array<string, mixed>|null The new field config, or null when the change is not allowed.
@@ -102,6 +123,10 @@ abstract class CompositeFieldType extends AbstractFieldType
         } else {
             $text = is_scalar( $value ) && ! is_bool( $value ) ? mb_substr( trim( (string) $value ), 0, 255 ) : '';
 
+            if ( 'parameter' === $setting ) {
+                $text = mb_substr( (string) preg_replace( self::PARAMETER_PATTERN, '', $text ), 0, 100 );
+            }
+
             if ( '' === $text ) {
                 unset( $entry[ $setting ] );
             } else {
@@ -119,8 +144,8 @@ abstract class CompositeFieldType extends AbstractFieldType
      * {@inheritDoc}
      *
      * The field's own value must be a map; each enabled sub-input gets its
-     * presence rule, its type's rules (with a length limit for text) and its
-     * definition's rules.
+     * presence rule, its type's rules (with a length limit for text, and an
+     * `in:` rule for a select) and its definition's rules.
      *
      * @since 1.6.0
      */
@@ -132,7 +157,7 @@ abstract class CompositeFieldType extends AbstractFieldType
         foreach ( $field->getEnabledSubInputs() as $key => $subInput ) {
             $rules[ $key ] = array_merge(
                 [in_array( $key, $required, true ) ? 'required' : 'nullable'],
-                $this->subInputTypeRules( $subInput['type'] ),
+                $this->subInputTypeRules( $subInput['type'], $subInput['options'] ),
                 $subInput['rules'],
             );
         }
@@ -158,6 +183,7 @@ abstract class CompositeFieldType extends AbstractFieldType
             $messages[ "{$key}.email" ]    = __( ':field: :part must be a valid email address.', $replace );
             $messages[ "{$key}.url" ]      = __( ':field: :part must be a valid URL.', $replace );
             $messages[ "{$key}.numeric" ]  = __( ':field: :part must be a number.', $replace );
+            $messages[ "{$key}.in" ]       = __( ':field: please choose a valid :part.', $replace );
         }
 
         return $messages;
@@ -286,7 +312,8 @@ abstract class CompositeFieldType extends AbstractFieldType
      * Formats a composite value for display.
      *
      * Joins the filled sub-inputs, in definition order, with the type's
-     * `format_separator`. Without the field, the stored order is kept.
+     * `format_separator`; a select input shows its option label. Without the
+     * field, the stored order is kept.
      *
      * @since 1.6.0
      *
@@ -297,18 +324,70 @@ abstract class CompositeFieldType extends AbstractFieldType
      */
     public function format( ?FormField $field, array $parts ): string
     {
-        $keys   = null === $field ? array_keys( $parts ) : array_keys( $field->getSubInputs() );
-        $filled = [];
+        return implode( (string) ( $this->definition()['format_separator'] ?? ', ' ), $this->filledParts( $field, $parts ) );
+    }
+
+    /**
+     * Gets the sub-inputs a field offers, before its own settings are applied.
+     *
+     * The definition's `sub_inputs` by default. Override to change the
+     * inputs with the field's settings; FormField::getSubInputs() applies
+     * the field's `field_config.sub_inputs` on top. Do not call
+     * getSubInputs() here.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     *
+     * @return list<array<string, mixed>> The sub-input definitions.
+     */
+    public function subInputDefinitions( FormField $field ): array
+    {
+        $definitions = $this->definition()['sub_inputs'] ?? [];
+
+        return is_array( $definitions ) ? array_values( $definitions ) : [];
+    }
+
+    /**
+     * Gets a value's filled parts, trimmed and in display form, keyed by sub-input.
+     *
+     * In definition order, with a select input's value shown as its option
+     * label. Without the field, the stored order and values are kept.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField|null  $field  The field, or null when it was deleted.
+     * @param  array<int|string, mixed>  $parts  The stored value.
+     *
+     * @return array<int|string, string> The filled parts.
+     */
+    protected function filledParts( ?FormField $field, array $parts ): array
+    {
+        $subInputs = null === $field ? [] : $field->getSubInputs();
+        $keys      = null === $field ? array_keys( $parts ) : array_keys( $subInputs );
+        $filled    = [];
 
         foreach ( $keys as $key ) {
             $part = $parts[ $key ] ?? null;
 
-            if ( is_scalar( $part ) && '' !== trim( (string) $part ) ) {
-                $filled[] = trim( (string) $part );
+            if ( ! is_scalar( $part ) || '' === trim( (string) $part ) ) {
+                continue;
             }
+
+            $text = trim( (string) $part );
+
+            foreach ( $subInputs[ $key ]['options'] ?? [] as $option ) {
+                if ( $option['value'] === $text ) {
+                    $text = $option['label'];
+
+                    break;
+                }
+            }
+
+            $filled[ $key ] = $text;
         }
 
-        return implode( (string) ( $this->definition()['format_separator'] ?? ', ' ), $filled );
+        return $filled;
     }
 
     /**
@@ -409,12 +488,19 @@ abstract class CompositeFieldType extends AbstractFieldType
      * @since 1.6.0
      *
      * @param  string  $type  The input type (see FormField::SUB_INPUT_TYPES).
+     * @param  list<array{value: string, label: string}>  $options  A select input's options.
      *
-     * @return list<string> The rules; text-like types are limited to SUB_INPUT_MAX_LENGTH characters.
+     * @return list<mixed> The rules; text-like types are limited to SUB_INPUT_MAX_LENGTH characters.
      */
-    protected function subInputTypeRules( string $type ): array
+    protected function subInputTypeRules( string $type, array $options = [] ): array
     {
         $maxLength = 'max:' . self::SUB_INPUT_MAX_LENGTH;
+
+        if ( 'select' === $type ) {
+            return [] === $options
+                ? ['string', $maxLength]
+                : ['string', (string) Rule::in( array_column( $options, 'value' ) )];
+        }
 
         return match ( $type ) {
             'email'  => ['string', $maxLength, 'email'],

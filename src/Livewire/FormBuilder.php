@@ -427,7 +427,7 @@ class FormBuilder extends Component
      * @since 1.6.0
      *
      * @param  string  $key  The sub-input key.
-     * @param  string  $setting  `enabled`, `required`, `label` or `placeholder`.
+     * @param  string  $setting  One of CompositeFieldType::SUB_INPUT_SETTINGS.
      * @param  mixed  $value  The raw input value.
      */
     public function updateSubInput( string $key, string $setting, mixed $value ): void
