@@ -3,7 +3,9 @@
 
   Main component that fetches a form definition from the API and renders
   all fields with conditional logic, multi-step navigation, validation,
-  honeypot protection, and submission handling.
+  honeypot protection, and submission handling. Since 1.6.0 a section's
+  fields are grouped in its fieldset, and HTML blocks get the form's values
+  for their merge tags.
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -11,13 +13,18 @@
 -->
 <script setup lang="ts">
 import { computed, provide } from 'vue';
+import type { FunctionalComponent } from 'vue';
 import { Button } from '@artisanpack-ui/vue/form';
 import { getSubInputErrors } from '../../shared/composite';
 import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
+import { getFieldSegments } from '../../shared/sections';
+import type { FieldSegment } from '../../shared/sections';
 import type { FormField, FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
 import { useForm } from '../composables/useForm';
+import { FORM_VALUES_KEY } from '../composables/formValues';
 import { SUBMIT_HOOKS_KEY } from '../composables/submitHooks';
 import FieldRenderer from './fields/FieldRenderer.vue';
+import SectionField from './fields/SectionField.vue';
 import HoneypotField from './HoneypotField.vue';
 import MultiStepForm from './MultiStepForm.vue';
 
@@ -102,6 +109,39 @@ const {
 
 // Fields such as the CAPTCHA register their submit hooks with the form (since 1.6.0).
 provide( SUBMIT_HOOKS_KEY, submitHooks );
+
+// HTML blocks read the form's fields and values for their merge tags (since 1.6.0).
+provide( FORM_VALUES_KEY, computed( () => ( {
+	fields: form.value?.fields ?? [],
+	values: values.value,
+	hiddenFields: hiddenFields.value,
+	otherValues: otherValues.value,
+} ) ) );
+
+/** The current fields, with each section's fields grouped (since 1.6.0). */
+const segments = computed( () => getFieldSegments( currentFields.value ) );
+
+/** Renders the fields before the first section as they are, without a wrapper. */
+const FieldGroup: FunctionalComponent = ( _props, { slots } ) => slots.default?.();
+
+/** Whether a field, or an input nested under it, has an error. */
+function hasFieldErrors( field: FormField ): boolean {
+	return Object.keys( errors.value ).some( ( key ) => key === field.name || key.startsWith( `${field.name}.` ) );
+}
+
+/** The props of a segment's section, or none for the fields before the first section. */
+function sectionProps( segment: FieldSegment ): Record<string, unknown> {
+	if ( !segment.section ) {
+		return {};
+	}
+
+	return {
+		field: segment.section,
+		hidden: hiddenFields.value[segment.section.name] ?? false,
+		holdsCaptcha: segment.fields.some( ( field ) => field.type === 'captcha' ),
+		hasErrors: segment.fields.some( hasFieldErrors ),
+	};
+}
 
 /**
  * The confirmation an email field that asks for the address twice holds,
@@ -193,21 +233,25 @@ function handleFormSubmit( e: Event ): void {
 			@submit="submit"
 		>
 			<div class="flex flex-wrap gap-4">
-				<template v-for="field in currentFields" :key="field.id">
-					<FieldRenderer
-						v-if="!hiddenFields[field.name]"
-						:field="field"
-						:model-value="values[field.name]"
-						:error="errors[field.name]?.[0]"
-						:display-config="form.config.display"
-						:other-value="otherValues[field.name] ?? ''"
-						:confirm-value="getConfirmValue( field )"
-						:sub-errors="getSubInputErrors( errors, field.name )"
-						@update:model-value="setValue( field.name, $event )"
-						@update:other-value="setOtherValue( field.name, $event )"
-						@update:confirm-value="setConfirmValue( field, $event )"
-						@file-change="setFile( field.name, $event )"
-					/>
+				<template v-for="( segment, index ) in segments" :key="segment.section?.id ?? `fields-${index}`">
+					<component :is="segment.section ? SectionField : FieldGroup" v-bind="sectionProps( segment )">
+						<template v-for="field in segment.fields" :key="field.id">
+							<FieldRenderer
+								v-if="!hiddenFields[field.name]"
+								:field="field"
+								:model-value="values[field.name]"
+								:error="errors[field.name]?.[0]"
+								:display-config="form.config.display"
+								:other-value="otherValues[field.name] ?? ''"
+								:confirm-value="getConfirmValue( field )"
+								:sub-errors="getSubInputErrors( errors, field.name )"
+								@update:model-value="setValue( field.name, $event )"
+								@update:other-value="setOtherValue( field.name, $event )"
+								@update:confirm-value="setConfirmValue( field, $event )"
+								@file-change="setFile( field.name, $event )"
+							/>
+						</template>
+					</component>
 				</template>
 
 				<HoneypotField
@@ -221,22 +265,26 @@ function handleFormSubmit( e: Event ): void {
 		<!-- Single-step form -->
 		<div v-else class="space-y-6">
 			<div class="flex flex-wrap gap-4">
-				<template v-for="field in currentFields" :key="field.id">
-					<FieldRenderer
-						v-if="!hiddenFields[field.name]"
-						:field="field"
-						:model-value="values[field.name]"
-						:error="errors[field.name]?.[0]"
-						:display-config="form.config.display"
-						:layout="layout"
-						:other-value="otherValues[field.name] ?? ''"
-						:confirm-value="getConfirmValue( field )"
-						:sub-errors="getSubInputErrors( errors, field.name )"
-						@update:model-value="setValue( field.name, $event )"
-						@update:other-value="setOtherValue( field.name, $event )"
-						@update:confirm-value="setConfirmValue( field, $event )"
-						@file-change="setFile( field.name, $event )"
-					/>
+				<template v-for="( segment, index ) in segments" :key="segment.section?.id ?? `fields-${index}`">
+					<component :is="segment.section ? SectionField : FieldGroup" v-bind="sectionProps( segment )">
+						<template v-for="field in segment.fields" :key="field.id">
+							<FieldRenderer
+								v-if="!hiddenFields[field.name]"
+								:field="field"
+								:model-value="values[field.name]"
+								:error="errors[field.name]?.[0]"
+								:display-config="form.config.display"
+								:layout="layout"
+								:other-value="otherValues[field.name] ?? ''"
+								:confirm-value="getConfirmValue( field )"
+								:sub-errors="getSubInputErrors( errors, field.name )"
+								@update:model-value="setValue( field.name, $event )"
+								@update:other-value="setOtherValue( field.name, $event )"
+								@update:confirm-value="setConfirmValue( field, $event )"
+								@file-change="setFile( field.name, $event )"
+							/>
+						</template>
+					</component>
 				</template>
 
 				<HoneypotField

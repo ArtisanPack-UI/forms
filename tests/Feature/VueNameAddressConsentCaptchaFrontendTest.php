@@ -47,7 +47,7 @@ describe( 'Vue composite fields (name and address)', function () use ( $resource
 
     it( 'routes name and address fields to the composite field', function () use ( $resource ): void {
         expect( $resource( 'vue/components/fields/FieldRenderer.vue' ) )
-            ->toContain( "const COMPOSITE_TYPES = new Set( ['name', 'address'] );" )
+            ->toContain( "const COMPOSITE_TYPES = new Set( ['name', 'address', 'date_range'] );" )
             ->toContain( "if ( COMPOSITE_TYPES.has( props.field.type ) ) {\n\t\treturn 'composite';" );
     } );
 } );
@@ -261,7 +261,7 @@ describe( 'Vue builder', function () use ( $resource ): void {
 
     it( 'hides the placeholder and default value for consent and CAPTCHA fields', function () use ( $resource ): void {
         expect( $resource( 'vue/components/admin/FieldEditor.vue' ) )
-            ->toContain( "const NO_VALUE_SETTING_TYPES = new Set<FieldType>( ['consent', 'captcha'] );" )
+            ->toContain( "const NO_VALUE_SETTING_TYPES = new Set<FieldType>( ['consent', 'captcha', 'list'] );" )
             ->toContain( '<template v-if="!NO_VALUE_SETTING_TYPES.has( field.type )">' )
             ->toContain( "v-if=\"!isLayoutField && !isComposite && field.type !== 'file' && !NO_VALUE_SETTING_TYPES.has( field.type )\"" );
     } );

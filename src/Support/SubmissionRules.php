@@ -40,6 +40,8 @@ use Illuminate\Http\UploadedFile;
  * - `forms_image_dimensions:{min_width},{max_width},{min_height},{max_height}`
  *   fails when an image is outside the bounds; a blank bound is not checked
  *   and files that are not images pass.
+ * - `forms_date_range` fails when a date range has only one of its dates, or
+ *   ends before it starts.
  *
  * @since 1.6.0
  */
@@ -145,6 +147,15 @@ class SubmissionRules
     public const IMAGE_DIMENSIONS = 'forms_image_dimensions';
 
     /**
+     * The name of the date range rule.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const DATE_RANGE = 'forms_date_range';
+
+    /**
      * Registers the rules with the validator.
      *
      * @since 1.6.0
@@ -164,6 +175,40 @@ class SubmissionRules
         $validator->extend( self::MAX_AGE, fn ( string $attribute, mixed $value, array $parameters ): bool => DateConstraints::meetsMaximumAge( $value, $parameters ) );
         $validator->extend( self::TOTAL_SIZE, fn ( string $attribute, mixed $value, array $parameters ): bool => self::withinTotalSize( $value, $parameters ) );
         $validator->extend( self::IMAGE_DIMENSIONS, fn ( string $attribute, mixed $value, array $parameters ): bool => self::withinImageDimensions( $value, $parameters ) );
+        $validator->extend( self::DATE_RANGE, fn ( string $attribute, mixed $value ): bool => self::isDateRange( $value ) );
+    }
+
+    /**
+     * Checks that a date range has both dates, or neither, and ends on or after its start.
+     *
+     * Dates that are not `Y-m-d` are left to the sub-inputs' own date rules.
+     *
+     * @since 1.6.0
+     *
+     * @param  mixed  $value  The submitted range, with `start` and `end` keys.
+     *
+     * @return bool True for a valid or empty range.
+     */
+    public static function isDateRange( mixed $value ): bool
+    {
+        if ( ! is_array( $value ) ) {
+            return true;
+        }
+
+        $start = is_string( $value['start'] ?? null ) ? trim( $value['start'] ) : '';
+        $end   = is_string( $value['end'] ?? null ) ? trim( $value['end'] ) : '';
+
+        if ( '' === $start && '' === $end ) {
+            return true;
+        }
+
+        if ( '' === $start || '' === $end ) {
+            return false;
+        }
+
+        $pattern = '/^\d{4}-\d{2}-\d{2}$/';
+
+        return 1 !== preg_match( $pattern, $start ) || 1 !== preg_match( $pattern, $end ) || $end >= $start;
     }
 
     /**

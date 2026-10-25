@@ -101,7 +101,7 @@ const emailFields = computed( () =>
 
 const placeholders = computed( () =>
 	props.fields
-		.filter( ( f ) => !new Set( ['heading', 'paragraph', 'divider', 'html'] ).has( f.type ) )
+		.filter( ( f ) => !new Set( ['section', 'heading', 'paragraph', 'divider', 'html'] ).has( f.type ) )
 		.map( ( f ) => ( { name: f.name, label: f.label || f.name } ) ),
 );
 

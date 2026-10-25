@@ -114,6 +114,27 @@ Then update the forms config:
 ],
 ```
 
+### Media Library Storage
+
+A file field's **Storage** setting (Advanced tab, `field_config.storage`) can save its uploads with `artisanpack-ui/media-library` instead (since 1.6.0). Each file becomes a media item titled with the file's name, and its `form_uploads` row records the item in `media_id` with the item's `disk` and `path`, so downloads and URLs keep working. Deleting the upload or its submission, including through `forms:prune-submissions`, deletes the media item and its files too.
+
+```php
+'uploads' => [
+    'media_library' => [
+        'folder_id'   => env( 'FORMS_MEDIA_FOLDER_ID' ),   // a media folder for form uploads
+        'uploaded_by' => env( 'FORMS_MEDIA_UPLOADED_BY' ), // the user media items are attributed to
+    ],
+],
+```
+
+The media library's disk is public by default, so files stored there can be reached by URL. Use this storage only for files that may be public, or configure the media library with a private disk. To keep that safe:
+
+- The file is handed to the media library under the extension found from its contents, so `invoice.php` holding a PNG is saved as `invoice-….png`. The visitor's file name is kept as the media item's title and the upload's `original_name`.
+- Types a browser could run when opened from a public disk (SVG, HTML, XHTML, XML, XSL, JavaScript and PHP) are always stored on the private forms disk.
+- Media items are attributed to `uploaded_by` when it is set, never to a visitor who happens to be logged in. Otherwise the media library's own guest upload settings apply.
+
+When the media library is not installed or rejects a file, such as when guest uploads are off and `uploaded_by` is unset, the file is stored on the forms disk instead and a warning is logged.
+
 ## Accessing Uploads
 
 ### From Submission

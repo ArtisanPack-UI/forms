@@ -169,13 +169,17 @@ export function earliestBirthdate( age: number, from: DateParts = today() ): str
 	return formatIsoDate( addDays( addMonths( from, -( age + 1 ) * 12 ), 1 ) );
 }
 
+/** The field types with min and max dates. */
+const DATE_LIMIT_TYPES = new Set( ['date', 'datetime', 'date_range'] );
+
 /**
  * Get a date field's earliest and latest allowed dates: its min and max
  * dates narrowed by the "No past dates" or "No future dates" range. Mirrors
- * `FormField::getDateLimits()`.
+ * `FormField::getDateLimits()`. Date and time and date range fields take the
+ * min and max dates too (since 1.6.0).
  */
 export function getDateLimits( field: FormField ): DateBounds {
-	if ( field.type !== 'date' ) {
+	if ( !DATE_LIMIT_TYPES.has( field.type ) ) {
 		return {};
 	}
 

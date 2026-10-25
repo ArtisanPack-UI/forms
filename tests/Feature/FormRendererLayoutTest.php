@@ -56,7 +56,7 @@ describe( 'FormRenderer layout and submit class (issue #141)', function () use (
             expect( $fieldRow )->toContain( '{isInline && submitButton}' )
                 ->and( strpos( $fieldRow, '{isInline && submitButton}' ) )
                 ->toBeGreaterThan( strpos( $fieldRow, 'Honeypot field' ) )
-                ->and( $fieldRow )->toContain( "layout={isInline ? 'inline' : 'stacked'}" );
+                ->and( $between( $this->renderer, 'const renderField = ', 'const hasFieldErrors' ) )->toContain( "layout={isInline ? 'inline' : 'stacked'}" );
         } );
 
         it( 'aligns the inline button to the bottom of the row without growing', function (): void {

@@ -26,8 +26,9 @@ type BuiltInFieldType =
     | 'text' | 'email' | 'textarea' | 'select' | 'select_multiple'
     | 'checkbox' | 'checkbox_group' | 'radio'
     | 'number' | 'phone' | 'url' | 'file' | 'date' | 'time'
+    | 'datetime' | 'date_range' | 'list'
     | 'toggle' | 'rating' | 'name' | 'address' | 'consent' | 'captcha'
-    | 'heading' | 'paragraph' | 'divider' | 'html' | 'hidden';
+    | 'section' | 'heading' | 'paragraph' | 'divider' | 'html' | 'hidden';
 
 // Built-in literals (for autocomplete) plus any host-registered string type.
 type FieldType = BuiltInFieldType | ( string & {} );
@@ -207,6 +208,8 @@ interface ValidationRules {
 Since 1.6.0 text, phone, number and file fields have typed configs (`TextFieldConfig`, `PhoneFieldConfig`, `NumberFieldConfig`, `FileFieldConfig`) for input masks, counters, phone formats, number formats and multi-file uploads, along with the `InputMaskPreset`, `PhoneFormat`, `PhoneCountry` and `NumberFormat` types. The render payload adds `input_mask`, `affix_description` and `phone` to a field, and a submission value has `upload_ids`.
 
 Since 1.6.0 `min_date` and `max_date` may also be relative (`today`, `+30 days`, `-18 years`). Textarea, date and time fields have typed configs (`TextareaFieldConfig` with `rich_text`, `DateFieldConfig` with `date_format` and `date_input`, `TimeFieldConfig` with `time_format` and `time_input`), along with the `EmailValidation`, `DateRange`, `DateFormat`, `DateInputMode`, `TimeFormat` and `TimeInputMode` types. A setting's `input` may be `date_expression`, a text input that takes a date or a relative date. A submission value has `display_html`: a rich text value's sanitized HTML, or null when `display_value` is plain text.
+
+Since 1.6.0 the `section`, `datetime`, `date_range` and `list` field types have typed configs (`SectionFieldConfig`, `DateTimeFieldConfig`, `DateRangeFieldConfig`, `ListFieldConfig`), a `SubInputType` may be `date`, a heading's `ContentFieldConfig` takes `align`, and a file's `FileFieldConfig` takes `storage` (`forms` or `media_library`). The render payload adds `content_html` to a paragraph (its sanitized, formatted HTML), `format_separator` to a composite field, and `list` (its parsed `ListColumn[]` columns, `min_rows`, `max_rows` and `row_label`) to a list field. A list's `resolved_default_value` is its starting rows. A list field's display HTML (`display_html`) is a table of its rows.
 
 ## Conditional Logic
 

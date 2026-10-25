@@ -235,7 +235,7 @@ describe( 'Vue builder review fixes', function () use ( $resource, $between ): v
 
     it( 'hides the placeholder for checkbox, toggle, radio and rating fields', function (): void {
         expect( $this->editor )
-            ->toContain( "const NO_PLACEHOLDER_TYPES = new Set<FieldType>( ['checkbox', 'toggle', 'radio', 'rating'] );" )
+            ->toContain( "const NO_PLACEHOLDER_TYPES = new Set<FieldType>( ['checkbox', 'toggle', 'radio', 'rating', 'datetime'] );" )
             ->toContain( 'v-if="!isLayoutField && !isComposite && !NO_PLACEHOLDER_TYPES.has( field.type )"' );
     } );
 

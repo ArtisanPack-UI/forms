@@ -25,18 +25,22 @@ use ArtisanPackUI\Forms\FieldTypes\CheckboxFieldType;
 use ArtisanPackUI\Forms\FieldTypes\CheckboxGroupFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ConsentFieldType;
 use ArtisanPackUI\Forms\FieldTypes\DateFieldType;
+use ArtisanPackUI\Forms\FieldTypes\DateRangeFieldType;
+use ArtisanPackUI\Forms\FieldTypes\DateTimeFieldType;
 use ArtisanPackUI\Forms\FieldTypes\DividerFieldType;
 use ArtisanPackUI\Forms\FieldTypes\EmailFieldType;
 use ArtisanPackUI\Forms\FieldTypes\FileFieldType;
 use ArtisanPackUI\Forms\FieldTypes\HeadingFieldType;
 use ArtisanPackUI\Forms\FieldTypes\HiddenFieldType;
 use ArtisanPackUI\Forms\FieldTypes\HtmlFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
 use ArtisanPackUI\Forms\FieldTypes\NameFieldType;
 use ArtisanPackUI\Forms\FieldTypes\NumberFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ParagraphFieldType;
 use ArtisanPackUI\Forms\FieldTypes\PhoneFieldType;
 use ArtisanPackUI\Forms\FieldTypes\RadioFieldType;
 use ArtisanPackUI\Forms\FieldTypes\RatingFieldType;
+use ArtisanPackUI\Forms\FieldTypes\SectionFieldType;
 use ArtisanPackUI\Forms\FieldTypes\SelectFieldType;
 use ArtisanPackUI\Forms\FieldTypes\SelectMultipleFieldType;
 use ArtisanPackUI\Forms\FieldTypes\TextareaFieldType;
@@ -68,8 +72,8 @@ class FieldTypes
     public const CATEGORY_FIELDS = [
         'basic'    => ['text', 'email', 'phone', 'number', 'url', 'textarea', 'hidden'],
         'choice'   => ['select', 'radio', 'checkbox', 'toggle', 'checkbox_group', 'select_multiple'],
-        'advanced' => ['file', 'date', 'time', 'rating', 'name', 'address', 'consent', 'captcha'],
-        'layout'   => ['heading', 'paragraph', 'divider', 'html'],
+        'advanced' => ['file', 'date', 'time', 'datetime', 'date_range', 'rating', 'name', 'address', 'list', 'consent', 'captcha'],
+        'layout'   => ['section', 'heading', 'paragraph', 'divider', 'html'],
     ];
 
     /**
@@ -89,6 +93,7 @@ class FieldTypes
      *     supports_label_placement?: bool,
      *     supports_visibility?: bool,
      *     supports_privacy?: bool,
+     *     supports_conditional_logic?: bool,
      *     stores_value?: bool,
      *     validation_options: array<string>
      * }>
@@ -237,6 +242,24 @@ class FieldTypes
             'supports_default_value' => true,
             'validation_options'     => ['min_time', 'max_time'],
         ],
+        'datetime' => [
+            'icon'                   => 'o-calendar-days',
+            'category'               => 'advanced',
+            'has_options'            => false,
+            'supports_placeholder'   => false,
+            'supports_default_value' => true,
+            'validation_options'     => [],
+        ],
+        'date_range' => [
+            'icon'                        => 'o-calendar-date-range',
+            'category'                    => 'advanced',
+            'has_options'                 => false,
+            'supports_placeholder'        => false,
+            'supports_default_value'      => false,
+            'supports_autocomplete'       => false,
+            'supports_dynamic_population' => false,
+            'validation_options'          => [],
+        ],
         'rating' => [
             'icon'                   => 'o-star',
             'category'               => 'advanced',
@@ -265,6 +288,15 @@ class FieldTypes
             'supports_dynamic_population' => false,
             'validation_options'          => [],
         ],
+        'list' => [
+            'icon'                        => 'o-table-cells',
+            'category'                    => 'advanced',
+            'has_options'                 => false,
+            'supports_placeholder'        => false,
+            'supports_default_value'      => false,
+            'supports_dynamic_population' => false,
+            'validation_options'          => [],
+        ],
         'consent' => [
             'icon'                        => 'o-clipboard-document-check',
             'category'                    => 'advanced',
@@ -286,6 +318,16 @@ class FieldTypes
             'supports_privacy'            => false,
             'stores_value'                => false,
             'validation_options'          => [],
+        ],
+        'section' => [
+            'icon'                       => 'o-rectangle-group',
+            'category'                   => 'layout',
+            'has_options'                => false,
+            'supports_placeholder'       => false,
+            'supports_default_value'     => false,
+            'is_layout'                  => true,
+            'supports_conditional_logic' => true,
+            'validation_options'         => [],
         ],
         'heading' => [
             'icon'                   => 'o-h1',
@@ -349,11 +391,15 @@ class FieldTypes
         'date'            => DateFieldType::class,
         'phone'           => PhoneFieldType::class,
         'time'            => TimeFieldType::class,
+        'datetime'        => DateTimeFieldType::class,
+        'date_range'      => DateRangeFieldType::class,
         'rating'          => RatingFieldType::class,
         'name'            => NameFieldType::class,
         'address'         => AddressFieldType::class,
+        'list'            => ListFieldType::class,
         'consent'         => ConsentFieldType::class,
         'captcha'         => CaptchaFieldType::class,
+        'section'         => SectionFieldType::class,
         'heading'         => HeadingFieldType::class,
         'paragraph'       => ParagraphFieldType::class,
         'divider'         => DividerFieldType::class,
@@ -702,8 +748,8 @@ class FieldTypes
     /**
      * Checks if a field type is a layout element (not a data input).
      *
-     * Layout elements (heading, paragraph, divider, html) are display-only
-     * and do not collect or store user input.
+     * Layout elements (section, heading, paragraph, divider, html) are
+     * display-only and do not collect or store user input.
      *
      * @since 1.0.0
      *
@@ -716,6 +762,26 @@ class FieldTypes
         $types = self::getTypes();
 
         return $types[ $type ]['is_layout'] ?? false;
+    }
+
+    /**
+     * Checks if a field type can be shown and hidden by conditional logic.
+     *
+     * Input types can; layout elements cannot, unless their definition sets
+     * `supports_conditional_logic` (such as a section, which hides the fields
+     * it groups).
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $type  The field type name.
+     *
+     * @return bool True if the type supports conditional logic.
+     */
+    public static function supportsConditionalLogic( string $type ): bool
+    {
+        $definition = self::getTypes()[ $type ] ?? [];
+
+        return ! ( $definition['is_layout'] ?? false ) || true === ( $definition['supports_conditional_logic'] ?? false );
     }
 
     /**

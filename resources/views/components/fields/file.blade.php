@@ -7,16 +7,19 @@
     button; a polite live region announces when uploads start and finish.
     The list and live region are managed by Alpine, so Livewire leaves them
     alone (`wire:ignore`).
+
+    Since 1.6.0 the note under the input lists the allowed types next to the
+    size limits (FormField::getFileLimitsHint()), and the input's
+    `aria-describedby` references it.
 --}}
 @props(['field', 'error' => null])
 
 @php
-    $maxSize = $field->getFileMaxSize();
     $allowedTypes = $field->getFileAllowedTypes();
     $accept = !empty($allowedTypes) ? implode(',', array_map(fn($type) => '.' . $type, $allowedTypes)) : null;
     $multiple = $field->allowsMultipleFiles();
     $maxFiles = $field->getFileMaxCount();
-    $maxTotalSize = $field->getFileMaxTotalSize();
+    $limitsHint = $field->getFileLimitsHint();
 @endphp
 
 @component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => 'field-' . $field->name])
@@ -141,16 +144,10 @@
     <div wire:ignore class="sr-only" aria-live="polite" aria-atomic="true" x-text="announcement"></div>
 </div>
 
-@if($maxSize || $maxFiles || $maxTotalSize)
-    <label class="label">
-        <span class="label-text-alt text-base-content/50">
-            {{ implode(' · ', array_filter([
-                $maxFiles ? __( 'Up to :count files', ['count' => $maxFiles] ) : null,
-                $maxSize ? __( 'Maximum file size: :size KB', ['size' => $maxSize] ) : null,
-                $maxTotalSize ? __( 'Maximum total size: :size KB', ['size' => $maxTotalSize] ) : null,
-            ])) }}
-        </span>
-    </label>
+@if($limitsHint)
+    <p class="label" id="limits-{{ $field->name }}">
+        <span class="label-text-alt text-base-content/60">{{ $limitsHint }}</span>
+    </p>
 @endif
 @else
 <input
@@ -168,12 +165,10 @@
     <span class="text-sm text-base-content/70">{{ __( 'Uploading...' ) }}</span>
 </div>
 
-@if($maxSize)
-    <label class="label">
-        <span class="label-text-alt text-base-content/50">
-            {{ __( 'Maximum file size: :size KB', ['size' => $maxSize] ) }}
-        </span>
-    </label>
+@if($limitsHint)
+    <p class="label" id="limits-{{ $field->name }}">
+        <span class="label-text-alt text-base-content/60">{{ $limitsHint }}</span>
+    </p>
 @endif
 @endif
 @endcomponent

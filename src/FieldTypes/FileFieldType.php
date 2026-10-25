@@ -26,6 +26,11 @@ use ArtisanPackUI\Forms\Support\SubmissionRules;
  * the submission value points at the first in `upload_id` and lists them
  * all in `value_array` (see FormSubmissionValue::getUploads()).
  *
+ * The input's note lists the allowed types next to the size limits (see
+ * FormField::getFileLimitsHint()). With the `storage` setting on
+ * `media_library`, files are saved with artisanpack-ui/media-library (see
+ * MediaLibraryStorage) and their `form_uploads` rows point at the media item.
+ *
  * @since 1.6.0
  */
 class FileFieldType extends AbstractFieldType
@@ -167,6 +172,18 @@ class FileFieldType extends AbstractFieldType
                 ['key' => 'max_width', 'input' => 'integer', 'tab' => 'validation', 'min' => 1, 'label' => __( 'Max Image Width (px)' )],
                 ['key' => 'min_height', 'input' => 'integer', 'tab' => 'validation', 'min' => 1, 'label' => __( 'Min Image Height (px)' )],
                 ['key' => 'max_height', 'input' => 'integer', 'tab' => 'validation', 'min' => 1, 'label' => __( 'Max Image Height (px)' ), 'hint' => __( 'Image bounds apply to images only; other allowed files are not checked.' )],
+                [
+                    'key'     => 'storage',
+                    'input'   => 'select',
+                    'tab'     => 'advanced',
+                    'default' => 'forms',
+                    'label'   => __( 'Storage' ),
+                    'hint'    => __( 'Media Library needs artisanpack-ui/media-library. Its files follow the media library disk\'s visibility, which is public by default; files it cannot take stay on the forms disk.' ),
+                    'options' => [
+                        ['value' => 'forms', 'label' => __( 'Forms disk (private)' )],
+                        ['value' => 'media_library', 'label' => __( 'Media Library' )],
+                    ],
+                ],
             ],
         ] );
     }

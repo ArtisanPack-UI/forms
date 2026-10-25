@@ -11,6 +11,8 @@
  */
 
 import { formatCompositeForCondition } from './composite';
+import { isListField, toListRows } from './list';
+import { applySectionVisibility } from './sections';
 import type {
 	ConditionalLogic,
 	ConditionalLogicRule,
@@ -346,7 +348,32 @@ export function evaluateFieldVisibility(
 }
 
 /**
- * Evaluates conditional logic for all fields in a form.
+ * Put values in the shape the server evaluates rules against, after
+ * `SubmissionService::normalizeSubmittedValues()`: a list keeps only its
+ * filled rows (none is empty), and a date and time is `YYYY-MM-DD HH:MM`
+ * (since 1.6.0).
+ */
+function normalizeConditionValues( fields: FormField[], formData: Record<string, unknown> ): Record<string, unknown> {
+	const values = { ...formData };
+
+	for ( const field of fields ) {
+		const value = values[field.name];
+
+		if ( isListField( field ) ) {
+			const rows = toListRows( field, value ).filter( ( row ) => Object.values( row ).some( ( cell ) => cell.trim() !== '' ) );
+
+			values[field.name] = rows.length > 0 ? rows : null;
+		} else if ( field.type === 'datetime' && typeof value === 'string' ) {
+			values[field.name] = value.replace( 'T', ' ' );
+		}
+	}
+
+	return values;
+}
+
+/**
+ * Evaluates conditional logic for all fields in a form. A hidden section
+ * hides every field it groups (since 1.6.0; see `applySectionVisibility()`).
  *
  * @returns A map of field names to their hidden state (true = hidden).
  */
@@ -356,17 +383,18 @@ export function getHiddenFields(
 ): Record<string, boolean> {
 	const { uuidToName } = buildFieldMaps( fields );
 	const hidden: Record<string, boolean> = {};
+	const values = normalizeConditionValues( fields, formData );
 
 	for ( const field of fields ) {
 		// A CAPTCHA is always shown, mirroring `ConditionalLogicService::evaluateField()`.
 		const isVisible = field.type === 'captcha' || evaluateFieldVisibility(
 			field.conditional_logic,
-			formData,
+			values,
 			uuidToName,
 		);
 
 		hidden[field.name] = !isVisible;
 	}
 
-	return hidden;
+	return applySectionVisibility( fields, hidden );
 }

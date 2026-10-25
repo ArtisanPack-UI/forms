@@ -47,6 +47,7 @@ import {
 } from './dateConstraints';
 import { isAcceptedEmailDomain } from './emailDomains';
 import { t } from './i18n';
+import { isListField, validateListField } from './list';
 import { getInputMask, getInputMaskHint, maskToRegExp } from './mask';
 import { getNumberFormat, isIntegerOnly, normalizeFormattedNumber } from './numberFormat';
 import { getPhoneFormat, isPlausiblePhoneNumber } from './phone';
@@ -54,7 +55,10 @@ import { richTextToPlainText, usesRichText } from './richText';
 import { getAllowedUrlSchemes, isAllowedUrl, withUrlScheme } from './url';
 
 /** Layout field types that do not collect data. */
-const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );
+const LAYOUT_FIELDS = new Set( ['section', 'heading', 'paragraph', 'divider', 'html'] );
+
+/** A `datetime-local` value, with optional seconds (or the stored `Y-m-d H:i` form). */
+const DATE_TIME_PATTERN = /^(\d{4}-\d{2}-\d{2})[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
 
 /**
  * Read a numeric limit. `0` counts as set; null, blank and non-numeric values
@@ -233,6 +237,10 @@ function validateValue(
 		if ( field.type === 'date' ) {
 			validateDateField( field, value, errors );
 		}
+
+		if ( field.type === 'datetime' ) {
+			validateDateTimeField( field, value, errors );
+		}
 	}
 
 	if ( field.type === 'number' && ( typeof value === 'string' || typeof value === 'number' ) ) {
@@ -377,6 +385,35 @@ function validateDateField(
 
 	if ( maxAge !== undefined && value < earliestBirthdate( maxAge ) ) {
 		errors.push( t( 'You must be no older than :age years.', { age: maxAge } ) );
+	}
+}
+
+/**
+ * Validates a date and time value, mirroring `DateTimeFieldType`: a
+ * `datetime-local` value on a day within the field's min and max dates
+ * (since 1.6.0).
+ */
+function validateDateTimeField(
+	field: FormField,
+	value: string,
+	errors: string[],
+): void {
+	const match = DATE_TIME_PATTERN.exec( value.trim() );
+
+	if ( !match || !parseIsoDate( match[1] ) ) {
+		errors.push( t( 'Please enter a valid date and time for :field.', { field: field.label ?? field.name } ) );
+
+		return;
+	}
+
+	const { min, max } = getDateLimits( field );
+
+	if ( min !== undefined && match[1] < min ) {
+		errors.push( t( 'The :field must be on or after :date.', { field: field.label ?? field.name, date: min } ) );
+	}
+
+	if ( max !== undefined && match[1] > max ) {
+		errors.push( t( 'The :field must be on or before :date.', { field: field.label ?? field.name, date: max } ) );
 	}
 }
 
@@ -531,6 +568,8 @@ export function validateCompositeField( field: FormField, value: unknown ): Reco
 			message = t( ':field: :part must be a valid email address.', replacements );
 		} else if ( subInput.type === 'url' && !isValidUrl( part ) ) {
 			message = t( ':field: :part must be a valid URL.', replacements );
+		} else if ( subInput.type === 'date' ) {
+			message = validateDatePart( field, part, replacements );
 		}
 
 		if ( message !== undefined ) {
@@ -538,7 +577,56 @@ export function validateCompositeField( field: FormField, value: unknown ): Reco
 		}
 	}
 
+	const enabledKeys = getEnabledSubInputs( field ).map( ( subInput ) => subInput.key );
+
+	if ( field.type === 'date_range' && enabledKeys.includes( 'start' ) && enabledKeys.includes( 'end' ) && Object.keys( errors ).length === 0 && !isDateRange( parts ) ) {
+		errors[field.name] = [field.error_message ?? t( 'Please enter both dates for :field, with the end date on or after the start date.', { field: field.label ?? field.name } )];
+	}
+
 	return errors;
+}
+
+/**
+ * Validates a date sub-input: a `YYYY-MM-DD` date within the field's min
+ * and max dates (since 1.6.0).
+ *
+ * @returns The error message, or undefined when valid.
+ */
+function validateDatePart( field: FormField, part: string, replacements: { field: string; part: string } ): string | undefined {
+	if ( !parseIsoDate( part ) ) {
+		return t( ':field: :part must be a valid date.', replacements );
+	}
+
+	const { min, max } = getDateLimits( field );
+
+	if ( min !== undefined && part < min ) {
+		return t( ':field: :part is too early.', replacements );
+	}
+
+	if ( max !== undefined && part > max ) {
+		return t( ':field: :part is too late.', replacements );
+	}
+
+	return undefined;
+}
+
+/**
+ * Whether a date range has both dates, or neither, and ends on or after its
+ * start. Mirrors `SubmissionRules::isDateRange()` (since 1.6.0).
+ */
+export function isDateRange( parts: Record<string, string> ): boolean {
+	const start = ( parts.start ?? '' ).trim();
+	const end = ( parts.end ?? '' ).trim();
+
+	if ( start === '' && end === '' ) {
+		return true;
+	}
+
+	if ( start === '' || end === '' ) {
+		return false;
+	}
+
+	return !parseIsoDate( start ) || !parseIsoDate( end ) || end >= start;
 }
 
 /** Whether a string parses as an absolute URL. */
@@ -589,9 +677,10 @@ export function validateCaptchaField( field: FormField, value: unknown ): string
 /**
  * Validates all visible fields in a form.
  *
- * A composite field's errors are keyed `{field}.{key}` (since 1.6.0). An
- * email field's confirmation is read from `{name}_confirmation` and a
- * mismatch is the email field's error (since 1.6.0).
+ * A composite field's errors are keyed `{field}.{key}` (since 1.6.0), and a
+ * list's `{field}.{row}.{column}` (since 1.6.0). An email field's
+ * confirmation is read from `{name}_confirmation` and a mismatch is the
+ * email field's error (since 1.6.0).
  *
  * @returns A map of field names to their error arrays.
  */
@@ -614,6 +703,12 @@ export function validateFields(
 
 		if ( isCompositeField( field ) ) {
 			Object.assign( errors, validateCompositeField( field, formData[field.name] ) );
+
+			continue;
+		}
+
+		if ( isListField( field ) ) {
+			Object.assign( errors, validateListField( field, formData[field.name] ) );
 
 			continue;
 		}

@@ -13,7 +13,7 @@
 import type { BuiltInFieldType, DisplayConfig, FormField, FormLayout } from '../../../types/artisanpack-forms';
 import { isCompositeField } from '../../../shared/composite';
 import { getWidthClass, WIDTH_CLASSES } from '../../../shared/fieldSettings';
-import { DateField, FileField, RatingField } from './AdvancedField';
+import { DateField, DateTimeField, FileField, RatingField } from './AdvancedField';
 import {
 	CheckboxField,
 	CheckboxGroupField,
@@ -26,6 +26,8 @@ import { CaptchaField } from './CaptchaField';
 import { CompositeField } from './CompositeField';
 import { ConsentField } from './ConsentField';
 import { DividerField, HeadingField, HtmlField, ParagraphField } from './LayoutField';
+import { ListField } from './ListField';
+import { SectionField } from './SectionField';
 import {
 	EmailField,
 	HiddenField,
@@ -103,11 +105,15 @@ const FIELD_COMPONENTS: Record<BuiltInFieldType, FieldComponent> = {
 	file: FileField,
 	date: DateField,
 	time: TimeField,
+	datetime: DateTimeField,
+	date_range: CompositeField,
 	rating: RatingField,
 	name: CompositeField,
 	address: CompositeField,
+	list: ListField,
 	consent: ConsentField,
 	captcha: CaptchaField,
+	section: SectionField,
 	heading: HeadingField,
 	paragraph: ParagraphField,
 	divider: DividerField,
@@ -180,9 +186,12 @@ export function FieldRenderer( {
 		return null;
 	}
 
-	const widthClass = layout === 'inline'
-		? getInlineWidthClass( field )
-		: getWidthClass( field.width );
+	// A section spans the row, like the fields it groups
+	const widthClass = field.type === 'section'
+		? WIDTH_CLASSES.full
+		: layout === 'inline'
+			? getInlineWidthClass( field )
+			: getWidthClass( field.width );
 
 	return (
 		<div className={widthClass}>

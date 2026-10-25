@@ -310,6 +310,47 @@ FormField::create( [
 ] );
 ```
 
+#### Date & Time
+
+A **Date & Time** field (`datetime`) asks for one date and time, such as an appointment, with the native `datetime-local` picker. Browsers submit `YYYY-MM-DDTHH:MM`; the value is checked (`date_format:Y-m-d H:i`) and stored as `YYYY-MM-DD HH:MM`, and a default value may use either form.
+
+- **Date Format** and **Time Format** format the stored value in submissions, notifications and exports ("01/11/2026 2:30 PM"). The picker itself follows the browser's locale.
+- **Min Date** and **Max Date** take the same absolute or relative dates as a date field. They bound the day: the value must be on or after the start of the min date and on or before the end of the max date. The picker's `min` and `max` follow them.
+- **Step (seconds)** sets the picker's interval, and **Read-only** locks the value.
+
+The value is the visitor's local date and time, stored without a timezone. Relative limits such as `today` resolve in the app's timezone on the server and the visitor's in React and Vue, so around midnight the two can differ by a day.
+
+#### Date Range
+
+A **Date Range** field (`date_range`) asks for a start and an end date, such as a booking's arrival and departure. It is a composite of two date inputs, **Start Date** and **End Date**, in a fieldset whose legend is the field label; the **Inputs** table relabels them, and both are required when the field is.
+
+- Both dates are checked as `YYYY-MM-DD`, and the `forms_date_range` rule requires both once either is filled in, with the end on or after the start ("Please enter both dates for Stay, with the end date on or after the start date.").
+- **Min Date** and **Max Date** (absolute or relative) limit both dates.
+- **Date Format** formats the range in submissions: "11/01/2026 – 11/05/2026".
+
+The value is stored in `value_array` as `['start' => '2026-11-01', 'end' => '2026-11-05']`, with `{stay:start}` and `{stay:end}` merge tags and one export column per date (or one formatted column).
+
+```php
+FormField::create( [
+    'form_id'          => $form->id,
+    'type'             => 'date_range',
+    'name'             => 'stay',
+    'label'            => 'Stay',
+    'is_required'      => true,
+    'field_config'     => ['date_format' => 'mdy'],
+    'validation_rules' => ['min_date' => 'today', 'max_date' => '+1 year'],
+] );
+
+FormField::create( [
+    'form_id'          => $form->id,
+    'type'             => 'datetime',
+    'name'             => 'appointment',
+    'label'            => 'Appointment',
+    'field_config'     => ['time_format' => '12', 'step' => 900],
+    'validation_rules' => ['min_date' => '+1 day'],
+] );
+```
+
 ### File Upload
 
 ```php
@@ -335,6 +376,12 @@ FormField::create( [
 In the Livewire renderer each file uploads as soon as it is added, with its own progress bar and a remove button; a polite live region announces when each upload starts and finishes. React and Vue list the files with their sizes and remove buttons, and send them with the submission (`files[{name}][]`).
 
 Each file is stored as its own `form_uploads` row. The field's submission value points at the first upload in `upload_id` and lists every upload ID, in order, in `value_array`; `FormSubmissionValue::getUploads()` returns them, and the API returns `upload_ids`. Submissions, notifications and exports list every file name. See [File Uploads](file-uploads.md).
+
+The note under the input lists the field's limits: the number of files, the **Allowed File Types** (as `PDF, DOCX`) and the size limits, such as "Allowed file types: PDF, DOCX · Maximum file size: 5120 KB". The input's `aria-describedby` references it in all three renderers.
+
+**Storage** (Advanced tab) keeps uploads on the private forms disk (default) or, with **Media Library**, saves each file as an `artisanpack-ui/media-library` item, titled with the file's name. The upload's `form_uploads` row then points at the media item's file (`media_id`, `disk` and `path`; run the migrations), and deleting the upload or its submission leaves the media item in place.
+
+Media library files follow the media library disk's visibility, which is **public** by default, so only use this storage for files that may be public, or point the media library at a private disk. Set `uploads.media_library.folder_id` (`FORMS_MEDIA_FOLDER_ID`) to file the uploads in a media folder, and `uploads.media_library.uploaded_by` (`FORMS_MEDIA_UPLOADED_BY`) to attribute guests' uploads to a user; otherwise the media library's own guest upload settings apply. When the media library is not installed, or rejects a file (for example because guest uploads are off or the file's type is not allowed there), the file is stored on the forms disk and a warning is logged.
 
 ### Name
 
@@ -408,6 +455,32 @@ addFilter( 'ap.forms.addressAutocomplete', function ( string $html, FormField $f
 
 A provider that fills the inputs should set their values and dispatch an `input` event, so Livewire and Vue pick up the change. React inputs need the native value setter before the event.
 
+### List
+
+A **List** field (`list`) collects rows of one or more columns that visitors add with **Add …**, such as attendees, references or line items.
+
+**Columns** (General tab) lists one column per line, as `Label | type | options`:
+
+```text
+Name
+Email | email
+Role | select | Speaker, Guest
+Age | number
+```
+
+`type` is `text` (the default), `email`, `number` or `select`; a select's options are comma-separated. Each column's key is its label's slug (`name`, `email`, `role`, `age`), so renaming a column changes its key. Up to 10 columns.
+
+| Setting | Description |
+|---------|-------------|
+| **Row Label** | Names one row in the add and remove buttons: with "Attendee", "Add Attendee" and "Remove Attendee 2". Default "Row". |
+| **Min Rows** | The fewest filled rows, once any row is filled in (or always, for a required field). The list starts with this many empty rows. |
+| **Max Rows** | The most rows (default and limit 100). The add button is disabled at the limit. |
+| **Export Format** | One row per line in the CSV cell (default), or JSON objects keyed by column label. |
+
+Rows left blank are ignored. A required list needs one filled row, and each cell is checked by its column's type (`email`, `numeric`, a select's options, up to 255 characters), with errors on the row the visitor sees. The value is stored in `value_array` as a list of rows (`[['name' => 'Ada', 'email' => 'ada@example.com']]`); submissions and HTML notifications show it as a table, and text emails, merge tags and the default export as one row per line ("Ada, ada@example.com").
+
+Each row is a group named for its row ("Attendee 2"), with a labelled input per column; the column labels show as a header row on wider screens, where the inputs' own labels stay for screen readers. After a row is added its first input takes focus, after one is removed the add button does, and a polite live region announces each change. In the Livewire renderer the buttons call `addListRow( name )` and `removeListRow( name, index )`.
+
 ### Email Confirmation
 
 Turn on **Enable email confirmation** on an email field to ask for the address twice. The field shows two inputs labelled by **Email Sub-Label** (default "Enter Email") and **Confirm Sub-Label** (default "Confirm Email"), with an optional **Confirm Placeholder**. The confirmation is submitted beside the field as `{name}_confirmation` (`data[email_confirmation]` in the API) and checked with Laravel's `confirmed` rule, so a mismatch shows as the email field's error. Only the email is stored; display, notifications and exports are unchanged. Pasting into the confirm input is never blocked, which matters for password-manager and assistive-technology users. Avoid naming another field `{name}_confirmation`.
@@ -441,24 +514,35 @@ A CAPTCHA field adds a challenge where you place it, for example on the last ste
 
 ### Layout Elements
 
+Layout elements show content and collect nothing.
+
+**Section** (`section`) groups the fields after it, up to the next section or the end of the step, in a `<fieldset>` whose `<legend>` is the section's title (its label), so assistive technology announces the group. Its **Description** shows under the title. Conditional logic on a section shows or hides every field in it with one rule; a field in a shown section can still be hidden by its own logic. A CAPTCHA in a hidden section stays shown, since conditional logic never hides one. With **Collapsible** on, the title is a disclosure button (`aria-expanded`) that shows and hides the fields; **Start collapsed** starts it closed, and a section opens when one of its fields has an error.
+
+**Heading** (`heading`) has a **Heading Level** (H2–H6) and an **Alignment** (left, center or right).
+
+**Paragraph** (`paragraph`) keeps basic formatting: `<strong>`/`<b>`, `<em>`/`<i>`, `<u>` and links to `http`, `https` and `mailto` addresses (marked `rel="nofollow"`). Everything else is removed with `kses()`, and line breaks are kept. The render API sends the result as `content_html`.
+
+**HTML** (`html`) is sanitized with htmLawed's safe mode. A `{field_name}` merge tag in its text, or `{field_name:key}` for one input of a composite field, shows what the visitor entered, as they type: a choice shows its label, a list of choices or a composite field its filled parts, a list field its rows, and a field hidden by conditional logic nothing. Values are escaped, and tags inside attributes (such as an `href`) and tags naming a file, CAPTCHA, administrative or unknown field are left as typed.
+
 ```php
-// Section heading
-[
-    'type' => 'heading',
-    'content' => 'Personal Information',
-    'level' => 'h3',
-]
+FormField::create( ['form_id' => $form->id, 'type' => 'section', 'name' => 'guests', 'label' => 'Guest details',
+    'field_config'      => ['description' => 'Tell us who is coming.', 'collapsible' => true],
+    'conditional_logic' => ['action' => 'show', 'logic' => 'all', 'rules' => [['field' => 'attending', 'operator' => 'equals', 'value' => 'yes']]],
+] );
 
-// HTML content
-[
-    'type' => 'html',
-    'content' => '<p>Please read our <a href="/terms">terms</a>.</p>',
-]
+FormField::create( ['form_id' => $form->id, 'type' => 'heading', 'name' => 'intro', 'label' => 'Personal Information',
+    'field_config' => ['level' => 'h3', 'align' => 'center'],
+] );
 
-// Divider
-[
-    'type' => 'divider',
-]
+FormField::create( ['form_id' => $form->id, 'type' => 'paragraph', 'name' => 'terms',
+    'field_config' => ['content' => 'Please read our <a href="/terms">terms</a> <strong>before</strong> you submit.'],
+] );
+
+FormField::create( ['form_id' => $form->id, 'type' => 'html', 'name' => 'summary',
+    'field_config' => ['content' => '<p>Thanks, {first_name}. You chose the {plan} plan.</p>'],
+] );
+
+FormField::create( ['form_id' => $form->id, 'type' => 'divider', 'name' => 'break'] );
 ```
 
 ## Creating Forms Programmatically

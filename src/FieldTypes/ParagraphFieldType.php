@@ -17,6 +17,10 @@ use ArtisanPackUI\Forms\Config\FieldTypes;
 /**
  * Block of descriptive text.
  *
+ * Since 1.6.0 the text may use basic formatting: `<strong>`, `<em>`, `<u>`
+ * and `<a href>` are kept and everything else is removed (see
+ * FormField::getParagraphHtml()).
+ *
  * @since 1.6.0
  */
 class ParagraphFieldType extends AbstractFieldType

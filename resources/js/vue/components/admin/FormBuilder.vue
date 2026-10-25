@@ -1059,7 +1059,7 @@ function getPreviewInputType( fieldType: string ): string {
 							>
 								{{ getLayoutContent( field ) }}
 							</p>
-							<div v-if="'divider' === field.type" class="divider" />
+							<div v-if="'divider' === field.type || 'section' === field.type" class="divider" />
 							<label v-if="field.help_text" class="label">
 								<span class="label-text-alt">{{ field.help_text }}</span>
 							</label>

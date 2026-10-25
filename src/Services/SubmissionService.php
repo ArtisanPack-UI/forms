@@ -16,12 +16,15 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
 
+use ArtisanPackUI\Forms\FieldTypes\DateTimeFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
 use ArtisanPackUI\Forms\FieldTypes\PhoneFieldType;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use ArtisanPackUI\Forms\Models\FormUpload;
+use ArtisanPackUI\Forms\Support\MediaLibraryStorage;
 use ArtisanPackUI\Forms\Support\NumberFormat;
 use ArtisanPackUI\Forms\Support\RichText;
 use ArtisanPackUI\Forms\Support\SubmissionRules;
@@ -301,6 +304,9 @@ class SubmissionService
      * normalizeFormattedNumbers()), URLs typed without a scheme get
      * `https://` (see UrlSchemes) and rich text that holds no text, such as
      * an emptied editor's `<p><br></p>`, becomes blank so `required` sees it.
+     * A `datetime-local` value becomes `Y-m-d H:i`, and a list keeps only its
+     * filled rows, under their own keys, so an error names the row the
+     * visitor sees.
      *
      * @since 1.6.0
      *
@@ -322,6 +328,10 @@ class SubmissionService
                 $formData[ $field->name ] = UrlSchemes::withScheme( $formData[ $field->name ], $field->getAllowedUrlSchemes() );
             } elseif ( $field->usesRichText() ) {
                 $formData[ $field->name ] = RichText::blankIfEmpty( $formData[ $field->name ] );
+            } elseif ( DateTimeFieldType::TYPE === $field->type ) {
+                $formData[ $field->name ] = DateTimeFieldType::normalizeValue( $formData[ $field->name ] );
+            } elseif ( ListFieldType::TYPE === $field->type ) {
+                $formData[ $field->name ] = ListFieldType::filledRows( $field, $formData[ $field->name ], false );
             }
         }
 
@@ -883,6 +893,10 @@ class SubmissionService
     /**
      * Stores an uploaded file and records it as an upload of the submission.
      *
+     * A field with Media Library storage saves the file as a media item and
+     * records the item's file; when the media library does not take the file,
+     * it is stored on the forms disk as usual (see MediaLibraryStorage).
+     *
      * @since 1.6.0
      *
      * @param  FormSubmission  $submission  The form submission.
@@ -895,11 +909,25 @@ class SubmissionService
      */
     protected function storeUpload( FormSubmission $submission, FormField $field, UploadedFile $file ): FormUpload
     {
+        // Validate extension against allowlist, whichever storage takes the file
+        $extension = $this->getValidatedExtension( $file );
+
+        if ( $field->usesMediaLibraryStorage() && null !== ( $media = app( MediaLibraryStorage::class )->store( $file, $field, $extension ) ) ) {
+            return FormUpload::create( [
+                'submission_id' => $submission->id,
+                'field_id'      => $field->id,
+                'media_id'      => $media['media_id'],
+                'original_name' => $file->getClientOriginalName(),
+                'stored_name'   => basename( $media['path'] ),
+                'disk'          => $media['disk'],
+                'path'          => $media['path'],
+                'mime_type'     => $media['mime_type'],
+                'size'          => $media['size'],
+            ] );
+        }
+
         $disk      = config( 'artisanpack.forms.uploads.disk', 'local' );
         $directory = config( 'artisanpack.forms.uploads.directory', 'form-uploads' );
-
-        // Validate extension against allowlist
-        $extension = $this->getValidatedExtension( $file );
 
         // Generate a unique filename with validated extension
         $storedName  = Str::uuid()->toString() . '.' . $extension;

@@ -25,6 +25,7 @@ import {
 	SUB_INPUT_MAX_LENGTH,
 	toCompositeValue,
 } from '../../../shared/composite';
+import { getDateLimits } from '../../../shared/dateConstraints';
 import { getFieldLayout } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 import type { FieldComponentProps } from './types';
@@ -35,6 +36,7 @@ import type { FieldComponentProps } from './types';
 export function CompositeField( { field, value, error, subErrors = {}, onChange, displayConfig }: FieldComponentProps ) {
 	const parts = toCompositeValue( value );
 	const subInputs = getEnabledSubInputs( field );
+	const dateLimits = getDateLimits( field );
 	const required = new Set( getRequiredSubInputKeys( field ) );
 	const subLabelPlacement = getSubLabelPlacement( field );
 	const layout = getFieldLayout( field, displayConfig );
@@ -122,7 +124,9 @@ export function CompositeField( { field, value, error, subErrors = {}, onChange,
 									type={subInput.type}
 									className={`input input-bordered w-full ${subError ? 'input-error' : ''}`}
 									placeholder={subInput.placeholder ?? undefined}
-									maxLength={subInput.type === 'number' ? undefined : SUB_INPUT_MAX_LENGTH}
+									min={subInput.type === 'date' ? dateLimits.min : undefined}
+									max={subInput.type === 'date' ? dateLimits.max : undefined}
+									maxLength={subInput.type === 'number' || subInput.type === 'date' ? undefined : SUB_INPUT_MAX_LENGTH}
 									onChange={( e ) => handleChange( subInput.key, e.target.value )}
 								/>
 							)}

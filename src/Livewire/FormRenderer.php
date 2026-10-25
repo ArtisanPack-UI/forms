@@ -20,6 +20,8 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Livewire;
 
 use ArtisanPackUI\Forms\Captcha\CaptchaVerifier;
+use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormStep;
@@ -27,6 +29,7 @@ use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\SubmissionService;
 use ArtisanPackUI\Forms\Support\DynamicPopulation;
 use ArtisanPackUI\Forms\Support\PopulationContext;
+use ArtisanPackUI\Forms\Support\Sections;
 use Exception;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -309,6 +312,29 @@ class FormRenderer extends Component
         return $config;
     }
 
+    /**
+     * Get the fields each section groups, for Alpine to hide with a hidden section.
+     *
+     * CAPTCHAs are left out, since conditional logic never hides one.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, list<string>> Member field names keyed by section name.
+     */
+    #[Computed]
+    public function sectionMembers(): array
+    {
+        $captchas = $this->form->fields
+            ->filter( fn ( FormField $field ): bool => CaptchaFieldType::TYPE === $field->type )
+            ->pluck( 'name' )
+            ->all();
+
+        return array_map(
+            fn ( array $members ): array => array_values( array_diff( $members, $captchas ) ),
+            Sections::members( $this->form->fields ),
+        );
+    }
+
     // =========================================
     // Navigation Methods
     // =========================================
@@ -445,7 +471,7 @@ class FormRenderer extends Component
             // Create the submission
             $submission = $this->submissionService->create(
                 $this->form,
-                $this->resolvedFormData(),
+                $this->visibleFormData(),
                 $this->visibleFiles(),
                 $metadata,
             );
@@ -493,6 +519,72 @@ class FormRenderer extends Component
         unset( $this->files[ $fieldName ][ $key ] );
 
         $this->resetValidation( "files.{$fieldName}" );
+    }
+
+    /**
+     * Adds an empty row to a list field, up to its max rows.
+     *
+     * Dispatches `forms-list-row-added` with the field and the new row's
+     * index, so the partial can focus the row and announce it.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $fieldName  The list field's name.
+     */
+    public function addListRow( string $fieldName ): void
+    {
+        $field = $this->listField( $fieldName );
+
+        if ( null === $field ) {
+            return;
+        }
+
+        $rows = $this->listRows( $fieldName );
+
+        if ( count( $rows ) >= ListFieldType::maxRows( $field ) ) {
+            return;
+        }
+
+        $rows[]                       = array_fill_keys( array_column( ListFieldType::columns( $field ), 'key' ), '' );
+        $this->formData[ $fieldName ] = $rows;
+
+        $this->dispatch( 'forms-list-row-added', field: $fieldName, index: count( $rows ) - 1 );
+    }
+
+    /**
+     * Removes a row from a list field, keeping one empty row when it was the last.
+     *
+     * Clears the field's errors, since the rows after it move up, and
+     * dispatches `forms-list-row-removed` with the field and the removed row's
+     * index.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $fieldName  The list field's name.
+     * @param  int  $index  The row's index.
+     */
+    public function removeListRow( string $fieldName, int $index ): void
+    {
+        $field = $this->listField( $fieldName );
+        $rows  = $this->listRows( $fieldName );
+
+        if ( null === $field || ! array_key_exists( $index, $rows ) ) {
+            return;
+        }
+
+        unset( $rows[ $index ] );
+
+        $this->formData[ $fieldName ] = [] === $rows
+            ? [array_fill_keys( array_column( ListFieldType::columns( $field ), 'key' ), '' )]
+            : array_values( $rows );
+
+        foreach ( $this->getErrorBag()->keys() as $key ) {
+            if ( "formData.{$fieldName}" === $key || str_starts_with( (string) $key, "formData.{$fieldName}." ) ) {
+                $this->resetValidation( $key );
+            }
+        }
+
+        $this->dispatch( 'forms-list-row-removed', field: $fieldName, index: $index );
     }
 
     /**
@@ -753,6 +845,26 @@ class FormRenderer extends Component
     }
 
     /**
+     * Gets the resolved values of the fields conditional logic shows.
+     *
+     * Hidden fields (including every field in a hidden section) are not
+     * validated, so their values are not stored either, as the submit API
+     * drops them (SubmitFormApiRequest::sanitizedData()).
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> The values keyed by field name.
+     */
+    protected function visibleFormData(): array
+    {
+        return array_filter(
+            $this->resolvedFormData(),
+            fn ( string|int $fieldName ): bool => $this->isFieldVisible( (string) $fieldName ),
+            ARRAY_FILTER_USE_KEY,
+        );
+    }
+
+    /**
      * Gets the uploaded files of the fields conditional logic shows.
      *
      * Hidden fields are not validated, so their files are not stored either,
@@ -802,6 +914,38 @@ class FormRenderer extends Component
     // =========================================
 
     /**
+     * Gets a list field of the form by name.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $fieldName  The field's name.
+     *
+     * @return FormField|null The field, or null when the form has no list field by that name.
+     */
+    protected function listField( string $fieldName ): ?FormField
+    {
+        $field = $this->form->fields->firstWhere( 'name', $fieldName );
+
+        return $field instanceof FormField && ListFieldType::TYPE === $field->type && ! $field->isAdministrative() ? $field : null;
+    }
+
+    /**
+     * Gets a list field's rows from the form data, numbered from 0.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $fieldName  The field's name.
+     *
+     * @return list<array<string, mixed>> The rows.
+     */
+    protected function listRows( string $fieldName ): array
+    {
+        $rows = $this->formData[ $fieldName ] ?? [];
+
+        return is_array( $rows ) ? array_values( array_filter( $rows, 'is_array' ) ) : [];
+    }
+
+    /**
      * Clear computed properties to force recalculation.
      */
     protected function clearComputedProperties(): void
@@ -816,6 +960,7 @@ class FormRenderer extends Component
             $this->steps,
             $this->fieldMap,
             $this->conditionalLogicConfig,
+            $this->sectionMembers,
         );
     }
 }

@@ -21,8 +21,11 @@ namespace ArtisanPackUI\Forms\Services;
 use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
 use ArtisanPackUI\Forms\FieldTypes\CompositeFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ConsentFieldType;
+use ArtisanPackUI\Forms\FieldTypes\DateTimeFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
+use ArtisanPackUI\Forms\Support\Sections;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -68,6 +71,10 @@ class ConditionalLogicService
     /**
      * Evaluates conditional logic for all fields in a form.
      *
+     * Since 1.6.0 a hidden section hides every field it groups (see Sections),
+     * and rules read a list's filled rows (none counts as empty) and a date
+     * and time as `Y-m-d H:i`, as they are stored.
+     *
      * @since 1.0.0
      *
      * @param Collection<int, FormField> $fields   The form fields.
@@ -82,10 +89,18 @@ class ConditionalLogicService
         $visibility = [];
 
         foreach ( $fields as $field ) {
+            if ( ListFieldType::TYPE === $field->type ) {
+                $formData[ $field->name ] = ListFieldType::filledRows( $field, $formData[ $field->name ] ?? null );
+            } elseif ( DateTimeFieldType::TYPE === $field->type && array_key_exists( $field->name, $formData ) ) {
+                $formData[ $field->name ] = DateTimeFieldType::normalizeValue( $formData[ $field->name ] );
+            }
+        }
+
+        foreach ( $fields as $field ) {
             $visibility[ $field->name ] = $this->evaluateField( $field, $formData );
         }
 
-        return $visibility;
+        return Sections::applyVisibility( $fields, $visibility );
     }
 
     /**

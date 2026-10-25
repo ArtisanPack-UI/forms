@@ -22,6 +22,7 @@ namespace ArtisanPackUI\Forms\Console\Commands;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
+use ArtisanPackUI\Forms\Support\MediaLibraryStorage;
 use DateTimeInterface;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
@@ -199,7 +200,7 @@ class PruneFormSubmissions extends Command
     {
         return DB::table( 'form_uploads' )
             ->whereIn( 'submission_id', $submissionIds )
-            ->select( ['id', 'submission_id', 'disk', 'path', 'original_name'] )
+            ->select( ['id', 'submission_id', 'media_id', 'disk', 'path', 'original_name'] )
             ->get();
     }
 
@@ -302,6 +303,9 @@ class PruneFormSubmissions extends Command
     /**
      * Deletes a single file from storage.
      *
+     * Since 1.6.0 a file saved in the media library is removed by deleting
+     * its media item.
+     *
      * @since 1.0.0
      *
      * @param object $upload The upload record to delete.
@@ -309,6 +313,17 @@ class PruneFormSubmissions extends Command
     protected function deleteFile( object $upload ): void
     {
         try {
+            if ( null !== ( $upload->media_id ?? null ) && app( MediaLibraryStorage::class )->delete( (int) $upload->media_id ) ) {
+                $this->filesDeleted++;
+
+                Log::info( 'Pruned form upload media item', [
+                    'upload_id' => $upload->id,
+                    'media_id'  => $upload->media_id,
+                ] );
+
+                return;
+            }
+
             $disk = Storage::disk( $upload->disk );
 
             if ( $disk->exists( $upload->path ) ) {

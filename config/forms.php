@@ -75,6 +75,17 @@ return [
             'text/plain',
             'text/csv',
         ],
+
+        // File fields whose Storage setting is "Media Library" store their files
+        // with artisanpack-ui/media-library instead (since 1.6.0). Those files
+        // live on the media library's disk and follow its visibility, which is
+        // public by default. Guests' uploads are attributed to `uploaded_by`
+        // when set; otherwise the media library's guest upload settings apply.
+        // A file the media library cannot take is kept on the disk above.
+        'media_library' => [
+            'folder_id'   => env( 'FORMS_MEDIA_FOLDER_ID' ),
+            'uploaded_by' => env( 'FORMS_MEDIA_UPLOADED_BY' ),
+        ],
     ],
 
     /*

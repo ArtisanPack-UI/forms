@@ -25,6 +25,7 @@
     $subInputs = $field->getEnabledSubInputs();
     $requiredKeys = $field->getRequiredSubInputKeys();
     $subLabelPlacement = $field->getSubLabelPlacement();
+    $dateLimits = $field->getDateLimits();
     $descriptionPlacement = $field->getDescriptionPlacement();
     $subErrors = array_intersect_key($subErrors ?? [], $subInputs);
     $hasErrors = filled($error) || [] !== $subErrors;
@@ -96,6 +97,8 @@
                         @class(['input input-bordered w-full', 'input-error' => filled($subError)])
                         @if(filled($subInput['placeholder'])) placeholder="{{ $subInput['placeholder'] }}" @endif
                         @if(filled($subInput['autocomplete'])) autocomplete="{{ $subInput['autocomplete'] }}" @endif
+                        @if('date' === $subInput['type'] && null !== $dateLimits['min']) min="{{ $dateLimits['min'] }}" @endif
+                        @if('date' === $subInput['type'] && null !== $dateLimits['max']) max="{{ $dateLimits['max'] }}" @endif
                         @if($isRequired) required aria-required="true" @endif
                         @if(filled($subError)) aria-invalid="true" aria-describedby="error-{{ $field->name }}-{{ $key }}" @endif
                     />

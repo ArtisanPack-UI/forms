@@ -44,8 +44,17 @@ export {
 export {
 	FileField,
 	DateField,
+	DateTimeField,
 	RatingField,
 } from './components/fields/AdvancedField';
+
+export { ListField } from './components/fields/ListField';
+
+export { SectionField, SectionGroup } from './components/fields/SectionField';
+export type { SectionGroupProps } from './components/fields/SectionField';
+
+export { FormValuesContext, useFormValues } from './components/fields/FormValuesContext';
+export type { FormValuesContextValue } from './components/fields/FormValuesContext';
 
 export {
 	HeadingField,
@@ -190,7 +199,24 @@ export {
 } from '../shared/composite';
 export type { ConditionTarget, SubInputSetting } from '../shared/composite';
 
-export { validateCompositeField } from '../shared/validation';
+export { isDateRange, validateCompositeField } from '../shared/validation';
+
+// Section, list and live merge tag helpers (since 1.6.0)
+export {
+	applySectionVisibility,
+	getFieldSegments,
+	getSectionMembers,
+} from '../shared/sections';
+export type { FieldSegment } from '../shared/sections';
+
+export {
+	getInitialListRows,
+	getListColumns,
+	validateListField,
+} from '../shared/list';
+export type { ListRow } from '../shared/list';
+
+export { applyLiveMergeTags } from '../shared/liveMergeTags';
 
 // Email confirmation helpers (since 1.6.0)
 export {

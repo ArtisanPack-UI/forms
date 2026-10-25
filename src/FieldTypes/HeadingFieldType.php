@@ -16,7 +16,8 @@ use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Models\FormField;
 
 /**
- * Section heading. Its text is the field label.
+ * Section heading. Its text is the field label; its level and (since 1.6.0)
+ * alignment are settings.
  *
  * @since 1.6.0
  */
@@ -54,6 +55,17 @@ class HeadingFieldType extends AbstractFieldType
                         fn ( string $level ): array => ['value' => $level, 'label' => strtoupper( $level )],
                         FormField::HEADING_LEVELS,
                     ),
+                ],
+                [
+                    'key'     => 'align',
+                    'input'   => 'select',
+                    'default' => 'left',
+                    'label'   => __( 'Alignment' ),
+                    'options' => [
+                        ['value' => 'left', 'label' => __( 'Left' )],
+                        ['value' => 'center', 'label' => __( 'Center' )],
+                        ['value' => 'right', 'label' => __( 'Right' )],
+                    ],
                 ],
             ],
         ] );

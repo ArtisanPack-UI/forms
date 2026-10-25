@@ -1,11 +1,13 @@
 <!--
   Advanced field components wrapper.
 
-  Renders file upload and date picker fields
+  Renders file upload, date picker and (since 1.6.0) date and time fields
   using @artisanpack-ui/vue components. A multi-file field (since 1.6.0)
   adds each file chosen or dropped to a list with a remove button, up to its
   max files, and a polite live region announces the changes. Files upload
-  with the submission.
+  with the submission. A note under a file input lists the allowed types and
+  size limits (since 1.6.0). A date and time field is a native
+  `datetime-local` input bounded by its min and max dates.
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -19,12 +21,15 @@ import {
 	allowsMultipleFiles,
 	getFieldLayout,
 	getFileAccept,
+	getFileLimitsHint,
 	getFileMaxCount,
 	getInputLabelProps,
 	getLayoutDescribedBy,
+	getTimeStep,
 	isReadOnlyField,
+	withInputNotes,
 } from '../../../shared/fieldSettings';
-import { getDateBounds } from '../../../shared/dateConstraints';
+import { getDateBounds, getDateLimits } from '../../../shared/dateConstraints';
 import { t } from '../../../shared/i18n';
 import FieldLayout from './FieldLayout.vue';
 import { vAutocomplete } from './autocomplete';
@@ -47,9 +52,23 @@ const stringValue = computed( () => String( props.modelValue ?? '' ) );
 /** Where the label and description go (see `FieldLayout.vue`). */
 const layout = computed( () => getFieldLayout( props.field, props.displayConfig ) );
 
-/** The input's label, hint and ID props; `aria-describedby` is set by `v-described-by`. */
+/** A file field's note of its allowed types and size limits (since 1.6.0). */
+const limitsHint = computed( () => ( props.field.type === 'file' ? getFileLimitsHint( props.field ) : undefined ) );
+
+/** The ID of the limits note, which the file input references. */
+const limitsId = computed( () => `field-${props.field.name}-limits` );
+
+/** The IDs of the input's notes. */
+const noteIds = computed( () => ( limitsHint.value === undefined ? [] : [limitsId.value] ) );
+
+/** The input's label, hint and ID props, with a known ID when it has notes; `aria-describedby` is set by `v-described-by`. */
 const labelProps = computed( () => {
-	const { 'aria-describedby': _describedBy, ...rest } = getInputLabelProps( props.field, layout.value, props.displayConfig, props.error );
+	const { 'aria-describedby': _describedBy, ...rest } = withInputNotes(
+		getInputLabelProps( props.field, layout.value, props.displayConfig, props.error ),
+		props.field,
+		props.error,
+		noteIds.value,
+	);
 
 	return rest;
 } );
@@ -61,10 +80,34 @@ const fileLabelProps = computed( () => {
 	return rest;
 } );
 
-/** The description and error IDs the input references in a custom layout. */
-const describedBy = computed( () =>
-	layout.value.custom ? getLayoutDescribedBy( props.field, layout.value, props.error ) : undefined,
-);
+/**
+ * The IDs the input references: the description and error in a custom
+ * layout, and its notes (which also need its own hint and error kept).
+ */
+const describedBy = computed( () => {
+	const custom = layout.value.custom ? getLayoutDescribedBy( props.field, layout.value, props.error ) : undefined;
+
+	if ( noteIds.value.length === 0 ) {
+		return custom;
+	}
+
+	return withInputNotes(
+		{ ...getInputLabelProps( props.field, layout.value, props.displayConfig, props.error ), 'aria-describedby': custom },
+		props.field,
+		props.error,
+		noteIds.value,
+	)['aria-describedby'];
+} );
+
+/** A date and time field's `min` and `max`, from the start of the min date to the end of the max (since 1.6.0). */
+const dateTimeBounds = computed( () => {
+	const limits = getDateLimits( props.field );
+
+	return {
+		min: limits.min ? `${limits.min}T00:00` : undefined,
+		max: limits.max ? `${limits.max}T23:59` : undefined,
+	};
+} );
 
 const allowedTypes = computed( () => getFileAccept( props.field ) );
 
@@ -152,6 +195,8 @@ function handleFilesSelected( fileList: FileList | null ): void {
 				@files-selected="addFiles"
 			/>
 
+			<p v-if="limitsHint" :id="limitsId" class="fieldset-label mt-1">{{ limitsHint }}</p>
+
 			<ul
 				v-if="files.length > 0"
 				class="mt-3 flex flex-col gap-2"
@@ -179,17 +224,38 @@ function handleFilesSelected( fileList: FileList | null ): void {
 		</div>
 
 		<!-- File -->
-		<FileUpload
-			v-else-if="field.type === 'file'"
+		<div v-else-if="field.type === 'file'">
+			<FileUpload
+				v-described-by="describedBy"
+				v-bind="fileLabelProps"
+				:name="field.name"
+				:accept="allowedTypes"
+				:error="error"
+				:required="field.is_required"
+				:class="field.css_classes ?? undefined"
+				with-drag-drop
+				@files-selected="handleFilesSelected"
+			/>
+
+			<p v-if="limitsHint" :id="limitsId" class="fieldset-label mt-1">{{ limitsHint }}</p>
+		</div>
+
+		<!-- Date and time (since 1.6.0) -->
+		<Input
+			v-else-if="field.type === 'datetime'"
 			v-described-by="describedBy"
-			v-bind="fileLabelProps"
+			type="datetime-local"
+			v-bind="labelProps"
 			:name="field.name"
-			:accept="allowedTypes"
+			:model-value="stringValue"
 			:error="error"
 			:required="field.is_required"
 			:class="field.css_classes ?? undefined"
-			with-drag-drop
-			@files-selected="handleFilesSelected"
+			:readonly="readOnly"
+			:min="dateTimeBounds.min"
+			:max="dateTimeBounds.max"
+			:step="getTimeStep( field )"
+			@update:model-value="emit( 'update:modelValue', $event )"
 		/>
 
 		<!-- Date, read-only: DatePicker has no readonly state, so use a plain date input -->

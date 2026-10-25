@@ -12,6 +12,8 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Support;
 
+use ArtisanPackUI\Forms\FieldTypes\DateTimeFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
 use ArtisanPackUI\Forms\Models\FormField;
 
 /**
@@ -64,6 +66,11 @@ class DynamicPopulation
     {
         $value = self::resolveInitialValue( $field, $context, $prefill );
 
+        // A date and time input takes `YYYY-MM-DDTHH:MM` (since 1.6.0)
+        if ( DateTimeFieldType::TYPE === $field->type && is_string( $value ) && '' !== $value ) {
+            return DateTimeFieldType::toInputValue( $value );
+        }
+
         // The rich text editors render their value as HTML (since 1.6.0)
         return $field->usesRichText() && is_string( $value ) ? RichText::sanitize( $value ) : $value;
     }
@@ -106,6 +113,11 @@ class DynamicPopulation
 
         if ( $field->isComposite() ) {
             return self::compositeValue( $field, $context, $prefill );
+        }
+
+        // A list starts with empty rows to fill in (since 1.6.0)
+        if ( ListFieldType::TYPE === $field->type ) {
+            return ListFieldType::initialRows( $field );
         }
 
         $default = self::defaultValue( $field, $context );
