@@ -3,8 +3,8 @@
     and year dropdowns or fields grouped in a fieldset whose legend is the
     field label. The parts are ordered by the field's date format and combined
     into the `Y-m-d` value entangled with `formData.{name}`; an incomplete or
-    impossible date (such as 31 February) is left for the `date` rule to
-    reject. The native `min` and `max` and the year dropdown follow the
+    impossible date (such as 31 February) or a short year (`90`, which is not
+    padded) is left for the `date` and `date_format:Y-m-d` rules to reject. The native `min` and `max` and the year dropdown follow the
     field's resolved limits and age limits (see FormField::getDateBounds()).
 --}}
 @props(['field', 'value' => '', 'error' => null])
@@ -78,7 +78,7 @@
 
             this.value = year === '' && month === '' && day === ''
                 ? ''
-                : `${year === '' ? '' : year.padStart(4, '0')}-${month === '' ? '' : month.padStart(2, '0')}-${day === '' ? '' : day.padStart(2, '0')}`;
+                : `${year}-${month === '' ? '' : month.padStart(2, '0')}-${day === '' ? '' : day.padStart(2, '0')}`;
         },
     }"
 >

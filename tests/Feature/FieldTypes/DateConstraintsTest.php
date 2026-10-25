@@ -100,13 +100,13 @@ describe( 'validation rules', function (): void {
     it( 'keeps absolute limits as they are', function (): void {
         $this->date->update( ['validation_rules' => ['min_date' => '2026-01-01', 'max_date' => '2026-12-31']] );
 
-        expect( $this->date->fresh()->buildValidationRules() )->toBe( ['nullable', 'date', 'after_or_equal:2026-01-01', 'before_or_equal:2026-12-31'] );
+        expect( $this->date->fresh()->buildValidationRules() )->toBe( ['nullable', 'date', 'date_format:Y-m-d', 'after_or_equal:2026-01-01', 'before_or_equal:2026-12-31'] );
     } );
 
     it( 'resolves relative limits for today', function (): void {
         $this->date->update( ['validation_rules' => ['min_date' => 'today', 'max_date' => '+30 days']] );
 
-        expect( $this->date->fresh()->buildValidationRules() )->toBe( ['nullable', 'date', 'after_or_equal:2026-06-15', 'before_or_equal:2026-07-15'] );
+        expect( $this->date->fresh()->buildValidationRules() )->toBe( ['nullable', 'date', 'date_format:Y-m-d', 'after_or_equal:2026-06-15', 'before_or_equal:2026-07-15'] );
     } );
 
     it( 'narrows the limits with no past or no future dates', function (): void {
@@ -198,8 +198,13 @@ it( 'rejects a birthdate written another way, so it cannot skip the age check', 
     'slashes'   => ['06/15/2015'],
 ] );
 
-it( 'keeps the plain date rule without disabled days or ages', function (): void {
-    expect( $this->date->buildValidationRules() )->toBe( ['nullable', 'date'] );
+it( 'requires YYYY-MM-DD dates even without disabled days or ages', function (): void {
+    expect( $this->date->buildValidationRules() )->toBe( ['nullable', 'date', 'date_format:Y-m-d'] );
+
+    $this->postJson( route( 'api.forms.submit', $this->form ), [
+        'data'            => ['when' => 'June 15 2015'],
+        '_form_loaded_at' => time() - 10,
+    ] )->assertUnprocessable()->assertJsonValidationErrors( ['data.when' => 'Please enter a valid date for When.'] );
 } );
 
 describe( 'rendering', function (): void {

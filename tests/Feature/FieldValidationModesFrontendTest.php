@@ -38,7 +38,8 @@ describe( 'shared helpers', function () use ( $resource, $between ): void {
             ->toContain( "export const DEFAULT_URL_SCHEMES: readonly string[] = ['http', 'https'];" )
             ->toContain( 'return /^[a-z][a-z0-9+.-]*:(?!\d)/i.test( value );' )
             ->toContain( "return trimmed.startsWith( '//' ) ? `\${scheme}:\${trimmed}` : `\${scheme}://\${trimmed}`;" )
-            ->toContain( "return allowed.includes( url.protocol.replace( /:$/, '' ).toLowerCase() );" );
+            ->toContain( "return allowed.includes( url.protocol.replace( /:$/, '' ).toLowerCase() );" )
+            ->toContain( 'if ( !/^[a-z][a-z0-9+.-]*:\/\//i.test( value ) ) {' );
     } );
 
     it( 'converts rich text to plain text like RichText::toPlainText()', function () use ( $resource, $between ): void {
@@ -70,7 +71,8 @@ describe( 'shared helpers', function () use ( $resource, $between ): void {
         expect( $resource( 'shared/dateTime.ts' ) )
             ->toContain( "mdy: ['month', 'day', 'year']," )
             ->toContain( "hour = ( hour % 12 ) + ( parts.period === 'pm' ? 12 : 0 );" )
-            ->toContain( 'const interval = step !== undefined && step >= 60 && step % 60 === 0 ? step / 60 : 1;' );
+            ->toContain( 'const interval = step !== undefined && step >= 60 && step % 60 === 0 ? step / 60 : 1;' )
+            ->toContain( "return `\${year}-\${month === '' ? '' : month.padStart( 2, '0' )}" );
     } );
 
     it( 'parses date expression settings like FieldSettings', function () use ( $resource ): void {

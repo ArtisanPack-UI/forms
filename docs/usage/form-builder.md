@@ -204,7 +204,7 @@ FormField::create( [
 
 ### URL Schemes
 
-URL fields accept only `http` and `https` addresses unless **Allowed Schemes** (`validation_rules.allowed_schemes`) lists others, such as `https` alone or `https, ftp`. The rule is `url:{schemes}`, so `javascript:` and other schemes are rejected.
+URL fields accept only `http` and `https` addresses unless **Allowed Schemes** (`validation_rules.allowed_schemes`) lists others, such as `https` alone or `https, ftp`. The rule is `url:{schemes}`, so `javascript:` and other schemes are rejected. Laravel's `url` rule needs `://` after the scheme, so schemes such as `mailto:` and `tel:` cannot be allowed.
 
 Visitors often type `example.com`, which has no scheme. Before validation the server adds `https://` (or `http://` when only `http` is allowed), so `example.com/about` is validated and stored as `https://example.com/about`. A protocol-relative `//example.com` gets the scheme alone, and `localhost:8080` reads as a host and port. All three renderers add the scheme when the input loses focus, so visitors see the address that will be stored.
 
@@ -274,7 +274,7 @@ Dates are always stored as `YYYY-MM-DD` and times as 24-hour `HH:MM` (`HH:MM:SS`
 - **Disable weekends** and **Disabled Dates** (`YYYY-MM-DD`, comma-separated) reject those days with the `forms_disabled_dates` rule. The native picker cannot grey them out, so the error explains it.
 - **Minimum Age** and **Maximum Age** check a birthdate (`forms_min_age`, `forms_max_age`): someone aged 18 today may submit with a minimum age of 18.
 
-With disabled days or an age limit the value must be a `YYYY-MM-DD` date (`date_format:Y-m-d`), so a date written another way, such as `June 15 2015`, cannot skip those checks. All three renderers submit dates in that form.
+Dates must be `YYYY-MM-DD` (`date_format:Y-m-d`), as they are stored, so a date written another way, such as `June 15 2015`, cannot skip the disabled-day and age checks, and a year typed as `90` in the fields mode is rejected rather than stored as year 90. All three renderers submit dates in that form.
 
 The native `min` and `max` attributes and the year dropdown follow the resolved limits and age limits (`FormField::getDateBounds()`), in all three renderers.
 

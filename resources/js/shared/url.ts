@@ -62,8 +62,15 @@ export function withUrlScheme( value: string, allowed: string[] = [...DEFAULT_UR
 	return trimmed.startsWith( '//' ) ? `${scheme}:${trimmed}` : `${scheme}://${trimmed}`;
 }
 
-/** Whether a URL is absolute and uses one of the allowed schemes. */
+/**
+ * Whether a URL is absolute and uses one of the allowed schemes, followed by
+ * `://` as the server's `url` rule requires (so not `mailto:`).
+ */
 export function isAllowedUrl( value: string, allowed: string[] ): boolean {
+	if ( !/^[a-z][a-z0-9+.-]*:\/\//i.test( value ) ) {
+		return false;
+	}
+
 	try {
 		const url = new URL( value );
 

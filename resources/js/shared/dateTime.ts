@@ -108,7 +108,8 @@ export function splitDate( value: unknown, padded: boolean ): DatePartValues | u
 
 /**
  * Combine the inputs into the submitted `YYYY-MM-DD` value. Blank when every
- * part is blank; an incomplete date keeps its gaps so validation rejects it.
+ * part is blank; an incomplete date keeps its gaps and a short year (`90`)
+ * is left as typed, so validation rejects them rather than storing year 90.
  */
 export function combineDate( parts: DatePartValues ): string {
 	const year = parts.year.trim();
@@ -119,7 +120,7 @@ export function combineDate( parts: DatePartValues ): string {
 		return '';
 	}
 
-	return `${year === '' ? '' : year.padStart( 4, '0' )}-${month === '' ? '' : month.padStart( 2, '0' )}-${day === '' ? '' : day.padStart( 2, '0' )}`;
+	return `${year}-${month === '' ? '' : month.padStart( 2, '0' )}-${day === '' ? '' : day.padStart( 2, '0' )}`;
 }
 
 /** Split an `HH:MM` value into the dropdown values on the field's clock. */

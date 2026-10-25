@@ -131,7 +131,9 @@ describe( 'date dropdowns and fields', function (): void {
         expect( FieldRenderer::render( $this->date->fresh(), '' ) )->toContain( 'inputmode="numeric"' )
             ->toContain( 'placeholder="MM"' )
             ->toContain( 'maxlength="4"' )
-            ->toContain( 'padded: true' );
+            ->toContain( 'padded: true' )
+            ->toContain( ': `${year}-${month' )
+            ->not->toContain( "year.padStart(4, '0')" );
     } );
 
     it( 'stores the combined date as YYYY-MM-DD and rejects an impossible one', function (): void {
@@ -145,6 +147,9 @@ describe( 'date dropdowns and fields', function (): void {
             ->set( 'formData.born', '2026--05' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.born' => 'date'] )
+            ->set( 'formData.born', '90-04-09' )
+            ->call( 'submit' )
+            ->assertHasErrors( ['formData.born' => 'date_format'] )
             ->set( 'formData.born', '2026-02-28' )
             ->call( 'submit' )
             ->assertHasNoErrors();

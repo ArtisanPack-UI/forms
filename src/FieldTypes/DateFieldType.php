@@ -131,10 +131,11 @@ class DateFieldType extends AbstractFieldType
     /**
      * {@inheritDoc}
      *
-     * Adds the disabled days and age rules. Those rules read `Y-m-d` dates
-     * only, so with any of them the value must be one (`date_format:Y-m-d`);
-     * otherwise a date written another way, such as `June 15 2015`, would
-     * pass the `date` rule and skip them.
+     * Dates must be `Y-m-d` (`date_format:Y-m-d`), as they are stored: the
+     * `date` rule alone accepts other forms such as `June 15 2015`, which
+     * would skip the disabled days and age rules, and a short year such as
+     * `0090-04-09`, which `date_format` rejects only when typed as `90`.
+     * Adds the disabled days and age rules.
      *
      * @since 1.6.0
      */
@@ -157,7 +158,7 @@ class DateFieldType extends AbstractFieldType
             }
         }
 
-        return [] === $rules ? ['date'] : ['date', 'date_format:Y-m-d', ...$rules];
+        return ['date', 'date_format:Y-m-d', ...$rules];
     }
 
     /**
@@ -167,11 +168,7 @@ class DateFieldType extends AbstractFieldType
      */
     protected function typeMessages( FormField $field ): array
     {
-        $messages = [];
-
-        if ( $field->disablesWeekends() || [] !== $field->getDisabledDates() || null !== $field->getAgeLimit( 'min_age' ) || null !== $field->getAgeLimit( 'max_age' ) ) {
-            $messages['date_format'] = __( 'Please enter a valid date for :field.', ['field' => $field->label] );
-        }
+        $messages = ['date_format' => __( 'Please enter a valid date for :field.', ['field' => $field->label] )];
 
         if ( $field->disablesWeekends() || [] !== $field->getDisabledDates() ) {
             $messages[ SubmissionRules::DISABLED_DATES ] = __( 'The date chosen for :field is not available. Please choose another date.', ['field' => $field->label] );

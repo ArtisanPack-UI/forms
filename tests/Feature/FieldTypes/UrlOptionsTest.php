@@ -62,6 +62,22 @@ describe( 'settings and rules', function (): void {
         expect( $this->url->buildValidationRules() )->toBe( ['nullable', 'url:http,https'] );
     } );
 
+    it( 'escapes schemes for the url rule, so git+ssh matches itself', function (): void {
+        $this->url->update( ['validation_rules' => ['allowed_schemes' => ['git+ssh']]] );
+
+        expect( $this->url->fresh()->buildValidationRules() )->toBe( ['nullable', 'url:git\\+ssh'] );
+
+        $this->postJson( route( 'api.forms.submit', $this->form ), [
+            'data'            => ['website' => 'git+ssh://example.com/repo.git'],
+            '_form_loaded_at' => time() - 10,
+        ] )->assertCreated();
+
+        $this->postJson( route( 'api.forms.submit', $this->form ), [
+            'data'            => ['website' => 'gitssh://example.com/repo.git'],
+            '_form_loaded_at' => time() - 10,
+        ] )->assertUnprocessable()->assertJsonValidationErrors( 'data.website' );
+    } );
+
     it( 'accepts the schemes the field allows', function (): void {
         $this->url->update( ['validation_rules' => ['allowed_schemes' => ['https']]] );
 

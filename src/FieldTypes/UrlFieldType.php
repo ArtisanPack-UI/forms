@@ -20,7 +20,8 @@ use ArtisanPackUI\Forms\Support\UrlSchemes;
  * Web address input.
  *
  * Only the `allowed_schemes` are accepted (`http` and `https` unless the
- * field sets others). An address typed without a scheme, such as
+ * field sets others). Laravel's `url` rule needs `://` after the scheme, so
+ * schemes such as `mailto:` cannot be used. An address typed without a scheme, such as
  * `example.com`, gets `https://` before validation and again when stored
  * (see UrlSchemes).
  *
@@ -69,7 +70,7 @@ class UrlFieldType extends AbstractFieldType
                     'tab'         => 'validation',
                     'label'       => __( 'Allowed Schemes' ),
                     'placeholder' => 'http, https',
-                    'hint'        => __( 'The URL schemes accepted, comma-separated. Defaults to http and https. Addresses typed without one get https://.' ),
+                    'hint'        => __( 'The URL schemes accepted, comma-separated, such as https or ftp. Defaults to http and https. Only schemes followed by :// work, so not mailto: or tel:. Addresses typed without one get https://.' ),
                     'monospace'   => true,
                 ],
                 $this->noDuplicatesSetting(),
@@ -85,7 +86,8 @@ class UrlFieldType extends AbstractFieldType
      */
     protected function typeRules( FormField $field ): array
     {
-        return ['url:' . implode( ',', $field->getAllowedUrlSchemes() )];
+        // Laravel puts the schemes into its URL pattern unescaped, so `git+ssh` would not match itself
+        return ['url:' . implode( ',', array_map( fn ( string $scheme ): string => preg_quote( $scheme, '~' ), $field->getAllowedUrlSchemes() ) )];
     }
 
     /**
