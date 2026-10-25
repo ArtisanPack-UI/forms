@@ -22,10 +22,15 @@ use ArtisanPackUI\Forms\Database\Factories\FormFieldFactory;
 use ArtisanPackUI\Forms\FieldTypes\CompositeFieldType;
 use ArtisanPackUI\Forms\Support\Autocomplete;
 use ArtisanPackUI\Forms\Support\ChoiceSources;
+use ArtisanPackUI\Forms\Support\DateConstraints;
+use ArtisanPackUI\Forms\Support\DateTimeFormat;
+use ArtisanPackUI\Forms\Support\EmailDomains;
 use ArtisanPackUI\Forms\Support\InputMask;
 use ArtisanPackUI\Forms\Support\MergeTags;
 use ArtisanPackUI\Forms\Support\NumberFormat;
 use ArtisanPackUI\Forms\Support\PopulationContext;
+use ArtisanPackUI\Forms\Support\RichText;
+use ArtisanPackUI\Forms\Support\UrlSchemes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -877,6 +882,208 @@ class FormField extends Model
     public function getPhoneCountryKey(): string
     {
         return $this->name . '_country';
+    }
+
+    /**
+     * Gets how strictly an email field checks addresses.
+     *
+     * @since 1.6.0
+     *
+     * @return string `rfc` (default), `dns` or `strict`; see EmailDomains::VALIDATION_RULES.
+     */
+    public function getEmailValidation(): string
+    {
+        $mode = $this->offersSetting( 'email_validation' ) ? $this->getValidationRule( 'email_validation' ) : null;
+
+        return is_string( $mode ) && isset( EmailDomains::VALIDATION_RULES[ $mode ] ) ? $mode : 'rfc';
+    }
+
+    /**
+     * Gets an email field's allowed or blocked domains.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $list  `allowed` or `blocked`.
+     *
+     * @return list<string> The lowercase domains; empty when the list is unset.
+     */
+    public function getEmailDomains( string $list ): array
+    {
+        $key = "{$list}_domains";
+
+        return $this->offersSetting( $key ) ? EmailDomains::normalizeList( $this->getValidationRule( $key ) ) : [];
+    }
+
+    /**
+     * Gets the schemes a URL field accepts.
+     *
+     * @since 1.6.0
+     *
+     * @return list<string> The lowercase schemes; `http` and `https` when unset.
+     */
+    public function getAllowedUrlSchemes(): array
+    {
+        return UrlSchemes::normalizeList( $this->offersSetting( 'allowed_schemes' ) ? $this->getValidationRule( 'allowed_schemes' ) : null );
+    }
+
+    /**
+     * Checks whether a textarea uses the rich text editor.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the `rich_text` setting is on and the type offers it.
+     */
+    public function usesRichText(): bool
+    {
+        return $this->configFlag( 'rich_text' ) && $this->offersSetting( 'rich_text' );
+    }
+
+    /**
+     * Gets a date field's earliest and latest allowed dates, resolved for today.
+     *
+     * The min and max date settings (absolute or relative, see
+     * DateConstraints), narrowed by the "No past dates" or "No future dates"
+     * range. The age limits are checked by their own rules and left out.
+     *
+     * @since 1.6.0
+     *
+     * @return array{min: string|null, max: string|null} The `Y-m-d` bounds; null when unbounded.
+     */
+    public function getDateLimits(): array
+    {
+        if ( ! $this->offersSetting( 'min_date' ) ) {
+            return ['min' => null, 'max' => null];
+        }
+
+        $range = $this->offersSetting( 'date_range' ) ? $this->getValidationRule( 'date_range' ) : null;
+        $today = in_array( $range, DateConstraints::RANGES, true ) ? DateConstraints::resolve( 'today' ) : null;
+
+        return DateConstraints::combine(
+            [DateConstraints::resolve( $this->getValidationRule( 'min_date' ) ), 'no_past' === $range ? $today : null],
+            [DateConstraints::resolve( $this->getValidationRule( 'max_date' ) ), 'no_future' === $range ? $today : null],
+        );
+    }
+
+    /**
+     * Gets the bounds a date field's input offers: its limits narrowed by its age limits.
+     *
+     * Used for the native `min` and `max` attributes and the year dropdown.
+     *
+     * @since 1.6.0
+     *
+     * @return array{min: string|null, max: string|null} The `Y-m-d` bounds; null when unbounded.
+     */
+    public function getDateBounds(): array
+    {
+        $limits = $this->getDateLimits();
+        $minAge = $this->getAgeLimit( 'min_age' );
+        $maxAge = $this->getAgeLimit( 'max_age' );
+
+        return DateConstraints::combine(
+            [$limits['min'], null === $maxAge ? null : DateConstraints::earliestBirthdate( $maxAge )],
+            [$limits['max'], null === $minAge ? null : DateConstraints::latestBirthdate( $minAge )],
+        );
+    }
+
+    /**
+     * Gets a date field's minimum or maximum age, for a birthdate.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $key  `min_age` or `max_age`.
+     *
+     * @return int|null The age in years, or null when unset.
+     */
+    public function getAgeLimit( string $key ): ?int
+    {
+        if ( ! $this->offersSetting( $key ) ) {
+            return null;
+        }
+
+        $age = $this->getValidationRule( $key );
+
+        return is_numeric( $age ) && (int) $age >= 0 ? (int) $age : null;
+    }
+
+    /**
+     * Checks whether a date field rejects Saturdays and Sundays.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the `disable_weekends` rule is on and the type offers it.
+     */
+    public function disablesWeekends(): bool
+    {
+        return true === filter_var( $this->getValidationRule( 'disable_weekends', false ), FILTER_VALIDATE_BOOLEAN )
+            && $this->offersSetting( 'disable_weekends' );
+    }
+
+    /**
+     * Gets the specific dates a date field rejects.
+     *
+     * @since 1.6.0
+     *
+     * @return list<string> The sorted `Y-m-d` dates.
+     */
+    public function getDisabledDates(): array
+    {
+        return $this->offersSetting( 'disabled_dates' ) ? DateConstraints::normalizeDates( $this->getValidationRule( 'disabled_dates' ) ) : [];
+    }
+
+    /**
+     * Gets how a date field shows dates and orders its month, day and year inputs.
+     *
+     * @since 1.6.0
+     *
+     * @return string `ymd` (default), `mdy` or `dmy`.
+     */
+    public function getDateFormat(): string
+    {
+        $format = $this->offersSetting( 'date_format' ) ? $this->getConfig( 'date_format' ) : null;
+
+        return is_string( $format ) && isset( DateTimeFormat::DATE_FORMATS[ $format ] ) ? $format : 'ymd';
+    }
+
+    /**
+     * Gets how a date field is filled in.
+     *
+     * @since 1.6.0
+     *
+     * @return string `picker` (default), `dropdowns` or `fields`.
+     */
+    public function getDateInputMode(): string
+    {
+        $mode = $this->offersSetting( 'date_input' ) ? $this->getConfig( 'date_input' ) : null;
+
+        return is_string( $mode ) && in_array( $mode, DateTimeFormat::DATE_INPUTS, true ) ? $mode : 'picker';
+    }
+
+    /**
+     * Gets whether a time field shows a 24-hour or 12-hour clock.
+     *
+     * @since 1.6.0
+     *
+     * @return string `24` (default) or `12`.
+     */
+    public function getTimeFormat(): string
+    {
+        $format = $this->offersSetting( 'time_format' ) ? $this->getConfig( 'time_format' ) : null;
+
+        return is_scalar( $format ) && in_array( (string) $format, DateTimeFormat::TIME_FORMATS, true ) ? (string) $format : '24';
+    }
+
+    /**
+     * Gets how a time field is filled in.
+     *
+     * @since 1.6.0
+     *
+     * @return string `picker` (default) or `dropdowns`.
+     */
+    public function getTimeInputMode(): string
+    {
+        $mode = $this->offersSetting( 'time_input' ) ? $this->getConfig( 'time_input' ) : null;
+
+        return is_string( $mode ) && in_array( $mode, DateTimeFormat::TIME_INPUTS, true ) ? $mode : 'picker';
     }
 
     /**
@@ -1919,7 +2126,10 @@ class FormField extends Model
      */
     public function getReadOnlyValue(): mixed
     {
-        return applyFilters( 'ap.forms.readOnlyValue', $this->fieldType()->readOnlyValue( $this ), $this );
+        $value = applyFilters( 'ap.forms.readOnlyValue', $this->fieldType()->readOnlyValue( $this ), $this );
+
+        // The rich text editors render their value as HTML (since 1.6.0)
+        return $this->usesRichText() && is_string( $value ) ? RichText::sanitize( $value ) : $value;
     }
 
     /**

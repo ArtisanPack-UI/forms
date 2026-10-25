@@ -27,7 +27,15 @@ use Illuminate\Http\UploadedFile;
  *   the value was already submitted for the field (`ci`: case-insensitively).
  * - `forms_other_choice` fails when an "Other" choice was submitted without its
  *   text, or with text longer than FormField::OTHER_CHOICE_MAX_LENGTH.
- * - `forms_max_words:{max}` fails when a text has more than `max` words.
+ * - `forms_max_words:{max}[,html]` fails when a text has more than `max` words
+ *   (`html`: the words of rich text, without its markup).
+ * - `forms_min_text:{min}` and `forms_max_text:{max}` fail when rich text has
+ *   fewer or more characters of text than the limit (see RichText).
+ * - `forms_email_domain:{allow|block},{domain},…` fails when an address's
+ *   domain is not on the allow list, or is on the block list (see EmailDomains).
+ * - `forms_disabled_dates:[weekends,]{Y-m-d},…` fails on a disabled day.
+ * - `forms_min_age:{years}` and `forms_max_age:{years}` fail when a birthdate
+ *   is too recent or too long ago (see DateConstraints).
  * - `forms_total_size:{kilobytes}` fails when a list of files is larger in total.
  * - `forms_image_dimensions:{min_width},{max_width},{min_height},{max_height}`
  *   fails when an image is outside the bounds; a blank bound is not checked
@@ -65,6 +73,60 @@ class SubmissionRules
     public const MAX_WORDS = 'forms_max_words';
 
     /**
+     * The name of the rich text minimum length rule.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const MIN_TEXT = 'forms_min_text';
+
+    /**
+     * The name of the rich text maximum length rule.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const MAX_TEXT = 'forms_max_text';
+
+    /**
+     * The name of the email domain rule.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const EMAIL_DOMAIN = 'forms_email_domain';
+
+    /**
+     * The name of the disabled dates rule.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const DISABLED_DATES = 'forms_disabled_dates';
+
+    /**
+     * The name of the minimum age rule.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const MIN_AGE = 'forms_min_age';
+
+    /**
+     * The name of the maximum age rule.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const MAX_AGE = 'forms_max_age';
+
+    /**
      * The name of the total upload size rule.
      *
      * @since 1.6.0
@@ -94,6 +156,12 @@ class SubmissionRules
         $validator->extend( self::NO_DUPLICATES, fn ( string $attribute, mixed $value, array $parameters ): bool => self::isUnique( $value, $parameters ) );
         $validator->extend( self::OTHER_CHOICE, fn ( string $attribute, mixed $value ): bool => self::hasOtherText( $value ) );
         $validator->extend( self::MAX_WORDS, fn ( string $attribute, mixed $value, array $parameters ): bool => self::withinWordLimit( $value, $parameters ) );
+        $validator->extend( self::MIN_TEXT, fn ( string $attribute, mixed $value, array $parameters ): bool => self::withinTextLength( $value, $parameters, 'min' ) );
+        $validator->extend( self::MAX_TEXT, fn ( string $attribute, mixed $value, array $parameters ): bool => self::withinTextLength( $value, $parameters, 'max' ) );
+        $validator->extend( self::EMAIL_DOMAIN, fn ( string $attribute, mixed $value, array $parameters ): bool => EmailDomains::passes( $value, $parameters ) );
+        $validator->extend( self::DISABLED_DATES, fn ( string $attribute, mixed $value, array $parameters ): bool => DateConstraints::isAllowedDay( $value, $parameters ) );
+        $validator->extend( self::MIN_AGE, fn ( string $attribute, mixed $value, array $parameters ): bool => DateConstraints::meetsMinimumAge( $value, $parameters ) );
+        $validator->extend( self::MAX_AGE, fn ( string $attribute, mixed $value, array $parameters ): bool => DateConstraints::meetsMaximumAge( $value, $parameters ) );
         $validator->extend( self::TOTAL_SIZE, fn ( string $attribute, mixed $value, array $parameters ): bool => self::withinTotalSize( $value, $parameters ) );
         $validator->extend( self::IMAGE_DIMENSIONS, fn ( string $attribute, mixed $value, array $parameters ): bool => self::withinImageDimensions( $value, $parameters ) );
     }
@@ -122,7 +190,7 @@ class SubmissionRules
      * @since 1.6.0
      *
      * @param  mixed  $value  The submitted value.
-     * @param  array<int, string>  $parameters  The word limit.
+     * @param  array<int, string>  $parameters  The word limit, then `html` to count the text of rich text.
      *
      * @return bool True when within the limit.
      */
@@ -134,7 +202,33 @@ class SubmissionRules
             return true;
         }
 
-        return self::countWords( (string) $value ) <= $max;
+        $text = 'html' === ( $parameters[1] ?? null ) ? RichText::toPlainText( (string) $value ) : (string) $value;
+
+        return self::countWords( $text ) <= $max;
+    }
+
+    /**
+     * Checks that rich text has at least or at most a number of characters of text.
+     *
+     * @since 1.6.0
+     *
+     * @param  mixed  $value  The submitted HTML.
+     * @param  array<int, string>  $parameters  The limit.
+     * @param  string  $bound  `min` or `max`.
+     *
+     * @return bool True when within the limit.
+     */
+    public static function withinTextLength( mixed $value, array $parameters, string $bound ): bool
+    {
+        $limit = filter_var( $parameters[0] ?? null, FILTER_VALIDATE_INT );
+
+        if ( false === $limit || ! is_string( $value ) ) {
+            return true;
+        }
+
+        $length = RichText::length( $value );
+
+        return 'min' === $bound ? $length >= $limit : $length <= $limit;
     }
 
     /**

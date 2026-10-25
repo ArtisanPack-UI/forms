@@ -245,7 +245,7 @@ describe( 'Client validation limits of zero (issue #86)', function () use ( $res
             ->toContain( 'const minLength = numericLimit( rules.min );' )
             ->toContain( 'const min = numericLimit( rules.min );' )
             ->toContain( 'const step = numericLimit( rules.step );' )
-            ->toContain( 'const minDate = stringLimit( rules.min_date );' )
+            ->toContain( 'const { min: minDate, max: maxDate } = getDateLimits( field );' )
             ->toContain( 'const maxTime = stringLimit( rules.max_time );' )
             ->not->toContain( 'rules.min !== undefined' )
             ->not->toContain( 'if ( rules.min_date )' );

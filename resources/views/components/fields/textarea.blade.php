@@ -1,5 +1,13 @@
 @props(['field', 'value' => '', 'error' => null])
 
+@if($field->usesRichText())
+{{-- The editor references the layout's label with aria-labelledby. --}}
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error])
+@component('forms::components.fields.partials.counter', ['field' => $field])
+@include('forms::components.fields.partials.rich-text', ['field' => $field, 'value' => $value, 'error' => $error])
+@endcomponent
+@endcomponent
+@else
 @php
     $rows = $field->getConfig('rows', 4);
     // The input component renders a top label; the layout renders the others.
@@ -27,3 +35,4 @@
 />
 @endcomponent
 @endcomponent
+@endif

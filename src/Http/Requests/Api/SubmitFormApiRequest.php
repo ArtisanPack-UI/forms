@@ -238,7 +238,9 @@ class SubmitFormApiRequest extends FormRequest
      *
      * A read-only field keeps its own value whatever the client sent, so that
      * value is what gets validated and stored. Numbers typed in a number
-     * field's format are converted to plain decimals (since 1.6.0).
+     * field's format are converted to plain decimals, URLs typed without a
+     * scheme get one and emptied rich text is blanked (since 1.6.0; see
+     * SubmissionService::normalizeSubmittedValues()).
      *
      * @since 1.6.0
      */
@@ -258,7 +260,7 @@ class SubmitFormApiRequest extends FormRequest
         $submissionService = app( SubmissionService::class );
 
         $this->merge( [
-            'data' => $submissionService->normalizeFormattedNumbers(
+            'data' => $submissionService->normalizeSubmittedValues(
                 $form->fields,
                 $submissionService->applyReadOnlyValues( $form->fields, $data ),
             ),

@@ -37,10 +37,21 @@ import {
 	requiresEmailConfirmation,
 } from './fieldSettings';
 import { countWords, getMaxWords } from './counter';
+import {
+	earliestBirthdate,
+	getAgeLimit,
+	getDateLimits,
+	isAllowedDay,
+	latestBirthdate,
+	parseIsoDate,
+} from './dateConstraints';
+import { isAcceptedEmailDomain } from './emailDomains';
 import { t } from './i18n';
 import { getInputMask, getInputMaskHint, maskToRegExp } from './mask';
 import { getNumberFormat, isIntegerOnly, normalizeFormattedNumber } from './numberFormat';
 import { getPhoneFormat, isPlausiblePhoneNumber } from './phone';
+import { richTextToPlainText, usesRichText } from './richText';
+import { getAllowedUrlSchemes, isAllowedUrl, withUrlScheme } from './url';
 
 /** Layout field types that do not collect data. */
 const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );
@@ -97,6 +108,11 @@ function isMissing(
 		return !Array.isArray( value ) || value.length === 0;
 	}
 
+	// An emptied rich text editor still holds markup such as `<p><br></p>`
+	if ( usesRichText( field ) && typeof value === 'string' ) {
+		return richTextToPlainText( value ) === '';
+	}
+
 	return value === null || value === undefined || String( value ).trim() === '';
 }
 
@@ -145,6 +161,10 @@ function validateValue(
 		return errors;
 	}
 
+	if ( usesRichText( field ) && typeof value === 'string' && richTextToPlainText( value ) === '' ) {
+		return errors;
+	}
+
 	// A selected "Other" choice needs its text, mirroring the `forms_other_choice` rule.
 	// Callers validate values with the text already resolved (see `resolveOtherChoices()`).
 	if ( allowsOtherChoice( field ) ) {
@@ -190,6 +210,29 @@ function validateValue(
 		if ( field.type === 'phone' && !isPlausiblePhoneNumber( value, getPhoneFormat( field ) ) ) {
 			errors.push( t( 'Please enter a valid phone number.' ) );
 		}
+
+		// Email and URL checks read their own settings, so they run without validation rules (since 1.6.0)
+		if ( field.type === 'email' ) {
+			if ( !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test( value ) ) {
+				errors.push( 'Please enter a valid email address.' );
+			} else if ( !isAcceptedEmailDomain( field, value ) ) {
+				errors.push( t( 'Please use an email address from an accepted domain.' ) );
+			}
+		}
+
+		// The server adds `https://` to an address typed without a scheme, so check it with one
+		if ( field.type === 'url' ) {
+			const schemes = getAllowedUrlSchemes( field );
+
+			if ( !isAllowedUrl( withUrlScheme( value, schemes ), schemes ) ) {
+				errors.push( 'Please enter a valid URL.' );
+			}
+		}
+
+		// Date formats, disabled days and age limits read their own settings too (since 1.6.0)
+		if ( field.type === 'date' ) {
+			validateDateField( field, value, errors );
+		}
 	}
 
 	if ( field.type === 'number' && ( typeof value === 'string' || typeof value === 'number' ) ) {
@@ -214,31 +257,20 @@ function validateValue(
 		return errors;
 	}
 
-	// Type-specific validation
-	if ( field.type === 'email' && typeof value === 'string' ) {
-		if ( !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test( value ) ) {
-			errors.push( 'Please enter a valid email address.' );
-		}
-	}
-
-	if ( field.type === 'url' && typeof value === 'string' ) {
-		try {
-			new URL( value );
-		} catch {
-			errors.push( 'Please enter a valid URL.' );
-		}
-	}
+	// Rich text limits count its text, not its markup (since 1.6.0)
+	const text = typeof value === 'string' && usesRichText( field ) ? richTextToPlainText( value ) : value;
 
 	// Min/max length for text-like fields only (not number, date, time, etc.)
-	if ( typeof value === 'string' && TEXT_LENGTH_FIELDS.has( field.type ) ) {
+	if ( typeof text === 'string' && TEXT_LENGTH_FIELDS.has( field.type ) ) {
 		const minLength = numericLimit( rules.min );
 		const maxLength = numericLimit( rules.max );
+		const length = usesRichText( field ) ? Array.from( text ).length : text.length;
 
-		if ( minLength !== undefined && value.length < minLength ) {
+		if ( minLength !== undefined && length < minLength ) {
 			errors.push( `Must be at least ${minLength} characters.` );
 		}
 
-		if ( maxLength !== undefined && value.length > maxLength ) {
+		if ( maxLength !== undefined && length > maxLength ) {
 			errors.push( `Must be no more than ${maxLength} characters.` );
 		}
 	}
@@ -261,13 +293,8 @@ function validateValue(
 	// A textarea's word limit, mirroring the `forms_max_words` rule
 	const maxWords = getMaxWords( field );
 
-	if ( typeof value === 'string' && maxWords !== undefined && countWords( value ) > maxWords ) {
+	if ( typeof text === 'string' && maxWords !== undefined && countWords( text ) > maxWords ) {
 		errors.push( t( 'Must be no more than :max words.', { max: maxWords } ) );
-	}
-
-	// Date validation
-	if ( field.type === 'date' && typeof value === 'string' ) {
-		validateDateRules( value, rules, errors );
 	}
 
 	// Time validation
@@ -310,30 +337,46 @@ function validateNumericRules(
 }
 
 /**
- * Validates date min/max constraints.
+ * Validates a date: a real `YYYY-MM-DD` date (the dropdown and field modes
+ * submit incomplete dates with gaps), within the field's resolved limits, not
+ * a disabled day and within its age limits. Mirrors `DateFieldType::rules()`
+ * (since 1.6.0).
  */
-function validateDateRules(
+function validateDateField(
+	field: FormField,
 	value: string,
-	rules: ValidationRules,
 	errors: string[],
 ): void {
-	const date = new Date( value );
-
-	if ( isNaN( date.getTime() ) ) {
+	if ( !parseIsoDate( value ) ) {
 		errors.push( 'Please enter a valid date.' );
 
 		return;
 	}
 
-	const minDate = stringLimit( rules.min_date );
-	const maxDate = stringLimit( rules.max_date );
+	const { min: minDate, max: maxDate } = getDateLimits( field );
 
-	if ( minDate !== undefined && date < new Date( minDate ) ) {
+	// `YYYY-MM-DD` dates compare correctly as strings
+	if ( minDate !== undefined && value < minDate ) {
 		errors.push( `Date must be on or after ${minDate}.` );
 	}
 
-	if ( maxDate !== undefined && date > new Date( maxDate ) ) {
+	if ( maxDate !== undefined && value > maxDate ) {
 		errors.push( `Date must be on or before ${maxDate}.` );
+	}
+
+	if ( !isAllowedDay( field, value ) ) {
+		errors.push( t( 'This date is not available. Please choose another date.' ) );
+	}
+
+	const minAge = getAgeLimit( field, 'min_age' );
+	const maxAge = getAgeLimit( field, 'max_age' );
+
+	if ( minAge !== undefined && value > latestBirthdate( minAge ) ) {
+		errors.push( t( 'You must be at least :age years old.', { age: minAge } ) );
+	}
+
+	if ( maxAge !== undefined && value < earliestBirthdate( maxAge ) ) {
+		errors.push( t( 'You must be no older than :age years.', { age: maxAge } ) );
 	}
 }
 

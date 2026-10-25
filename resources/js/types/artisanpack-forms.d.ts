@@ -234,7 +234,9 @@ export interface ValidationRules {
     max?: number;
     pattern?: string;
     step?: number;
+    /** A `YYYY-MM-DD` date, `today` or a relative date such as `+30 days` (relative since 1.6.0). */
     min_date?: string;
+    /** A `YYYY-MM-DD` date, `today` or a relative date such as `-18 years` (relative since 1.6.0). */
     max_date?: string;
     min_time?: string;
     max_time?: string;
@@ -246,7 +248,46 @@ export interface ValidationRules {
     max_words?: number;
     /** Whether a number field accepts whole numbers only (since 1.6.0). */
     integer_only?: boolean;
+    /** How strictly an email field checks addresses. Defaults to `rfc` (since 1.6.0). */
+    email_validation?: EmailValidation;
+    /** The only domains (and their subdomains) an email field accepts (since 1.6.0). */
+    allowed_domains?: string[];
+    /** Domains (and their subdomains) an email field rejects (since 1.6.0). */
+    blocked_domains?: string[];
+    /** The schemes a URL field accepts. Defaults to `http` and `https` (since 1.6.0). */
+    allowed_schemes?: string[];
+    /** Narrows a date field to today and later (`no_past`) or earlier (`no_future`) (since 1.6.0). */
+    date_range?: DateRange | '';
+    /** Whether a date field rejects Saturdays and Sundays (since 1.6.0). */
+    disable_weekends?: boolean;
+    /** `YYYY-MM-DD` dates a date field rejects (since 1.6.0). */
+    disabled_dates?: string[];
+    /** The youngest age, in years, a date field's birthdate allows (since 1.6.0). */
+    min_age?: number;
+    /** The oldest age, in years, a date field's birthdate allows (since 1.6.0). */
+    max_age?: number;
 }
+
+/**
+ * How strictly an email field checks addresses: RFC syntax, RFC with a DNS
+ * lookup (server only), or strict RFC (since 1.6.0).
+ */
+export type EmailValidation = 'rfc' | 'dns' | 'strict';
+
+/** A date field's "No past dates" or "No future dates" range (since 1.6.0). */
+export type DateRange = 'no_past' | 'no_future';
+
+/** How a date field shows dates and orders its month, day and year inputs (since 1.6.0). */
+export type DateFormat = 'mdy' | 'dmy' | 'ymd';
+
+/** How a date field is filled in (since 1.6.0). */
+export type DateInputMode = 'picker' | 'dropdowns' | 'fields';
+
+/** The clock a time field shows (since 1.6.0). */
+export type TimeFormat = '24' | '12';
+
+/** How a time field is filled in (since 1.6.0). */
+export type TimeInputMode = 'picker' | 'dropdowns';
 
 /**
  * Base field configuration shared by all field types.
@@ -499,6 +540,40 @@ export interface PhoneFieldConfig extends CommonFieldConfig {
 }
 
 /**
+ * Configuration for textarea fields (since 1.6.0).
+ */
+export interface TextareaFieldConfig extends CommonFieldConfig {
+    /** The number of rows. Defaults to 4. */
+    rows?: number;
+    /** Whether a text or textarea field shows a live character or word counter. */
+    show_counter?: boolean;
+    /** Whether visitors write in the rich text editor; the field then submits sanitized HTML. */
+    rich_text?: boolean;
+}
+
+/**
+ * Configuration for date fields (since 1.6.0).
+ */
+export interface DateFieldConfig extends CommonFieldConfig {
+    /** How dates are shown and the inputs ordered. Defaults to `ymd`. Values are stored as `YYYY-MM-DD`. */
+    date_format?: DateFormat;
+    /** The native picker, dropdowns or number fields. Defaults to `picker`. */
+    date_input?: DateInputMode;
+}
+
+/**
+ * Configuration for time fields (since 1.6.0).
+ */
+export interface TimeFieldConfig extends CommonFieldConfig {
+    /** The step in seconds. Defaults to 60. */
+    step?: number;
+    /** The clock of the dropdowns and of displayed times. Defaults to `24`. Values are stored as `HH:MM`. */
+    time_format?: TimeFormat;
+    /** The native picker or dropdowns. Defaults to `picker`. */
+    time_input?: TimeInputMode;
+}
+
+/**
  * The format a number field reads typed numbers in (since 1.6.0).
  */
 export type NumberFormat = 'decimal_dot' | 'decimal_comma' | 'currency';
@@ -605,6 +680,9 @@ export type FieldConfig =
     | TextFieldConfig
     | PhoneFieldConfig
     | NumberFieldConfig
+    | TextareaFieldConfig
+    | DateFieldConfig
+    | TimeFieldConfig
     | BaseFieldConfig
     | null;
 
@@ -613,7 +691,7 @@ export type FieldConfig =
  *
  * @since 1.6.0
  */
-export type FieldSettingInput = 'text' | 'textarea' | 'integer' | 'number' | 'select' | 'toggle' | 'date' | 'time' | 'list';
+export type FieldSettingInput = 'text' | 'textarea' | 'integer' | 'number' | 'select' | 'toggle' | 'date' | 'time' | 'list' | 'date_expression';
 
 /**
  * One type-specific setting from a field type's settings schema
@@ -880,6 +958,12 @@ export interface FormSubmissionValue {
     display_value: string;
     /** Option labels for an array value, one per item (since 1.6.0). */
     display_values: string[];
+    /**
+     * A rich text value's HTML, sanitized on the server, or null when the
+     * display value is plain text (since 1.6.0). `display_value` holds the
+     * plain text.
+     */
+    display_html: string | null;
     /**
      * Whether the value is masked because its field is masked in the admin
      * and the user may not reveal it. `value` and `display_value` then hold

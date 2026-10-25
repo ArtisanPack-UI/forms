@@ -13,6 +13,8 @@
 import { useState } from 'react';
 import { DatePicker, File as FileInput, Input } from '@artisanpack-ui/react/form';
 
+import { getDateBounds } from '../../../shared/dateConstraints';
+import { getDateInputMode } from '../../../shared/dateTime';
 import {
 	allowsMultipleFiles,
 	getFieldLayout,
@@ -26,6 +28,7 @@ import {
 } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 
+import { DatePartsField } from './DateTimeParts';
 import { FieldLayout } from './FieldLayout';
 import type { FieldComponentProps } from './types';
 
@@ -171,11 +174,20 @@ function SingleFileField( { field, error, onFileChange, displayConfig }: FieldCo
 }
 
 /**
- * Renders a date picker field.
+ * Renders a date picker field, or month, day and year inputs in the
+ * `dropdowns` and `fields` modes (since 1.6.0). The picker's `min` and `max`
+ * follow the field's resolved limits and age limits.
  */
-export function DateField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
+export function DateField( props: FieldComponentProps ) {
+	const { field, value, error, onChange, displayConfig } = props;
+
+	if ( getDateInputMode( field ) !== 'picker' ) {
+		return <DatePartsField {...props} />;
+	}
+
 	const layout = getFieldLayout( field, displayConfig );
 	const labelProps = getInputLabelProps( field, layout, displayConfig, error );
+	const bounds = getDateBounds( field );
 
 	// DatePicker has no read-only state (its calendar still sets the value),
 	// so a read-only date is a plain readonly date input.
@@ -208,8 +220,8 @@ export function DateField( { field, value, error, onChange, displayConfig }: Fie
 				required={field.is_required}
 				className={field.css_classes ?? undefined}
 				onChange={( e ) => onChange( e.target.value )}
-				min={field.validation_rules?.min_date ?? undefined}
-				max={field.validation_rules?.max_date ?? undefined}
+				min={bounds.min}
+				max={bounds.max}
 				autoComplete={field.autocomplete ?? undefined}
 			/>
 		</FieldLayout>

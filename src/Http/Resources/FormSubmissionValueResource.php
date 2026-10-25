@@ -60,6 +60,7 @@ class FormSubmissionValueResource extends JsonResource
             'value_array'       => $masked ? null : $this->safeValueArray(),
             'display_value'     => $masked ? $this->resource->masked_display_value : $this->display_value,
             'display_values'    => $masked ? [] : $this->display_values,
+            'display_html'      => $masked ? null : $this->display_html,
             'is_masked'         => $masked,
             'is_redacted'       => $this->resource->isRedacted(),
             'upload_id'         => $this->upload_id,

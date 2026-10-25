@@ -24,6 +24,7 @@ import {
 	getLayoutDescribedBy,
 	isReadOnlyField,
 } from '../../../shared/fieldSettings';
+import { getDateBounds } from '../../../shared/dateConstraints';
 import { t } from '../../../shared/i18n';
 import FieldLayout from './FieldLayout.vue';
 import { vAutocomplete } from './autocomplete';
@@ -66,6 +67,9 @@ const describedBy = computed( () =>
 );
 
 const allowedTypes = computed( () => getFileAccept( props.field ) );
+
+/** A date's resolved limits and age limits, for the picker's `min` and `max` (since 1.6.0). */
+const dateBounds = computed( () => getDateBounds( props.field ) );
 
 /** Read-only dates stay focusable and announced, but cannot be edited. */
 const readOnly = computed( () => isReadOnlyField( props.field ) );
@@ -214,8 +218,8 @@ function handleFilesSelected( fileList: FileList | null ): void {
 			:error="error"
 			:required="field.is_required"
 			:class="field.css_classes ?? undefined"
-			:min="field.validation_rules?.min_date ?? undefined"
-			:max="field.validation_rules?.max_date ?? undefined"
+			:min="dateBounds.min"
+			:max="dateBounds.max"
 			@update:model-value="emit( 'update:modelValue', $event )"
 		/>
 	</FieldLayout>

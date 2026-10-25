@@ -68,7 +68,7 @@ describe( 'counter', function (): void {
             ->toContain( 'aria-describedby="counter-bio"' )
             ->toContain( 'aria-live="polite"' )
             ->toContain( 'setTimeout(() => { this.announcement = this.text; }, 1000)' )
-            ->toContain( 'x-on:input="update($event.target.value)"' );
+            ->toContain( 'x-on:input="update(read($event.target))"' );
     } );
 
     it( 'counts characters without a limit', function (): void {

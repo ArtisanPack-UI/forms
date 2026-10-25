@@ -4,6 +4,9 @@
  * Field-type behaviour captured from 1.6.0 before the field-type handler
  * refactor (#91). FieldTypeCharacterizationTest compares the handlers against
  * it, so the refactor cannot change built-in behaviour unnoticed.
+ *
+ * Deliberate changes since: URL fields accept only `http` and `https` unless
+ * they allow other schemes (#120), so their rule is `url:http,https`.
  */
 
 return  [
@@ -471,12 +474,12 @@ return  [
           'optional' => 
            [
             0 => 'nullable',
-            1 => 'url',
+            1 => 'url:http,https',
           ],
           'required' => 
            [
             0 => 'required',
-            1 => 'url',
+            1 => 'url:http,https',
           ],
         ],
         'number' => 
@@ -743,7 +746,7 @@ return  [
             'formData.url' => 
              [
               0 => 'nullable',
-              1 => 'url',
+              1 => 'url:http,https',
             ],
           ],
           'required' => 
@@ -751,7 +754,7 @@ return  [
             'formData.url' => 
              [
               0 => 'required',
-              1 => 'url',
+              1 => 'url:http,https',
             ],
           ],
         ],
