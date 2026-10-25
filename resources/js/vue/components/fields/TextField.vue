@@ -6,7 +6,9 @@
   the field's `autocomplete` token (WCAG 1.3.5). Text and phone inputs apply
   their input mask, text and textarea fields can show a live counter, phone
   fields offer a country selector and number fields a format, prefix and
-  suffix (since 1.6.0).
+  suffix, and a URL typed without a scheme gets `https://` when the input
+  loses focus (since 1.6.0). Rich text textareas and time dropdowns have
+  components of their own (see `FieldRenderer.vue`).
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -30,6 +32,7 @@ import {
 import { t } from '../../../shared/i18n';
 import { applyMask, getInputMask } from '../../../shared/mask';
 import { getAffixes, getNumberFormat, isIntegerOnly } from '../../../shared/numberFormat';
+import { getAllowedUrlSchemes, withUrlScheme } from '../../../shared/url';
 import {
 	composePhoneNumber,
 	findPhoneCountry,
@@ -140,6 +143,16 @@ const affixes = computed( () => getAffixes( props.field ) );
 const numberAttrs = computed( () => ( {
 	inputmode: numberFormat.value ? ( isIntegerOnly( props.field ) ? 'numeric' : 'decimal' ) : undefined,
 } ) );
+/** Add a scheme to a URL typed without one, as the server does before validation (since 1.6.0). */
+function addUrlScheme( event: FocusEvent ): void {
+	const typed = ( event.target as HTMLInputElement | null )?.value ?? stringValue.value;
+	const withScheme = withUrlScheme( typed, getAllowedUrlSchemes( props.field ) );
+
+	if ( withScheme !== typed ) {
+		emit( 'update:modelValue', withScheme );
+	}
+}
+
 const numberStep = computed( () =>
 	props.field.validation_rules?.step ?? ( isIntegerOnly( props.field ) ? 1 : undefined ),
 );
@@ -254,6 +267,7 @@ const numberStep = computed( () =>
 			:readonly="readOnly"
 			:class="field.css_classes ?? undefined"
 			@update:model-value="emit( 'update:modelValue', $event )"
+			@focusout="addUrlScheme"
 		/>
 
 		<!-- Textarea -->

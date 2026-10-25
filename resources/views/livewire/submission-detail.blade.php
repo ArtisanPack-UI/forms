@@ -142,7 +142,10 @@
                                         </ul>
                                     @elseif (in_array($value->field_type, \ArtisanPackUI\Forms\Models\FormField::ACCEPTANCE_TYPES, true) || ($value->value !== null && $value->value !== ''))
                                         <!-- Regular Value -->
-                                        @if ($value->field_type === 'textarea')
+                                        @if (null !== ($displayHtml = $value->display_html))
+                                            <!-- Rich text, sanitized with kses() -->
+                                            <div class="prose prose-sm max-w-none">{!! $displayHtml !!}</div>
+                                        @elseif ($value->field_type === 'textarea')
                                             <div class="whitespace-pre-wrap">{{ $value->value }}</div>
                                         @elseif ($value->field_type === 'email')
                                             <a href="mailto:{{ $value->value }}" class="link link-primary">{{ $value->value }}</a>

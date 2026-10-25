@@ -5,7 +5,9 @@
  * and time input fields using @artisanpack-ui/react components. A read-only
  * field keeps its value focusable and announced via `readOnly`. Inputs expose
  * the field's `autocomplete` token (WCAG 1.3.5). An email field with
- * confirmation on asks for the address twice (since 1.6.0).
+ * confirmation on asks for the address twice, a URL typed without a scheme
+ * gets `https://` when the input loses focus, a textarea may use the rich
+ * text editor and a time field may use dropdowns (since 1.6.0).
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -18,11 +20,13 @@ import { Input, Textarea } from '@artisanpack-ui/react/form';
 
 import { getSubLabelPlacement } from '../../../shared/composite';
 import { getLengthLimit } from '../../../shared/counter';
+import { getTimeInputMode } from '../../../shared/dateTime';
 import {
 	getConfirmationKey,
 	getFieldLayout,
 	getInputLabelProps,
 	getInputNoteIds,
+	getLayoutDescribedBy,
 	getTextareaRows,
 	getTimeStep,
 	isReadOnlyField,
@@ -32,6 +36,8 @@ import {
 import type { FieldLayout as FieldLayoutState } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 import { applyMask, getInputMask } from '../../../shared/mask';
+import { richTextToPlainText, usesRichText } from '../../../shared/richText';
+import { getAllowedUrlSchemes, withUrlScheme } from '../../../shared/url';
 import { getAffixes, getNumberFormat, isIntegerOnly } from '../../../shared/numberFormat';
 import {
 	composePhoneNumber,
@@ -42,8 +48,10 @@ import {
 } from '../../../shared/phone';
 import type { DisplayConfig, FormField } from '../../../types/artisanpack-forms';
 
+import { TimePartsField } from './DateTimeParts';
 import { FieldLayout } from './FieldLayout';
 import { InputNotes } from './InputNotes';
+import { RichTextEditor } from './RichTextEditor';
 import type { FieldComponentProps } from './types';
 
 /**
@@ -333,15 +341,29 @@ export function UrlField( { field, value, error, onChange, displayConfig }: Fiel
 				readOnly={isReadOnlyField( field )}
 				className={field.css_classes ?? undefined}
 				onChange={( e ) => onChange( e.target.value )}
+				onBlur={( e ) => {
+					const withScheme = withUrlScheme( e.target.value, getAllowedUrlSchemes( field ) );
+
+					if ( withScheme !== e.target.value ) {
+						onChange( withScheme );
+					}
+				}}
 			/>
 		</FieldLayout>
 	);
 }
 
 /**
- * Renders a multi-line textarea field.
+ * Renders a multi-line textarea field, or the rich text editor when the
+ * field uses it (since 1.6.0).
  */
-export function TextareaField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
+export function TextareaField( props: FieldComponentProps ) {
+	const { field, value, error, onChange, displayConfig } = props;
+
+	if ( usesRichText( field ) ) {
+		return <RichTextareaField {...props} />;
+	}
+
 	const layout = getFieldLayout( field, displayConfig );
 	const text = String( value ?? '' );
 
@@ -368,6 +390,50 @@ export function TextareaField( { field, value, error, onChange, displayConfig }:
 }
 
 /**
+ * Renders a textarea's rich text editor with its label, description, error
+ * and counter. The editor is labelled by the label's ID, like a group.
+ *
+ * @since 1.6.0
+ */
+function RichTextareaField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
+	const layout = getFieldLayout( field, displayConfig );
+	const html = String( value ?? '' );
+	const labelHidden = displayConfig.label_position === 'hidden';
+	const labelId = field.label ? ( layout.custom ? layout.labelId : `${field.name}-label` ) : undefined;
+	const errorId = error ? `${field.name}-error` : undefined;
+	const hintId = !layout.custom && field.help_text ? `${field.name}-hint` : undefined;
+	const describedBy = [
+		layout.custom ? getLayoutDescribedBy( field, layout ) : hintId,
+		errorId,
+		...getInputNoteIds( field ),
+	].filter( Boolean ).join( ' ' ) || undefined;
+
+	return (
+		<FieldLayout field={field} layout={layout} group>
+			<div className="fieldset">
+				{!layout.custom && field.label && (
+					<span id={labelId} className={`fieldset-legend ${labelHidden ? 'sr-only' : ''}`}>
+						{field.label}
+						{field.is_required && <span className="text-error ml-1">*</span>}
+					</span>
+				)}
+				<RichTextEditor
+					field={field}
+					value={html}
+					error={error}
+					labelId={labelId}
+					describedBy={describedBy}
+					onChange={( next ) => onChange( next )}
+				/>
+				{hintId && <p id={hintId} className="fieldset-label">{field.help_text}</p>}
+				{error && <p id={errorId} className="fieldset-label text-error" role="alert">{error}</p>}
+				<InputNotes field={field} value={richTextToPlainText( html )} />
+			</div>
+		</FieldLayout>
+	);
+}
+
+/**
  * Renders a hidden input field.
  */
 export function HiddenField( { field, value }: Pick<FieldComponentProps, 'field' | 'value'> ) {
@@ -382,9 +448,16 @@ export function HiddenField( { field, value }: Pick<FieldComponentProps, 'field'
 }
 
 /**
- * Renders a time input field.
+ * Renders a time input field, or hour and minute dropdowns in the
+ * `dropdowns` mode (since 1.6.0).
  */
-export function TimeField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
+export function TimeField( props: FieldComponentProps ) {
+	const { field, value, error, onChange, displayConfig } = props;
+
+	if ( getTimeInputMode( field ) === 'dropdowns' ) {
+		return <TimePartsField {...props} />;
+	}
+
 	const layout = getFieldLayout( field, displayConfig );
 
 	return (

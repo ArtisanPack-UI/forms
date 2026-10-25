@@ -250,6 +250,24 @@ abstract class AbstractFieldType implements FieldType
     }
 
     /**
+     * Gets a stored value as HTML, for views that render HTML rather than text.
+     *
+     * Null (the default) means the display value is plain text and is
+     * escaped like any other text. A type that stores markup, such as a rich
+     * text textarea, returns it sanitized.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormSubmissionValue  $value  The stored value.
+     *
+     * @return string|null Safe HTML, or null for plain text.
+     */
+    public function displayHtml( FormSubmissionValue $value ): ?string
+    {
+        return null;
+    }
+
+    /**
      * {@inheritDoc}
      *
      * @since 1.6.0

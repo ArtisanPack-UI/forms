@@ -23,7 +23,9 @@ use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use ArtisanPackUI\Forms\Models\FormUpload;
 use ArtisanPackUI\Forms\Support\NumberFormat;
+use ArtisanPackUI\Forms\Support\RichText;
 use ArtisanPackUI\Forms\Support\SubmissionRules;
+use ArtisanPackUI\Forms\Support\UrlSchemes;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -286,6 +288,40 @@ class SubmissionService
 
             if ( null !== $format && array_key_exists( $field->name, $formData ) ) {
                 $formData[ $field->name ] = NumberFormat::normalize( $formData[ $field->name ], $format );
+            }
+        }
+
+        return $formData;
+    }
+
+    /**
+     * Normalizes submitted values that are read differently from how they are typed, before validation.
+     *
+     * Numbers typed in a number field's format become plain decimals (see
+     * normalizeFormattedNumbers()), URLs typed without a scheme get
+     * `https://` (see UrlSchemes) and rich text that holds no text, such as
+     * an emptied editor's `<p><br></p>`, becomes blank so `required` sees it.
+     *
+     * @since 1.6.0
+     *
+     * @param  iterable<FormField>  $fields  The form fields.
+     * @param  array<string, mixed>  $formData  The submitted values keyed by field name.
+     *
+     * @return array<string, mixed> The normalized values.
+     */
+    public function normalizeSubmittedValues( iterable $fields, array $formData ): array
+    {
+        $formData = $this->normalizeFormattedNumbers( $fields, $formData );
+
+        foreach ( $fields as $field ) {
+            if ( ! array_key_exists( $field->name, $formData ) ) {
+                continue;
+            }
+
+            if ( 'url' === $field->type ) {
+                $formData[ $field->name ] = UrlSchemes::withScheme( $formData[ $field->name ], $field->getAllowedUrlSchemes() );
+            } elseif ( $field->usesRichText() ) {
+                $formData[ $field->name ] = RichText::blankIfEmpty( $formData[ $field->name ] );
             }
         }
 

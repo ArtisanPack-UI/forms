@@ -564,6 +564,8 @@ function isConsented( value: FormSubmissionValue ): boolean {
 									</div>
 								</details>
 							</template>
+							<!-- Rich text, sanitized with kses by the API (`FormSubmissionValueResource`; since 1.6.0) -->
+							<div v-else-if="value.display_html" class="prose prose-sm max-w-none" v-html="value.display_html" />
 							<!-- Composite value (name, address), formatted (since 1.6.0) -->
 							<div v-else-if="isKeyedValue( value )" class="whitespace-pre-line">{{ value.display_value }}</div>
 							<!-- Array value -->

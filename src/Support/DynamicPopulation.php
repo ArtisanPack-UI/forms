@@ -62,6 +62,44 @@ class DynamicPopulation
      */
     public static function initialValue( FormField $field, PopulationContext $context, array $prefill = [] ): mixed
     {
+        $value = self::resolveInitialValue( $field, $context, $prefill );
+
+        // The rich text editors render their value as HTML (since 1.6.0)
+        return $field->usesRichText() && is_string( $value ) ? RichText::sanitize( $value ) : $value;
+    }
+
+    /**
+     * Makes a populated value safe to show and submit.
+     *
+     * Strips tags and control characters, trims, and caps the length.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $value  The value.
+     *
+     * @return string The sanitized value.
+     */
+    public static function sanitize( string $value ): string
+    {
+        $value = strip_tags( $value );
+        $value = (string) preg_replace( '/[\x00-\x1F\x7F]/u', '', $value );
+
+        return mb_substr( trim( $value ), 0, self::MAX_LENGTH );
+    }
+
+    /**
+     * Works out the value a field starts with, before a rich text value is sanitized.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     * @param  PopulationContext  $context  The visitor and page.
+     * @param  array<string, mixed>  $prefill  Values passed to the renderer, keyed by parameter name.
+     *
+     * @return mixed The value.
+     */
+    protected static function resolveInitialValue( FormField $field, PopulationContext $context, array $prefill ): mixed
+    {
         if ( $field->isReadOnly() ) {
             return $field->getReadOnlyValue();
         }
@@ -87,25 +125,6 @@ class DynamicPopulation
         }
 
         return self::coerce( $field, $raw, $default );
-    }
-
-    /**
-     * Makes a populated value safe to show and submit.
-     *
-     * Strips tags and control characters, trims, and caps the length.
-     *
-     * @since 1.6.0
-     *
-     * @param  string  $value  The value.
-     *
-     * @return string The sanitized value.
-     */
-    public static function sanitize( string $value ): string
-    {
-        $value = strip_tags( $value );
-        $value = (string) preg_replace( '/[\x00-\x1F\x7F]/u', '', $value );
-
-        return mb_substr( trim( $value ), 0, self::MAX_LENGTH );
     }
 
     /**

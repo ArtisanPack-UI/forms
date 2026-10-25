@@ -5,7 +5,9 @@
   based on its field type. An email field that asks for the address twice
   renders `EmailConfirmationField`. Name and address fields, and any type with
   sub-inputs that has no component of its own, render as a composite field;
-  consent and CAPTCHA fields have components of their own (since 1.6.0).
+  consent and CAPTCHA fields have components of their own (since 1.6.0). A
+  rich text textarea renders `RichTextField`, and a date or time field filled
+  in with separate inputs `DateTimePartsField` (since 1.6.0).
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -24,7 +26,11 @@ import CompositeField from './CompositeField.vue';
 import EmailConfirmationField from './EmailConfirmationField.vue';
 import ConsentField from './ConsentField.vue';
 import CaptchaField from './CaptchaField.vue';
+import DateTimePartsField from './DateTimePartsField.vue';
+import RichTextField from './RichTextField.vue';
 import { isCompositeField } from '../../../shared/composite';
+import { getDateInputMode, getTimeInputMode } from '../../../shared/dateTime';
+import { usesRichText } from '../../../shared/richText';
 import { WIDTH_CLASSES } from '../../../shared/fieldSettings';
 import { requiresEmailConfirmation } from '../../../shared/fieldSettings';
 
@@ -98,6 +104,14 @@ const componentGroup = computed( () => {
 		return 'email_confirmation';
 	}
 
+	if ( usesRichText( props.field ) ) {
+		return 'rich_text';
+	}
+
+	if ( ( props.field.type === 'date' && getDateInputMode( props.field ) !== 'picker' ) || getTimeInputMode( props.field ) === 'dropdowns' ) {
+		return 'date_time_parts';
+	}
+
 	if ( TEXT_TYPES.has( props.field.type ) ) {
 		return 'text';
 	}
@@ -157,6 +171,22 @@ const componentGroup = computed( () => {
 			:confirm-value="confirmValue"
 			@update:model-value="emit( 'update:modelValue', $event )"
 			@update:confirm-value="emit( 'update:confirmValue', $event )"
+		/>
+		<RichTextField
+			v-else-if="componentGroup === 'rich_text'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<DateTimePartsField
+			v-else-if="componentGroup === 'date_time_parts'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
 		/>
 		<ChoiceField
 			v-else-if="componentGroup === 'choice'"

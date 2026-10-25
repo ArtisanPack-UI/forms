@@ -7,7 +7,8 @@
     `aria-describedby`) updates as the visitor types. A separate polite live
     region repeats it once typing pauses for a second, so screen readers are
     not interrupted on every keystroke. Words are runs of characters between
-    whitespace, as the `forms_max_words` rule counts them.
+    whitespace, as the `forms_max_words` rule counts them. A rich text editor
+    is counted by its text, not its markup (see RichText::toPlainText()).
 --}}
 @if($field->showsCounter())
     @php
@@ -27,6 +28,24 @@
             limit: @js($limit),
             words: @js(null !== $maxWords),
             template: @js($counterTemplate),
+            plain(html) {
+                const decoder = document.createElement('textarea');
+
+                decoder.innerHTML = html
+                    .replace(/<br\s*\/?>/gi, '\n')
+                    .replace(/<\/(p|div|li|blockquote|h[1-6])\s*>/gi, '\n')
+                    .replace(/<[^>]*>/g, '');
+
+                return decoder.value
+                    .replace(/\r\n?/g, '\n')
+                    .replace(/\u00a0/g, ' ')
+                    .replace(/[ \t]+\n/g, '\n')
+                    .replace(/\n{3,}/g, '\n\n')
+                    .trim();
+            },
+            read(element) {
+                return element?.hasAttribute('contenteditable') ? this.plain(element.innerHTML) : (element?.value ?? '');
+            },
             measure(text) {
                 if (! this.words) {
                     return [...text].length;
@@ -45,8 +64,8 @@
                 this.timer = setTimeout(() => { this.announcement = this.text; }, 1000);
             },
         }"
-        x-init="count = measure($el.querySelector('input, textarea')?.value ?? '')"
-        x-on:input="update($event.target.value)"
+        x-init="count = measure(read($el.querySelector('input, textarea, [contenteditable]')))"
+        x-on:input="update(read($event.target))"
     >
         {{ $slot }}
 

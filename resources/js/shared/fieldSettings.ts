@@ -37,6 +37,7 @@ import type {
 
 import { getEnabledSubInputs, isCompositeField, matchSubInputOption, toCompositeValue } from './composite';
 import { showsCounter } from './counter';
+import { parseDateExpression } from './dateConstraints';
 import { getPageContext, getPopulatedValue, sanitizePopulatedValue } from './dynamicPopulation';
 import type { PopulationSource } from './dynamicPopulation';
 import { getInputMaskHint } from './mask';
@@ -447,6 +448,8 @@ export function parseSetting(
 		}
 		case 'time':
 			return SETTING_TIME_PATTERN.test( value ) ? value.replace( /^(\d{2}:\d{2}):00$/, '$1' ) : undefined;
+		case 'date_expression':
+			return parseDateExpression( value );
 		default:
 			return typeof setting.max_length === 'number' ? value.slice( 0, setting.max_length ) : value;
 	}

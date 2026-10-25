@@ -20,6 +20,7 @@ namespace ArtisanPackUI\Forms\Models;
 
 use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Database\Factories\FormSubmissionValueFactory;
+use ArtisanPackUI\Forms\FieldTypes\AbstractFieldType;
 use ArtisanPackUI\Forms\Support\FieldPrivacy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -158,6 +159,28 @@ class FormSubmissionValue extends Model
         }
 
         return FieldTypes::handler( (string) $this->field_type )->display( $this );
+    }
+
+    /**
+     * Gets the display value as HTML, for values that hold markup.
+     *
+     * A rich text textarea's sanitized HTML (see TextareaFieldType); null for
+     * every other value, whose display value is plain text to escape. A
+     * redacted value has none.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null Safe HTML, or null for plain text.
+     */
+    public function getDisplayHtmlAttribute(): ?string
+    {
+        if ( $this->isRedacted() ) {
+            return null;
+        }
+
+        $handler = FieldTypes::handler( (string) $this->field_type );
+
+        return $handler instanceof AbstractFieldType ? $handler->displayHtml( $this ) : null;
     }
 
     /**

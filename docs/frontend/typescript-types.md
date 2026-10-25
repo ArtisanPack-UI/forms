@@ -192,10 +192,21 @@ interface ValidationRules {
     allowed_types?: string[];  // MIME types
     max_words?: number;      // textarea word limit (since 1.6.0)
     integer_only?: boolean;  // number fields (since 1.6.0)
+    email_validation?: EmailValidation;  // 'rfc' | 'dns' | 'strict' (since 1.6.0)
+    allowed_domains?: string[];          // email fields (since 1.6.0)
+    blocked_domains?: string[];          // email fields (since 1.6.0)
+    allowed_schemes?: string[];          // URL fields, default http and https (since 1.6.0)
+    date_range?: DateRange | '';         // 'no_past' | 'no_future' (since 1.6.0)
+    disable_weekends?: boolean;          // date fields (since 1.6.0)
+    disabled_dates?: string[];           // YYYY-MM-DD (since 1.6.0)
+    min_age?: number;                    // date fields (since 1.6.0)
+    max_age?: number;                    // date fields (since 1.6.0)
 }
 ```
 
 Since 1.6.0 text, phone, number and file fields have typed configs (`TextFieldConfig`, `PhoneFieldConfig`, `NumberFieldConfig`, `FileFieldConfig`) for input masks, counters, phone formats, number formats and multi-file uploads, along with the `InputMaskPreset`, `PhoneFormat`, `PhoneCountry` and `NumberFormat` types. The render payload adds `input_mask`, `affix_description` and `phone` to a field, and a submission value has `upload_ids`.
+
+Since 1.6.0 `min_date` and `max_date` may also be relative (`today`, `+30 days`, `-18 years`). Textarea, date and time fields have typed configs (`TextareaFieldConfig` with `rich_text`, `DateFieldConfig` with `date_format` and `date_input`, `TimeFieldConfig` with `time_format` and `time_input`), along with the `EmailValidation`, `DateRange`, `DateFormat`, `DateInputMode`, `TimeFormat` and `TimeInputMode` types. A setting's `input` may be `date_expression`, a text input that takes a date or a relative date. A submission value has `display_html`: a rich text value's sanitized HTML, or null when `display_value` is plain text.
 
 ## Conditional Logic
 

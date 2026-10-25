@@ -4,6 +4,10 @@
  * Field-type behaviour captured from 1.6.0 before the field-type handler
  * refactor (#91). FieldTypeCharacterizationTest compares the handlers against
  * it, so the refactor cannot change built-in behaviour unnoticed.
+ *
+ * Deliberate changes since: URL fields accept only `http` and `https` unless
+ * they allow other schemes (#120), so their rule is `url:http,https`. Date
+ * fields require `Y-m-d` dates (`date_format:Y-m-d`, #122 / #123).
  */
 
 return  [
@@ -471,12 +475,12 @@ return  [
           'optional' => 
            [
             0 => 'nullable',
-            1 => 'url',
+            1 => 'url:http,https',
           ],
           'required' => 
            [
             0 => 'required',
-            1 => 'url',
+            1 => 'url:http,https',
           ],
         ],
         'number' => 
@@ -625,15 +629,17 @@ return  [
            [
             0 => 'nullable',
             1 => 'date',
-            2 => 'after_or_equal:2026-01-01',
-            3 => 'before_or_equal:2026-12-31',
+            2 => 'date_format:Y-m-d',
+            3 => 'after_or_equal:2026-01-01',
+            4 => 'before_or_equal:2026-12-31',
           ],
           'required' => 
            [
             0 => 'required',
             1 => 'date',
-            2 => 'after_or_equal:2026-01-01',
-            3 => 'before_or_equal:2026-12-31',
+            2 => 'date_format:Y-m-d',
+            3 => 'after_or_equal:2026-01-01',
+            4 => 'before_or_equal:2026-12-31',
           ],
         ],
         'time' => 
@@ -743,7 +749,7 @@ return  [
             'formData.url' => 
              [
               0 => 'nullable',
-              1 => 'url',
+              1 => 'url:http,https',
             ],
           ],
           'required' => 
@@ -751,7 +757,7 @@ return  [
             'formData.url' => 
              [
               0 => 'required',
-              1 => 'url',
+              1 => 'url:http,https',
             ],
           ],
         ],
@@ -963,8 +969,9 @@ return  [
              [
               0 => 'nullable',
               1 => 'date',
-              2 => 'after_or_equal:2026-01-01',
-              3 => 'before_or_equal:2026-12-31',
+              2 => 'date_format:Y-m-d',
+              3 => 'after_or_equal:2026-01-01',
+              4 => 'before_or_equal:2026-12-31',
             ],
           ],
           'required' => 
@@ -973,8 +980,9 @@ return  [
              [
               0 => 'required',
               1 => 'date',
-              2 => 'after_or_equal:2026-01-01',
-              3 => 'before_or_equal:2026-12-31',
+              2 => 'date_format:Y-m-d',
+              3 => 'after_or_equal:2026-01-01',
+              4 => 'before_or_equal:2026-12-31',
             ],
           ],
         ],
@@ -1184,10 +1192,12 @@ return  [
          [
           'optional' => 
            [
+            'formData.date.date_format' => 'Please enter a valid date for Date.',
           ],
           'required' => 
            [
-            'formData.date.required' => 'The Date field is required.',
+            'formData.date.required'    => 'The Date field is required.',
+            'formData.date.date_format' => 'Please enter a valid date for Date.',
           ],
         ],
         'time' => 

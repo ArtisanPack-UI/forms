@@ -30,7 +30,9 @@ use ArtisanPackUI\Forms\Models\FormField;
  * - `key`: the storage key.
  * - `label`, `hint`, `placeholder`: builder copy (translated).
  * - `input`: `text`, `textarea`, `integer`, `number`, `select`, `toggle`,
- *   `date`, `time` or `list` (comma-separated values). Defaults to `text`.
+ *   `date`, `time`, `list` (comma-separated values) or `date_expression` (a
+ *   `Y-m-d` date or a relative date such as `today` or `+30 days`, see
+ *   DateConstraints; builders show it as a text input). Defaults to `text`.
  * - `store`: `field_config` (default) or `validation_rules`.
  * - `legacy_store`: a column an older copy may still live in. It takes
  *   precedence when read and is cleared on write.
@@ -58,7 +60,7 @@ class FieldSettings
      *
      * @var list<string>
      */
-    public const INPUTS = ['text', 'textarea', 'integer', 'number', 'select', 'toggle', 'date', 'time', 'list'];
+    public const INPUTS = ['text', 'textarea', 'integer', 'number', 'select', 'toggle', 'date', 'time', 'list', 'date_expression'];
 
     /**
      * The builder tabs a setting may appear in.
@@ -275,12 +277,13 @@ class FieldSettings
         }
 
         return match ( $setting['input'] ) {
-            'integer' => self::parseInteger( $setting, $raw ),
-            'number'  => self::parseNumber( $setting, $raw ),
-            'select'  => in_array( $raw, array_column( $setting['options'] ?? [], 'value' ), true ) ? $raw : null,
-            'date'    => self::parseDate( $raw ),
-            'time'    => 1 === preg_match( FormField::TIME_FORMAT_PATTERN, $raw ) ? FormField::normalizeTimeValue( $raw ) : null,
-            default   => isset( $setting['max_length'] ) ? mb_substr( $raw, 0, (int) $setting['max_length'] ) : $raw,
+            'integer'         => self::parseInteger( $setting, $raw ),
+            'number'          => self::parseNumber( $setting, $raw ),
+            'select'          => in_array( $raw, array_column( $setting['options'] ?? [], 'value' ), true ) ? $raw : null,
+            'date'            => self::parseDate( $raw ),
+            'date_expression' => DateConstraints::parseExpression( $raw ),
+            'time'            => 1 === preg_match( FormField::TIME_FORMAT_PATTERN, $raw ) ? FormField::normalizeTimeValue( $raw ) : null,
+            default           => isset( $setting['max_length'] ) ? mb_substr( $raw, 0, (int) $setting['max_length'] ) : $raw,
         };
     }
 

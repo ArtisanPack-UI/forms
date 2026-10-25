@@ -67,7 +67,7 @@ describe( 'shared helpers', function () use ( $resource, $between ): void {
             ->toContain( "if ( field.type === 'phone' && !isPlausiblePhoneNumber( value, getPhoneFormat( field ) ) ) {" )
             ->toContain( 'const plain = format ? normalizeFormattedNumber( String( value ), format ) : String( value );' )
             ->toContain( 'if ( isIntegerOnly( field ) && !Number.isInteger( num ) ) {' )
-            ->toContain( 'if ( typeof value === \'string\' && maxWords !== undefined && countWords( value ) > maxWords ) {' )
+            ->toContain( 'if ( typeof text === \'string\' && maxWords !== undefined && countWords( text ) > maxWords ) {' )
             ->and( $between( $validation, 'function validateFileListRules(', "\n}\n" ) )
             ->toContain( 'if ( maxFiles !== undefined && fileList.length > maxFiles ) {' )
             ->toContain( 'fileList.reduce( ( total, file ) => total + file.size, 0 ) > maxTotalSize * 1024' );

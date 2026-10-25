@@ -737,7 +737,9 @@ class FormRenderer extends Component
      * Gets the form data with each selected "Other" choice replaced by its text.
      *
      * Numbers typed in a number field's format are converted to plain
-     * decimals as well, while $formData keeps what the visitor typed.
+     * decimals, URLs typed without a scheme get one and emptied rich text is
+     * blanked as well (see SubmissionService::normalizeSubmittedValues()),
+     * while $formData keeps what the visitor typed.
      *
      * @since 1.6.0
      *
@@ -747,7 +749,7 @@ class FormRenderer extends Component
     {
         $formData = $this->submissionService->resolveOtherChoices( $this->form->fields, $this->formData, $this->otherValues );
 
-        return $this->submissionService->normalizeFormattedNumbers( $this->form->fields, $formData );
+        return $this->submissionService->normalizeSubmittedValues( $this->form->fields, $formData );
     }
 
     /**

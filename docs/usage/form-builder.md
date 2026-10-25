@@ -179,6 +179,46 @@ FormField::create( [
 ] );
 ```
 
+### Email Validation
+
+Email fields have three Validation tab settings:
+
+- **Email Validation** (`validation_rules.email_validation`): **Standard (RFC)** (default, Laravel's `email` rule), **Standard and the domain must exist (DNS)** (`email:rfc,dns`, which looks up the domain's MX or A records on each submission) or **Strict** (`email:strict`, RFC without the warnings RFC tolerates). The DNS check runs on the server only.
+- **Allowed Domains** (`validation_rules.allowed_domains`): only addresses at these domains are accepted.
+- **Blocked Domains** (`validation_rules.blocked_domains`): addresses at these domains are rejected, such as free providers on a business form.
+
+A listed domain also covers its subdomains, so `example.com` matches `jo@mail.example.com` but not `jo@notexample.com`. Entries may start with `@` and are compared case-insensitively. Both lists are checked by the `forms_email_domain` rule ("Please use an email address from an accepted domain for …"), so the custom error message applies, and by `validation.ts` in React and Vue.
+
+```php
+FormField::create( [
+    'form_id'          => $form->id,
+    'type'             => 'email',
+    'name'             => 'work_email',
+    'label'            => 'Work Email',
+    'validation_rules' => [
+        'email_validation' => 'dns',
+        'blocked_domains'  => ['gmail.com', 'yahoo.com', 'hotmail.com'],
+    ],
+] );
+```
+
+### URL Schemes
+
+URL fields accept only `http` and `https` addresses unless **Allowed Schemes** (`validation_rules.allowed_schemes`) lists others, such as `https` alone or `https, ftp`. The rule is `url:{schemes}`, so `javascript:` and other schemes are rejected. Laravel's `url` rule needs `://` after the scheme, so schemes such as `mailto:` and `tel:` cannot be allowed.
+
+Visitors often type `example.com`, which has no scheme. Before validation the server adds `https://` (or `http://` when only `http` is allowed), so `example.com/about` is validated and stored as `https://example.com/about`. A protocol-relative `//example.com` gets the scheme alone, and `localhost:8080` reads as a host and port. All three renderers add the scheme when the input loses focus, so visitors see the address that will be stored.
+
+### Rich Text
+
+A textarea's **Use rich text editor** toggle (`field_config.rich_text`) replaces the textarea with a small editor: a toolbar with **Bold**, **Italic**, **Underline**, **Bulleted list**, **Numbered list** and **Link** above an editable area. The field then submits HTML.
+
+- **Sanitized**: the HTML is cleaned with `kses()` (artisanpack-ui/security) when it is stored and again when it is shown. Only paragraphs, line breaks, bold, italic, underline, strikethrough, lists, quotes and links survive, links keep only `href` (http, https and mailto) and get `rel="nofollow"`, and every other element and attribute is removed. See `ArtisanPackUI\Forms\Support\RichText`.
+- **Limits count text**: Min Length, Max Length and Max Words count the text, not the markup (the `forms_min_text`, `forms_max_text` and `forms_max_words:{max},html` rules), and so does the character counter. An emptied editor (`<p><br></p>`) counts as empty, so a required field fails. The markup itself is capped at 65,535 characters (`RichText::MAX_HTML_LENGTH`), so empty tags cannot pad a value past the limits. Default, populated and read-only values are sanitized before an editor shows them.
+- **Display**: `display_value` is the plain text (list items start with `- `), used in text emails, CSV exports, merge tags and the submissions list. HTML views use `FormSubmissionValue::$display_html` (`display_html` in the API): the HTML notification table and the Livewire, React and Vue submission views show the sanitized HTML.
+- **Accessibility**: the toolbar is a `role="toolbar"` labelled "Formatting for {field}", with one button in the tab order at a time. The arrow keys, Home and End move between buttons, and each button reports its state with `aria-pressed`. The editor is a `role="textbox"` with `aria-multiline`, labelled by the field label and described by its hint and error. Ctrl/Cmd+B, I and U work in the editor.
+
+The Livewire renderer does not use the `livewire-ui-components` Editor (TinyMCE), since that loads TinyMCE from a CDN and uploads images to an authenticated route, which public visitors cannot use.
+
 ### Selection Fields
 
 ```php
@@ -220,29 +260,54 @@ FormField::create( [
 
 ### Date and Time
 
+Dates are always stored as `YYYY-MM-DD` and times as 24-hour `HH:MM` (`HH:MM:SS` with a step under a minute), whichever input the field uses.
+
+**Date input** (General tab):
+
+- **Input Type** (`field_config.date_input`): the native **Date picker** (default), **Month, day and year dropdowns** or **Month, day and year fields** (number inputs). Separate inputs are easier than a calendar for birthdates. They are grouped in a `<fieldset>` whose `<legend>` is the field label, each with its own label. With the `bday` autocomplete token they get `bday-month`, `bday-day` and `bday-year`. An incomplete or impossible date, such as 31 February, fails the `date` rule.
+- **Date Format** (`field_config.date_format`): `YYYY-MM-DD` (default), `MM/DD/YYYY` or `DD/MM/YYYY`. It orders the separate inputs and formats stored dates in submissions, notifications and exports. The native picker follows the browser's locale.
+
+**Date limits** (Validation tab):
+
+- **Min Date** and **Max Date** take an absolute date (`2026-12-31`), `today`, or a signed number of days, weeks, months or years from today, such as `+30 days` or `-1 year`. Relative limits are resolved each day (months and years do not overflow, so a month after 31 January is the end of February), on the server in the application's timezone and in React and Vue in the visitor's.
+- **Allowed Dates** (`validation_rules.date_range`): **No past dates** starts the range today; **No future dates** ends it today. The stricter of this and Min / Max Date applies.
+- **Disable weekends** and **Disabled Dates** (`YYYY-MM-DD`, comma-separated) reject those days with the `forms_disabled_dates` rule. The native picker cannot grey them out, so the error explains it.
+- **Minimum Age** and **Maximum Age** check a birthdate (`forms_min_age`, `forms_max_age`): someone aged 18 today may submit with a minimum age of 18.
+
+Dates must be `YYYY-MM-DD` (`date_format:Y-m-d`), as they are stored, so a date written another way, such as `June 15 2015`, cannot skip the disabled-day and age checks, and a year typed as `90` in the fields mode is rejected rather than stored as year 90. All three renderers submit dates in that form.
+
+The native `min` and `max` attributes and the year dropdown follow the resolved limits and age limits (`FormField::getDateBounds()`), in all three renderers.
+
+**Time input** (General tab):
+
+- **Input Type** (`field_config.time_input`): the native **Time picker** (default) or **Hour and minute dropdowns**, with an AM/PM dropdown on a 12-hour clock, grouped in a fieldset like the date inputs. The minute dropdown follows the step: a 900-second step offers 00, 15, 30 and 45.
+- **Time Format** (`field_config.time_format`): **24-hour** (default) or **12-hour**, for the dropdowns and for stored times in submissions, notifications and exports ("2:30 PM").
+
 ```php
-// Date picker
-[
-    'type' => 'date',
-    'name' => 'birth_date',
-    'label' => 'Date of Birth',
-    'min_date' => '1900-01-01',
-    'max_date' => 'today',
-]
+FormField::create( [
+    'form_id'          => $form->id,
+    'type'             => 'date',
+    'name'             => 'birth_date',
+    'label'            => 'Date of Birth',
+    'field_config'     => ['date_input' => 'dropdowns', 'date_format' => 'mdy', 'autocomplete' => 'bday'],
+    'validation_rules' => ['date_range' => 'no_future', 'min_age' => 18],
+] );
 
-// Time picker
-[
-    'type' => 'time',
-    'name' => 'preferred_time',
-    'label' => 'Preferred Time',
-]
+FormField::create( [
+    'form_id'          => $form->id,
+    'type'             => 'date',
+    'name'             => 'appointment',
+    'label'            => 'Appointment',
+    'validation_rules' => ['min_date' => '+1 day', 'max_date' => '+3 months', 'disable_weekends' => true],
+] );
 
-// Date and time
-[
-    'type' => 'datetime',
-    'name' => 'appointment',
-    'label' => 'Appointment Date & Time',
-]
+FormField::create( [
+    'form_id'      => $form->id,
+    'type'         => 'time',
+    'name'         => 'preferred_time',
+    'label'        => 'Preferred Time',
+    'field_config' => ['time_input' => 'dropdowns', 'time_format' => '12', 'step' => 900],
+] );
 ```
 
 ### File Upload
