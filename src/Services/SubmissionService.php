@@ -75,7 +75,7 @@ class SubmissionService
 
     /**
      * The files stored by the submission being created, removed again if its
-     * transaction rolls back.
+     * transaction rolls back. Cleared when the transaction commits.
      *
      * @since 1.6.0
      *
@@ -676,6 +676,12 @@ class SubmissionService
     protected function createInTransaction( Form $form, Collection $fields, array $formData, array $files, array $metadata ): FormSubmission
     {
         return DB::transaction( function () use ( $form, $fields, $formData, $files, $metadata ): FormSubmission {
+            // Registered before the first write, so once the transaction commits
+            // the files are kept even if a FormSubmitted listener then throws.
+            DB::afterCommit( function (): void {
+                $this->storedFiles = [];
+            } );
+
             // Create the submission record
             $submission = FormSubmission::create( [
                 'form_id'      => $form->id,

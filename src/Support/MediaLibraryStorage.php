@@ -166,8 +166,9 @@ class MediaLibraryStorage
     }
 
     /**
-     * Gets the disk a media item's file is on, applying the media library's
-     * `ap.mediaLibrary.storageDisk` filter the way its Media model does.
+     * Gets the disk a media item's file was stored on, applying the media
+     * library's `ap.mediaLibrary.storageDisk` filter the way its upload does
+     * (with no media item as context).
      *
      * @since 1.6.0
      *
@@ -177,7 +178,7 @@ class MediaLibraryStorage
      */
     protected function diskOf( object $media ): string
     {
-        return (string) applyFilters( 'ap.mediaLibrary.storageDisk', (string) $media->disk, $media );
+        return (string) applyFilters( 'ap.mediaLibrary.storageDisk', (string) $media->disk, null );
     }
 
     /**

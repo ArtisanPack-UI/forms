@@ -2,6 +2,7 @@
 
 declare( strict_types=1 );
 
+use ArtisanPackUI\Forms\Events\FormSubmitted;
 use ArtisanPackUI\Forms\Livewire\FormRenderer;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
@@ -11,6 +12,7 @@ use ArtisanPackUI\Forms\Support\FieldRenderer;
 use ArtisanPackUI\Forms\Support\FieldSettings;
 use ArtisanPackUI\Forms\Support\MediaLibraryStorage;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ViewErrorBag;
@@ -205,17 +207,44 @@ describe( 'media library storage', function (): void {
             ->and( Storage::disk( 'form-uploads' )->allFiles() )->toBe( [] );
     } );
 
-    it( 'records the disk the media library routes the file to', function (): void {
+    it( 'records the disk the media library stored the file on', function (): void {
+        Storage::fake( 'tenant-media' );
+
         $media = fakeMediaLibrary();
-        $route = fn (): string => 'tenant-media';
+        $this->app->instance( MediaLibraryStorage::class, $media );
+        $this->field->update( ['field_config' => ['storage' => 'media_library', 'allowed_types' => ['pdf']]] );
+
+        // The upload resolves its disk with no media item; later lookups pass one.
+        $route = fn ( string $disk, mixed $context = null ): string => null === $context ? 'public' : 'tenant-media';
 
         addFilter( 'ap.mediaLibrary.storageDisk', $route );
 
         try {
-            expect( $media->store( UploadedFile::fake()->create( 'cv.pdf', 1, 'application/pdf' ), $this->field, 'pdf' )['disk'] )->toBe( 'tenant-media' );
+            ( $this->submit )( $this->field->fresh() );
         } finally {
             removeFilter( 'ap.mediaLibrary.storageDisk', $route );
         }
+
+        $upload = FormUpload::query()->sole();
+
+        expect( $upload->disk )->toBe( 'public' )
+            ->and( $upload->download()->getStatusCode() )->toBe( 200 );
+    } );
+
+    it( 'keeps the stored files when a FormSubmitted listener throws after the commit', function (): void {
+        $this->field->update( ['field_config' => ['allowed_types' => ['pdf']]] );
+
+        Event::listen( FormSubmitted::class, function (): void {
+            throw new RuntimeException( 'Listener failed.' );
+        } );
+
+        expect( fn () => app( SubmissionService::class )->create( $this->form->fresh(), [], [
+            'resume' => UploadedFile::fake()->create( 'cv.pdf', 50, 'application/pdf' ),
+        ] ) )->toThrow( RuntimeException::class, 'Listener failed.' );
+
+        $upload = FormUpload::query()->sole();
+
+        Storage::disk( 'form-uploads' )->assertExists( $upload->path );
     } );
 
     it( 'names the media file with the extension found from its contents', function (): void {
