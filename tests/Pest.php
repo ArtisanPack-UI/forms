@@ -48,3 +48,32 @@ expect()->extend( 'toBeOne', function () {
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
+
+/**
+ * Checks whether Node can run TypeScript with its types stripped (22.6+).
+ *
+ * The parity tests skip when it cannot, and fail when it can but a shared
+ * helper does not run, so a broken helper is not reported as skipped.
+ *
+ * Node before 22.6 rejects the `--experimental-strip-types` flag, so a run
+ * with it shows whether TypeScript files can be imported.
+ *
+ * @return bool True when Node accepts `--experimental-strip-types`.
+ */
+function nodeRunsTypeScript(): bool
+{
+    static $available = null;
+
+    if ( null === $available ) {
+        try {
+            $process = new Symfony\Component\Process\Process( ['node', '--experimental-strip-types', '--no-warnings', '-e', 'process.stdout.write( "true" );'] );
+            $process->run();
+
+            $available = $process->isSuccessful() && 'true' === $process->getOutput();
+        } catch ( Throwable ) {
+            $available = false;
+        }
+    }
+
+    return $available;
+}

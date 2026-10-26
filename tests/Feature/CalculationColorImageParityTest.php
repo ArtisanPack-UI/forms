@@ -26,9 +26,15 @@ use Symfony\Component\Process\Process;
  * @param  string  $call  A JS expression of `input` (and the helper's exports) giving the result.
  * @param  array<int, mixed>  $inputs  The inputs.
  *
- * @return array<int, mixed>|null The results, or null when Node cannot run the helper.
+ * @throws RuntimeException When Node runs TypeScript but not the helper.
+ *
+ * @return array<int, mixed>|null The results, or null when Node cannot run TypeScript.
  */
 $runHelper = static function ( string $helper, string $call, array $inputs ): ?array {
+    if ( ! nodeRunsTypeScript() ) {
+        return null;
+    }
+
     $source = file_get_contents( __DIR__ . '/../../resources/js/shared/' . $helper );
     $stubs  = <<<'JS'
 const t = ( key, replace = {} ) => key.replace( /:(\w+)/g, ( match, name ) => ( name in replace ? String( replace[name] ) : match ) );
@@ -48,17 +54,19 @@ JS;
     try {
         $process = new Process( ['node', '--experimental-strip-types', '--no-warnings', '--input-type=module', '-e', $script, 'file://' . $dir . '/helper.ts', json_encode( $inputs )] );
         $process->run();
-    } catch ( Throwable ) {
-        return null;
     } finally {
         File::deleteDirectory( $dir );
     }
 
-    return $process->isSuccessful() ? json_decode( $process->getOutput(), true ) : null;
+    if ( ! $process->isSuccessful() ) {
+        throw new RuntimeException( $helper . ' did not run: ' . $process->getErrorOutput() );
+    }
+
+    return json_decode( $process->getOutput(), true, flags: JSON_THROW_ON_ERROR );
 };
 
 it( 'evaluates and formats formulas like Calculation', function () use ( $runHelper ): void {
-    $values = ['quantity' => '3', 'price' => '19.99', 'tags' => ['1', '2.5'], 'blank' => '', 'text' => 'abc', 'on' => true, 'neg' => '-4', 'exp' => '1e2'];
+    $values = ['quantity' => '3', 'price' => '19.99', 'tags' => ['1', '2.5'], 'blank' => '', 'text' => 'abc', 'on' => true, 'neg' => '-4', 'exp' => '1e2', 'nbsp' => "\u{00A0}5"];
     $cases  = [
         ['{quantity} * {price}', 2],
         ['2 + 3 * 4', 0],
@@ -79,6 +87,10 @@ it( 'evaluates and formats formulas like Calculation', function () use ( $runHel
         ['0 - 0.001', 2],
         ['2.5', 0],
         [str_repeat( '(', 40 ) . '1' . str_repeat( ')', 40 ), 2],
+        ["{quantity}\u{00A0}*\u{00A0}{price}", 2],
+        ["{quantity} * {price}\u{2009}", 2],
+        ["{quantity}\t*\n{price}\r", 2],
+        ['{nbsp} + 1', 2],
     ];
 
     $results = $runHelper(
@@ -99,11 +111,14 @@ it( 'evaluates and formats formulas like Calculation', function () use ( $runHel
     expect( $results )->toBe( $expected )
         ->and( $expected[0] )->toBe( '59.97' )
         ->and( $expected[6] )->toBe( '' )
-        ->and( $expected[16] )->toBe( '0.00' );
+        ->and( $expected[16] )->toBe( '0.00' )
+        ->and( $expected[19] )->toBe( '' )
+        ->and( $expected[21] )->toBe( '59.97' )
+        ->and( $expected[22] )->toBe( '1.00' );
 } );
 
 it( 'checks formulas like Calculation::check()', function () use ( $runHelper ): void {
-    $cases = ['', '{a} * {b}', '{a} / 0', '{a} +', '{a} ^ 2', '{c} + 1', str_repeat( '1+', 600 ) . '1'];
+    $cases = ['', '{a} * {b}', '{a} / 0', '{a} +', '{a} ^ 2', '{c} + 1', str_repeat( '1+', 600 ) . '1', "{a}\u{00A0}*\u{00A0}{b}", "\u{00A0}"];
 
     $results = $runHelper( 'calculation.ts', "helper.checkFormula( input, ['a', 'b'] ) ?? null", $cases );
 

@@ -80,7 +80,8 @@ class FormFieldResource extends JsonResource
      * and the `ap.forms.fieldValue.{parameter}` filter is applied; page tags
      * and the query string are left for the client, which knows the page.
      * Also adds the `label_placement` and `description_placement` set on the
-     * field or its form (null when neither sets one).
+     * field or its form (null when neither sets one), and drops option
+     * images that are not safe to show (since 1.6.0; see ChoiceImages).
      *
      * @since 1.6.0
      *
@@ -124,7 +125,7 @@ class FormFieldResource extends JsonResource
             'width'                  => $this->width,
             'css_classes'            => $this->css_classes,
             'sort_order'             => $this->sort_order,
-            'options'                => $this->when( FieldTypes::hasOptions( $this->type ) && ! empty( $this->options ), fn (): array => ChoiceImages::sanitizeOptions( $this->options ) ),
+            'options'                => $this->when( FieldTypes::hasOptions( $this->type ) && ! empty( $this->options ), fn (): array => $this->includeResolvedDefault ? ChoiceImages::sanitizeOptions( $this->options ) : $this->options ),
             'is_read_only'           => $this->resource->isReadOnly(),
             'read_only_value'        => $this->when( $this->resource->isReadOnly(), fn (): mixed => $this->resource->getReadOnlyValue() ),
             'autocomplete'           => $this->resource->getAutocomplete(),
@@ -214,9 +215,10 @@ class FormFieldResource extends JsonResource
      * Gets the field config with an html field's content and a consent field's description sanitized.
      *
      * The React and Vue renderers inject html content as raw HTML, so it is
-     * sanitized here exactly like the legacy `default_value` copy. Option
-     * images that are not safe to show are dropped (since 1.6.0; see
-     * ChoiceImages).
+     * sanitized here exactly like the legacy `default_value` copy. In the
+     * public render payload (withResolvedDefault()), option images that are
+     * not safe to show are dropped (since 1.6.0; see ChoiceImages); the
+     * builders get them as stored, so an edit does not lose them.
      *
      * @since 1.6.0
      *
@@ -234,8 +236,8 @@ class FormFieldResource extends JsonResource
             $config['consent_description'] = FormField::sanitizeHtml( $config['consent_description'] );
         }
 
-        // Option images must be safe to show (since 1.6.0)
-        if ( is_array( $config ) && is_array( $config['options'] ?? null ) ) {
+        // Option images must be safe to show on the public form (since 1.6.0)
+        if ( $this->includeResolvedDefault && is_array( $config ) && is_array( $config['options'] ?? null ) ) {
             $config['options'] = ChoiceImages::sanitizeOptions( $config['options'] );
         }
 

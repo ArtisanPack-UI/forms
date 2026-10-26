@@ -20,24 +20,25 @@ use Symfony\Component\Process\Process;
  *
  * @param  array<int, string>  $inputs  The inputs.
  *
- * @return array<int, string>|null The slugs, or null when Node cannot run the helper.
+ * @throws RuntimeException When Node runs TypeScript but not the helper.
+ *
+ * @return array<int, string>|null The slugs, or null when Node cannot run TypeScript.
  */
 $clientSlugs = static function ( array $inputs ): ?array {
-    $helper = realpath( __DIR__ . '/../../resources/js/shared/slugify.ts' );
-    $script = 'import( process.argv[1] ).then( ( { slugify } ) => process.stdout.write( JSON.stringify( JSON.parse( process.argv[2] ).map( slugify ) ) ) );';
-
-    try {
-        $process = new Process( ['node', '--experimental-strip-types', '--no-warnings', '--input-type=module', '-e', $script, 'file://' . $helper, json_encode( $inputs )] );
-        $process->run();
-    } catch ( Throwable ) {
+    if ( ! nodeRunsTypeScript() ) {
         return null;
     }
+
+    $helper  = realpath( __DIR__ . '/../../resources/js/shared/slugify.ts' );
+    $script  = 'import( process.argv[1] ).then( ( { slugify } ) => process.stdout.write( JSON.stringify( JSON.parse( process.argv[2] ).map( slugify ) ) ) );';
+    $process = new Process( ['node', '--experimental-strip-types', '--no-warnings', '--input-type=module', '-e', $script, 'file://' . $helper, json_encode( $inputs )] );
+    $process->run();
 
     if ( ! $process->isSuccessful() ) {
-        return null;
+        throw new RuntimeException( 'slugify.ts did not run: ' . $process->getErrorOutput() );
     }
 
-    return json_decode( $process->getOutput(), true );
+    return json_decode( $process->getOutput(), true, flags: JSON_THROW_ON_ERROR );
 };
 
 it( 'matches Str::slug for punctuation and Latin letters', function () use ( $clientSlugs ): void {

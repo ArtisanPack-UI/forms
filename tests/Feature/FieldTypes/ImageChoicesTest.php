@@ -69,14 +69,21 @@ describe( 'image URLs', function (): void {
         'not a string'        => [['x'], null],
     ] );
 
-    it( 'sanitizes the options sent to React and Vue', function (): void {
-        $resource = ( new FormFieldResource( $this->radio ) )->toArray( Request::create( '/' ) );
+    it( 'sanitizes the options sent to the React and Vue renderers', function (): void {
+        $resource = ( new FormFieldResource( $this->radio ) )->withResolvedDefault()->toArray( Request::create( '/' ) );
 
         expect( $resource['options'][0] )->toMatchArray( ['image' => 'https://example.com/red.png', 'image_alt' => 'A red T-shirt, folded'] )
             ->and( $resource['options'][1] )->toMatchArray( ['image' => '/storage/forms/blue.png', 'image_alt' => ''] )
             ->and( $resource['options'][2] )->toBe( ['value' => 'green', 'label' => 'Green shirt'] )
             ->and( $resource['options'][3] )->toBe( ['value' => 'plain', 'label' => 'Plain shirt'] )
             ->and( $resource['field_config']['options'][2] )->not->toHaveKey( 'image' );
+    } );
+
+    it( 'sends the builders the options as stored, so an edit keeps them', function (): void {
+        $resource = ( new FormFieldResource( $this->radio ) )->toArray( Request::create( '/' ) );
+
+        expect( $resource['options'] )->toBe( $this->radio->options )
+            ->and( $resource['field_config']['options'] )->toBe( $this->radio->field_config['options'] );
     } );
 } );
 

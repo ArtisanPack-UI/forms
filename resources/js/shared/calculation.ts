@@ -28,8 +28,20 @@ const CALCULATION_MAX_DEPTH = 32;
 /** The decimal places used when the field sets none, mirroring `CalculationFieldType::DEFAULT_DECIMALS`. */
 const DEFAULT_DECIMALS = 2;
 
-/** One token, mirroring `Calculation::TOKEN_PATTERN`. */
-const TOKEN_PATTERN = /\s*(?:(\d+(?:\.\d+)?|\.\d+)|\{([A-Za-z0-9_-]+)\}|([-+*/()]))/y;
+/**
+ * One token, mirroring `Calculation::TOKEN_PATTERN`. The whitespace is the
+ * ASCII set PCRE's `\s` matches, not JavaScript's Unicode `\s`, so a formula
+ * with a non-breaking space is rejected here as it is on the server.
+ */
+const TOKEN_PATTERN = /[ \t\n\v\f\r]*(?:(\d+(?:\.\d+)?|\.\d+)|\{([A-Za-z0-9_-]+)\}|([-+*/()]))/y;
+
+/** The characters PHP's `trim()` removes, unlike `String.prototype.trim()`, which also removes Unicode whitespace. */
+const PHP_TRIM_PATTERN = /^[ \t\n\r\0\x0B]+|[ \t\n\r\0\x0B]+$/g;
+
+/** Trim a string the way PHP's `trim()` does. */
+function trimLikePhp( text: string ): string {
+	return text.replace( PHP_TRIM_PATTERN, '' );
+}
 
 /** A formula token. */
 export interface CalculationToken {
@@ -63,7 +75,7 @@ export function tokenizeFormula( formula: string ): CalculationToken[] | null {
 	let offset = 0;
 
 	while ( offset < formula.length ) {
-		if ( formula.slice( offset ).trim() === '' ) {
+		if ( trimLikePhp( formula.slice( offset ) ) === '' ) {
 			break;
 		}
 
@@ -115,7 +127,7 @@ export function toCalculationNumber( value: unknown ): number {
 	}
 
 	if ( typeof value === 'string' ) {
-		const text = value.trim();
+		const text = trimLikePhp( value );
 
 		// `is_numeric()` accepts what `Number()` does, less hex, binary and `Infinity`
 		if ( text === '' || !/^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test( text ) ) {
@@ -274,7 +286,7 @@ export function evaluateFormula( formula: string, resolve: ( name: string ) => u
  * @param fieldNames The names a merge tag may use; omit to accept any.
  */
 export function checkFormula( formula: string, fieldNames?: string[] ): string | undefined {
-	if ( formula.trim() === '' ) {
+	if ( trimLikePhp( formula ) === '' ) {
 		return t( 'Enter a formula, such as {quantity} * {price}.' );
 	}
 

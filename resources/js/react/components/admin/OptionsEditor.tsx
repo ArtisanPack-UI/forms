@@ -14,7 +14,7 @@
  * @since      1.6.0
  */
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 
 import { Button, Input, Select, Textarea } from '@artisanpack-ui/react';
 
@@ -52,6 +52,9 @@ export function OptionsEditor( { field, options, onChange, predefinedChoices = [
 	const [bulkOpen, setBulkOpen] = useState( false );
 	const [uploading, setUploading] = useState<number | null>( null );
 	const [uploadError, setUploadError] = useState( '' );
+	// The latest options, so an upload that finishes later keeps edits made while it ran
+	const latestOptions = useRef( options );
+	latestOptions.current = options;
 	const showsImages = showsImageChoices( field );
 	const [bulkText, setBulkText] = useState( '' );
 	const [selectedList, setSelectedList] = useState( '' );
@@ -108,7 +111,9 @@ export function OptionsEditor( { field, options, onChange, predefinedChoices = [
 		setUploadError( '' );
 
 		try {
-			updateOption( index, 'image', await uploadImage( file ) );
+			const url = await uploadImage( file );
+
+			onChange( latestOptions.current.map( ( option, i ) => ( i === index ? { ...option, image: url } : option ) ) );
 		} catch ( err ) {
 			setUploadError( err instanceof Error ? err.message : t( 'The image could not be stored.' ) );
 		} finally {
