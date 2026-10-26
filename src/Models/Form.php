@@ -375,7 +375,7 @@ class Form extends Model
     /**
      * Bootstraps the model and its traits.
      *
-     * Sets up model event listeners for creating, created, updated, and deleted events.
+     * Sets up model event listeners for creating, updating, created, updated, and deleted events.
      *
      * @since 1.0.0
      */
@@ -386,6 +386,17 @@ class Form extends Model
         static::creating( function ( Form $form ): void {
             if ( empty( $form->slug ) ) {
                 $form->slug = static::generateUniqueSlug( $form->name );
+            }
+        } );
+
+        // An update that clears the slug, such as the React builder's auto
+        // slug for a name its client-side slugify cannot transliterate,
+        // derives a new one from the name (since 1.6.0)
+        static::updating( function ( Form $form ): void {
+            if ( $form->isDirty( 'slug' ) && '' === trim( (string) $form->slug ) ) {
+                $form->slug = '' !== Str::slug( (string) $form->name )
+                    ? static::generateUniqueSlug( (string) $form->name, $form->getKey() )
+                    : $form->getOriginal( 'slug' );
             }
         } );
 
@@ -418,18 +429,20 @@ class Form extends Model
      * Generates a unique slug from the given name.
      *
      * @since 1.0.0
+     * @since 1.6.0 Added the `$ignoreId` parameter.
      *
      * @param  string  $name  The name to generate a slug from.
+     * @param  mixed  $ignoreId  The ID of a form whose slug does not count as taken, such as the one being updated.
      *
      * @return string The unique slug.
      */
-    protected static function generateUniqueSlug( string $name ): string
+    protected static function generateUniqueSlug( string $name, mixed $ignoreId = null ): string
     {
         $slug         = Str::slug( $name );
         $originalSlug = $slug;
         $count        = 1;
 
-        while ( static::where( 'slug', $slug )->exists() ) {
+        while ( static::where( 'slug', $slug )->when( null !== $ignoreId, fn ( $query ) => $query->whereKeyNot( $ignoreId ) )->exists() ) {
             $slug = $originalSlug . '-' . $count;
             $count++;
         }

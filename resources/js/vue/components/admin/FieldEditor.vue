@@ -59,9 +59,9 @@ const NO_PLACEHOLDER_TYPES = new Set<FieldType>( ['checkbox', 'toggle', 'radio',
  * Field types without a placeholder or a default value (since 1.6.0). Name,
  * address and date range fields are composites, whose inputs have their own,
  * a list starts with empty rows, a matrix unanswered, a ranking in its
- * options' order and a signature blank.
+ * options' order, a signature blank and a calculation with its result.
  */
-const NO_VALUE_SETTING_TYPES = new Set<FieldType>( ['consent', 'captcha', 'list', 'matrix', 'ranking', 'signature'] );
+const NO_VALUE_SETTING_TYPES = new Set<FieldType>( ['consent', 'captcha', 'list', 'matrix', 'ranking', 'signature', 'calculation'] );
 
 /** Field types that don't collect user data. */
 const LAYOUT_FIELD_TYPES = new Set<FieldType>( [
@@ -92,6 +92,11 @@ const props = defineProps<{
 	 * from the `fields/predefined-choices` endpoint).
 	 */
 	predefinedChoices?: PredefinedChoiceList[];
+	/**
+	 * Stores an image choice's image and resolves to its URL (since 1.6.0;
+	 * the `fields/choice-images` endpoint). Without it, images are set by URL.
+	 */
+	uploadChoiceImage?: ( file: File ) => Promise<string>;
 }>();
 
 const emit = defineEmits<{
@@ -379,6 +384,7 @@ function confirmDelete(): void {
 						:key="`${field.id}-${setting.key}`"
 						:field="currentField"
 						:setting="setting"
+						:all-fields="allFields"
 						@update="updateField( $event )"
 					/>
 
@@ -409,6 +415,7 @@ function confirmDelete(): void {
 						:field="currentField"
 						:options="options"
 						:predefined-choices="predefinedChoices"
+						:upload-image="uploadChoiceImage"
 						@change="setOptions"
 					/>
 				</div>

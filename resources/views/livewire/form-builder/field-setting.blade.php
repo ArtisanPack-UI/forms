@@ -44,6 +44,58 @@
                     </option>
                 @endforeach
             </select>
+        @elseif ('formula' === $setting['input'])
+            {{-- A calculation formula (since 1.6.0), with a picker that inserts a field's merge tag at the cursor --}}
+            @php
+                $formulaFields = \ArtisanPackUI\Forms\FieldTypes\CalculationFieldType::formulaFields($field, $field->form?->fields()->orderBy('sort_order')->get() ?? []);
+                $formulaProblem = filled($settingValue) ? \ArtisanPackUI\Forms\Support\Calculation::check($settingValue, array_column($formulaFields, 'name')) : null;
+                $formulaDescribedBy = trim(implode(' ', array_filter([$hintId, $formulaProblem ? $settingId . '-problem' : null])));
+            @endphp
+            <div
+                x-data="{
+                    insert(tag) {
+                        const input = $refs.formula;
+                        const start = input.selectionStart ?? input.value.length;
+                        const end = input.selectionEnd ?? start;
+
+                        input.value = input.value.slice(0, start) + tag + input.value.slice(end);
+                        input.focus();
+                        input.setSelectionRange(start + tag.length, start + tag.length);
+                        input.dispatchEvent(new Event('change'));
+                    },
+                }"
+            >
+                <textarea
+                    id="{{ $settingId }}"
+                    x-ref="formula"
+                    class="textarea textarea-sm textarea-bordered w-full font-mono text-xs @if ($formulaProblem) textarea-error @endif"
+                    rows="3"
+                    spellcheck="false"
+                    @if (isset($setting['max_length'])) maxlength="{{ $setting['max_length'] }}" @endif
+                    @if (filled($setting['placeholder'] ?? null)) placeholder="{{ $setting['placeholder'] }}" @endif
+                    @if ($formulaProblem) aria-invalid="true" @endif
+                    @if ($formulaDescribedBy) aria-describedby="{{ $formulaDescribedBy }}" @endif
+                    wire:change="updateSetting(@js($settingKey), $event.target.value)"
+                >{{ $settingValue }}</textarea>
+
+                @if ([] !== $formulaFields)
+                    <label class="sr-only" for="{{ $settingId }}-insert">{{ __( 'Insert a field' ) }}</label>
+                    <select
+                        id="{{ $settingId }}-insert"
+                        class="select select-sm select-bordered mt-2 w-full"
+                        x-on:change="if ($event.target.value !== '') { insert($event.target.value); $event.target.value = ''; }"
+                    >
+                        <option value="">{{ __( 'Insert a field…' ) }}</option>
+                        @foreach ($formulaFields as $formulaField)
+                            <option value="{{ '{' . $formulaField['name'] . '}' }}">{{ $formulaField['label'] }} ({{ '{' . $formulaField['name'] . '}' }})</option>
+                        @endforeach
+                    </select>
+                @endif
+
+                @if ($formulaProblem)
+                    <p id="{{ $settingId }}-problem" class="mt-1 text-xs text-error">{{ $formulaProblem }}</p>
+                @endif
+            </div>
         @elseif ('textarea' === $setting['input'])
             <textarea
                 id="{{ $settingId }}"

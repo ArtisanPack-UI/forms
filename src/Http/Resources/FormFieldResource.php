@@ -18,6 +18,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Http\Resources;
 
 use ArtisanPackUI\Forms\Config\FieldTypes;
+use ArtisanPackUI\Forms\FieldTypes\CalculationFieldType;
 use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ConsentFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
@@ -27,6 +28,7 @@ use ArtisanPackUI\Forms\FieldTypes\PhoneFieldType;
 use ArtisanPackUI\Forms\FieldTypes\SignatureFieldType;
 use ArtisanPackUI\Forms\FieldTypes\SliderFieldType;
 use ArtisanPackUI\Forms\Models\FormField;
+use ArtisanPackUI\Forms\Support\ChoiceImages;
 use ArtisanPackUI\Forms\Support\DynamicPopulation;
 use ArtisanPackUI\Forms\Support\FieldSettings;
 use ArtisanPackUI\Forms\Support\PopulationContext;
@@ -122,7 +124,7 @@ class FormFieldResource extends JsonResource
             'width'                  => $this->width,
             'css_classes'            => $this->css_classes,
             'sort_order'             => $this->sort_order,
-            'options'                => $this->when( FieldTypes::hasOptions( $this->type ) && ! empty( $this->options ), $this->options ),
+            'options'                => $this->when( FieldTypes::hasOptions( $this->type ) && ! empty( $this->options ), fn (): array => ChoiceImages::sanitizeOptions( $this->options ) ),
             'is_read_only'           => $this->resource->isReadOnly(),
             'read_only_value'        => $this->when( $this->resource->isReadOnly(), fn (): mixed => $this->resource->getReadOnlyValue() ),
             'autocomplete'           => $this->resource->getAutocomplete(),
@@ -163,6 +165,10 @@ class FormFieldResource extends JsonResource
                 'single'  => MatrixFieldType::isSingle( $this->resource ),
                 'rows'    => MatrixFieldType::rows( $this->resource ),
                 'columns' => MatrixFieldType::columns( $this->resource ),
+            ] ),
+            'calculation'            => $this->when( CalculationFieldType::TYPE === $this->type, fn (): array => [
+                'formula'  => CalculationFieldType::formula( $this->resource ),
+                'decimals' => CalculationFieldType::decimals( $this->resource ),
             ] ),
             'signature'              => $this->when( SignatureFieldType::TYPE === $this->type, fn (): array => [
                 'pad_height' => SignatureFieldType::padHeight( $this->resource ),
@@ -208,7 +214,9 @@ class FormFieldResource extends JsonResource
      * Gets the field config with an html field's content and a consent field's description sanitized.
      *
      * The React and Vue renderers inject html content as raw HTML, so it is
-     * sanitized here exactly like the legacy `default_value` copy.
+     * sanitized here exactly like the legacy `default_value` copy. Option
+     * images that are not safe to show are dropped (since 1.6.0; see
+     * ChoiceImages).
      *
      * @since 1.6.0
      *
@@ -224,6 +232,11 @@ class FormFieldResource extends JsonResource
 
         if ( 'consent' === $this->type && is_array( $config ) && is_string( $config['consent_description'] ?? null ) ) {
             $config['consent_description'] = FormField::sanitizeHtml( $config['consent_description'] );
+        }
+
+        // Option images must be safe to show (since 1.6.0)
+        if ( is_array( $config ) && is_array( $config['options'] ?? null ) ) {
+            $config['options'] = ChoiceImages::sanitizeOptions( $config['options'] );
         }
 
         return $config;

@@ -13,7 +13,11 @@
  */
 
 const DIACRITICS_PATTERN = /[̀-ͯ]/g;
-const NON_ALPHANUM_PATTERN = /[^a-z0-9]+/g;
+const UNDERSCORES_PATTERN = /_+/g;
+const AT_SIGN_PATTERN = /@/g;
+const PUNCTUATION_PATTERN = /[^-\p{L}\p{N}\s]+/gu;
+const NON_ASCII_PATTERN = /[^a-z0-9\s-]+/g;
+const SEPARATORS_PATTERN = /[-\s]+/g;
 const EDGE_HYPHENS_PATTERN = /^-+|-+$/g;
 
 /**
@@ -66,6 +70,16 @@ function transliterate( value: string ): string {
 /**
  * Convert a string to a URL-friendly slug.
  *
+ * Follows `Str::slug`'s steps (since 1.6.0): underscores become hyphens, `@`
+ * becomes `-at-`, and punctuation such as apostrophes and periods is removed
+ * rather than turned into a hyphen, so `Don't stop` gives `dont-stop` and
+ * `x.y` gives `xy`. Letters from scripts that are not transliterated here,
+ * such as Cyrillic or Greek, are dropped, so a name in those scripts gives
+ * an empty slug; the server then derives the slug itself (see `Form::boot()`).
+ *
+ * @since 1.1.2
+ * @since 1.6.0 Removes punctuation and maps `@` to `at`, matching `Str::slug`.
+ *
  * @param value Raw string to slugify.
  * @returns Lowercased, hyphen-separated slug. Returns an empty string for
  *          empty or whitespace-only input.
@@ -77,7 +91,10 @@ export function slugify( value: string ): string {
 		.toLowerCase();
 
 	return transliterate( normalized )
-		.trim()
-		.replace( NON_ALPHANUM_PATTERN, '-' )
+		.replace( UNDERSCORES_PATTERN, '-' )
+		.replace( AT_SIGN_PATTERN, '-at-' )
+		.replace( PUNCTUATION_PATTERN, '' )
+		.replace( NON_ASCII_PATTERN, '' )
+		.replace( SEPARATORS_PATTERN, '-' )
 		.replace( EDGE_HYPHENS_PATTERN, '' );
 }

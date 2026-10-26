@@ -3,7 +3,8 @@
  *
  * Fetches a form definition from the API, manages field values,
  * validation errors, file uploads, conditional logic, multi-step
- * navigation, and form submission.
+ * navigation, and form submission. Calculation fields are worked out from
+ * the other values as they change (since 1.6.0; see `shared/calculation.ts`).
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -19,10 +20,10 @@ import type {
 	FormStep,
 	SubmitFormResponse,
 } from '../../types/artisanpack-forms';
+import { isCalculationField, resolveCalculatedValues } from '../../shared/calculation';
 import { createSubmitHooks, SubmitHookError } from '../../shared/captcha';
 import type { SubmitHooks } from '../../shared/captcha';
 import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composite';
-import { getHiddenFields } from '../../shared/conditionalLogic';
 import { getInitialFieldValue, resolveOtherChoices } from '../../shared/fieldSettings';
 import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
 import { t } from '../../shared/i18n';
@@ -139,13 +140,25 @@ export function useForm( options: UseFormOptions ) {
 	/** Each email confirmation key, mapped to its email field's name (since 1.6.0). */
 	const confirmationFields = computed( () => getConfirmationFields( form.value?.fields ?? [] ) );
 
-	// Computed: hidden fields from conditional logic
-	const hiddenFields = computed( () => {
+	// Computed: calculations and hidden fields from conditional logic (since 1.6.0)
+	const resolved = computed( () => {
 		if ( !form.value ) {
-			return {};
+			return { values: values.value, hiddenFields: {} as Record<string, boolean> };
 		}
 
-		return getHiddenFields( form.value.fields, values.value );
+		return resolveCalculatedValues( form.value.fields, values.value );
+	} );
+
+	const hiddenFields = computed( () => resolved.value.hiddenFields );
+
+	// Keep each calculation's result in `values`, so it renders and submits like any other value
+	watch( () => resolved.value.values, ( next ) => {
+		const changed = ( form.value?.fields ?? [] )
+			.filter( ( field ) => isCalculationField( field ) && values.value[field.name] !== next[field.name] );
+
+		if ( changed.length > 0 ) {
+			values.value = { ...values.value, ...Object.fromEntries( changed.map( ( field ) => [field.name, next[field.name]] ) ) };
+		}
 	} );
 
 	// Computed: all fields

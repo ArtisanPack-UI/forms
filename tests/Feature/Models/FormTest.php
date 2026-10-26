@@ -46,6 +46,39 @@ describe( 'Form Model', function (): void {
 
             expect( $form2->slug )->toBe( 'contact-form-1' );
         } );
+
+        it( 'derives a cleared slug from the name on update', function (): void {
+            Form::factory()->create( ['name' => 'Taken', 'slug' => 'new-name'] );
+            $form = Form::factory()->create( ['name' => 'Old Name', 'slug' => 'old-name'] );
+
+            $form->update( ['name' => 'New Name', 'slug' => null] );
+
+            expect( $form->fresh()->slug )->toBe( 'new-name-1' );
+        } );
+
+        it( 'does not count the form\'s own slug as taken when deriving it on update', function (): void {
+            $form = Form::factory()->create( ['name' => 'Contact Form', 'slug' => 'contact-form'] );
+
+            $form->update( ['slug' => ''] );
+
+            expect( $form->fresh()->slug )->toBe( 'contact-form' );
+        } );
+
+        it( 'keeps the slug on update when the name has nothing to slug', function (): void {
+            $form = Form::factory()->create( ['name' => 'Contact Form', 'slug' => 'contact-form'] );
+
+            $form->update( ['name' => '???', 'slug' => null] );
+
+            expect( $form->fresh()->slug )->toBe( 'contact-form' );
+        } );
+
+        it( 'leaves a slug that is not cleared alone on update', function (): void {
+            $form = Form::factory()->create( ['name' => 'Contact Form', 'slug' => 'my-contact'] );
+
+            $form->update( ['name' => 'Renamed'] );
+
+            expect( $form->fresh()->slug )->toBe( 'my-contact' );
+        } );
     } );
 
     describe( 'relationships', function (): void {

@@ -127,6 +127,16 @@ export function FormBuilder( {
 	const [showPreview, setShowPreview] = useState( false );
 	const [predefinedChoices, setPredefinedChoices] = useState<PredefinedChoiceList[]>( [] );
 
+	// Store an image choice's image and get its URL (since 1.6.0)
+	const uploadChoiceImage = useCallback( async ( file: File ): Promise<string> => {
+		const body = new FormData();
+		body.append( 'image', file );
+
+		const response = await post<{ data: { url: string } }>( `/${form?.id}/fields/choice-images`, body );
+
+		return response.data.url;
+	}, [post, form?.id] );
+
 	// Drag state
 	const [dragState, setDragState] = useState<DragState | null>( null );
 
@@ -170,7 +180,14 @@ export function FormBuilder( {
 
 			if ( Object.keys( data ).length > 0 ) {
 				const savedKeys = Object.keys( data );
-				await put( `/${form.id}`, data );
+				const response = await put<{ data: Form }>( `/${form.id}`, data );
+
+				// The server derives the slug when the auto slug is empty, such
+				// as for a non-Latin name slugify cannot transliterate (since 1.6.0)
+				const savedSlug = response?.data?.slug;
+				if ( '' === data.slug && savedSlug ) {
+					setForm( ( prev ) => prev && '' === ( prev.slug ?? '' ) ? { ...prev, slug: savedSlug } : prev );
+				}
 				setFormSettings( ( prev ) => {
 					const next = { ...prev };
 					for ( const key of savedKeys ) {
@@ -201,9 +218,12 @@ export function FormBuilder( {
 			// differs from what we'd derive from the current name, the user
 			// (or a prior session) already customized it — start in manual
 			// mode so editing the name doesn't clobber it. If they match,
-			// resume auto-follow.
+			// resume auto-follow. A name that slugifies to nothing, such as
+			// one in Cyrillic or Greek, had its slug derived by the server,
+			// so it also resumes auto-follow (since 1.6.0).
 			const persistedSlug = formData.slug ?? '';
-			setSlugIsManual( persistedSlug !== slugify( formData.name ) );
+			const derivedSlug = slugify( formData.name );
+			setSlugIsManual( '' !== derivedSlug && persistedSlug !== derivedSlug );
 
 			// Set active step to first step if multi-step
 			if ( formData.is_multi_step && formData.steps && formData.steps.length > 0 ) {
@@ -1177,6 +1197,7 @@ export function FormBuilder( {
 							}}
 							customSettings={fieldCustomSettings}
 							predefinedChoices={predefinedChoices}
+							uploadChoiceImage={uploadChoiceImage}
 						/>
 					</div>
 				)}

@@ -86,6 +86,16 @@ return [
             'folder_id'   => env( 'FORMS_MEDIA_FOLDER_ID' ),
             'uploaded_by' => env( 'FORMS_MEDIA_UPLOADED_BY' ),
         ],
+
+        // Images uploaded in the builders for image choices (since 1.6.0). They
+        // are shown on the public form, so they are stored with the media
+        // library when it is installed, or on this public disk otherwise.
+        // JPEG, PNG, GIF and WebP only; SVG is never accepted.
+        'choice_images' => [
+            'disk'      => env( 'FORMS_CHOICE_IMAGES_DISK', 'public' ),
+            'directory' => env( 'FORMS_CHOICE_IMAGES_DIRECTORY', 'forms/choice-images' ),
+            'max_size'  => env( 'FORMS_CHOICE_IMAGES_MAX_SIZE', 2048 ), // KB
+        ],
     ],
 
     /*

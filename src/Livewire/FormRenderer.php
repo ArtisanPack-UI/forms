@@ -20,6 +20,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Livewire;
 
 use ArtisanPackUI\Forms\Captcha\CaptchaVerifier;
+use ArtisanPackUI\Forms\FieldTypes\CalculationFieldType;
 use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
 use ArtisanPackUI\Forms\FieldTypes\RankingFieldType;
@@ -936,13 +937,29 @@ class FormRenderer extends Component
 
     /**
      * Evaluate conditional logic for all fields.
+     *
+     * Calculation fields are worked out first, so conditions can use their
+     * results, and again without the values of the fields conditional logic
+     * hides, since those are not submitted (since 1.6.0).
      */
     protected function evaluateConditionalLogic(): void
     {
-        $this->hiddenFields = $this->conditionalLogicService->getHiddenFields(
-            $this->form->fields,
-            $this->formData,
-        );
+        $fields = $this->form->fields;
+
+        $this->formData     = $this->submissionService->applyCalculations( $fields, $this->formData );
+        $this->hiddenFields = $this->conditionalLogicService->getHiddenFields( $fields, $this->formData );
+
+        if ( ! in_array( true, $this->hiddenFields, true ) || ! $fields->contains( 'type', CalculationFieldType::TYPE ) ) {
+            return;
+        }
+
+        $visible = $this->submissionService->applyCalculations( $fields, $this->visibleFormData() );
+
+        foreach ( $fields->where( 'type', CalculationFieldType::TYPE ) as $field ) {
+            $this->formData[ $field->name ] = $visible[ $field->name ];
+        }
+
+        $this->hiddenFields = $this->conditionalLogicService->getHiddenFields( $fields, $this->formData );
     }
 
     // =========================================

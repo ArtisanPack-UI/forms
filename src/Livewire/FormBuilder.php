@@ -30,13 +30,17 @@ use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\FieldService;
 use ArtisanPackUI\Forms\Services\StepService;
+use ArtisanPackUI\Forms\Support\ChoiceImages;
 use ArtisanPackUI\Forms\Support\FieldSettings;
 use ArtisanPackUI\Forms\Support\PredefinedChoices;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 /**
  * Form builder Livewire component class.
@@ -55,6 +59,8 @@ use Livewire\Component;
  */
 class FormBuilder extends Component
 {
+    use WithFileUploads;
+
     /**
      * The form being edited.
      */
@@ -84,6 +90,11 @@ class FormBuilder extends Component
      * Last save timestamp for display.
      */
     public ?string $lastSavedAt = null;
+
+    /**
+     * The image being uploaded for an image choice (since 1.6.0; see storeChoiceImage()).
+     */
+    public ?TemporaryUploadedFile $choiceImage = null;
 
     /**
      * The field service instance.
@@ -391,6 +402,34 @@ class FormBuilder extends Component
             : ['field_config' => array_merge( $field->field_config ?? [], ['content' => $content] )];
 
         $this->persistSelectedField( $field, $data + ['default_value' => null] );
+    }
+
+    /**
+     * Stores the image uploaded for an image choice and gets its URL.
+     *
+     * The options editor uploads the image to `choiceImage` first, then puts
+     * the URL this returns in the option's `image` (since 1.6.0; see
+     * ChoiceImages).
+     *
+     * @since 1.6.0
+     *
+     * @throws AuthorizationException When the user may not update the form.
+     *
+     * @return string|null The image's URL, or null when it was not valid or could not be stored.
+     */
+    public function storeChoiceImage(): ?string
+    {
+        $this->authorize( 'update', $this->form );
+
+        $this->validate( ['choiceImage' => ChoiceImages::uploadRules()] );
+
+        $url = $this->choiceImage instanceof TemporaryUploadedFile
+            ? app( ChoiceImages::class )->store( $this->choiceImage, $this->form )
+            : null;
+
+        $this->reset( 'choiceImage' );
+
+        return $url;
     }
 
     /**

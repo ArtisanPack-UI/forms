@@ -8,6 +8,10 @@
     $isMultiple = $field->isMultipleChoice();
     // A ranking's options are its choices to order, none selected (since 1.6.0).
     $hasDefaults = \ArtisanPackUI\Forms\FieldTypes\RankingFieldType::TYPE !== $field->type;
+    // Image choices give each option an image URL and alt text (since 1.6.0)
+    $showsImages = $field->showsImageChoices();
+    $mediaPicker = $showsImages && app(\ArtisanPackUI\Forms\Support\ChoiceImages::class)->mediaPickerAvailable();
+    $mediaContext = 'forms-choice-image-' . $field->uuid;
     $predefinedLists = collect(\ArtisanPackUI\Forms\Support\PredefinedChoices::all())
         ->map(fn ($list) => ['label' => $list['label'], 'text' => \ArtisanPackUI\Forms\Support\PredefinedChoices::toBulk($list['choices'])])
         ->all();
@@ -28,7 +32,7 @@
     </div>
 @else
 <div
-    wire:key="options-editor-{{ $field->uuid }}"
+    wire:key="options-editor-{{ $field->uuid }}-{{ $showsImages ? 'images' : 'labels' }}"
     class="options-editor space-y-3"
     x-data="{
         options: @js($options).map((opt, i) => ({ ...opt, default: opt.default === true, _id: i })),
@@ -72,8 +76,52 @@
         applyBulk(mode) {
             this.$wire.applyBulkChoices(this.bulkText, mode);
             this.bulkOpen = false;
+        },
+        uploading: null,
+        picking: null,
+        uploadImage(index, file) {
+            if (! file) {
+                return;
+            }
+
+            const option = this.options[index];
+            this.uploading = option._id;
+            this.$wire.upload('choiceImage', file, () => {
+                this.$wire.storeChoiceImage().then((url) => {
+                    if (url) {
+                        option.image = url;
+                        this.saveOptions();
+                    }
+                }).finally(() => { this.uploading = null; });
+            }, () => { this.uploading = null; });
+        },
+        pickImage(index) {
+            this.picking = this.options[index]._id;
+            Livewire.dispatch('open-media-modal', { context: @js($mediaContext) });
+        },
+        mediaSelected(detail) {
+            const option = this.options.find((opt) => opt._id === this.picking);
+            const media = Array.isArray(detail?.media) ? detail.media[0] : null;
+
+            if (detail?.context !== @js($mediaContext) || ! option) {
+                return;
+            }
+
+            if (media?.url) {
+                option.image = media.url;
+                option.image_alt = option.image_alt || media.alt_text || '';
+                this.saveOptions();
+            }
+
+            this.picking = null;
+        },
+        removeImage(index) {
+            delete this.options[index].image;
+            delete this.options[index].image_alt;
+            this.saveOptions();
         }
     }"
+    @if ($mediaPicker) x-on:media-selected.window="mediaSelected($event.detail)" @endif
 >
     <div class="text-xs text-base-content/60">
         {{ __( 'Add options for users to choose from:' ) }}
@@ -82,6 +130,7 @@
     {{-- Options list --}}
     <div class="space-y-2">
         <template x-for="(option, index) in options" :key="option._id">
+            <div @class(['space-y-2', 'rounded-lg bg-base-100 p-2' => $showsImages])>
             <div class="flex items-center gap-2">
                 @if ($hasDefaults)
                     <input
@@ -123,8 +172,68 @@
                     <x-artisanpack-icon name="o-x-mark" class="h-4 w-4" />
                 </button>
             </div>
+            @if ($showsImages)
+                <div class="flex items-start gap-2">
+                    <div class="h-12 w-12 shrink-0 overflow-hidden rounded bg-base-300">
+                        <img x-show="option.image" :src="option.image" alt="" class="h-full w-full object-cover" />
+                    </div>
+                    <div class="flex-1 space-y-1">
+                        <input
+                            type="url"
+                            class="input input-xs input-bordered w-full"
+                            placeholder="https://"
+                            :aria-label="@js(__( 'Image URL: :label' )).replace(':label', option.label || option.value)"
+                            x-model="option.image"
+                            @change="saveOptions()"
+                        />
+                        <input
+                            type="text"
+                            class="input input-xs input-bordered w-full"
+                            placeholder="{{ __( 'Describe the image' ) }}"
+                            :aria-label="@js(__( 'Image alt text: :label' )).replace(':label', option.label || option.value)"
+                            x-model="option.image_alt"
+                            @change="saveOptions()"
+                        />
+                        <div class="flex flex-wrap gap-1">
+                            <label class="btn btn-ghost btn-xs focus-within:outline focus-within:outline-2 focus-within:outline-primary" :class="{ 'btn-disabled': uploading === option._id }">
+                                <x-artisanpack-icon name="o-arrow-up-tray" class="h-3 w-3" />
+                                <span x-text="uploading === option._id ? @js(__( 'Uploading…' )) : @js(__( 'Upload' ))"></span>
+                                <input
+                                    type="file"
+                                    class="sr-only"
+                                    accept="image/jpeg,image/png,image/gif,image/webp"
+                                    :aria-label="@js(__( 'Upload an image: :label' )).replace(':label', option.label || option.value)"
+                                    @change="uploadImage(index, $event.target.files[0]); $event.target.value = ''"
+                                />
+                            </label>
+                            @if ($mediaPicker)
+                                <button type="button" class="btn btn-ghost btn-xs" @click="pickImage(index)">
+                                    <x-artisanpack-icon name="o-photo" class="h-3 w-3" />
+                                    {{ __( 'Media Library' ) }}
+                                </button>
+                            @endif
+                            <button type="button" class="btn btn-ghost btn-xs text-error" x-show="option.image" @click="removeImage(index)">
+                                {{ __( 'Remove image' ) }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            @endif
+            </div>
         </template>
     </div>
+
+    @if ($showsImages)
+        @error('choiceImage')
+            <p class="text-xs text-error" role="alert">{{ $message }}</p>
+        @enderror
+        <div class="text-xs text-base-content/50">
+            {{ __( 'The option label stays the choice\'s name for screen readers; the alt text describes what the image shows.' ) }}
+        </div>
+        @if ($mediaPicker)
+            <livewire:media::media-modal :multi-select="false" :context="$mediaContext" wire:key="media-modal-{{ $field->uuid }}" />
+        @endif
+    @endif
 
     @if ($hasDefaults)
         <div x-show="options.length > 0" class="text-xs text-base-content/50">

@@ -21,10 +21,12 @@ namespace ArtisanPackUI\Forms\Http\Controllers\Api;
 use ArtisanPackUI\Forms\Http\Requests\Api\ReorderFieldsApiRequest;
 use ArtisanPackUI\Forms\Http\Requests\Api\StoreFieldApiRequest;
 use ArtisanPackUI\Forms\Http\Requests\Api\UpdateFieldApiRequest;
+use ArtisanPackUI\Forms\Http\Requests\Api\UploadChoiceImageApiRequest;
 use ArtisanPackUI\Forms\Http\Resources\FormFieldResource;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Services\FieldService;
+use ArtisanPackUI\Forms\Support\ChoiceImages;
 use ArtisanPackUI\Forms\Support\PredefinedChoices;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -93,6 +95,29 @@ class FormFieldApiController extends Controller
         }
 
         return response()->json( ['data' => $lists] );
+    }
+
+    /**
+     * Stores an image for an image choice and gets its URL.
+     *
+     * The builders put the URL in the option's `image` (see ChoiceImages).
+     *
+     * @since 1.6.0
+     *
+     * @param UploadChoiceImageApiRequest $request The validated request.
+     * @param Form                        $form    The form being edited.
+     *
+     * @return JsonResponse The image's URL, or an error when it could not be stored.
+     */
+    public function uploadChoiceImage( UploadChoiceImageApiRequest $request, Form $form ): JsonResponse
+    {
+        $url = app( ChoiceImages::class )->store( $request->file( 'image' ), $form );
+
+        if ( null === $url ) {
+            return response()->json( ['message' => __( 'The image could not be stored.' )], 500 );
+        }
+
+        return response()->json( ['data' => ['url' => $url]], 201 );
     }
 
     /**

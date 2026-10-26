@@ -5,7 +5,9 @@
   `FieldSettings` on the server) and emits the field update that stores it.
   Text, textarea, number, list, date and time inputs keep a local draft so
   typing is not rewritten by parsing (a trailing comma in a list, a
-  half-typed number).
+  half-typed number). A calculation formula (since 1.6.0) has a picker that
+  inserts a field's merge tag at the cursor, and shows the first problem
+  with the formula.
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -23,13 +25,17 @@ import type {
 	UpdateFieldRequest,
 } from '../../../types/artisanpack-forms';
 
+import { checkFormula, getFormulaFields, insertFormulaTag } from '../../../shared/calculation';
 import { buildSettingUpdate, getSettingInput, isDraftStored } from '../../../shared/fieldSettings';
+import { t } from '../../../shared/i18n';
 
 const props = defineProps<{
 	/** The field being edited, with buffered edits applied. */
 	field: FormField;
 	/** The setting to render. */
 	setting: FieldSettingDefinition;
+	/** The form's fields, for a formula's field picker (since 1.6.0). */
+	allFields?: FormField[];
 }>();
 
 const emit = defineEmits<{
@@ -87,6 +93,29 @@ function handleDraftInput( value: unknown ): void {
 const textareaId = computed( (): string => `field-setting-${props.field.id}-${props.setting.key}` );
 const textareaHintId = computed( (): string | undefined => ( props.setting.hint ? `${textareaId.value}-hint` : undefined ) );
 
+/** The fields a formula may use, and the formula's first problem (since 1.6.0). */
+const formulaInput = ref<HTMLTextAreaElement | null>( null );
+const formulaFields = computed( () => ( props.setting.input === 'formula' ? getFormulaFields( props.field, props.allFields ?? [] ) : [] )
+	.map( ( entry ) => ( { ...entry, tag: `{${entry.name}}` } ) ) );
+const formulaProblem = computed( (): string | undefined => {
+	if ( props.setting.input !== 'formula' || draft.value.trim() === '' ) {
+		return undefined;
+	}
+
+	return checkFormula( draft.value, formulaFields.value.map( ( entry ) => entry.name ) );
+} );
+const formulaDescribedBy = computed( (): string | undefined => [textareaHintId.value, formulaProblem.value ? `${textareaId.value}-problem` : undefined].filter( Boolean ).join( ' ' ) || undefined );
+
+function insertFormulaField( event: Event ): void {
+	const select = event.target as HTMLSelectElement;
+
+	if ( select.value !== '' && formulaInput.value ) {
+		handleDraftInput( insertFormulaTag( formulaInput.value, select.value ) );
+	}
+
+	select.value = '';
+}
+
 function handleChange( value: unknown ): void {
 	emit( 'update', buildSettingUpdate( props.field, props.setting, value ) );
 }
@@ -123,6 +152,37 @@ function handleChange( value: unknown ): void {
 			@input="handleDraftInput( ( $event.target as HTMLTextAreaElement ).value )"
 		/>
 		<p v-if="textareaHintId" :id="textareaHintId" class="fieldset-label">{{ setting.hint }}</p>
+	</div>
+	<div v-else-if="setting.input === 'formula'" class="fieldset">
+		<label :for="textareaId" class="fieldset-legend">{{ setting.label }}</label>
+		<textarea
+			:id="textareaId"
+			ref="formulaInput"
+			:class="['textarea textarea-sm textarea-bordered w-full font-mono text-xs', formulaProblem ? 'textarea-error' : '']"
+			rows="3"
+			spellcheck="false"
+			:maxlength="setting.max_length"
+			:placeholder="setting.placeholder"
+			:aria-invalid="formulaProblem ? 'true' : undefined"
+			:aria-describedby="formulaDescribedBy"
+			:value="draft"
+			@input="handleDraftInput( ( $event.target as HTMLTextAreaElement ).value )"
+		/>
+		<template v-if="formulaFields.length > 0">
+			<label :for="`${textareaId}-insert`" class="sr-only">{{ t( 'Insert a field' ) }}</label>
+			<select
+				:id="`${textareaId}-insert`"
+				class="select select-sm select-bordered mt-2 w-full"
+				@change="insertFormulaField"
+			>
+				<option value="">{{ t( 'Insert a field…' ) }}</option>
+				<option v-for="entry in formulaFields" :key="entry.name" :value="entry.tag">
+					{{ entry.label }} ({{ entry.tag }})
+				</option>
+			</select>
+		</template>
+		<p v-if="textareaHintId" :id="textareaHintId" class="fieldset-label">{{ setting.hint }}</p>
+		<p v-if="formulaProblem" :id="`${textareaId}-problem`" class="fieldset-label text-error">{{ formulaProblem }}</p>
 	</div>
 	<Input
 		v-else

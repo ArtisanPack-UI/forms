@@ -7,6 +7,8 @@
   columns or inline and show them in a random order; a checkbox group can
   offer "Select All". Radios are native inputs in a labelled `radiogroup`, as
   in React. A searchable select or multi-select renders a combobox (since 1.6.0).
+  Radio and checkbox groups can show their choices as image cards, each named
+  by its label (`ImageChoice`, since 1.6.0).
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -22,6 +24,7 @@ import {
 	getRenderOptions,
 	isSearchableField,
 	offersSelectAll,
+	showsImageChoices,
 } from '../../../shared/choices';
 import {
 	allowsOtherChoice,
@@ -39,6 +42,7 @@ import {
 } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 import Combobox from './Combobox.vue';
+import ImageChoice from './ImageChoice.vue';
 import FieldLayout from './FieldLayout.vue';
 import { vAutocomplete } from './autocomplete';
 import { vDescribedBy } from './describedBy';
@@ -69,6 +73,9 @@ const options = computed<FieldOption[]>( () =>
 
 /** Whether a select or multi-select is a searchable combobox. */
 const searchable = computed( () => isSearchableField( props.field ) );
+
+/** Whether a radio or checkbox group shows its choices as image cards (since 1.6.0). */
+const showsImages = computed( () => showsImageChoices( props.field ) );
 
 /** The classes that arrange a radio or checkbox group's choices. */
 const layoutClasses = computed( () => getChoiceLayoutClasses( props.field ) );
@@ -288,26 +295,45 @@ function handleMultiSelectChange( event: Event ): void {
 					:aria-invalid="error ? true : undefined"
 					:class="[layoutClasses, field.css_classes ?? '']"
 				>
-					<label
-						v-for="( option, index ) in choices"
-						:key="option.value"
-						:for="`field-${field.name}-${option.value === OTHER_CHOICE_VALUE ? 'other' : index}`"
-						class="flex items-center gap-2 cursor-pointer"
-					>
-						<input
-							:id="`field-${field.name}-${option.value === OTHER_CHOICE_VALUE ? 'other' : index}`"
-							type="radio"
-							:name="field.name"
-							:value="option.value"
-							class="radio radio-primary"
-							:checked="stringValue === option.value"
-							:required="field.is_required && index === 0"
-							:disabled="readOnly"
-							:aria-controls="option.value === OTHER_CHOICE_VALUE && otherSelected ? otherInputId : undefined"
-							@change="!readOnly && emit( 'update:modelValue', option.value )"
-						/>
-						<span>{{ option.label }}</span>
-					</label>
+					<template v-for="( option, index ) in choices" :key="option.value">
+						<ImageChoice
+							v-if="showsImages && option.value !== OTHER_CHOICE_VALUE"
+							:option="option"
+							:label-id="`field-${field.name}-${index}-label`"
+						>
+							<input
+								:id="`field-${field.name}-${index}`"
+								type="radio"
+								:name="field.name"
+								:value="option.value"
+								class="radio radio-primary radio-sm"
+								:checked="stringValue === option.value"
+								:required="field.is_required && index === 0"
+								:disabled="readOnly"
+								:aria-labelledby="`field-${field.name}-${index}-label`"
+								@change="!readOnly && emit( 'update:modelValue', option.value )"
+							/>
+						</ImageChoice>
+						<label
+							v-else
+							:for="`field-${field.name}-${option.value === OTHER_CHOICE_VALUE ? 'other' : index}`"
+							class="flex items-center gap-2 cursor-pointer"
+						>
+							<input
+								:id="`field-${field.name}-${option.value === OTHER_CHOICE_VALUE ? 'other' : index}`"
+								type="radio"
+								:name="field.name"
+								:value="option.value"
+								class="radio radio-primary"
+								:checked="stringValue === option.value"
+								:required="field.is_required && index === 0"
+								:disabled="readOnly"
+								:aria-controls="option.value === OTHER_CHOICE_VALUE && otherSelected ? otherInputId : undefined"
+								@change="!readOnly && emit( 'update:modelValue', option.value )"
+							/>
+							<span>{{ option.label }}</span>
+						</label>
+					</template>
 				</div>
 				<div v-if="otherSelected" class="mt-2">
 					<label :for="otherInputId" class="sr-only">
@@ -406,17 +432,35 @@ function handleMultiSelectChange( event: Event ): void {
 				<span>{{ t( 'Select All' ) }}</span>
 			</label>
 			<div :class="[layoutClasses, field.css_classes ?? '']">
-				<Checkbox
-					v-for="( option, index ) in choices"
-					:id="option.value === OTHER_CHOICE_VALUE ? `field-${field.name}-other` : `field-${field.name}-${index}`"
-					:key="option.value"
-					:label="option.label"
-					:name="`${field.name}[]`"
-					:model-value="selectedArray.includes( option.value )"
-					:disabled="readOnly"
-					right
-					@update:model-value="handleCheckboxGroupChange( option.value, $event as boolean )"
-				/>
+				<template v-for="( option, index ) in choices" :key="option.value">
+					<ImageChoice
+						v-if="showsImages && option.value !== OTHER_CHOICE_VALUE"
+						:option="option"
+						:label-id="`field-${field.name}-${index}-label`"
+					>
+						<input
+							:id="`field-${field.name}-${index}`"
+							type="checkbox"
+							:name="`${field.name}[]`"
+							:value="option.value"
+							class="checkbox checkbox-primary checkbox-sm"
+							:checked="selectedArray.includes( option.value )"
+							:disabled="readOnly"
+							:aria-labelledby="`field-${field.name}-${index}-label`"
+							@change="handleCheckboxGroupChange( option.value, ( $event.target as HTMLInputElement ).checked )"
+						/>
+					</ImageChoice>
+					<Checkbox
+						v-else
+						:id="option.value === OTHER_CHOICE_VALUE ? `field-${field.name}-other` : `field-${field.name}-${index}`"
+						:label="option.label"
+						:name="`${field.name}[]`"
+						:model-value="selectedArray.includes( option.value )"
+						:disabled="readOnly"
+						right
+						@update:model-value="handleCheckboxGroupChange( option.value, $event as boolean )"
+					/>
+				</template>
 			</div>
 			<div v-if="otherSelected" class="mt-2">
 				<label :for="otherInputId" class="sr-only">

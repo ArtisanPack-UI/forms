@@ -37,6 +37,7 @@ import {
 	isDraftStored,
 	supportsConditionalLogic,
 } from '../../../shared/fieldSettings';
+import { checkFormula, getFormulaFields, insertFormulaTag } from '../../../shared/calculation';
 import { applySubInputUpdate, isCompositeField } from '../../../shared/composite';
 import { MERGE_TAGS } from '../../../shared/dynamicPopulation';
 import { getFieldTypeLabel } from '../../../shared/fieldTypeLabels';
@@ -66,15 +67,15 @@ const LAYOUT_FIELD_TYPES: Set<FieldType> = new Set( [
 ] );
 
 /** Field types without a placeholder. */
-const NO_PLACEHOLDER_TYPES: Set<FieldType> = new Set( ['checkbox', 'toggle', 'radio', 'rating', 'consent', 'captcha', 'datetime', 'list', 'slider', 'nps', 'matrix', 'ranking', 'signature'] );
+const NO_PLACEHOLDER_TYPES: Set<FieldType> = new Set( ['checkbox', 'toggle', 'radio', 'rating', 'consent', 'captcha', 'datetime', 'list', 'slider', 'nps', 'matrix', 'ranking', 'signature', 'calculation'] );
 
 /**
  * Field types without a default value: a consent box is never pre-checked,
  * a CAPTCHA token comes from the provider, a list starts with empty rows, a
- * matrix unanswered, a ranking in its options' order and a signature blank
- * (since 1.6.0).
+ * matrix unanswered, a ranking in its options' order, a signature blank and
+ * a calculation with its result (since 1.6.0).
  */
-const NO_DEFAULT_VALUE_TYPES: Set<FieldType> = new Set( ['consent', 'captcha', 'list', 'matrix', 'ranking', 'signature'] );
+const NO_DEFAULT_VALUE_TYPES: Set<FieldType> = new Set( ['consent', 'captcha', 'list', 'matrix', 'ranking', 'signature', 'calculation'] );
 
 /** Get the width options, translated at render. */
 function getWidthOptions(): Array<{ value: FieldWidth; label: string }> {
@@ -115,6 +116,11 @@ export interface FieldEditorProps {
 	 * from the `fields/predefined-choices` endpoint).
 	 */
 	predefinedChoices?: PredefinedChoiceList[];
+	/**
+	 * Stores an image choice's image and resolves to its URL (since 1.6.0;
+	 * the `fields/choice-images` endpoint). Without it, images are set by URL.
+	 */
+	uploadChoiceImage?: ( file: File ) => Promise<string>;
 }
 
 /**
@@ -142,6 +148,7 @@ export function FieldEditor( {
 	className,
 	customSettings,
 	predefinedChoices,
+	uploadChoiceImage,
 }: FieldEditorProps ): React.ReactElement {
 	const [activeTab, setActiveTab] = useState<string>( 'general' );
 
@@ -242,6 +249,7 @@ export function FieldEditor( {
 						predefinedChoices={predefinedChoices}
 						customSettings={customSettingsPanel}
 						allFields={allFields}
+						uploadChoiceImage={uploadChoiceImage}
 					/>
 				),
 			},
@@ -297,7 +305,7 @@ export function FieldEditor( {
 	}, [
 		field, isLayoutField, hasOptions, options, validationSettings, advancedSettings,
 		allFields, updateField, patchField, handleSetOptions, predefinedChoices,
-		customSettingsPanel,
+		customSettingsPanel, uploadChoiceImage,
 	] );
 
 	// Fall back to the General tab when the active tab does not apply to the field.
@@ -369,6 +377,7 @@ interface GeneralTabContentProps {
 	predefinedChoices?: PredefinedChoiceList[];
 	customSettings?: FieldSettingsRegistration;
 	allFields: FormField[];
+	uploadChoiceImage?: ( file: File ) => Promise<string>;
 }
 
 function GeneralTabContent( {
@@ -382,6 +391,7 @@ function GeneralTabContent( {
 	predefinedChoices,
 	customSettings,
 	allFields,
+	uploadChoiceImage,
 }: GeneralTabContentProps ): React.ReactElement {
 	const isComposite = isCompositeField( field );
 	const CustomSettings = customSettings?.component;
@@ -517,6 +527,7 @@ function GeneralTabContent( {
 					field={field}
 					setting={setting}
 					updateField={updateField}
+					allFields={allFields}
 				/>
 			) )}
 
@@ -528,6 +539,7 @@ function GeneralTabContent( {
 					options={options}
 					onChange={setOptions}
 					predefinedChoices={predefinedChoices}
+					uploadImage={uploadChoiceImage}
 				/>
 			)}
 
@@ -575,6 +587,8 @@ interface SettingControlProps {
 	field: FormField;
 	setting: FieldSettingDefinition;
 	updateField: ( data: UpdateFieldRequest ) => void;
+	/** The form's fields, for a formula's field picker (since 1.6.0). */
+	allFields?: FormField[];
 }
 
 /** Map a schema input to the HTML input type that edits it. */
@@ -602,7 +616,7 @@ function htmlInputType( input: FieldSettingDefinition['input'] ): string {
  * rewrites the text under the cursor. The draft resets when another field
  * or setting is shown.
  */
-function SettingControl( { field, setting, updateField }: SettingControlProps ): React.ReactElement {
+function SettingControl( { field, setting, updateField, allFields = [] }: SettingControlProps ): React.ReactElement {
 	const stored = getSettingInput( field, setting );
 	const [draft, setDraft] = useState<string>( typeof stored === 'string' ? stored : '' );
 
@@ -647,6 +661,21 @@ function SettingControl( { field, setting, updateField }: SettingControlProps ):
 		);
 	}
 
+	if ( setting.input === 'formula' ) {
+		return (
+			<FormulaSettingControl
+				field={field}
+				setting={setting}
+				draft={draft}
+				allFields={allFields}
+				onChange={( formula ) => {
+					setDraft( formula );
+					updateField( buildSettingUpdate( field, setting, formula ) );
+				}}
+			/>
+		);
+	}
+
 	if ( setting.input === 'textarea' ) {
 		return (
 			<Textarea
@@ -683,5 +712,72 @@ function SettingControl( { field, setting, updateField }: SettingControlProps ):
 				updateField( buildSettingUpdate( field, setting, e.target.value ) );
 			}}
 		/>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// FormulaSettingControl (inline sub-component)
+// ---------------------------------------------------------------------------
+
+interface FormulaSettingControlProps {
+	field: FormField;
+	setting: FieldSettingDefinition;
+	draft: string;
+	allFields: FormField[];
+	onChange: ( formula: string ) => void;
+}
+
+/**
+ * Renders a calculation formula (since 1.6.0): a monospace textarea, a
+ * picker that inserts a field's merge tag at the cursor, and the first
+ * problem with the formula, if any. Mirrors the Livewire builder's
+ * `formula` setting.
+ */
+function FormulaSettingControl( { field, setting, draft, allFields, onChange }: FormulaSettingControlProps ): React.ReactElement {
+	const input = useRef<HTMLTextAreaElement>( null );
+	const id = `field-setting-${setting.key}`;
+	const formulaFields = getFormulaFields( field, allFields );
+	const problem = draft.trim() !== '' ? checkFormula( draft, formulaFields.map( ( entry ) => entry.name ) ) : undefined;
+	const describedBy = [setting.hint ? `${id}-hint` : undefined, problem ? `${id}-problem` : undefined].filter( Boolean ).join( ' ' ) || undefined;
+
+	return (
+		<div className="fieldset">
+			<label htmlFor={id} className="fieldset-legend">{setting.label}</label>
+			<textarea
+				ref={input}
+				id={id}
+				className={`textarea textarea-sm textarea-bordered w-full font-mono text-xs ${problem ? 'textarea-error' : ''}`}
+				rows={3}
+				spellCheck={false}
+				value={draft}
+				placeholder={setting.placeholder}
+				maxLength={setting.max_length}
+				aria-invalid={problem ? true : undefined}
+				aria-describedby={describedBy}
+				onChange={( e ) => onChange( e.target.value )}
+			/>
+			{formulaFields.length > 0 && (
+				<>
+					<label htmlFor={`${id}-insert`} className="sr-only">{t( 'Insert a field' )}</label>
+					<select
+						id={`${id}-insert`}
+						className="select select-sm select-bordered mt-2 w-full"
+						value=""
+						onChange={( e ) => {
+							if ( e.target.value !== '' && input.current ) {
+								onChange( insertFormulaTag( input.current, e.target.value ) );
+							}
+						}}
+					>
+						<option value="">{t( 'Insert a field…' )}</option>
+						{formulaFields.map( ( entry ) => (
+							<option key={entry.name} value={`{${entry.name}}`}>{`${entry.label} ({${entry.name}})`}</option>
+						) )}
+					</select>
+				</>
+			)}
+			{setting.hint && <p id={`${id}-hint`} className="fieldset-label">{setting.hint}</p>}
+			{problem && <p id={`${id}-problem`} className="fieldset-label text-error">{problem}</p>}
+		</div>
 	);
 }

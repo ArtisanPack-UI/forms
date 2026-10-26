@@ -56,6 +56,10 @@ export { RankingField } from './components/fields/RankingField';
 
 export { SignatureField } from './components/fields/SignatureField';
 
+export { ColorField } from './components/fields/ColorField';
+
+export { CalculationField } from './components/fields/CalculationField';
+
 export { SectionField, SectionGroup } from './components/fields/SectionField';
 export type { SectionGroupProps } from './components/fields/SectionField';
 
@@ -231,6 +235,12 @@ export { getMatrixColumns, getMatrixRows, isSingleScale, validateMatrixField } f
 export { getRankingChoices, getRankingOrder, moveRankingItem, validateRanking } from '../shared/ranking';
 export { isDrawnSignature, SignaturePad, validateSignature } from '../shared/signature';
 export type { SignatureMode } from '../shared/signature';
+
+// Calculation helpers (since 1.6.0)
+export { applyCalculations, checkFormula, evaluateFormula, formatCalculation, getFormulaReferences, resolveCalculatedValues } from '../shared/calculation';
+
+// Color helpers (since 1.6.0)
+export { getColorPickerValue, isHexColor, normalizeColor, validateColor } from '../shared/color';
 
 // Email confirmation helpers (since 1.6.0)
 export {

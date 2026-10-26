@@ -77,7 +77,7 @@ describe( 'shared helpers', function () use ( $resource, $between ): void {
 
     it( 'parses date expression settings like FieldSettings', function () use ( $resource ): void {
         expect( $resource( 'shared/fieldSettings.ts' ) )->toContain( "case 'date_expression':\n\t\t\treturn parseDateExpression( value );" )
-            ->and( $resource( 'types/artisanpack-forms.d.ts' ) )->toContain( "| 'list' | 'date_expression';" );
+            ->and( $resource( 'types/artisanpack-forms.d.ts' ) )->toContain( "| 'list' | 'date_expression' | 'formula';" );
     } );
 
     it( 'validates the new options on the client', function () use ( $resource, $between ): void {

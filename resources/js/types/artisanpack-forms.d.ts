@@ -45,6 +45,8 @@ export type BuiltInFieldType =
     | 'date_range'
     | 'rating'
     | 'slider'
+    | 'color'
+    | 'calculation'
     | 'nps'
     | 'matrix'
     | 'ranking'
@@ -232,6 +234,13 @@ export interface FieldOption {
     value: string;
     /** Whether the option starts selected (since 1.6.0). */
     default?: boolean;
+    /**
+     * The option's image for image choices (since 1.6.0): an `http`/`https`
+     * URL or a site path. The label stays the choice's accessible name.
+     */
+    image?: string;
+    /** Alternative text for the option's image (since 1.6.0). */
+    image_alt?: string;
     [key: string]: string | boolean | undefined;
 }
 
@@ -318,6 +327,12 @@ export interface OptionsFieldConfig extends BaseFieldConfig {
     choices_source?: string;
     /** How a radio or checkbox group arranges its choices. Defaults to `stacked` (since 1.6.0). */
     layout?: ChoiceLayout;
+    /**
+     * Whether a radio or checkbox group shows its choices as `images`, each
+     * option's image above its label, or as plain labels (`list`, the
+     * default) (since 1.6.0).
+     */
+    display?: 'list' | 'images';
     /** Whether a radio or checkbox group shows its choices in a random order (since 1.6.0). */
     randomize?: boolean;
     /** Whether a checkbox group offers a "Select All" checkbox (since 1.6.0). */
@@ -757,6 +772,25 @@ export interface SliderFieldConfig extends CommonFieldConfig {
 }
 
 /**
+ * Configuration for calculation fields (since 1.6.0); see
+ * `FormField.calculation` for the resolved values.
+ */
+export interface CalculationFieldConfig extends CommonFieldConfig {
+    /** The formula, such as `{quantity} * {price}`: numbers, field merge tags, `+ - * /` and parentheses. */
+    formula?: string;
+    /** The decimal places the result is rounded to, 0 to 10. Defaults to 2. */
+    decimals?: number;
+}
+
+/**
+ * A calculation's resolved formula and decimal places (since 1.6.0).
+ */
+export interface CalculationSettings {
+    formula: string;
+    decimals: number;
+}
+
+/**
  * A slider's resolved limits and value label (since 1.6.0).
  */
 export interface SliderSettings {
@@ -858,6 +892,7 @@ export type FieldConfig =
     | DateRangeFieldConfig
     | ListFieldConfig
     | SliderFieldConfig
+    | CalculationFieldConfig
     | NpsFieldConfig
     | MatrixFieldConfig
     | RankingFieldConfig
@@ -870,7 +905,7 @@ export type FieldConfig =
  *
  * @since 1.6.0
  */
-export type FieldSettingInput = 'text' | 'textarea' | 'integer' | 'number' | 'select' | 'toggle' | 'date' | 'time' | 'list' | 'date_expression';
+export type FieldSettingInput = 'text' | 'textarea' | 'integer' | 'number' | 'select' | 'toggle' | 'date' | 'time' | 'list' | 'date_expression' | 'formula';
 
 /**
  * One type-specific setting from a field type's settings schema
@@ -1020,6 +1055,12 @@ export interface FormField {
     list?: { columns: ListColumn[]; min_rows: number | null; max_rows: number; row_label: string };
     /** A slider's resolved limits and value label (since 1.6.0). Present only for sliders. */
     slider?: SliderSettings;
+    /**
+     * A calculation's formula and decimal places (since 1.6.0). Present only
+     * for calculations. The result is worked out on the client as the
+     * visitor types and again on the server on submit.
+     */
+    calculation?: CalculationSettings;
     /** A Net Promoter Score field's end labels (since 1.6.0). Present only for NPS fields. */
     nps?: { low: string; high: string };
     /**

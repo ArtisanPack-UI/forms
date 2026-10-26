@@ -2,7 +2,8 @@
  * Choice field helpers.
  *
  * Client-side mirror of the choice settings on `FormField` (layout,
- * randomized order, "Select All", search, per-option defaults) and of the
+ * randomized order, "Select All", search, per-option defaults, image
+ * choices) and of the
  * bulk choice syntax in `PredefinedChoices`, so the React and Vue renderers
  * and builders behave like the Livewire ones.
  *
@@ -72,6 +73,34 @@ export function getChoiceLayoutClasses( field: FormField ): string {
 /** Whether a radio or checkbox group shows its choices in a random order. */
 export function randomizesChoices( field: FormField ): boolean {
 	return ( field.type === 'radio' || field.type === 'checkbox_group' ) && isOn( readConfig( field, 'randomize' ) );
+}
+
+/** Whether a radio or checkbox group shows its choices as images, mirroring `FormField::showsImageChoices()` (since 1.6.0). */
+export function showsImageChoices( field: FormField ): boolean {
+	return ( field.type === 'radio' || field.type === 'checkbox_group' ) && readConfig( field, 'display' ) === 'images';
+}
+
+/**
+ * Get an option's image URL when it is safe to show: an `http`/`https`
+ * address or a site path. Mirrors `ChoiceImages::url()` (since 1.6.0).
+ */
+export function getChoiceImageUrl( option: FieldOption ): string | undefined {
+	const url = typeof option.image === 'string' ? option.image.trim() : '';
+
+	if ( url === '' || url.length > 2048 || /[\u0000-\u0020"'<>\\`]/.test( url ) ) {
+		return undefined;
+	}
+
+	if ( url.startsWith( '/' ) && !url.startsWith( '//' ) ) {
+		return url;
+	}
+
+	return /^https?:\/\/[^/]/i.test( url ) ? url : undefined;
+}
+
+/** Get an option's image alt text, mirroring `ChoiceImages::alt()` (since 1.6.0). */
+export function getChoiceImageAlt( option: FieldOption ): string {
+	return typeof option.image_alt === 'string' ? option.image_alt.trim() : '';
 }
 
 /** Whether a checkbox group offers a "Select All" checkbox. */
