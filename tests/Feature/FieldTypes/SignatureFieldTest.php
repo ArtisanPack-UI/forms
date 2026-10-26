@@ -240,6 +240,14 @@ describe( 'rendering', function (): void {
             ->toContain( 'wire:ignore' );
     } );
 
+    it( 'sets the value deferred on every change, so a quick submit carries it', function (): void {
+        $html = FieldRenderer::render( $this->signature, '' );
+
+        expect( $html )->toContain( "\$wire.\$set('formData.signature', value, false)" )
+            ->toContain( 'x-on:input="sync(typed.trim())"' )
+            ->not->toContain( 'debounce' );
+    } );
+
     it( 'starts in typing mode for a typed value', function (): void {
         $html = FieldRenderer::render( $this->signature, 'Ada Lovelace' );
 

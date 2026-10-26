@@ -5,7 +5,9 @@
 
     "Draw" and "Type" are toggle buttons. A drawing is sent to
     `formData.{name}` as a PNG data URL once a stroke ends; a typed name is
-    sent as text. Switching methods clears the other one. The pad is an
+    sent as text on every keystroke. Both are set deferred, so a submit right
+    after carries them, and committed after a 400 ms pause for conditional
+    logic. Switching methods clears the other one. The pad is an
     image to screen readers and its canvas is kept out of Livewire's morph
     (`wire:ignore`), so the drawing survives a re-render; a drawing already
     in the form data is redrawn when the pad is shown. It does not use
@@ -114,11 +116,8 @@
 
             this.active = false;
             this.hasInk = true;
-            clearTimeout(this.timer);
-            this.timer = setTimeout(() => {
-                this.drawing = this.$refs.canvas.toDataURL('image/png');
-                this.sync(this.drawing);
-            }, 400);
+            this.drawing = this.$refs.canvas.toDataURL('image/png');
+            this.sync(this.drawing);
         },
         clear() {
             const canvas = this.$refs.canvas;
@@ -153,7 +152,10 @@
             this.announcement = '';
         },
         sync(value) {
-            this.$wire.$set(@js('formData.' . $field->name), value);
+            // Deferred, so a submit sent right after carries it; the delayed commit updates conditional logic
+            this.$wire.$set(@js('formData.' . $field->name), value, false);
+            clearTimeout(this.timer);
+            this.timer = setTimeout(() => this.$wire.$commit(), 400);
         },
     }"
 >
@@ -215,7 +217,7 @@
             id="{{ $idPrefix }}typed"
             x-ref="typed"
             x-model="typed"
-            x-on:input.debounce.400ms="sync(typed.trim())"
+            x-on:input="sync(typed.trim())"
             class="input input-bordered w-full"
             maxlength="{{ $signatureType::TYPED_MAX_LENGTH }}"
             autocomplete="name"
