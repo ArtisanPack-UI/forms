@@ -22,7 +22,9 @@ import {
 	SelectMultipleField,
 	ToggleField,
 } from './ChoiceField';
+import { CalculationField } from './CalculationField';
 import { CaptchaField } from './CaptchaField';
+import { ColorField } from './ColorField';
 import { CompositeField } from './CompositeField';
 import { ConsentField } from './ConsentField';
 import { DividerField, HeadingField, HtmlField, ParagraphField } from './LayoutField';
@@ -118,7 +120,9 @@ const FIELD_COMPONENTS: Record<BuiltInFieldType, FieldComponent> = {
 	name: CompositeField,
 	address: CompositeField,
 	list: ListField,
+	calculation: CalculationField,
 	signature: SignatureField,
+	color: ColorField,
 	consent: ConsentField,
 	captcha: CaptchaField,
 	section: SectionField,

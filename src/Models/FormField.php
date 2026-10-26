@@ -1300,6 +1300,18 @@ class FormField extends Model
     }
 
     /**
+     * Checks whether a radio or checkbox group shows its choices as images.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the `display` setting is `images` and the type offers it.
+     */
+    public function showsImageChoices(): bool
+    {
+        return 'images' === $this->getConfig( 'display' ) && $this->offersSetting( 'display' );
+    }
+
+    /**
      * Checks whether a checkbox group offers a "Select All" choice.
      *
      * @since 1.6.0

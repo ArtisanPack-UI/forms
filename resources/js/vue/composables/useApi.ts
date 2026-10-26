@@ -57,7 +57,7 @@ export interface UseApiOptions {
 export interface UseApiReturn {
 	/** Perform a GET request. */
 	get: <T>( path: string, params?: Record<string, string> ) => Promise<T>;
-	/** Perform a POST request with JSON body. */
+	/** Perform a POST request with a JSON body, or a multipart body for `FormData` (since 1.6.0). */
 	post: <T>( path: string, body?: unknown ) => Promise<T>;
 	/** Perform a PUT request with JSON body. */
 	put: <T>( path: string, body?: unknown ) => Promise<T>;
@@ -205,11 +205,13 @@ export function useApi( options: UseApiOptions ): UseApiReturn {
 	}
 
 	async function post<T>( path: string, body?: unknown ): Promise<T> {
+		// The browser sets a multipart body's content type, with its boundary (since 1.6.0)
+		const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
 		const response = await fetch( buildUrl( path ), {
 			method: 'POST',
-			headers: buildHeaders(),
+			headers: buildHeaders( !isFormData ),
 			credentials,
-			body: body !== undefined ? JSON.stringify( body ) : undefined,
+			body: isFormData ? body : ( body !== undefined ? JSON.stringify( body ) : undefined ),
 		} );
 
 		return handleResponse<T>( response );

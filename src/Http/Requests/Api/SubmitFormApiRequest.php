@@ -240,7 +240,9 @@ class SubmitFormApiRequest extends FormRequest
      * value is what gets validated and stored. Numbers typed in a number
      * field's format are converted to plain decimals, URLs typed without a
      * scheme get one and emptied rich text is blanked (since 1.6.0; see
-     * SubmissionService::normalizeSubmittedValues()).
+     * SubmissionService::normalizeSubmittedValues()). Calculations are
+     * worked out on the server, so conditional logic reads their real results
+     * (see SubmissionService::applyVisibleCalculations()).
      *
      * @since 1.6.0
      */
@@ -259,11 +261,13 @@ class SubmitFormApiRequest extends FormRequest
 
         $submissionService = app( SubmissionService::class );
 
+        $data = $submissionService->normalizeSubmittedValues(
+            $form->fields,
+            $submissionService->applyReadOnlyValues( $form->fields, $data ),
+        );
+
         $this->merge( [
-            'data' => $submissionService->normalizeSubmittedValues(
-                $form->fields,
-                $submissionService->applyReadOnlyValues( $form->fields, $data ),
-            ),
+            'data' => $submissionService->applyVisibleCalculations( $form->fields, $data ),
         ] );
     }
 }

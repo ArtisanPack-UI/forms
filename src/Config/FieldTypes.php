@@ -20,9 +20,11 @@ use ArtisanPackUI\Forms\Contracts\FieldType;
 use ArtisanPackUI\Forms\FieldTypes\AbstractFieldType;
 use ArtisanPackUI\Forms\FieldTypes\AddressFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ArrayFieldType;
+use ArtisanPackUI\Forms\FieldTypes\CalculationFieldType;
 use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
 use ArtisanPackUI\Forms\FieldTypes\CheckboxFieldType;
 use ArtisanPackUI\Forms\FieldTypes\CheckboxGroupFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ColorFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ConsentFieldType;
 use ArtisanPackUI\Forms\FieldTypes\DateFieldType;
 use ArtisanPackUI\Forms\FieldTypes\DateRangeFieldType;
@@ -77,7 +79,7 @@ class FieldTypes
     public const CATEGORY_FIELDS = [
         'basic'    => ['text', 'email', 'phone', 'number', 'url', 'textarea', 'hidden'],
         'choice'   => ['select', 'radio', 'checkbox', 'toggle', 'checkbox_group', 'select_multiple'],
-        'advanced' => ['file', 'date', 'time', 'datetime', 'date_range', 'rating', 'slider', 'nps', 'matrix', 'ranking', 'name', 'address', 'list', 'signature', 'consent', 'captcha'],
+        'advanced' => ['file', 'date', 'time', 'datetime', 'date_range', 'rating', 'slider', 'color', 'nps', 'matrix', 'ranking', 'name', 'address', 'list', 'calculation', 'signature', 'consent', 'captcha'],
         'layout'   => ['section', 'heading', 'paragraph', 'divider', 'html'],
     ];
 
@@ -281,6 +283,14 @@ class FieldTypes
             'supports_default_value' => true,
             'validation_options'     => [],
         ],
+        'color' => [
+            'icon'                   => 'o-swatch',
+            'category'               => 'advanced',
+            'has_options'            => false,
+            'supports_placeholder'   => true,
+            'supports_default_value' => true,
+            'validation_options'     => [],
+        ],
         'nps' => [
             'icon'                   => 'o-hand-thumb-up',
             'category'               => 'advanced',
@@ -329,6 +339,15 @@ class FieldTypes
         ],
         'list' => [
             'icon'                        => 'o-table-cells',
+            'category'                    => 'advanced',
+            'has_options'                 => false,
+            'supports_placeholder'        => false,
+            'supports_default_value'      => false,
+            'supports_dynamic_population' => false,
+            'validation_options'          => [],
+        ],
+        'calculation' => [
+            'icon'                        => 'o-calculator',
             'category'                    => 'advanced',
             'has_options'                 => false,
             'supports_placeholder'        => false,
@@ -445,12 +464,14 @@ class FieldTypes
         'date_range'      => DateRangeFieldType::class,
         'rating'          => RatingFieldType::class,
         'slider'          => SliderFieldType::class,
+        'color'           => ColorFieldType::class,
         'nps'             => NpsFieldType::class,
         'matrix'          => MatrixFieldType::class,
         'ranking'         => RankingFieldType::class,
         'name'            => NameFieldType::class,
         'address'         => AddressFieldType::class,
         'list'            => ListFieldType::class,
+        'calculation'     => CalculationFieldType::class,
         'signature'       => SignatureFieldType::class,
         'consent'         => ConsentFieldType::class,
         'captcha'         => CaptchaFieldType::class,

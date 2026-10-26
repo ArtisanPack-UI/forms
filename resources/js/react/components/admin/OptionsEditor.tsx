@@ -5,7 +5,8 @@
  * selected (one for a radio or select, any number for a checkbox group or
  * multi-select), plus a bulk editor that takes one `value|label` per line and
  * can insert a predefined list. A field that loads its choices from a source
- * shows them read-only instead.
+ * shows them read-only instead. With image choices on, each option also
+ * takes an image URL, an upload and alt text (since 1.6.0).
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -13,16 +14,18 @@
  * @since      1.6.0
  */
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 
 import { Button, Input, Select, Textarea } from '@artisanpack-ui/react';
 
 import {
 	applyBulkChoices,
+	getChoiceImageUrl,
 	getChoicesSource,
 	isMultipleChoiceField,
 	parseBulkChoices,
 	setOptionDefault,
+	showsImageChoices,
 	toBulkChoices,
 } from '../../../shared/choices';
 import { t } from '../../../shared/i18n';
@@ -38,13 +41,21 @@ export interface OptionsEditorProps {
 	onChange: ( options: FieldOption[] ) => void;
 	/** The lists the bulk editor can insert (see the `fields/predefined-choices` endpoint). */
 	predefinedChoices?: PredefinedChoiceList[];
+	/** Stores an image choice's image and resolves to its URL (since 1.6.0). */
+	uploadImage?: ( file: File ) => Promise<string>;
 }
 
 /**
  * Renders the options editor.
  */
-export function OptionsEditor( { field, options, onChange, predefinedChoices = [] }: OptionsEditorProps ): React.ReactElement {
+export function OptionsEditor( { field, options, onChange, predefinedChoices = [], uploadImage }: OptionsEditorProps ): React.ReactElement {
 	const [bulkOpen, setBulkOpen] = useState( false );
+	const [uploading, setUploading] = useState<number | null>( null );
+	const [uploadError, setUploadError] = useState( '' );
+	// The latest options, so an upload that finishes later keeps edits made while it ran
+	const latestOptions = useRef( options );
+	latestOptions.current = options;
+	const showsImages = showsImageChoices( field );
 	const [bulkText, setBulkText] = useState( '' );
 	const [selectedList, setSelectedList] = useState( '' );
 	const multiple = isMultipleChoiceField( field );
@@ -75,8 +86,39 @@ export function OptionsEditor( { field, options, onChange, predefinedChoices = [
 		);
 	}
 
-	const updateOption = ( index: number, key: 'label' | 'value', value: string ): void => {
+	const updateOption = ( index: number, key: 'label' | 'value' | 'image' | 'image_alt', value: string ): void => {
 		onChange( options.map( ( option, i ) => ( i === index ? { ...option, [key]: value } : option ) ) );
+	};
+
+	const removeImage = ( index: number ): void => {
+		onChange( options.map( ( option, i ) => {
+			if ( i !== index ) {
+				return option;
+			}
+
+			const { image: _image, image_alt: _alt, ...rest } = option;
+
+			return rest as FieldOption;
+		} ) );
+	};
+
+	const handleUpload = async ( index: number, file: File | undefined ): Promise<void> => {
+		if ( !file || !uploadImage ) {
+			return;
+		}
+
+		setUploading( index );
+		setUploadError( '' );
+
+		try {
+			const url = await uploadImage( file );
+
+			onChange( latestOptions.current.map( ( option, i ) => ( i === index ? { ...option, image: url } : option ) ) );
+		} catch ( err ) {
+			setUploadError( err instanceof Error ? err.message : t( 'The image could not be stored.' ) );
+		} finally {
+			setUploading( null );
+		}
 	};
 
 	const openBulk = (): void => {
@@ -93,7 +135,8 @@ export function OptionsEditor( { field, options, onChange, predefinedChoices = [
 		<div className="space-y-2">
 			<span className="label-text font-medium">{t( 'Options' )}</span>
 			{options.map( ( option, index ) => (
-				<div key={index} className="flex items-center gap-2">
+				<div key={index} className={showsImages ? 'space-y-2 rounded-lg bg-base-200 p-2' : undefined}>
+				<div className="flex items-center gap-2">
 					{hasDefaults && (
 						<input
 							type="checkbox"
@@ -129,7 +172,61 @@ export function OptionsEditor( { field, options, onChange, predefinedChoices = [
 						&times;
 					</Button>
 				</div>
+				{showsImages && (
+					<div className="flex items-start gap-2">
+						<div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-base-300">
+							{getChoiceImageUrl( option ) && <img src={getChoiceImageUrl( option )} alt="" className="h-full w-full object-cover" />}
+						</div>
+						<div className="flex-1 space-y-1">
+							<Input
+								type="url"
+								placeholder="https://"
+								aria-label={t( 'Image URL: :label', { label: option.label || option.value } )}
+								value={typeof option.image === 'string' ? option.image : ''}
+								onChange={( e ) => updateOption( index, 'image', e.target.value )}
+							/>
+							<Input
+								placeholder={t( 'Describe the image' )}
+								aria-label={t( 'Image alt text: :label', { label: option.label || option.value } )}
+								value={typeof option.image_alt === 'string' ? option.image_alt : ''}
+								onChange={( e ) => updateOption( index, 'image_alt', e.target.value )}
+							/>
+							<div className="flex flex-wrap gap-1">
+								{uploadImage && (
+									<label className={`btn btn-ghost btn-xs focus-within:outline focus-within:outline-2 focus-within:outline-primary ${uploading === index ? 'btn-disabled' : ''}`}>
+										{uploading === index ? t( 'Uploading…' ) : t( 'Upload' )}
+										<input
+											type="file"
+											className="sr-only"
+											accept="image/jpeg,image/png,image/gif,image/webp"
+											aria-label={t( 'Upload an image: :label', { label: option.label || option.value } )}
+											disabled={uploading !== null}
+											onChange={( e ) => {
+												void handleUpload( index, e.target.files?.[0] );
+												e.target.value = '';
+											}}
+										/>
+									</label>
+								)}
+								{typeof option.image === 'string' && option.image !== '' && (
+									<Button color="ghost" size="sm" className="text-error" onClick={() => removeImage( index )}>
+										{t( 'Remove image' )}
+									</Button>
+								)}
+							</div>
+						</div>
+					</div>
+				)}
+				</div>
 			) )}
+			{showsImages && uploadError && (
+				<p className="text-xs text-error" role="alert">{uploadError}</p>
+			)}
+			{showsImages && (
+				<p className="text-xs text-base-content/60">
+					{t( 'The option label stays the choice\'s name for screen readers; the alt text describes what the image shows.' )}
+				</p>
+			)}
 			{hasDefaults && options.length > 0 && (
 				<p className="text-xs text-base-content/60">
 					{multiple ? t( 'Check the options that start selected.' ) : t( 'Check the option that starts selected.' )}

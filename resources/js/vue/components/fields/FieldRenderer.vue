@@ -10,8 +10,8 @@
   in with separate inputs `DateTimePartsField` (since 1.6.0). A list renders
   `ListField`, a date range the composite field, a date and time field
   `AdvancedField`, and a section on its own `SectionField` (since 1.6.0).
-  Sliders, NPS scales, matrices, rankings and signatures have components of
-  their own (since 1.6.0).
+  Sliders, NPS scales, matrices, rankings, signatures, colors and
+  calculations have components of their own (since 1.6.0).
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -39,6 +39,8 @@ import NpsField from './NpsField.vue';
 import MatrixField from './MatrixField.vue';
 import RankingField from './RankingField.vue';
 import SignatureField from './SignatureField.vue';
+import ColorField from './ColorField.vue';
+import CalculationField from './CalculationField.vue';
 import { isCompositeField } from '../../../shared/composite';
 import { getDateInputMode, getTimeInputMode } from '../../../shared/dateTime';
 import { usesRichText } from '../../../shared/richText';
@@ -158,6 +160,10 @@ const componentGroup = computed( () => {
 	}
 
 	if ( SURVEY_TYPES.has( props.field.type ) ) {
+		return props.field.type;
+	}
+
+	if ( props.field.type === 'color' || props.field.type === 'calculation' ) {
 		return props.field.type;
 	}
 
@@ -301,6 +307,21 @@ const componentGroup = computed( () => {
 			:error="error"
 			:display-config="displayConfig"
 			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<ColorField
+			v-else-if="componentGroup === 'color'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<CalculationField
+			v-else-if="componentGroup === 'calculation'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
 		/>
 		<CompositeField
 			v-else-if="componentGroup === 'composite'"

@@ -5,7 +5,9 @@
   selected (one for a radio or select, any number for a checkbox group or
   multi-select), plus a bulk editor that takes one `value|label` per line and
   can insert a predefined list. A field that loads its choices from a source
-  shows them read-only instead. Mirrors the React `OptionsEditor`.
+  shows them read-only instead. With image choices on, each option also takes
+  an image URL, an upload and alt text (since 1.6.0). Mirrors the React
+  `OptionsEditor`.
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -18,10 +20,12 @@ import { Button, Input, Select, Textarea } from '@artisanpack-ui/vue';
 
 import {
 	applyBulkChoices,
+	getChoiceImageUrl,
 	getChoicesSource,
 	isMultipleChoiceField,
 	parseBulkChoices,
 	setOptionDefault,
+	showsImageChoices,
 	toBulkChoices,
 } from '../../../shared/choices';
 import { t } from '../../../shared/i18n';
@@ -34,6 +38,8 @@ const props = withDefaults( defineProps<{
 	options: FieldOption[];
 	/** The lists the bulk editor can insert (see the `fields/predefined-choices` endpoint). */
 	predefinedChoices?: PredefinedChoiceList[];
+	/** Stores an image choice's image and resolves to its URL (since 1.6.0). */
+	uploadImage?: ( file: File ) => Promise<string>;
 }>(), {
 	predefinedChoices: () => [],
 } );
@@ -58,8 +64,46 @@ const sourceLabel = computed( () =>
 );
 const listOptions = computed( () => props.predefinedChoices.map( ( list ) => ( { value: list.key, label: list.label } ) ) );
 
-function updateOption( index: number, key: 'label' | 'value', value: string ): void {
+function updateOption( index: number, key: 'label' | 'value' | 'image' | 'image_alt', value: string ): void {
 	emit( 'change', props.options.map( ( option, i ) => ( i === index ? { ...option, [key]: value } : option ) ) );
+}
+
+/** Whether each option takes an image (since 1.6.0). */
+const showsImages = computed( () => showsImageChoices( props.field ) );
+const uploading = ref<number | null>( null );
+const uploadError = ref( '' );
+
+function removeImage( index: number ): void {
+	emit( 'change', props.options.map( ( option, i ) => {
+		if ( i !== index ) {
+			return option;
+		}
+
+		const { image: _image, image_alt: _alt, ...rest } = option;
+
+		return rest as FieldOption;
+	} ) );
+}
+
+async function handleUpload( index: number, event: Event ): Promise<void> {
+	const input = event.target as HTMLInputElement;
+	const file = input.files?.[0];
+	input.value = '';
+
+	if ( !file || !props.uploadImage ) {
+		return;
+	}
+
+	uploading.value = index;
+	uploadError.value = '';
+
+	try {
+		updateOption( index, 'image', await props.uploadImage( file ) );
+	} catch ( err ) {
+		uploadError.value = err instanceof Error ? err.message : t( 'The image could not be stored.' );
+	} finally {
+		uploading.value = null;
+	}
 }
 
 function addOption(): void {
@@ -120,7 +164,8 @@ function applyBulk( mode: 'replace' | 'append' ): void {
 
 	<div v-else class="space-y-2">
 		<span class="label-text font-medium">{{ t( 'Options' ) }}</span>
-		<div v-for="( option, index ) in options" :key="index" class="flex items-center gap-2">
+		<div v-for="( option, index ) in options" :key="index" :class="showsImages ? 'space-y-2 rounded-lg bg-base-200 p-2' : undefined">
+		<div class="flex items-center gap-2">
 			<input
 				v-if="hasDefaults"
 				type="checkbox"
@@ -155,6 +200,56 @@ function applyBulk( mode: 'replace' | 'append' ): void {
 				&times;
 			</Button>
 		</div>
+		<div v-if="showsImages" class="flex items-start gap-2">
+			<div class="h-12 w-12 shrink-0 overflow-hidden rounded bg-base-300">
+				<img v-if="getChoiceImageUrl( option )" :src="getChoiceImageUrl( option )" alt="" class="h-full w-full object-cover" />
+			</div>
+			<div class="flex-1 space-y-1">
+				<Input
+					type="url"
+					placeholder="https://"
+					:aria-label="t( 'Image URL: :label', { label: option.label || option.value } )"
+					:model-value="typeof option.image === 'string' ? option.image : ''"
+					@update:model-value="updateOption( index, 'image', ($event as string) )"
+				/>
+				<Input
+					:placeholder="t( 'Describe the image' )"
+					:aria-label="t( 'Image alt text: :label', { label: option.label || option.value } )"
+					:model-value="typeof option.image_alt === 'string' ? option.image_alt : ''"
+					@update:model-value="updateOption( index, 'image_alt', ($event as string) )"
+				/>
+				<div class="flex flex-wrap gap-1">
+					<label
+						v-if="uploadImage"
+						:class="['btn btn-ghost btn-xs focus-within:outline focus-within:outline-2 focus-within:outline-primary', uploading === index ? 'btn-disabled' : '']"
+					>
+						{{ uploading === index ? t( 'Uploading…' ) : t( 'Upload' ) }}
+						<input
+							type="file"
+							class="sr-only"
+							accept="image/jpeg,image/png,image/gif,image/webp"
+							:aria-label="t( 'Upload an image: :label', { label: option.label || option.value } )"
+							:disabled="uploading !== null"
+							@change="handleUpload( index, $event )"
+						/>
+					</label>
+					<Button
+						v-if="typeof option.image === 'string' && option.image !== ''"
+						color="ghost"
+						size="sm"
+						class="text-error"
+						@click="removeImage( index )"
+					>
+						{{ t( 'Remove image' ) }}
+					</Button>
+				</div>
+			</div>
+		</div>
+		</div>
+		<p v-if="showsImages && uploadError" class="text-xs text-error" role="alert">{{ uploadError }}</p>
+		<p v-if="showsImages" class="text-xs text-base-content/60">
+			{{ t( 'The option label stays the choice\'s name for screen readers; the alt text describes what the image shows.' ) }}
+		</p>
 		<p v-if="hasDefaults && options.length > 0" class="text-xs text-base-content/60">
 			{{ multiple ? t( 'Check the options that start selected.' ) : t( 'Check the option that starts selected.' ) }}
 		</p>

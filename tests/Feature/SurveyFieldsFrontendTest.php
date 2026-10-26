@@ -200,7 +200,7 @@ describe( 'React', function () use ( $resource, $between ): void {
             ->toContain( "{ type: 'signature', label: t( 'Signature' ), icon: 'signature', category: 'advanced' }," )
             ->and( $resource( 'react/components/admin/FieldEditor.tsx' ) )
             ->toContain( "\t'select_multiple',\n\t'ranking',\n] );" )
-            ->toContain( "new Set( ['consent', 'captcha', 'list', 'matrix', 'ranking', 'signature'] )" )
+            ->toContain( "new Set( ['consent', 'captcha', 'list', 'matrix', 'ranking', 'signature', 'calculation'] )" )
             ->and( $resource( 'react/components/admin/OptionsEditor.tsx' ) )
             ->toContain( "const hasDefaults = field.type !== 'ranking';" );
     } );
@@ -258,7 +258,7 @@ describe( 'Vue', function () use ( $resource ): void {
             ->and( $resource( 'vue/components/admin/FieldPalette.vue' ) )
             ->toContain( "{ type: 'ranking', label: t( 'Ranking' ), icon: 'ranking', category: 'advanced' }," )
             ->and( $resource( 'vue/components/admin/FieldEditor.vue' ) )
-            ->toContain( "new Set<FieldType>( ['consent', 'captcha', 'list', 'matrix', 'ranking', 'signature'] )" )
+            ->toContain( "new Set<FieldType>( ['consent', 'captcha', 'list', 'matrix', 'ranking', 'signature', 'calculation'] )" )
             ->and( $resource( 'vue/components/admin/OptionsEditor.vue' ) )
             ->toContain( "const hasDefaults = computed( () => props.field.type !== 'ranking' );" );
     } );

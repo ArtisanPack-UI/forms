@@ -34,6 +34,8 @@ export { default as NpsField } from './components/fields/NpsField.vue';
 export { default as MatrixField } from './components/fields/MatrixField.vue';
 export { default as RankingField } from './components/fields/RankingField.vue';
 export { default as SignatureField } from './components/fields/SignatureField.vue';
+export { default as ColorField } from './components/fields/ColorField.vue';
+export { default as CalculationField } from './components/fields/CalculationField.vue';
 
 // Composables
 export { useForm } from './composables/useForm';
@@ -139,6 +141,12 @@ export { getMatrixColumns, getMatrixRows, isSingleScale, validateMatrixField } f
 export { getRankingChoices, getRankingOrder, moveRankingItem, validateRanking } from '../shared/ranking';
 export { isDrawnSignature, SignaturePad, validateSignature } from '../shared/signature';
 export type { SignatureMode } from '../shared/signature';
+
+// Calculation helpers (since 1.6.0)
+export { applyCalculations, checkFormula, evaluateFormula, formatCalculation, getFormulaReferences, resolveCalculatedValues } from '../shared/calculation';
+
+// Color helpers (since 1.6.0)
+export { getColorPickerValue, isHexColor, normalizeColor, validateColor } from '../shared/color';
 
 // Email confirmation helpers (since 1.6.0)
 export { getConfirmationKey, requiresEmailConfirmation } from '../shared/fieldSettings';

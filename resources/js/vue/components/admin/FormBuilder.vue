@@ -84,6 +84,16 @@ const activePanel = ref<'palette' | 'settings' | 'editor'>( 'palette' );
 const showPreview = ref( false );
 const predefinedChoices = ref<PredefinedChoiceList[]>( [] );
 
+/** Store an image choice's image and get its URL (since 1.6.0). */
+async function uploadChoiceImage( file: File ): Promise<string> {
+	const body = new FormData();
+	body.append( 'image', file );
+
+	const response = await post<{ data: { url: string } }>( `/${form.value?.id}/fields/choice-images`, body );
+
+	return response.data.url;
+}
+
 // Drag state
 const dragState = ref<DragState | null>( null );
 
@@ -1147,6 +1157,7 @@ function getPreviewInputType( fieldType: string ): string {
 					:field="selectedField"
 					:all-fields="fields"
 					:predefined-choices="predefinedChoices"
+					:upload-choice-image="uploadChoiceImage"
 					@change="updateField"
 					@delete="deleteField"
 					@duplicate="duplicateField"

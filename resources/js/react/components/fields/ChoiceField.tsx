@@ -7,7 +7,8 @@
  * groups can offer an "Other" choice that reveals a text input, arrange their
  * choices in columns or inline and show them in a random order; a checkbox
  * group can offer "Select All". A searchable select or multi-select renders
- * a combobox (since 1.6.0).
+ * a combobox (since 1.6.0). Radio and checkbox groups can show their choices
+ * as image cards, each named by its label (since 1.6.0).
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -16,15 +17,19 @@
  */
 
 import { useEffect, useRef } from 'react';
+import type { ReactNode } from 'react';
 
 import { Checkbox, Select, Toggle } from '@artisanpack-ui/react/form';
 
 import {
+	getChoiceImageAlt,
+	getChoiceImageUrl,
 	getChoiceLayoutClasses,
 	getFieldOptions,
 	getRenderOptions,
 	isSearchableField,
 	offersSelectAll,
+	showsImageChoices,
 } from '../../../shared/choices';
 
 import {
@@ -46,6 +51,40 @@ import { t } from '../../../shared/i18n';
 import { Combobox } from './Combobox';
 import { FieldLayout } from './FieldLayout';
 import type { FieldComponentProps } from './types';
+import type { FieldOption } from '../../../types/artisanpack-forms';
+
+/** Classes of an image choice card, mirroring the Blade `image-choice` partial (since 1.6.0). */
+const IMAGE_CHOICE_CLASSES = 'flex cursor-pointer flex-col overflow-hidden rounded-box border-2 border-base-300 bg-base-100 transition-colors hover:border-primary/50 has-[:checked]:border-primary has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60';
+
+/** Props for one image choice card. */
+interface ImageChoiceProps {
+	option: FieldOption;
+	/** The label's ID, which the input's `aria-labelledby` names. */
+	labelId: string;
+	/** The radio or checkbox. */
+	children: ReactNode;
+}
+
+/**
+ * Renders one image choice (since 1.6.0): the option's image above its input
+ * and label. The input is named by the label alone, so the label stays the
+ * accessible name; the image's alt text describes what it shows.
+ */
+function ImageChoice( { option, labelId, children }: ImageChoiceProps ) {
+	const image = getChoiceImageUrl( option );
+
+	return (
+		<label className={IMAGE_CHOICE_CLASSES}>
+			{image
+				? <img src={image} alt={getChoiceImageAlt( option )} className="aspect-square w-full bg-base-200 object-cover" loading="lazy" />
+				: <span className="block aspect-square w-full bg-base-200" aria-hidden="true" />}
+			<span className="flex items-center gap-2 p-3">
+				{children}
+				<span id={labelId} className="label-text">{option.label}</span>
+			</span>
+		</label>
+	);
+}
 
 /**
  * Normalizes a value to a boolean for checkbox/toggle fields.
@@ -225,6 +264,7 @@ export function RadioField( { field, value, error, onChange, displayConfig, othe
 	const allowsOther = allowsOtherChoice( field );
 	const otherSelected = allowsOther && selected === OTHER_CHOICE_VALUE;
 	const choices = allowsOther ? [...options, { value: OTHER_CHOICE_VALUE, label: getOtherChoiceLabel( field ) }] : options;
+	const showsImages = showsImageChoices( field );
 
 	const radio = (
 		<div className="fieldset">
@@ -245,21 +285,30 @@ export function RadioField( { field, value, error, onChange, displayConfig, othe
 			>
 				{choices.map( ( option, index ) => {
 					const optionId = `field-${field.name}-${option.value === OTHER_CHOICE_VALUE ? 'other' : index}`;
+					const asImage = showsImages && option.value !== OTHER_CHOICE_VALUE;
+					const input = (
+						<input
+							id={optionId}
+							type="radio"
+							name={field.name}
+							value={option.value}
+							className={asImage ? 'radio radio-primary radio-sm' : 'radio radio-primary'}
+							checked={selected === option.value}
+							required={field.is_required && index === 0}
+							disabled={readOnly}
+							aria-labelledby={asImage ? `${optionId}-label` : undefined}
+							aria-controls={option.value === OTHER_CHOICE_VALUE && otherSelected ? `field-${field.name}-other-text` : undefined}
+							onChange={() => onChange( option.value )}
+						/>
+					);
+
+					if ( asImage ) {
+						return <ImageChoice key={option.value} option={option} labelId={`${optionId}-label`}>{input}</ImageChoice>;
+					}
 
 					return (
 						<label key={option.value} htmlFor={optionId} className="flex items-center gap-2 cursor-pointer">
-							<input
-								id={optionId}
-								type="radio"
-								name={field.name}
-								value={option.value}
-								className="radio radio-primary"
-								checked={selected === option.value}
-								required={field.is_required && index === 0}
-								disabled={readOnly}
-								aria-controls={option.value === OTHER_CHOICE_VALUE && otherSelected ? `field-${field.name}-other-text` : undefined}
-								onChange={() => onChange( option.value )}
-							/>
+							{input}
 							<span>{option.label}</span>
 						</label>
 					);
@@ -338,6 +387,7 @@ export function CheckboxGroupField( { field, value, error, onChange, displayConf
 	const allowsOther = allowsOtherChoice( field );
 	const otherSelected = allowsOther && isOtherChoiceSelected( selectedValues );
 	const choices = allowsOther ? [...options, { value: OTHER_CHOICE_VALUE, label: getOtherChoiceLabel( field ) }] : options;
+	const showsImages = showsImageChoices( field );
 
 	const handleChange = ( optionValue: string, checked: boolean ) => {
 		const updated = checked
@@ -383,7 +433,21 @@ export function CheckboxGroupField( { field, value, error, onChange, displayConf
 					</label>
 				)}
 				<div className={`${getChoiceLayoutClasses( field )} ${field.css_classes ?? ''}`}>
-					{choices.map( ( option, index ) => (
+					{choices.map( ( option, index ) => showsImages && option.value !== OTHER_CHOICE_VALUE ? (
+						<ImageChoice key={option.value} option={option} labelId={`field-${field.name}-${index}-label`}>
+							<input
+								id={`field-${field.name}-${index}`}
+								type="checkbox"
+								name={`${field.name}[]`}
+								value={option.value}
+								className="checkbox checkbox-primary checkbox-sm"
+								checked={selectedValues.includes( option.value )}
+								disabled={readOnly}
+								aria-labelledby={`field-${field.name}-${index}-label`}
+								onChange={( e ) => handleChange( option.value, e.target.checked )}
+							/>
+						</ImageChoice>
+					) : (
 						<Checkbox
 							key={option.value}
 							id={option.value === OTHER_CHOICE_VALUE ? `field-${field.name}-other` : `field-${field.name}-${index}`}

@@ -836,6 +836,31 @@ abstract class AbstractFieldType implements FieldType
     }
 
     /**
+     * Gets the setting that shows a radio or checkbox group's choices as images.
+     *
+     * With `images`, each option may carry an image (see ChoiceImages), shown
+     * as a card above its label.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> The setting.
+     */
+    protected function choiceDisplaySetting(): array
+    {
+        return [
+            'key'     => 'display',
+            'input'   => 'select',
+            'default' => 'list',
+            'label'   => __( 'Choice Display' ),
+            'hint'    => __( 'Image choices show each option\'s image above its label. Set the images in the options below.' ),
+            'options' => [
+                ['value' => 'list', 'label' => __( 'Labels' )],
+                ['value' => 'images', 'label' => __( 'Image choices' )],
+            ],
+        ];
+    }
+
+    /**
      * Gets the setting that shows a field's choices in a random order.
      *
      * @since 1.6.0

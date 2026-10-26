@@ -155,7 +155,9 @@ describe( 'Vue Form Renderer', function (): void {
         } );
 
         it( 'imports shared conditional logic and validation', function (): void {
-            expect( $this->content )->toContain( '../../shared/conditionalLogic' )
+            // Conditional logic is evaluated with the calculations (since 1.6.0)
+            expect( $this->content )->toContain( '../../shared/calculation' )
+                ->and( file_get_contents( __DIR__ . '/../../resources/js/shared/calculation.ts' ) )->toContain( "import { getHiddenFields } from './conditionalLogic';" )
                 ->and( $this->content )->toContain( '../../shared/validation' );
         } );
 

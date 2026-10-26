@@ -6,6 +6,8 @@
     $otherSelected = $allowsOther && is_array($value) && in_array(\ArtisanPackUI\Forms\Models\FormField::OTHER_CHOICE_VALUE, $value, true);
     $optionValues = collect($options)->map(fn ($option) => (string) ($option['value'] ?? $option))->values()->all();
     $showSelectAll = $field->offersSelectAll() && count($optionValues) > 1;
+    // Image choices show each option as a card with its image (since 1.6.0)
+    $showImages = $field->showsImageChoices();
 @endphp
 
 @component('forms::components.field-layout', ['field' => $field, 'error' => $error])
@@ -38,6 +40,23 @@
                 $optionValue = $option['value'] ?? $option;
                 $optionLabel = $option['label'] ?? $option;
             @endphp
+            @if($showImages)
+                @component('forms::components.image-choice', [
+                    'image' => \ArtisanPackUI\Forms\Support\ChoiceImages::url($option),
+                    'alt' => \ArtisanPackUI\Forms\Support\ChoiceImages::alt($option),
+                    'label' => $optionLabel,
+                    'labelId' => 'field-' . $field->name . '-' . $index . '-label',
+                ])
+                    <input
+                        type="checkbox"
+                        wire:model.live="formData.{{ $field->name }}"
+                        value="{{ $optionValue }}"
+                        class="checkbox checkbox-primary checkbox-sm"
+                        id="field-{{ $field->name }}-{{ $index }}"
+                        aria-labelledby="field-{{ $field->name }}-{{ $index }}-label"
+                    />
+                @endcomponent
+            @else
             <label class="label cursor-pointer justify-start gap-3">
                 <input
                     type="checkbox"
@@ -48,6 +67,7 @@
                 />
                 <span class="label-text">{{ $optionLabel }}</span>
             </label>
+            @endif
         @endforeach
 
         @if($allowsOther)

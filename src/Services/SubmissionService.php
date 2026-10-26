@@ -16,6 +16,8 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
 
+use ArtisanPackUI\Forms\FieldTypes\CalculationFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ColorFieldType;
 use ArtisanPackUI\Forms\FieldTypes\DateTimeFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
 use ArtisanPackUI\Forms\FieldTypes\PhoneFieldType;
@@ -113,7 +115,9 @@ class SubmissionService
      * first, reading the country the visitor selected (`{name}_country`),
      * which is then dropped too. A multi-file field's files are each stored
      * as an upload, with one submission value listing them, and a drawn
-     * signature is stored as a PNG upload (see saveSignature()).
+     * signature is stored as a PNG upload (see saveSignature()). Calculation
+     * fields are worked out again from the submitted values, whatever the
+     * client sent for them (see applyCalculations()).
      *
      * @since 1.0.0
      *
@@ -141,6 +145,9 @@ class SubmissionService
 
         // Read-only fields keep their own value whatever the client sent
         $formData = $this->applyReadOnlyValues( $fields, $formData, true );
+
+        // Calculations are worked out on the server, never taken from the client
+        $formData = $this->applyCalculations( $fields, $formData, true );
 
         // Administrative fields are never filled in by the public form
         $formData = array_diff_key( $formData, $fields->filter( fn ( FormField $field ): bool => $field->isAdministrative() )->all() );
@@ -266,7 +273,8 @@ class SubmissionService
      * an emptied editor's `<p><br></p>`, becomes blank so `required` sees it.
      * A `datetime-local` value becomes `Y-m-d H:i`, and a list keeps only its
      * filled rows, under their own keys, so an error names the row the
-     * visitor sees.
+     * visitor sees. A color typed as `FF8800` or `#F80` becomes `#ff8800`
+     * (see ColorFieldType::normalizeValue()).
      *
      * @since 1.6.0
      *
@@ -292,6 +300,8 @@ class SubmissionService
                 $formData[ $field->name ] = DateTimeFieldType::normalizeValue( $formData[ $field->name ] );
             } elseif ( ListFieldType::TYPE === $field->type ) {
                 $formData[ $field->name ] = ListFieldType::filledRows( $field, $formData[ $field->name ], false );
+            } elseif ( ColorFieldType::TYPE === $field->type ) {
+                $formData[ $field->name ] = ColorFieldType::normalizeValue( $formData[ $field->name ] );
             }
         }
 
@@ -480,6 +490,125 @@ class SubmissionService
             if ( $field->isReadOnly() ) {
                 $formData[ $field->name ] = $field->getReadOnlyValue();
             }
+        }
+
+        return $formData;
+    }
+
+    /**
+     * Works out each calculation field's value from the other values.
+     *
+     * The value a client sent for a calculation is replaced. A calculation
+     * may use another calculation's result; one that refers back to itself,
+     * directly or through others, has no result. Administrative fields read
+     * as blank, whatever a client sent for them. Numbers typed in a number
+     * field's format are read as plain decimals (see
+     * normalizeFormattedNumbers()).
+     *
+     * @since 1.6.0
+     *
+     * @param  iterable<FormField>  $fields  The form fields.
+     * @param  array<string, mixed>  $formData  The values keyed by field name.
+     * @param  bool  $onlySubmitted  Whether to work out only the calculations present in the data, leaving out those conditional logic hid.
+     *
+     * @return array<string, mixed> The values with calculations worked out.
+     */
+    public function applyCalculations( iterable $fields, array $formData, bool $onlySubmitted = false ): array
+    {
+        $calculations = [];
+
+        foreach ( $fields as $field ) {
+            if ( CalculationFieldType::TYPE === $field->type ) {
+                $calculations[ $field->name ] = $field;
+            }
+        }
+
+        if ( [] === $calculations ) {
+            return $formData;
+        }
+
+        $operands = $this->normalizeFormattedNumbers( $fields, $formData );
+        $results  = [];
+
+        // Administrative fields are never filled in by the public form, so a formula reads them as blank
+        foreach ( $fields as $field ) {
+            if ( $field->isAdministrative() ) {
+                unset( $operands[ $field->name ] );
+            }
+        }
+
+        $stack    = [];
+        $cyclic   = [];
+
+        $resolve = function ( string $name ) use ( &$resolve, &$results, &$stack, &$cyclic, $calculations, $operands ): mixed {
+            if ( ! isset( $calculations[ $name ] ) ) {
+                return $operands[ $name ] ?? null;
+            }
+
+            if ( array_key_exists( $name, $results ) ) {
+                return $results[ $name ];
+            }
+
+            // A calculation reached again while it is being worked out is in a cycle
+            if ( false !== ( $index = array_search( $name, $stack, true ) ) ) {
+                foreach ( array_slice( $stack, (int) $index ) as $member ) {
+                    $cyclic[ $member ] = true;
+                }
+
+                return null;
+            }
+
+            $stack[] = $name;
+            $result  = CalculationFieldType::compute( $calculations[ $name ], $resolve );
+            array_pop( $stack );
+
+            return $results[ $name ] = isset( $cyclic[ $name ] ) ? '' : $result;
+        };
+
+        foreach ( $calculations as $name => $field ) {
+            if ( $onlySubmitted && ! array_key_exists( $name, $formData ) ) {
+                continue;
+            }
+
+            $formData[ $name ] = $resolve( (string) $name );
+        }
+
+        return $formData;
+    }
+
+    /**
+     * Works out each calculation from the values of the fields conditional logic shows.
+     *
+     * Calculations are worked out from every value first, so conditions can
+     * use their results, then again without the values of the fields those
+     * conditions hide, since hidden values are not submitted. The submit API
+     * runs this before deciding which fields are hidden, so a client cannot
+     * show or hide a field by sending its own calculation result.
+     *
+     * @since 1.6.0
+     *
+     * @param  Collection<int, FormField>  $fields  The form fields.
+     * @param  array<string, mixed>  $formData  The values keyed by field name.
+     *
+     * @return array<string, mixed> The values with calculations worked out.
+     */
+    public function applyVisibleCalculations( Collection $fields, array $formData ): array
+    {
+        if ( ! $fields->contains( 'type', CalculationFieldType::TYPE ) ) {
+            return $formData;
+        }
+
+        $formData = $this->applyCalculations( $fields, $formData );
+        $hidden   = array_filter( app( ConditionalLogicService::class )->getHiddenFields( $fields, $formData ) );
+
+        if ( [] === $hidden ) {
+            return $formData;
+        }
+
+        $visible = $this->applyCalculations( $fields, array_diff_key( $formData, $hidden ) );
+
+        foreach ( $fields->where( 'type', CalculationFieldType::TYPE ) as $field ) {
+            $formData[ $field->name ] = $visible[ $field->name ];
         }
 
         return $formData;

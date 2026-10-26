@@ -261,7 +261,7 @@ describe( 'Vue builder', function () use ( $resource ): void {
 
     it( 'hides the placeholder and default value for consent and CAPTCHA fields', function () use ( $resource ): void {
         expect( $resource( 'vue/components/admin/FieldEditor.vue' ) )
-            ->toContain( "const NO_VALUE_SETTING_TYPES = new Set<FieldType>( ['consent', 'captcha', 'list', 'matrix', 'ranking', 'signature'] );" )
+            ->toContain( "const NO_VALUE_SETTING_TYPES = new Set<FieldType>( ['consent', 'captcha', 'list', 'matrix', 'ranking', 'signature', 'calculation'] );" )
             ->toContain( '<template v-if="!NO_VALUE_SETTING_TYPES.has( field.type )">' )
             ->toContain( "v-if=\"!isLayoutField && !isComposite && field.type !== 'file' && !NO_VALUE_SETTING_TYPES.has( field.type )\"" );
     } );

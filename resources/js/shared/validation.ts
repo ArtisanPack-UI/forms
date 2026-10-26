@@ -45,6 +45,7 @@ import {
 	latestBirthdate,
 	parseIsoDate,
 } from './dateConstraints';
+import { validateColor } from './color';
 import { isAcceptedEmailDomain } from './emailDomains';
 import { t } from './i18n';
 import { isListField, validateListField } from './list';
@@ -93,6 +94,7 @@ const TYPE_VALIDATORS: Record<string, ( field: FormField, value: unknown ) => st
 	nps: validateNps,
 	ranking: validateRanking,
 	signature: validateSignature,
+	color: validateColor,
 };
 
 /** Field types where min/max rules apply to string length (not numeric value). */
@@ -181,7 +183,7 @@ function validateValue(
 		return errors;
 	}
 
-	// Slider, NPS, ranking and signature values are checked against their own settings (since 1.6.0)
+	// Slider, color, NPS, ranking and signature values are checked against their own settings (since 1.6.0)
 	if ( Object.prototype.hasOwnProperty.call( TYPE_VALIDATORS, field.type ) ) {
 		return TYPE_VALIDATORS[field.type]( field, value );
 	}

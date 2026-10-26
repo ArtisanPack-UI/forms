@@ -51,6 +51,7 @@ Route::prefix( config( 'artisanpack.forms.api.prefix', 'api/v1/forms' ) )
         Route::get( '/{form}/fields/predefined-choices', [FormFieldApiController::class, 'predefinedChoices'] )->name( 'fields.predefined-choices' );
         Route::post( '/{form}/fields', [FormFieldApiController::class, 'store'] )->name( 'fields.store' );
         Route::post( '/{form}/fields/reorder', [FormFieldApiController::class, 'reorder'] )->name( 'fields.reorder' );
+        Route::post( '/{form}/fields/choice-images', [FormFieldApiController::class, 'uploadChoiceImage'] )->name( 'fields.choice-images' );
         Route::put( '/{form}/fields/{field}', [FormFieldApiController::class, 'update'] )->name( 'fields.update' );
         Route::delete( '/{form}/fields/{field}', [FormFieldApiController::class, 'destroy'] )->name( 'fields.destroy' );
 

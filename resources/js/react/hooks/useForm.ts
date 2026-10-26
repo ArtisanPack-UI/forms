@@ -5,7 +5,8 @@
  * validation errors, file uploads, conditional logic, multi-step
  * navigation, and form submission. Fields can add values to a submission
  * through the form's submit hooks, such as an invisible CAPTCHA's token
- * (since 1.6.0).
+ * (since 1.6.0). Calculation fields are worked out from the other values as
+ * they change (since 1.6.0; see `shared/calculation.ts`).
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -21,10 +22,10 @@ import type {
 	FormStep,
 	SubmitFormResponse,
 } from '../../types/artisanpack-forms';
+import { resolveCalculatedValues } from '../../shared/calculation';
 import { createSubmitHooks, SubmitHookError } from '../../shared/captcha';
 import type { SubmitHooks } from '../../shared/captcha';
 import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composite';
-import { getHiddenFields } from '../../shared/conditionalLogic';
 import {
 	getConfirmationKey,
 	getInitialFieldValue,
@@ -148,7 +149,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 	} = options;
 
 	const [form, setForm] = useState<FormRenderData | null>( null );
-	const [values, setValues] = useState<Record<string, unknown>>( {} );
+	const [enteredValues, setValues] = useState<Record<string, unknown>>( {} );
 	const [errors, setErrors] = useState<Record<string, string[]>>( {} );
 	const [files, setFiles] = useState<Record<string, File | File[]>>( {} );
 	const [otherValues, setOtherValues] = useState<Record<string, string>>( {} );
@@ -234,14 +235,14 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		};
 	}, [baseUrl, formSlug] );
 
-	// Compute hidden fields from conditional logic
-	const hiddenFields = useMemo( () => {
+	// Work out calculations and hidden fields from conditional logic (since 1.6.0)
+	const { values, hiddenFields } = useMemo( () => {
 		if ( !form ) {
-			return {};
+			return { values: enteredValues, hiddenFields: {} };
 		}
 
-		return getHiddenFields( form.fields, values );
-	}, [form, values] );
+		return resolveCalculatedValues( form.fields, enteredValues );
+	}, [form, enteredValues] );
 
 	// Compute all fields for the entire form (with steps resolved)
 	const allFields = useMemo( () => {
