@@ -58,7 +58,8 @@ describe( 'shared helpers', function () use ( $resource, $between ): void {
             ->and( $between( $tags, 'function escapeHtml(', "\n}\n" ) )
             ->toContain( ".replace( /</g, '&lt;' )" )
             ->toContain( ".replace( /\"/g, '&quot;' )" )
-            ->and( $tags )->toContain( 'if ( state.hiddenFields?.[name] ) {' );
+            ->and( $tags )->toContain( 'if ( state.hiddenFields?.[name] ) {' )
+            ->toContain( 'const labels: Record<string, string> = Object.create( null );' );
     } );
 
     it( 'validates lists like ListFieldType', function () use ( $resource, $between ): void {

@@ -33,6 +33,7 @@
                 this.fill();
                 this.$wire.watch('formData', () => this.fill());
                 this.$wire.watch('hiddenFields', () => this.fill());
+                this.$wire.watch('otherValues', () => this.fill());
             },
             fill() {
                 const data = this.$wire.formData ?? {};
@@ -55,7 +56,9 @@
                     return String(this.$wire.otherValues?.[name] ?? '').trim();
                 }
 
-                return this.formats[name]?.options?.[text] ?? text;
+                const options = this.formats[name]?.options ?? {};
+
+                return Object.prototype.hasOwnProperty.call(options, text) ? options[text] : text;
             },
             format(name, value, part) {
                 if (Array.isArray(value)) {

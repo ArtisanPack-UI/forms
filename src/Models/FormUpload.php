@@ -23,6 +23,7 @@ use ArtisanPackUI\Forms\Support\MediaLibraryStorage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -255,7 +256,10 @@ class FormUpload extends Model
 
     /**
      * Deletes an upload's stored file: its media item when it is in the media
-     * library, and otherwise the file on its disk.
+     * library, and otherwise the file on its disk. When the media item cannot
+     * be deleted, its original file is still removed, and a warning naming
+     * the media item is logged so its record and image sizes can be cleaned
+     * up.
      *
      * @since 1.6.0
      *
@@ -267,8 +271,16 @@ class FormUpload extends Model
      */
     public static function deleteStoredFile( string $disk, string $path, ?int $mediaId ): bool
     {
-        if ( null !== $mediaId && app( MediaLibraryStorage::class )->delete( $mediaId ) ) {
-            return true;
+        if ( null !== $mediaId ) {
+            if ( app( MediaLibraryStorage::class )->delete( $mediaId ) ) {
+                return true;
+            }
+
+            Log::warning( 'ArtisanPackUI Forms: media item not deleted, removing only its original file', [
+                'media_id' => $mediaId,
+                'disk'     => $disk,
+                'path'     => $path,
+            ] );
         }
 
         return Storage::disk( $disk )->delete( $path );

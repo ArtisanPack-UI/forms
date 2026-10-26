@@ -102,7 +102,7 @@ class MediaLibraryStorage
 
         return [
             'media_id'  => (int) $media->id,
-            'disk'      => (string) ( method_exists( $media, 'resolvedDisk' ) ? $media->resolvedDisk() : $media->disk ),
+            'disk'      => $this->diskOf( $media ),
             'path'      => (string) $media->file_path,
             'size'      => (int) ( $media->file_size ?? $file->getSize() ),
             'mime_type' => (string) ( $media->mime_type ?? $file->getMimeType() ?? 'application/octet-stream' ),
@@ -163,6 +163,21 @@ class MediaLibraryStorage
     protected function deleteMedia( int $mediaId ): bool
     {
         return apDeleteMedia( $mediaId );
+    }
+
+    /**
+     * Gets the disk a media item's file is on, applying the media library's
+     * `ap.mediaLibrary.storageDisk` filter the way its Media model does.
+     *
+     * @since 1.6.0
+     *
+     * @param  object  $media  The media item.
+     *
+     * @return string The disk name.
+     */
+    protected function diskOf( object $media ): string
+    {
+        return (string) applyFilters( 'ap.mediaLibrary.storageDisk', (string) $media->disk, $media );
     }
 
     /**

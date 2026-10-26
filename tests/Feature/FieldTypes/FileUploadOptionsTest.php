@@ -6,10 +6,12 @@ use ArtisanPackUI\Forms\Livewire\FormRenderer;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormUpload;
+use ArtisanPackUI\Forms\Services\SubmissionService;
 use ArtisanPackUI\Forms\Support\FieldRenderer;
 use ArtisanPackUI\Forms\Support\FieldSettings;
 use ArtisanPackUI\Forms\Support\MediaLibraryStorage;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ViewErrorBag;
 use Livewire\Livewire;
@@ -42,16 +44,16 @@ beforeEach( function (): void {
  * A media library that stores files on the faked public disk, the way
  * artisanpack-ui/media-library names them (after the client file name).
  */
-function fakeMediaLibrary( bool $accepts = true ): object
+function fakeMediaLibrary( bool $accepts = true, bool $deletes = true ): object
 {
-    return new class( $accepts ) extends MediaLibraryStorage {
+    return new class( $accepts, $deletes ) extends MediaLibraryStorage {
         public array $stored = [];
 
         public array $deleted = [];
 
         public array $options = [];
 
-        public function __construct( private bool $accepts )
+        public function __construct( private bool $accepts, private bool $deletes )
         {
         }
 
@@ -77,7 +79,7 @@ function fakeMediaLibrary( bool $accepts = true ): object
         {
             $this->deleted[] = $mediaId;
 
-            return true;
+            return $this->deletes;
         }
     };
 }
@@ -159,6 +161,61 @@ describe( 'media library storage', function (): void {
 
         expect( $media->deleted )->toBe( [42] )
             ->and( FormUpload::query()->count() )->toBe( 0 );
+    } );
+
+    it( 'removes the original file and logs a warning when the media item cannot be deleted', function (): void {
+        $media = fakeMediaLibrary( true, false );
+        $this->app->instance( MediaLibraryStorage::class, $media );
+        $this->field->update( ['field_config' => ['storage' => 'media_library', 'allowed_types' => ['pdf']]] );
+
+        ( $this->submit )( $this->field->fresh() );
+
+        $upload = FormUpload::query()->sole();
+
+        Log::spy();
+
+        $upload->delete();
+
+        expect( $media->deleted )->toBe( [42] );
+
+        Storage::disk( 'public' )->assertMissing( $upload->path );
+
+        Log::shouldHaveReceived( 'warning' )->withArgs( fn ( string $message, array $context ): bool => str_contains( $message, 'media item not deleted' ) && 42 === $context['media_id'] );
+    } );
+
+    it( 'removes the stored files when the submission rolls back', function (): void {
+        $media = fakeMediaLibrary();
+        $this->app->instance( MediaLibraryStorage::class, $media );
+        $this->field->update( ['field_config' => ['storage' => 'media_library', 'allowed_types' => ['pdf']]] );
+        $local = FormField::factory()->for( $this->form )->create( ['type' => 'file', 'name' => 'cover', 'field_config' => ['allowed_types' => ['pdf']]] );
+
+        FormUpload::created( function ( FormUpload $upload ) use ( $local ): void {
+            if ( $upload->field_id === $local->id ) {
+                throw new RuntimeException( 'Database write failed.' );
+            }
+        } );
+
+        expect( fn () => app( SubmissionService::class )->create( $this->form->fresh(), [], [
+            'resume' => UploadedFile::fake()->create( 'cv.pdf', 50, 'application/pdf' ),
+            'cover'  => UploadedFile::fake()->create( 'cover.pdf', 50, 'application/pdf' ),
+        ] ) )->toThrow( RuntimeException::class, 'Database write failed.' );
+
+        expect( $media->deleted )->toBe( [42] )
+            ->and( FormUpload::query()->count() )->toBe( 0 )
+            ->and( Storage::disk( 'form-uploads' )->allFiles() )->toBe( [] );
+    } );
+
+    it( 'records the disk the media library routes the file to', function (): void {
+        $media = fakeMediaLibrary();
+        $route = fn (): string => 'tenant-media';
+
+        addFilter( 'ap.mediaLibrary.storageDisk', $route );
+
+        try {
+            expect( $media->store( UploadedFile::fake()->create( 'cv.pdf', 1, 'application/pdf' ), $this->field, 'pdf' )['disk'] )->toBe( 'tenant-media' );
+        } finally {
+            removeFilter( 'ap.mediaLibrary.storageDisk', $route );
+        }
     } );
 
     it( 'names the media file with the extension found from its contents', function (): void {

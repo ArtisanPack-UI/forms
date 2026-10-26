@@ -304,7 +304,8 @@ class PruneFormSubmissions extends Command
      * Deletes a single file from storage.
      *
      * Since 1.6.0 a file saved in the media library is removed by deleting
-     * its media item.
+     * its media item; when that fails, its original file is removed and a
+     * warning naming the media item is logged.
      *
      * @since 1.0.0
      *
@@ -313,15 +314,22 @@ class PruneFormSubmissions extends Command
     protected function deleteFile( object $upload ): void
     {
         try {
-            if ( null !== ( $upload->media_id ?? null ) && app( MediaLibraryStorage::class )->delete( (int) $upload->media_id ) ) {
-                $this->filesDeleted++;
+            if ( null !== ( $upload->media_id ?? null ) ) {
+                if ( app( MediaLibraryStorage::class )->delete( (int) $upload->media_id ) ) {
+                    $this->filesDeleted++;
 
-                Log::info( 'Pruned form upload media item', [
+                    Log::info( 'Pruned form upload media item', [
+                        'upload_id' => $upload->id,
+                        'media_id'  => $upload->media_id,
+                    ] );
+
+                    return;
+                }
+
+                Log::warning( 'Form upload media item not deleted during prune, removing only its original file', [
                     'upload_id' => $upload->id,
                     'media_id'  => $upload->media_id,
                 ] );
-
-                return;
             }
 
             $disk = Storage::disk( $upload->disk );

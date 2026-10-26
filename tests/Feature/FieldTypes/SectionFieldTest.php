@@ -236,4 +236,12 @@ describe( 'rendering', function (): void {
     it( 'keys each section so Livewire does not reuse one step\'s section for another', function (): void {
         expect( FieldRenderer::render( $this->guests ) )->toContain( 'wire:key="section-' . $this->guests->uuid . '"' );
     } );
+
+    it( 'encodes the field name it reads from hiddenFields as a JavaScript string', function (): void {
+        $this->notes->update( ['name' => "o'brien"] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
+            ->assertSeeHtml( "\$wire.hiddenFields?.['o\\u0027brien']" )
+            ->assertDontSeeHtml( "hiddenFields?.['o'brien']" );
+    } );
 } );

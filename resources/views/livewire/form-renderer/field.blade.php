@@ -11,7 +11,7 @@
 @endphp
 <div
     wire:key="field-{{ $field->uuid }}-{{ $isHidden ? 'hidden' : 'visible' }}"
-    x-data="{ get visible() { return !($wire.hiddenFields?.['{{ $field->name }}'] ?? false); } }"
+    x-data="{ get visible() { return !($wire.hiddenFields?.[@js($field->name)] ?? false); } }"
     x-show="visible"
     x-transition:enter="transition ease-out duration-200"
     x-transition:enter-start="opacity-0 transform -translate-y-2"

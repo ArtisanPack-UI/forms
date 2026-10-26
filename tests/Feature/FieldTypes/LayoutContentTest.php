@@ -149,7 +149,9 @@ describe( 'live merge tags', function (): void {
             ->assertSeeHtml( '<span data-forms-merge-tag="first_name"></span>' )
             ->assertSeeHtml( 'wire:ignore' )
             ->assertSeeHtml( "this.\$wire.watch('formData', () => this.fill());" )
-            ->assertSeeHtml( 'tag.textContent = hidden[name]' );
+            ->assertSeeHtml( 'tag.textContent = hidden[name]' )
+            ->assertSeeHtml( "this.\$wire.watch('otherValues', () => this.fill());" )
+            ->assertSeeHtml( 'Object.prototype.hasOwnProperty.call(options, text) ? options[text] : text' );
     } );
 
     it( 'leaves an HTML block without tags untouched', function (): void {

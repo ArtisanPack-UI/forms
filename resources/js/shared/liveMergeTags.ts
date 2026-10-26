@@ -50,9 +50,12 @@ function isTaggable( field: FormField ): boolean {
 	return !UNTAGGABLE_TYPES.has( field.type ) && !field.is_administrative;
 }
 
-/** Map a field's choice values (and sub-input options) to their labels. */
+/**
+ * Map a field's choice values (and sub-input options) to their labels. The
+ * map has no prototype, so a value such as "constructor" finds no label.
+ */
 function getOptionLabels( field: FormField ): Record<string, string> {
-	const labels: Record<string, string> = {};
+	const labels: Record<string, string> = Object.create( null );
 
 	for ( const option of field.options ?? [] ) {
 		labels[String( option.value )] = String( option.label ?? option.value );
