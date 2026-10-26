@@ -414,6 +414,9 @@ export function SubmissionDetail( {
 											</span>
 										) : value.is_redacted ? (
 											<span className="italic text-base-content/60">{value.display_value}</span>
+										) : value.display_html ? (
+											// HTML the API escaped or sanitized with kses: rich text, a list's table, a ranking or a drawn signature (since 1.6.0).
+											<div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: value.display_html }} />
 										) : value.upload_id && submission.uploads ? (
 											<FileValue
 												value={value}
@@ -422,9 +425,6 @@ export function SubmissionDetail( {
 											/>
 										) : value.field_type === 'consent' ? (
 											<ConsentValueDetails value={value} />
-										) : value.display_html ? (
-											// Rich text, sanitized with kses by the API (`FormSubmissionValueResource`; since 1.6.0).
-											<div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: value.display_html }} />
 										) : isCompositeValue( value.value_array ) ? (
 											<div className="whitespace-pre-line">{value.display_value}</div>
 										) : value.value_array ? (

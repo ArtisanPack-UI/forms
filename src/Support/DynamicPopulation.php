@@ -14,6 +14,9 @@ namespace ArtisanPackUI\Forms\Support;
 
 use ArtisanPackUI\Forms\FieldTypes\DateTimeFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
+use ArtisanPackUI\Forms\FieldTypes\MatrixFieldType;
+use ArtisanPackUI\Forms\FieldTypes\RankingFieldType;
+use ArtisanPackUI\Forms\FieldTypes\SliderFieldType;
 use ArtisanPackUI\Forms\Models\FormField;
 
 /**
@@ -51,7 +54,9 @@ class DynamicPopulation
      * string. Choice fields start with the options marked as defaults, or
      * else their default value. Composite fields start with each enabled
      * sub-input's default, or the prefill, query string or filter value of
-     * its population parameter when it has one (see compositeValue()).
+     * its population parameter when it has one (see compositeValue()). A
+     * slider starts within its limits, a matrix with every row unanswered and
+     * a ranking with its choices in the order shown.
      *
      * @since 1.6.0
      *
@@ -65,6 +70,11 @@ class DynamicPopulation
     public static function initialValue( FormField $field, PopulationContext $context, array $prefill = [] ): mixed
     {
         $value = self::resolveInitialValue( $field, $context, $prefill );
+
+        // A slider always has a value within its limits (since 1.6.0)
+        if ( SliderFieldType::TYPE === $field->type ) {
+            return SliderFieldType::initialValue( $field, $value );
+        }
 
         // A date and time input takes `YYYY-MM-DDTHH:MM` (since 1.6.0)
         if ( DateTimeFieldType::TYPE === $field->type && is_string( $value ) && '' !== $value ) {
@@ -118,6 +128,15 @@ class DynamicPopulation
         // A list starts with empty rows to fill in (since 1.6.0)
         if ( ListFieldType::TYPE === $field->type ) {
             return ListFieldType::initialRows( $field );
+        }
+
+        // A matrix starts with every row unanswered, and a ranking with its choices in order (since 1.6.0)
+        if ( MatrixFieldType::TYPE === $field->type ) {
+            return MatrixFieldType::initialValue( $field );
+        }
+
+        if ( RankingFieldType::TYPE === $field->type ) {
+            return RankingFieldType::initialValue( $field );
         }
 
         $default = self::defaultValue( $field, $context );

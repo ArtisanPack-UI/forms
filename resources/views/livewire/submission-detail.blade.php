@@ -91,13 +91,16 @@
                                         </span>
                                     @elseif ($value->isRedacted())
                                         <span class="italic opacity-60">{{ $value->display_value }}</span>
+                                    @elseif ('' !== ($displayHtml = (string) $value->display_html))
+                                        <!-- HTML from the field type, escaped or sanitized: rich text, a list's table, a ranking or a drawn signature -->
+                                        <div class="prose prose-sm max-w-none">{!! $displayHtml !!}</div>
                                     @elseif ($value->upload_id && [] !== ($valueUploads = $value->getUploads()))
                                         <!-- File Upload(s) -->
                                         <ul class="flex flex-col gap-1">
                                             @foreach ($valueUploads as $valueUpload)
                                                 <li class="flex items-center gap-2" wire:key="value-upload-{{ $valueUpload->id }}">
                                                     <x-artisanpack-icon name="o-paper-clip" class="w-5 h-5 opacity-40" />
-                                                    <a href="{{ route('forms.uploads.download', $valueUpload) }}"
+                                                    <a href="{{ route('forms.uploads.download', [$this->form, $this->submission, $valueUpload]) }}"
                                                        class="link link-primary"
                                                        target="_blank">
                                                         {{ $valueUpload->original_name }}
@@ -227,7 +230,7 @@
                                             <p class="text-xs opacity-60">{{ $upload->mime_type }} &bull; {{ $upload->humanFileSize() }}</p>
                                         </div>
                                     </div>
-                                    <a href="{{ route('forms.uploads.download', $upload) }}"
+                                    <a href="{{ route('forms.uploads.download', [$this->form, $this->submission, $upload]) }}"
                                        class="btn btn-ghost btn-sm"
                                        target="_blank">
                                         <x-artisanpack-icon name="o-arrow-down-tray" class="w-4 h-4" />

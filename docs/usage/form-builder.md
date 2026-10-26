@@ -481,6 +481,82 @@ Rows left blank are ignored. A required list needs one filled row, and each cell
 
 Each row is a group named for its row ("Attendee 2"), with a labelled input per column; the column labels show as a header row on wider screens, where the inputs' own labels stay for screen readers. After a row is added its first input takes focus, after one is removed the add button does, and a polite live region announces each change. In the Livewire renderer the buttons call `addListRow( name )` and `removeListRow( name, index )`.
 
+### Survey Fields
+
+Four advanced fields cover common survey questions. All three renderers and builders support them.
+
+#### Slider
+
+A **Slider** (`slider`) picks a number on a native range input (`<input type="range">`). The chosen value is shown beside the track.
+
+| Setting | Description |
+|---------|-------------|
+| **Minimum** / **Maximum** | The ends of the range (default 0 and 100). A maximum at or below the minimum is moved one step above it. |
+| **Step** | The increment (default 1). Decimal steps such as `0.5` work. |
+| **Hide value** | Leaves out the value shown beside the slider. Screen readers still announce it. |
+| **Value Prefix** / **Value Suffix** | Added to the value label, such as `$` or `%`. A word such as `years` gets a space ("3 years"). |
+
+A slider always has a value. It starts at the **Default Value** when that is within the range, or else at the minimum. The value is validated as `numeric|between:{min},{max}` plus `forms_step:{min},{step}`, which accepts only whole steps from the minimum (with floating-point tolerance, so `0.3` is on a `0.1` step). It is stored as a plain number. Submissions show it with its prefix and suffix ("$40"), exports use the number, and the numeric conditional-logic operators apply. The input's `aria-valuetext` reads the value label, so screen readers announce "$40" rather than "40".
+
+#### Net Promoter Score
+
+A **Net Promoter Score** field (`nps`) asks for a score from 0 to 10, shown as a row of buttons with **Low Label** (default "Not likely") under 0 and **High Label** (default "Extremely likely") under 10.
+
+The scores are a native radio group: each radio is visually hidden inside its button, so arrow keys move between scores and the focus ring shows on the button. The 0 and 10 radios are named with their end labels ("0, Not likely"). The value is validated as `integer|between:0,10`; 0 is a valid score. With **Show category** on, submissions show the score's category ("9 – Promoter": promoters 9–10, passives 7–8, detractors 0–6) and the CSV export adds a "{label} (Category)" column. NPS fields work with the numeric conditional-logic operators.
+
+#### Likert / Matrix
+
+A **Likert / Matrix** field (`matrix`) is a grid of statements (rows) against a scale (columns), with one answer per row.
+
+| Setting | Description |
+|---------|-------------|
+| **Layout** | **Matrix** (a row per statement, the default) or **Single scale**: one radio group labelled by the field label. A matrix with no rows is a single scale too. |
+| **Rows** | One statement per line, up to 30. Each row's key is its statement's slug (`the_service_was_fast`), starting with `row_` when the slug is empty or a number. Renaming a statement changes its key. |
+| **Columns** | One choice per line, as `Label` or `Label \| value`, up to 11. Defaults to a five-point agreement scale (Strongly disagree … Strongly agree). |
+
+```text
+Strongly disagree | 1
+Disagree | 2
+Neutral | 3
+Agree | 4
+Strongly agree | 5
+```
+
+Visitors submit a map of row keys to column values (`data[{name}][{row}]`). It is stored in `value_array` for the rows that were answered. Each row keeps its statement and answer label as they read when the form was submitted, beside the column value, so stored answers still read correctly after the rows or columns change:
+
+```php
+[
+    'the_service_was_fast' => [
+        'statement' => 'The service was fast',
+        'answer'    => 'Agree',
+        'value'     => '4',
+    ],
+]
+```
+ A required matrix needs every row answered, and each answer must be one of the columns. Errors land on the row (`formData.{name}.{row}`, `data.{name}.{row}` in the API) and show under its statement. A single scale's value is the chosen column value, stored as text.
+
+Submissions, text emails and HTML notifications show one row per line ("The service was fast: Agree"). The CSV export has one column per row, headed "{label}: {statement}". Webhooks, the API and the JSON export receive the map.
+
+The grid is a table: each column label is a column header and each statement is a row header. Every radio is named by its row and column ("The service was fast Agree") through `aria-labelledby`, and each row's radios share a name, so arrow keys move along the row. The table scrolls sideways on narrow screens.
+
+#### Ranking
+
+A **Ranking** field (`ranking`) asks visitors to put its choices in order of preference. The choices come from the options editor. Options have no "Selected by default" checkbox here, since every choice is ranked. **Randomize choice order** starts each visitor's list in a different order.
+
+The list starts in the options' order, and the value is every option value, most preferred first, stored in `value_array` (`['quality', 'price', 'service']`). It must hold every option exactly once: the rules are `array|size:{count}|in:…` plus `forms_distinct`, which rejects repeats. Submissions and exports show the choices numbered ("1. Quality, 2. Price, 3. Service"), and HTML views show an ordered list.
+
+Each choice has **Move up** and **Move down** buttons ("Move Price up") and can be dragged with a mouse. After a move, focus stays on the moved choice's button and a polite live region announces its new position ("Price moved to position 2 of 3."). In the Livewire renderer the buttons call `moveRankingItem( name, from, to )`, which dispatches `forms-ranking-moved`.
+
+### Signature
+
+A **Signature** field (`signature`) captures a signature for waivers and agreements. Visitors draw on a canvas pad with a mouse, finger or stylus (**Clear signature** starts again), or choose **Type your name** and type their full name instead. Typing is the accessible alternative for anyone who can't draw. **Pad Height** sets the pad's height: 120, 160 (default), 200 or 240 pixels.
+
+A drawing is submitted as a PNG data URL (`data:image/png;base64,…`) and stored as a `form_uploads` row named `signature.png` on the forms uploads disk. The submission value points at it with `upload_id`. A typed name is stored as text. The `forms_signature` rule accepts either form: a PNG of at most 512 KB and 4000 pixels a side, or a name of up to 255 characters without control characters.
+
+Submissions show a drawn signature as an image, and the PNG is also listed under **Attachments**. HTML notifications embed the image as an inline (`cid:`) attachment, so it shows in email clients that block data URLs. Text emails and exports read "Signed (drawn)", and a typed signature reads `Signed as "Ada Lovelace" (typed)`. The **Is empty** and **Is not empty** conditional-logic operators apply.
+
+Signature fields have no privacy settings and can't be administrative, like file uploads, since the image is a stored file. In the Livewire renderer the pad is an Alpine canvas rather than `x-artisanpack-signature`, which needs the global `signature_pad` library and has no typed alternative. React and Vue use the shared `SignaturePad` class.
+
 ### Email Confirmation
 
 Turn on **Enable email confirmation** on an email field to ask for the address twice. The field shows two inputs labelled by **Email Sub-Label** (default "Enter Email") and **Confirm Sub-Label** (default "Confirm Email"), with an optional **Confirm Placeholder**. The confirmation is submitted beside the field as `{name}_confirmation` (`data[email_confirmation]` in the API) and checked with Laravel's `confirmed` rule, so a mismatch shows as the email field's error. Only the email is stored; display, notifications and exports are unchanged. Pasting into the confirm input is never blocked, which matters for password-manager and assistive-technology users. Avoid naming another field `{name}_confirmation`.

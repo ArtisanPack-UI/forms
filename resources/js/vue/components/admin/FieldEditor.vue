@@ -49,17 +49,19 @@ const OPTION_FIELD_TYPES = new Set<FieldType>( [
 	'radio',
 	'checkbox_group',
 	'select_multiple',
+	'ranking',
 ] );
 
 /** Field types without a placeholder. */
-const NO_PLACEHOLDER_TYPES = new Set<FieldType>( ['checkbox', 'toggle', 'radio', 'rating', 'datetime'] );
+const NO_PLACEHOLDER_TYPES = new Set<FieldType>( ['checkbox', 'toggle', 'radio', 'rating', 'datetime', 'slider', 'nps'] );
 
 /**
  * Field types without a placeholder or a default value (since 1.6.0). Name,
  * address and date range fields are composites, whose inputs have their own,
- * and a list starts with empty rows.
+ * a list starts with empty rows, a matrix unanswered, a ranking in its
+ * options' order and a signature blank.
  */
-const NO_VALUE_SETTING_TYPES = new Set<FieldType>( ['consent', 'captcha', 'list'] );
+const NO_VALUE_SETTING_TYPES = new Set<FieldType>( ['consent', 'captcha', 'list', 'matrix', 'ranking', 'signature'] );
 
 /** Field types that don't collect user data. */
 const LAYOUT_FIELD_TYPES = new Set<FieldType>( [

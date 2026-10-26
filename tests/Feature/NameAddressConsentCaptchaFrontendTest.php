@@ -33,7 +33,7 @@ $between = static function ( string $haystack, string $start, string $end ): str
 describe( 'TypeScript definitions', function () use ( $resource ): void {
     it( 'list the new field types and their payload keys', function () use ( $resource ): void {
         expect( $resource( 'types/artisanpack-forms.d.ts' ) )
-            ->toContain( "    | 'name'\n    | 'address'\n    | 'list'\n    | 'consent'\n    | 'captcha'" )
+            ->toContain( "    | 'name'\n    | 'address'\n    | 'list'\n    | 'signature'\n    | 'consent'\n    | 'captcha'" )
             ->toContain( "export type SubInputType = 'text' | 'email' | 'tel' | 'url' | 'number' | 'select' | 'date';" )
             ->toContain( "export type NameFormat = 'simple' | 'normal' | 'extended';" )
             ->toContain( "export type AddressType = 'international' | 'us' | 'canada';" )

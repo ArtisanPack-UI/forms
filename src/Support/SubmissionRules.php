@@ -13,6 +13,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Support;
 
 use ArtisanPackUI\Forms\Enums\SubmissionStatus;
+use ArtisanPackUI\Forms\FieldTypes\SignatureFieldType;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use Illuminate\Contracts\Validation\Factory;
@@ -42,6 +43,11 @@ use Illuminate\Http\UploadedFile;
  *   and files that are not images pass.
  * - `forms_date_range` fails when a date range has only one of its dates, or
  *   ends before it starts.
+ * - `forms_signature` fails unless the value is a drawn signature's PNG data
+ *   URL or a typed name (see SignatureFieldType::isValidSignature()).
+ * - `forms_step:{base},{step}` fails when a number is not a whole number of
+ *   steps from the base, such as a slider's minimum.
+ * - `forms_distinct` fails when a list repeats a value, such as a ranking.
  *
  * @since 1.6.0
  */
@@ -156,6 +162,33 @@ class SubmissionRules
     public const DATE_RANGE = 'forms_date_range';
 
     /**
+     * The name of the signature rule.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const SIGNATURE = 'forms_signature';
+
+    /**
+     * The name of the step rule.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const STEP = 'forms_step';
+
+    /**
+     * The name of the rule that rejects repeated values in a list.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const DISTINCT = 'forms_distinct';
+
+    /**
      * Registers the rules with the validator.
      *
      * @since 1.6.0
@@ -176,6 +209,9 @@ class SubmissionRules
         $validator->extend( self::TOTAL_SIZE, fn ( string $attribute, mixed $value, array $parameters ): bool => self::withinTotalSize( $value, $parameters ) );
         $validator->extend( self::IMAGE_DIMENSIONS, fn ( string $attribute, mixed $value, array $parameters ): bool => self::withinImageDimensions( $value, $parameters ) );
         $validator->extend( self::DATE_RANGE, fn ( string $attribute, mixed $value ): bool => self::isDateRange( $value ) );
+        $validator->extend( self::SIGNATURE, fn ( string $attribute, mixed $value ): bool => SignatureFieldType::isValidSignature( $value ) );
+        $validator->extend( self::STEP, fn ( string $attribute, mixed $value, array $parameters ): bool => self::isOnStep( $value, $parameters ) );
+        $validator->extend( self::DISTINCT, fn ( string $attribute, mixed $value ): bool => self::hasDistinctValues( $value ) );
     }
 
     /**
@@ -209,6 +245,55 @@ class SubmissionRules
         $pattern = '/^\d{4}-\d{2}-\d{2}$/';
 
         return 1 !== preg_match( $pattern, $start ) || 1 !== preg_match( $pattern, $end ) || $end >= $start;
+    }
+
+    /**
+     * Checks that a number is a whole number of steps from a base.
+     *
+     * Allows for floating point error, so `0.3` is on a `0.1` step from `0`.
+     * Values that are not numeric pass, leaving them to the `numeric` rule.
+     *
+     * @since 1.6.0
+     *
+     * @param  mixed  $value  The submitted number.
+     * @param  array<int, string>  $parameters  The base and the step.
+     *
+     * @return bool True when on a step, or when the step is not positive.
+     */
+    public static function isOnStep( mixed $value, array $parameters ): bool
+    {
+        $base = $parameters[0] ?? null;
+        $step = $parameters[1] ?? null;
+
+        if ( ! is_numeric( $value ) || ! is_numeric( $base ) || ! is_numeric( $step ) || (float) $step <= 0 ) {
+            return true;
+        }
+
+        $steps = ( (float) $value - (float) $base ) / (float) $step;
+
+        return abs( $steps - round( $steps ) ) < 1e-9 * max( 1.0, abs( $steps ) );
+    }
+
+    /**
+     * Checks that a list has no repeated values.
+     *
+     * Values that are not lists of scalars pass, leaving them to the `array` rule.
+     *
+     * @since 1.6.0
+     *
+     * @param  mixed  $value  The submitted list.
+     *
+     * @return bool True when no value repeats.
+     */
+    public static function hasDistinctValues( mixed $value ): bool
+    {
+        if ( ! is_array( $value ) ) {
+            return true;
+        }
+
+        $items = array_map( fn ( mixed $item ): string => is_scalar( $item ) ? (string) $item : serialize( $item ), $value );
+
+        return count( $items ) === count( array_unique( $items ) );
     }
 
     /**

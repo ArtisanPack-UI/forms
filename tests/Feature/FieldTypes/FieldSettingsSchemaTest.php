@@ -234,8 +234,8 @@ describe( 'Livewire builder settings from the schema', function (): void {
 
     it( 'renders settings for a custom handler type', function (): void {
         addFilter( 'ap.forms.fieldTypes', function ( array $types ): array {
-            $types['nps'] = [
-                'label'    => 'Net Promoter Score',
+            $types['effort_score'] = [
+                'label'    => 'Customer Effort Score',
                 'category' => 'advanced',
                 'settings' => [
                     ['key' => 'low_label', 'label' => 'Low end label', 'placeholder' => 'Not likely'],
@@ -245,7 +245,7 @@ describe( 'Livewire builder settings from the schema', function (): void {
             return $types;
         } );
 
-        $field = FormField::factory()->for( $this->form )->create( ['type' => 'nps'] );
+        $field = FormField::factory()->for( $this->form )->create( ['type' => 'effort_score'] );
 
         Livewire::test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )

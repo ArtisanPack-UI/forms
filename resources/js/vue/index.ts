@@ -29,6 +29,11 @@ export { default as ConsentField } from './components/fields/ConsentField.vue';
 export { default as CaptchaField } from './components/fields/CaptchaField.vue';
 export { default as ListField } from './components/fields/ListField.vue';
 export { default as SectionField } from './components/fields/SectionField.vue';
+export { default as SliderField } from './components/fields/SliderField.vue';
+export { default as NpsField } from './components/fields/NpsField.vue';
+export { default as MatrixField } from './components/fields/MatrixField.vue';
+export { default as RankingField } from './components/fields/RankingField.vue';
+export { default as SignatureField } from './components/fields/SignatureField.vue';
 
 // Composables
 export { useForm } from './composables/useForm';
@@ -126,6 +131,14 @@ export {
 export type { ListRow } from '../shared/list';
 
 export { applyLiveMergeTags } from '../shared/liveMergeTags';
+
+// Slider, NPS, matrix, ranking and signature helpers (since 1.6.0)
+export { formatSliderValue, getSliderSettings, validateSlider } from '../shared/slider';
+export { getNpsLabels, NPS_SCORES, validateNps } from '../shared/nps';
+export { getMatrixColumns, getMatrixRows, isSingleScale, validateMatrixField } from '../shared/matrix';
+export { getRankingChoices, getRankingOrder, moveRankingItem, validateRanking } from '../shared/ranking';
+export { isDrawnSignature, SignaturePad, validateSignature } from '../shared/signature';
+export type { SignatureMode } from '../shared/signature';
 
 // Email confirmation helpers (since 1.6.0)
 export { getConfirmationKey, requiresEmailConfirmation } from '../shared/fieldSettings';

@@ -44,9 +44,14 @@ export type BuiltInFieldType =
     | 'datetime'
     | 'date_range'
     | 'rating'
+    | 'slider'
+    | 'nps'
+    | 'matrix'
+    | 'ranking'
     | 'name'
     | 'address'
     | 'list'
+    | 'signature'
     | 'consent'
     | 'captcha'
     | 'section'
@@ -736,6 +741,96 @@ export interface ListColumn {
 }
 
 /**
+ * Configuration for slider fields (since 1.6.0). The limits fall back to 0,
+ * 100 and 1; see `FormField.slider` for the resolved values.
+ */
+export interface SliderFieldConfig extends CommonFieldConfig {
+    min?: number;
+    max?: number;
+    step?: number;
+    /** Whether to leave out the value shown beside the slider. Screen readers still announce it. */
+    hide_value?: boolean;
+    /** Text shown before the value, such as `$`. */
+    prefix?: string;
+    /** Text shown after the value, such as `%`. */
+    suffix?: string;
+}
+
+/**
+ * A slider's resolved limits and value label (since 1.6.0).
+ */
+export interface SliderSettings {
+    min: number;
+    max: number;
+    step: number;
+    prefix: string;
+    suffix: string;
+    /** Whether the value is shown beside the slider. */
+    show_value: boolean;
+}
+
+/**
+ * Configuration for Net Promoter Score fields (since 1.6.0).
+ */
+export interface NpsFieldConfig extends CommonFieldConfig {
+    /** Shown under 0. Defaults to "Not likely". */
+    low_label?: string;
+    /** Shown under 10. Defaults to "Extremely likely". */
+    high_label?: string;
+    /** Whether submissions and exports tag each score as a promoter, passive or detractor. */
+    show_category?: boolean;
+}
+
+/**
+ * Configuration for Likert / matrix fields (since 1.6.0).
+ */
+export interface MatrixFieldConfig extends CommonFieldConfig {
+    /** `matrix` (a row per statement, the default) or `single` (one scale). */
+    mode?: 'matrix' | 'single';
+    /** One statement per line. */
+    rows?: string;
+    /** One choice per line, as `Label` or `Label | value`. Defaults to a five-point agreement scale. */
+    columns?: string;
+}
+
+/**
+ * One row (statement) of a matrix field, parsed from its `rows` setting (since 1.6.0).
+ */
+export interface MatrixRow {
+    /** The row's key in the value: the statement's slug. */
+    key: string;
+    label: string;
+}
+
+/**
+ * One column (choice) of a matrix field, parsed from its `columns` setting (since 1.6.0).
+ */
+export interface MatrixColumn {
+    value: string;
+    label: string;
+}
+
+/**
+ * Configuration for ranking fields (since 1.6.0). The choices are the
+ * field's options; the value lists every option value, most preferred first.
+ */
+export interface RankingFieldConfig extends CommonFieldConfig {
+    options: FieldOption[];
+    /** Whether each visitor's list starts in a random order. */
+    randomize?: boolean;
+}
+
+/**
+ * Configuration for signature fields (since 1.6.0). A drawn signature is
+ * submitted as a PNG data URL (`data:image/png;base64,…`) and a typed one as
+ * the visitor's full name.
+ */
+export interface SignatureFieldConfig extends CommonFieldConfig {
+    /** The drawing pad's height in pixels: 120, 160 (the default), 200 or 240. */
+    pad_height?: number | string;
+}
+
+/**
  * Discriminated union of all field configurations.
  * Use the field's `type` to determine which config shape applies.
  */
@@ -762,6 +857,11 @@ export type FieldConfig =
     | DateTimeFieldConfig
     | DateRangeFieldConfig
     | ListFieldConfig
+    | SliderFieldConfig
+    | NpsFieldConfig
+    | MatrixFieldConfig
+    | RankingFieldConfig
+    | SignatureFieldConfig
     | BaseFieldConfig
     | null;
 
@@ -918,6 +1018,21 @@ export interface FormField {
      * only for list fields.
      */
     list?: { columns: ListColumn[]; min_rows: number | null; max_rows: number; row_label: string };
+    /** A slider's resolved limits and value label (since 1.6.0). Present only for sliders. */
+    slider?: SliderSettings;
+    /** A Net Promoter Score field's end labels (since 1.6.0). Present only for NPS fields. */
+    nps?: { low: string; high: string };
+    /**
+     * A matrix field's statements and scale (since 1.6.0). `single` is true
+     * for a single scale (no rows), whose value is one column value; a grid's
+     * value maps row keys to column values. Present only for matrix fields.
+     */
+    matrix?: { single: boolean; rows: MatrixRow[]; columns: MatrixColumn[] };
+    /**
+     * A signature field's pad height in pixels and the largest drawn PNG the
+     * server accepts, in bytes (since 1.6.0). Present only for signature fields.
+     */
+    signature?: { pad_height: number; max_bytes: number };
     /**
      * How a phone field checks numbers, present only when it checks them
      * (since 1.6.0). `countries` lists the selector's countries for the
@@ -928,7 +1043,8 @@ export interface FormField {
      * The value the field starts with: its default value with server merge
      * tags replaced, the options marked as defaults, or the
      * `ap.forms.fieldValue.{parameter}` filter's value; a map of sub-input
-     * keys for a composite field, and empty rows for a list. Page tags
+     * keys for a composite field, empty rows for a list, a map of unanswered
+     * rows for a matrix and every option value in order for a ranking. Page tags
      * (`{embed_url}`, `{referer}`, `{query:…}`) are left for the client. Only
      * in the public render payload (since 1.6.0).
      */

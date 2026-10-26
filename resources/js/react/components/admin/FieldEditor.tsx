@@ -53,6 +53,7 @@ const OPTION_FIELD_TYPES: Set<FieldType> = new Set( [
 	'radio',
 	'checkbox_group',
 	'select_multiple',
+	'ranking',
 ] );
 
 /** Field types that don't collect user data. */
@@ -65,14 +66,15 @@ const LAYOUT_FIELD_TYPES: Set<FieldType> = new Set( [
 ] );
 
 /** Field types without a placeholder. */
-const NO_PLACEHOLDER_TYPES: Set<FieldType> = new Set( ['checkbox', 'toggle', 'radio', 'rating', 'consent', 'captcha', 'datetime', 'list'] );
+const NO_PLACEHOLDER_TYPES: Set<FieldType> = new Set( ['checkbox', 'toggle', 'radio', 'rating', 'consent', 'captcha', 'datetime', 'list', 'slider', 'nps', 'matrix', 'ranking', 'signature'] );
 
 /**
  * Field types without a default value: a consent box is never pre-checked,
- * a CAPTCHA token comes from the provider and a list starts with empty rows
+ * a CAPTCHA token comes from the provider, a list starts with empty rows, a
+ * matrix unanswered, a ranking in its options' order and a signature blank
  * (since 1.6.0).
  */
-const NO_DEFAULT_VALUE_TYPES: Set<FieldType> = new Set( ['consent', 'captcha', 'list'] );
+const NO_DEFAULT_VALUE_TYPES: Set<FieldType> = new Set( ['consent', 'captcha', 'list', 'matrix', 'ranking', 'signature'] );
 
 /** Get the width options, translated at render. */
 function getWidthOptions(): Array<{ value: FieldWidth; label: string }> {
