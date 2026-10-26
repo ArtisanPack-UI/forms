@@ -22,6 +22,7 @@ namespace ArtisanPackUI\Forms\Livewire;
 use ArtisanPackUI\Forms\Captcha\CaptchaVerifier;
 use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
+use ArtisanPackUI\Forms\FieldTypes\RankingFieldType;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormStep;
@@ -585,6 +586,41 @@ class FormRenderer extends Component
         }
 
         $this->dispatch( 'forms-list-row-removed', field: $fieldName, index: $index );
+    }
+
+    /**
+     * Moves one choice of a ranking field to a new position.
+     *
+     * Positions count from 0. Dispatches `forms-ranking-moved` with the
+     * field, the choice's value and its new position, so the partial can keep
+     * focus on the moved choice and announce where it went.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $fieldName  The ranking field's name.
+     * @param  int  $from  The choice's position.
+     * @param  int  $to  The position to move it to.
+     */
+    public function moveRankingItem( string $fieldName, int $from, int $to ): void
+    {
+        $field = $this->form->fields->firstWhere( 'name', $fieldName );
+
+        if ( ! $field instanceof FormField || RankingFieldType::TYPE !== $field->type || $field->isAdministrative() || $field->isReadOnly() ) {
+            return;
+        }
+
+        $order = RankingFieldType::order( $field, $this->formData[ $fieldName ] ?? [] );
+        $moved = RankingFieldType::move( $order, $from, $to );
+
+        if ( $moved === $order ) {
+            return;
+        }
+
+        $this->formData[ $fieldName ] = $moved;
+
+        $this->resetValidation( "formData.{$fieldName}" );
+
+        $this->dispatch( 'forms-ranking-moved', field: $fieldName, value: $moved[ $to ], position: $to );
     }
 
     /**

@@ -46,6 +46,9 @@ const bulkOpen = ref( false );
 const bulkText = ref( '' );
 const selectedList = ref( '' );
 const multiple = computed( () => isMultipleChoiceField( props.field ) );
+
+/** Whether options can be selected by default; a ranking's are its choices to order (since 1.6.0). */
+const hasDefaults = computed( () => props.field.type !== 'ranking' );
 const source = computed( () => getChoicesSource( props.field ) );
 const bulkId = computed( () => `bulk-choices-${props.field.id}` );
 const sourceLabel = computed( () =>
@@ -119,6 +122,7 @@ function applyBulk( mode: 'replace' | 'append' ): void {
 		<span class="label-text font-medium">{{ t( 'Options' ) }}</span>
 		<div v-for="( option, index ) in options" :key="index" class="flex items-center gap-2">
 			<input
+				v-if="hasDefaults"
 				type="checkbox"
 				class="checkbox checkbox-xs checkbox-primary"
 				:checked="option.default === true"
@@ -151,7 +155,7 @@ function applyBulk( mode: 'replace' | 'append' ): void {
 				&times;
 			</Button>
 		</div>
-		<p v-if="options.length > 0" class="text-xs text-base-content/60">
+		<p v-if="hasDefaults && options.length > 0" class="text-xs text-base-content/60">
 			{{ multiple ? t( 'Check the options that start selected.' ) : t( 'Check the option that starts selected.' ) }}
 		</p>
 		<div class="flex flex-wrap gap-2">

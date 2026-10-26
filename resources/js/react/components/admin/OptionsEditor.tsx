@@ -48,6 +48,8 @@ export function OptionsEditor( { field, options, onChange, predefinedChoices = [
 	const [bulkText, setBulkText] = useState( '' );
 	const [selectedList, setSelectedList] = useState( '' );
 	const multiple = isMultipleChoiceField( field );
+	// A ranking's options are its choices to order, none selected (since 1.6.0).
+	const hasDefaults = field.type !== 'ranking';
 	const source = getChoicesSource( field );
 	const bulkId = `bulk-choices-${field.id}`;
 
@@ -92,14 +94,16 @@ export function OptionsEditor( { field, options, onChange, predefinedChoices = [
 			<span className="label-text font-medium">{t( 'Options' )}</span>
 			{options.map( ( option, index ) => (
 				<div key={index} className="flex items-center gap-2">
-					<input
-						type="checkbox"
-						className="checkbox checkbox-xs checkbox-primary"
-						checked={option.default === true}
-						title={t( 'Selected by default' )}
-						aria-label={t( 'Selected by default: :label', { label: option.label || option.value } )}
-						onChange={( e ) => onChange( setOptionDefault( options, index, e.target.checked, multiple ) )}
-					/>
+					{hasDefaults && (
+						<input
+							type="checkbox"
+							className="checkbox checkbox-xs checkbox-primary"
+							checked={option.default === true}
+							title={t( 'Selected by default' )}
+							aria-label={t( 'Selected by default: :label', { label: option.label || option.value } )}
+							onChange={( e ) => onChange( setOptionDefault( options, index, e.target.checked, multiple ) )}
+						/>
+					)}
 					<Input
 						placeholder={t( 'Label' )}
 						aria-label={t( 'Option :number label', { number: index + 1 } )}
@@ -126,7 +130,7 @@ export function OptionsEditor( { field, options, onChange, predefinedChoices = [
 					</Button>
 				</div>
 			) )}
-			{options.length > 0 && (
+			{hasDefaults && options.length > 0 && (
 				<p className="text-xs text-base-content/60">
 					{multiple ? t( 'Check the options that start selected.' ) : t( 'Check the option that starts selected.' )}
 				</p>

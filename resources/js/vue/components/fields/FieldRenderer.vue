@@ -10,6 +10,8 @@
   in with separate inputs `DateTimePartsField` (since 1.6.0). A list renders
   `ListField`, a date range the composite field, a date and time field
   `AdvancedField`, and a section on its own `SectionField` (since 1.6.0).
+  Sliders, NPS scales, matrices, rankings and signatures have components of
+  their own (since 1.6.0).
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -32,6 +34,11 @@ import DateTimePartsField from './DateTimePartsField.vue';
 import RichTextField from './RichTextField.vue';
 import ListField from './ListField.vue';
 import SectionField from './SectionField.vue';
+import SliderField from './SliderField.vue';
+import NpsField from './NpsField.vue';
+import MatrixField from './MatrixField.vue';
+import RankingField from './RankingField.vue';
+import SignatureField from './SignatureField.vue';
 import { isCompositeField } from '../../../shared/composite';
 import { getDateInputMode, getTimeInputMode } from '../../../shared/dateTime';
 import { usesRichText } from '../../../shared/richText';
@@ -75,6 +82,7 @@ const LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'divider', 'html'] );
 const COMPOSITE_TYPES = new Set( ['name', 'address', 'date_range'] );
 const CONSENT_TYPES = new Set( ['consent'] );
 const CAPTCHA_TYPES = new Set( ['captcha'] );
+const SURVEY_TYPES = new Set( ['slider', 'nps', 'matrix', 'ranking', 'signature'] );
 
 /**
  * Returns the wrapper class for a field in an inline row.
@@ -147,6 +155,10 @@ const componentGroup = computed( () => {
 
 	if ( props.field.type === 'list' ) {
 		return 'list';
+	}
+
+	if ( SURVEY_TYPES.has( props.field.type ) ) {
+		return props.field.type;
 	}
 
 	if ( CONSENT_TYPES.has( props.field.type ) ) {
@@ -246,6 +258,47 @@ const componentGroup = computed( () => {
 			:model-value="modelValue"
 			:error="error"
 			:sub-errors="subErrors"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<SliderField
+			v-else-if="componentGroup === 'slider'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<NpsField
+			v-else-if="componentGroup === 'nps'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<MatrixField
+			v-else-if="componentGroup === 'matrix'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:sub-errors="subErrors"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<RankingField
+			v-else-if="componentGroup === 'ranking'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<SignatureField
+			v-else-if="componentGroup === 'signature'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
 			:display-config="displayConfig"
 			@update:model-value="emit( 'update:modelValue', $event )"
 		/>

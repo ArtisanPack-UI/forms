@@ -517,6 +517,8 @@ function isConsented( value: FormSubmissionValue ): boolean {
 							</span>
 							<!-- Redacted value -->
 							<span v-else-if="value.is_redacted" class="italic text-base-content/60">{{ value.display_value }}</span>
+							<!-- HTML the API escaped or sanitized with kses: rich text, a list's table, a ranking or a drawn signature (since 1.6.0) -->
+							<div v-else-if="value.display_html" class="prose prose-sm max-w-none" v-html="value.display_html" />
 							<!-- File value -->
 							<template v-else-if="value.upload_id && submission.uploads">
 								<ul v-if="findUploads( value ).length > 0" class="flex flex-col gap-2">
@@ -564,8 +566,6 @@ function isConsented( value: FormSubmissionValue ): boolean {
 									</div>
 								</details>
 							</template>
-							<!-- Rich text, sanitized with kses by the API (`FormSubmissionValueResource`; since 1.6.0) -->
-							<div v-else-if="value.display_html" class="prose prose-sm max-w-none" v-html="value.display_html" />
 							<!-- Composite value (name, address), formatted (since 1.6.0) -->
 							<div v-else-if="isKeyedValue( value )" class="whitespace-pre-line">{{ value.display_value }}</div>
 							<!-- Array value -->

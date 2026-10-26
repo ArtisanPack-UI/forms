@@ -49,6 +49,11 @@ import { isAcceptedEmailDomain } from './emailDomains';
 import { t } from './i18n';
 import { isListField, validateListField } from './list';
 import { getInputMask, getInputMaskHint, maskToRegExp } from './mask';
+import { isMatrixField, validateMatrixField } from './matrix';
+import { validateNps } from './nps';
+import { validateRanking } from './ranking';
+import { validateSignature } from './signature';
+import { validateSlider } from './slider';
 import { getNumberFormat, isIntegerOnly, normalizeFormattedNumber } from './numberFormat';
 import { getPhoneFormat, isPlausiblePhoneNumber } from './phone';
 import { richTextToPlainText, usesRichText } from './richText';
@@ -79,6 +84,17 @@ function stringLimit( value: unknown ): string | undefined {
 	return typeof value === 'string' && value.trim() !== '' ? value : undefined;
 }
 
+/**
+ * Validators for types whose value is checked against their own settings
+ * rather than `validation_rules` (since 1.6.0).
+ */
+const TYPE_VALIDATORS: Record<string, ( field: FormField, value: unknown ) => string[]> = {
+	slider: validateSlider,
+	nps: validateNps,
+	ranking: validateRanking,
+	signature: validateSignature,
+};
+
 /** Field types where min/max rules apply to string length (not numeric value). */
 const TEXT_LENGTH_FIELDS = new Set( ['text', 'email', 'phone', 'url', 'textarea', 'hidden'] );
 
@@ -108,7 +124,7 @@ function isMissing(
 		return !( Number( value ) > 0 );
 	}
 
-	if ( field.type === 'checkbox_group' || field.type === 'select_multiple' ) {
+	if ( field.type === 'checkbox_group' || field.type === 'select_multiple' || field.type === 'ranking' ) {
 		return !Array.isArray( value ) || value.length === 0;
 	}
 
@@ -163,6 +179,11 @@ function validateValue(
 	// Skip further validation if value is empty and not required (except file fields)
 	if ( field.type !== 'file' && ( value === null || value === undefined || String( value ).trim() === '' ) ) {
 		return errors;
+	}
+
+	// Slider, NPS, ranking and signature values are checked against their own settings (since 1.6.0)
+	if ( Object.prototype.hasOwnProperty.call( TYPE_VALIDATORS, field.type ) ) {
+		return TYPE_VALIDATORS[field.type]( field, value );
 	}
 
 	if ( usesRichText( field ) && typeof value === 'string' && richTextToPlainText( value ) === '' ) {
@@ -677,8 +698,9 @@ export function validateCaptchaField( field: FormField, value: unknown ): string
 /**
  * Validates all visible fields in a form.
  *
- * A composite field's errors are keyed `{field}.{key}` (since 1.6.0), and a
- * list's `{field}.{row}.{column}` (since 1.6.0). An email field's
+ * A composite field's errors are keyed `{field}.{key}` (since 1.6.0), a
+ * list's `{field}.{row}.{column}` and a matrix's `{field}.{row}` (since
+ * 1.6.0). An email field's
  * confirmation is read from `{name}_confirmation` and a mismatch is the
  * email field's error (since 1.6.0).
  *
@@ -709,6 +731,12 @@ export function validateFields(
 
 		if ( isListField( field ) ) {
 			Object.assign( errors, validateListField( field, formData[field.name] ) );
+
+			continue;
+		}
+
+		if ( isMatrixField( field ) ) {
+			Object.assign( errors, validateMatrixField( field, formData[field.name] ) );
 
 			continue;
 		}

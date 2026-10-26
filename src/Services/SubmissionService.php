@@ -19,6 +19,7 @@ namespace ArtisanPackUI\Forms\Services;
 use ArtisanPackUI\Forms\FieldTypes\DateTimeFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
 use ArtisanPackUI\Forms\FieldTypes\PhoneFieldType;
+use ArtisanPackUI\Forms\FieldTypes\SignatureFieldType;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
@@ -111,7 +112,8 @@ class SubmissionService
      * filter runs. Phone numbers checked by format are converted to E.164
      * first, reading the country the visitor selected (`{name}_country`),
      * which is then dropped too. A multi-file field's files are each stored
-     * as an upload, with one submission value listing them.
+     * as an upload, with one submission value listing them, and a drawn
+     * signature is stored as a PNG upload (see saveSignature()).
      *
      * @since 1.0.0
      *
@@ -818,7 +820,9 @@ class SubmissionService
     /**
      * Saves a field value to the submission.
      *
-     * The field type's handler normalizes the value first.
+     * The field type's handler normalizes the value first. A drawn signature
+     * is stored as an upload instead (see saveSignature()); one that is not a
+     * valid PNG is stored empty.
      *
      * @since 1.0.0
      *
@@ -830,7 +834,60 @@ class SubmissionService
      */
     protected function saveFieldValue( FormSubmission $submission, FormField $field, mixed $value ): FormSubmissionValue
     {
+        if ( SignatureFieldType::TYPE === $field->type && SignatureFieldType::isDrawn( $value ) ) {
+            $png = SignatureFieldType::decode( $value );
+
+            if ( null !== $png ) {
+                return $this->saveSignature( $submission, $field, $png );
+            }
+
+            $value = '';
+        }
+
         return FormSubmissionValue::create( $this->buildValueAttributes( $submission, $field, $value ) );
+    }
+
+    /**
+     * Stores a drawn signature as a PNG upload, with a submission value pointing at it.
+     *
+     * The file goes to the forms uploads disk, like other uploads, and is
+     * removed again if the submission's transaction rolls back.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormSubmission  $submission  The form submission.
+     * @param  FormField  $field  The signature field.
+     * @param  string  $png  The PNG bytes.
+     *
+     * @throws RuntimeException If the file cannot be stored.
+     *
+     * @return FormSubmissionValue The created submission value.
+     */
+    protected function saveSignature( FormSubmission $submission, FormField $field, string $png ): FormSubmissionValue
+    {
+        $disk       = config( 'artisanpack.forms.uploads.disk', 'local' );
+        $directory  = config( 'artisanpack.forms.uploads.directory', 'form-uploads' );
+        $storedName = Str::uuid()->toString() . '.png';
+        $path       = $directory . '/' . $submission->form_id . '/' . $storedName;
+
+        if ( ! Storage::disk( $disk )->put( $path, $png ) ) {
+            throw new RuntimeException( __( 'Unable to store uploaded file.' ) );
+        }
+
+        $this->storedFiles[] = ['disk' => $disk, 'path' => $path, 'media_id' => null];
+
+        $upload = FormUpload::create( [
+            'submission_id' => $submission->id,
+            'field_id'      => $field->id,
+            'original_name' => SignatureFieldType::UPLOAD_NAME,
+            'stored_name'   => $storedName,
+            'disk'          => $disk,
+            'path'          => $path,
+            'mime_type'     => 'image/png',
+            'size'          => strlen( $png ),
+        ] );
+
+        return FormSubmissionValue::create( $this->uploadValueAttributes( $submission, $field, $upload ) );
     }
 
     /**

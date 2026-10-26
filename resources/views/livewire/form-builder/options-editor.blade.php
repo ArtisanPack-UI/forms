@@ -6,6 +6,8 @@
         ->all();
     $choicesSource = $field->getChoicesSource();
     $isMultiple = $field->isMultipleChoice();
+    // A ranking's options are its choices to order, none selected (since 1.6.0).
+    $hasDefaults = \ArtisanPackUI\Forms\FieldTypes\RankingFieldType::TYPE !== $field->type;
     $predefinedLists = collect(\ArtisanPackUI\Forms\Support\PredefinedChoices::all())
         ->map(fn ($list) => ['label' => $list['label'], 'text' => \ArtisanPackUI\Forms\Support\PredefinedChoices::toBulk($list['choices'])])
         ->all();
@@ -81,14 +83,16 @@
     <div class="space-y-2">
         <template x-for="(option, index) in options" :key="option._id">
             <div class="flex items-center gap-2">
-                <input
-                    type="checkbox"
-                    class="checkbox checkbox-xs checkbox-primary"
-                    :checked="option.default"
-                    :aria-label="@js(__( 'Selected by default: :label' )).replace(':label', option.label || option.value)"
-                    title="{{ __( 'Selected by default' ) }}"
-                    @change="toggleDefault(index, $event.target.checked)"
-                />
+                @if ($hasDefaults)
+                    <input
+                        type="checkbox"
+                        class="checkbox checkbox-xs checkbox-primary"
+                        :checked="option.default"
+                        :aria-label="@js(__( 'Selected by default: :label' )).replace(':label', option.label || option.value)"
+                        title="{{ __( 'Selected by default' ) }}"
+                        @change="toggleDefault(index, $event.target.checked)"
+                    />
+                @endif
                 <div class="flex-1">
                     <input
                         type="text"
@@ -122,9 +126,11 @@
         </template>
     </div>
 
-    <div x-show="options.length > 0" class="text-xs text-base-content/50">
-        {{ $isMultiple ? __( 'Check the options that start selected.' ) : __( 'Check the option that starts selected.' ) }}
-    </div>
+    @if ($hasDefaults)
+        <div x-show="options.length > 0" class="text-xs text-base-content/50">
+            {{ $isMultiple ? __( 'Check the options that start selected.' ) : __( 'Check the option that starts selected.' ) }}
+        </div>
+    @endif
 
     {{-- Add option and bulk edit buttons --}}
     <div class="flex gap-2">

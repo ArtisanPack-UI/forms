@@ -42,6 +42,9 @@ import { getPageContext, getPopulatedValue, sanitizePopulatedValue } from './dyn
 import type { PopulationSource } from './dynamicPopulation';
 import { t } from './i18n';
 import { getInitialListRows, isListField } from './list';
+import { getInitialMatrixValue, isMatrixField } from './matrix';
+import { getRankingOrder, isRankingField } from './ranking';
+import { getInitialSliderValue, isSliderField } from './slider';
 import { getInputMaskHint } from './mask';
 
 /** Field types whose content is edited in the builder's General tab. */
@@ -566,7 +569,8 @@ export function isReadOnlyField( field: FormField ): boolean {
  * default, or the filter value of its parameter), and a sub-input with a
  * population parameter takes the prefill or query string value first; a
  * select sub-input keeps only a value that matches an option. Mirrors
- * `DynamicPopulation::compositeValue()`.
+ * `DynamicPopulation::compositeValue()`. A slider starts within its limits,
+ * a matrix with every row unanswered and a ranking with every choice.
  *
  * @since 1.6.0
  */
@@ -605,9 +609,23 @@ export function getInitialFieldValue( field: FormField, population: PopulationSo
 		return getInitialListRows( field );
 	}
 
+	// A matrix starts unanswered, and a ranking in the order the server sent (since 1.6.0)
+	if ( isMatrixField( field ) ) {
+		return getInitialMatrixValue( field, field.resolved_default_value );
+	}
+
+	if ( isRankingField( field ) ) {
+		return getRankingOrder( field, field.resolved_default_value );
+	}
+
 	const source: unknown = isReadOnlyField( field ) && field.read_only_value !== undefined
 		? field.read_only_value
 		: getPopulatedValue( field, population );
+
+	// A slider always has a value within its limits (since 1.6.0)
+	if ( isSliderField( field ) ) {
+		return getInitialSliderValue( field, source );
+	}
 
 	// A date and time input takes `YYYY-MM-DDTHH:MM` (since 1.6.0)
 	if ( field.type === 'datetime' && typeof source === 'string' ) {

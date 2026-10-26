@@ -21,7 +21,11 @@ use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ConsentFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
+use ArtisanPackUI\Forms\FieldTypes\MatrixFieldType;
+use ArtisanPackUI\Forms\FieldTypes\NpsFieldType;
 use ArtisanPackUI\Forms\FieldTypes\PhoneFieldType;
+use ArtisanPackUI\Forms\FieldTypes\SignatureFieldType;
+use ArtisanPackUI\Forms\FieldTypes\SliderFieldType;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Support\DynamicPopulation;
 use ArtisanPackUI\Forms\Support\FieldSettings;
@@ -148,6 +152,21 @@ class FormFieldResource extends JsonResource
                 'min_rows'  => ListFieldType::minRows( $this->resource ),
                 'max_rows'  => ListFieldType::maxRows( $this->resource ),
                 'row_label' => ListFieldType::rowLabel( $this->resource ),
+            ] ),
+            'slider'                 => $this->when( SliderFieldType::TYPE === $this->type, fn (): array => array_merge(
+                SliderFieldType::limits( $this->resource ),
+                SliderFieldType::affixes( $this->resource ),
+                ['show_value' => SliderFieldType::showsValue( $this->resource )],
+            ) ),
+            'nps'                    => $this->when( NpsFieldType::TYPE === $this->type, fn (): array => NpsFieldType::endLabels( $this->resource ) ),
+            'matrix'                 => $this->when( MatrixFieldType::TYPE === $this->type, fn (): array => [
+                'single'  => MatrixFieldType::isSingle( $this->resource ),
+                'rows'    => MatrixFieldType::rows( $this->resource ),
+                'columns' => MatrixFieldType::columns( $this->resource ),
+            ] ),
+            'signature'              => $this->when( SignatureFieldType::TYPE === $this->type, fn (): array => [
+                'pad_height' => SignatureFieldType::padHeight( $this->resource ),
+                'max_bytes'  => SignatureFieldType::MAX_BYTES,
             ] ),
             'phone'                  => $this->when( 'phone' === $this->type && 'any' !== $this->resource->getPhoneFormat(), fn (): array => [
                 'format'          => $this->resource->getPhoneFormat(),

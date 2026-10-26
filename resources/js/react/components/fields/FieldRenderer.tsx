@@ -27,7 +27,10 @@ import { CompositeField } from './CompositeField';
 import { ConsentField } from './ConsentField';
 import { DividerField, HeadingField, HtmlField, ParagraphField } from './LayoutField';
 import { ListField } from './ListField';
+import { RankingField } from './RankingField';
 import { SectionField } from './SectionField';
+import { SignatureField } from './SignatureField';
+import { MatrixField, NpsField, SliderField } from './SurveyField';
 import {
 	EmailField,
 	HiddenField,
@@ -108,9 +111,14 @@ const FIELD_COMPONENTS: Record<BuiltInFieldType, FieldComponent> = {
 	datetime: DateTimeField,
 	date_range: CompositeField,
 	rating: RatingField,
+	slider: SliderField,
+	nps: NpsField,
+	matrix: MatrixField,
+	ranking: RankingField,
 	name: CompositeField,
 	address: CompositeField,
 	list: ListField,
+	signature: SignatureField,
 	consent: ConsentField,
 	captcha: CaptchaField,
 	section: SectionField,

@@ -50,6 +50,12 @@ export {
 
 export { ListField } from './components/fields/ListField';
 
+export { MatrixField, NpsField, SliderField } from './components/fields/SurveyField';
+
+export { RankingField } from './components/fields/RankingField';
+
+export { SignatureField } from './components/fields/SignatureField';
+
 export { SectionField, SectionGroup } from './components/fields/SectionField';
 export type { SectionGroupProps } from './components/fields/SectionField';
 
@@ -217,6 +223,14 @@ export {
 export type { ListRow } from '../shared/list';
 
 export { applyLiveMergeTags } from '../shared/liveMergeTags';
+
+// Slider, NPS, matrix, ranking and signature helpers (since 1.6.0)
+export { formatSliderValue, getSliderSettings, validateSlider } from '../shared/slider';
+export { getNpsLabels, NPS_SCORES, validateNps } from '../shared/nps';
+export { getMatrixColumns, getMatrixRows, isSingleScale, validateMatrixField } from '../shared/matrix';
+export { getRankingChoices, getRankingOrder, moveRankingItem, validateRanking } from '../shared/ranking';
+export { isDrawnSignature, SignaturePad, validateSignature } from '../shared/signature';
+export type { SignatureMode } from '../shared/signature';
 
 // Email confirmation helpers (since 1.6.0)
 export {

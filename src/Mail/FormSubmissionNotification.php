@@ -17,8 +17,10 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Mail;
 
+use ArtisanPackUI\Forms\FieldTypes\SignatureFieldType;
 use ArtisanPackUI\Forms\Models\FormNotification;
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Forms\Models\FormUpload;
 use ArtisanPackUI\Forms\Services\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -27,6 +29,7 @@ use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Symfony\Component\Mime\Email;
 
 /**
  * Form submission notification mailable class.
@@ -113,6 +116,22 @@ class FormSubmissionNotification extends Mailable
     protected array $bccEmails = [];
 
     /**
+     * The IDs of the signature uploads the submission data table shows, embedded when the message is built.
+     *
+     * @since 1.6.0
+     *
+     * @var list<int>
+     */
+    protected array $inlineImageIds = [];
+
+    /**
+     * Whether build() has embedded the inline images, so a render before sending doesn't embed them twice.
+     *
+     * @since 1.6.0
+     */
+    protected bool $inlineImagesEmbedded = false;
+
+    /**
      * Creates a new message instance.
      *
      * @since 1.0.0
@@ -153,7 +172,12 @@ class FormSubmissionNotification extends Mailable
             $submission,
         );
 
-        $this->submissionDataTable = $notificationService->formatAllFieldsAsTable( $submission, $this->useAdminLabels );
+        // Drawn signatures are embedded as inline images, which email clients show where they block data URLs
+        $this->submissionDataTable = $notificationService->formatAllFieldsAsTable(
+            $submission,
+            $this->useAdminLabels,
+            $notification->include_submission_data ? fn ( FormUpload $upload ): string => $this->inlineImageSource( $upload ) : null,
+        );
 
         // Get CC/BCC recipients upfront
         $this->ccEmails  = $notificationService->getCcEmails( $notification );
@@ -164,6 +188,34 @@ class FormSubmissionNotification extends Mailable
         // - Hide for autoresponder emails (privacy: don't show submitter their own IP)
         $this->showIpAddress = config( 'artisanpack.forms.notifications.show_ip_in_emails', true )
             && FormNotification::TYPE_AUTORESPONDER !== $notification->type;
+    }
+
+    /**
+     * Embeds the drawn signatures the submission data table shows.
+     *
+     * Runs when the message is built for sending, so the PNGs are read then
+     * rather than kept on a queued mailable. A file that can no longer be read
+     * is left out, and the image shows its alternative text.
+     *
+     * @since 1.6.0
+     */
+    public function build(): void
+    {
+        if ( $this->inlineImagesEmbedded || [] === $this->inlineImageIds ) {
+            return;
+        }
+
+        $this->inlineImagesEmbedded = true;
+
+        foreach ( FormUpload::query()->whereIn( 'id', $this->inlineImageIds )->get() as $upload ) {
+            $png = SignatureFieldType::contents( $upload );
+
+            if ( null !== $png ) {
+                $name = self::inlineImageName( $upload );
+
+                $this->withSymfonyMessage( fn ( Email $email ): Email => $email->embed( $png, $name, 'image/png' ) );
+            }
+        }
     }
 
     /**
@@ -226,5 +278,38 @@ class FormSubmissionNotification extends Mailable
     {
         // Future enhancement: attach uploaded files
         return [];
+    }
+
+    /**
+     * Gets the name a signature's image is embedded under.
+     *
+     * The HTML references it as `cid:{name}`; Symfony swaps in the part's
+     * content ID when the message is sent.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormUpload  $upload  The signature's upload.
+     *
+     * @return string The name.
+     */
+    protected static function inlineImageName( FormUpload $upload ): string
+    {
+        return 'signature-' . $upload->id . '.png';
+    }
+
+    /**
+     * Registers a signature's upload to embed, and gets its image source.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormUpload  $upload  The signature's upload.
+     *
+     * @return string The `cid:` source.
+     */
+    protected function inlineImageSource( FormUpload $upload ): string
+    {
+        $this->inlineImageIds[] = (int) $upload->id;
+
+        return 'cid:' . self::inlineImageName( $upload );
     }
 }
