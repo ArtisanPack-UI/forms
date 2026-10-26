@@ -212,8 +212,8 @@ describe( 'React builder', function () use ( $resource, $between ): void {
 
     it( 'hides the placeholder and default value for consent and CAPTCHA fields', function () use ( $resource ): void {
         expect( $resource( 'react/components/admin/FieldEditor.tsx' ) )
-            ->toContain( "const NO_PLACEHOLDER_TYPES: Set<FieldType> = new Set( ['checkbox', 'toggle', 'radio', 'rating', 'consent', 'captcha'] );" )
-            ->toContain( "const NO_DEFAULT_VALUE_TYPES: Set<FieldType> = new Set( ['consent', 'captcha'] );" )
+            ->toContain( "const NO_PLACEHOLDER_TYPES: Set<FieldType> = new Set( ['checkbox', 'toggle', 'radio', 'rating', 'consent', 'captcha', 'datetime', 'list'] );" )
+            ->toContain( "const NO_DEFAULT_VALUE_TYPES: Set<FieldType> = new Set( ['consent', 'captcha', 'list'] );" )
             ->toContain( '!NO_DEFAULT_VALUE_TYPES.has( field.type )' );
     } );
 

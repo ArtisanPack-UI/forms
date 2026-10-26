@@ -60,7 +60,7 @@ function getOperatorOptions(): Array<{ value: ConditionalOperator; label: string
 }
 
 /** Layout field types excluded from condition targets. */
-const LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'divider', 'html'] );
+const LAYOUT_TYPES = new Set( ['section', 'heading', 'paragraph', 'divider', 'html'] );
 
 /** Props for the ConditionalLogicEditor component. */
 export interface ConditionalLogicEditorProps {

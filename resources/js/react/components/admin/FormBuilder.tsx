@@ -1044,7 +1044,7 @@ export function FormBuilder( {
 										{'paragraph' === field.type && (
 											<p className="text-base-content/70">{getLayoutContent( field )}</p>
 										)}
-										{'divider' === field.type && <div className="divider" />}
+										{( 'divider' === field.type || 'section' === field.type ) && <div className="divider" />}
 										{field.help_text && <label className="label"><span className="label-text-alt">{field.help_text}</span></label>}
 									</div>
 								) )}

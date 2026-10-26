@@ -20,6 +20,7 @@ namespace ArtisanPackUI\Forms\Http\Resources;
 use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ConsentFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
 use ArtisanPackUI\Forms\FieldTypes\PhoneFieldType;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Support\DynamicPopulation;
@@ -129,6 +130,7 @@ class FormFieldResource extends JsonResource
             'sub_inputs'             => $this->when( $this->resource->isComposite(), fn (): array => $this->subInputs() ),
             'required_sub_inputs'    => $this->when( $this->resource->isComposite(), fn (): array => $this->resource->getRequiredSubInputKeys() ),
             'sub_label_placement'    => $this->when( $this->resource->isComposite(), fn (): string => $this->resource->getSubLabelPlacement() ),
+            'format_separator'       => $this->when( $this->resource->isComposite(), fn (): string => (string) ( $this->resource->fieldType()->definition()['format_separator'] ?? ', ' ) ),
             'email_confirmation'     => $this->when( $this->resource->requiresEmailConfirmation(), fn (): array => $this->resource->getEmailConfirmationLabels() ),
             'consent'                => $this->when( 'consent' === $this->type, fn (): array => [
                 'text'        => ConsentFieldType::checkboxText( $this->resource ),
@@ -140,6 +142,13 @@ class FormFieldResource extends JsonResource
                 'hint' => $this->resource->getInputMaskHint(),
             ] ),
             'affix_description'      => $this->when( null !== $this->resource->getAffixDescription(), fn (): ?string => $this->resource->getAffixDescription() ),
+            'content_html'           => $this->when( 'paragraph' === $this->type, fn (): string => $this->resource->getParagraphHtml() ),
+            'list'                   => $this->when( ListFieldType::TYPE === $this->type, fn (): array => [
+                'columns'   => ListFieldType::columns( $this->resource ),
+                'min_rows'  => ListFieldType::minRows( $this->resource ),
+                'max_rows'  => ListFieldType::maxRows( $this->resource ),
+                'row_label' => ListFieldType::rowLabel( $this->resource ),
+            ] ),
             'phone'                  => $this->when( 'phone' === $this->type && 'any' !== $this->resource->getPhoneFormat(), fn (): array => [
                 'format'          => $this->resource->getPhoneFormat(),
                 'default_country' => $this->resource->getPhoneDefaultCountry(),

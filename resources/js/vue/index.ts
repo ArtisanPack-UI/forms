@@ -27,6 +27,8 @@ export { default as CompositeField } from './components/fields/CompositeField.vu
 export { default as EmailConfirmationField } from './components/fields/EmailConfirmationField.vue';
 export { default as ConsentField } from './components/fields/ConsentField.vue';
 export { default as CaptchaField } from './components/fields/CaptchaField.vue';
+export { default as ListField } from './components/fields/ListField.vue';
+export { default as SectionField } from './components/fields/SectionField.vue';
 
 // Composables
 export { useForm } from './composables/useForm';
@@ -34,6 +36,10 @@ export type { UseFormOptions } from './composables/useForm';
 
 // Submit hooks fields register with their form (since 1.6.0)
 export { SUBMIT_HOOKS_KEY, useSubmitHooks } from './composables/submitHooks';
+
+// The form's fields and values, for HTML block merge tags (since 1.6.0)
+export { FORM_VALUES_KEY, useFormValues } from './composables/formValues';
+export type { FormValues } from './composables/formValues';
 
 export { useApi, ApiError, ApiValidationError } from './composables/useApi';
 export type { UseApiOptions, UseApiReturn } from './composables/useApi';
@@ -102,7 +108,24 @@ export {
 } from '../shared/composite';
 export type { ConditionTarget, SubInputSetting } from '../shared/composite';
 
-export { validateCompositeField } from '../shared/validation';
+export { isDateRange, validateCompositeField } from '../shared/validation';
+
+// Section, list and live merge tag helpers (since 1.6.0)
+export {
+	applySectionVisibility,
+	getFieldSegments,
+	getSectionMembers,
+} from '../shared/sections';
+export type { FieldSegment } from '../shared/sections';
+
+export {
+	getInitialListRows,
+	getListColumns,
+	validateListField,
+} from '../shared/list';
+export type { ListRow } from '../shared/list';
+
+export { applyLiveMergeTags } from '../shared/liveMergeTags';
 
 // Email confirmation helpers (since 1.6.0)
 export { getConfirmationKey, requiresEmailConfirmation } from '../shared/fieldSettings';

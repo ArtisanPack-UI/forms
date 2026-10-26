@@ -26,6 +26,7 @@ import {
 	SUB_INPUT_MAX_LENGTH,
 	toCompositeValue,
 } from '../../../shared/composite';
+import { getDateLimits } from '../../../shared/dateConstraints';
 import { getFieldLayout } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 import type { DisplayConfig, FormField } from '../../../types/artisanpack-forms';
@@ -48,6 +49,7 @@ const emit = defineEmits<{
 
 const parts = computed( () => toCompositeValue( props.modelValue ) );
 const subInputs = computed( () => getEnabledSubInputs( props.field ) );
+const dateLimits = computed( () => getDateLimits( props.field ) );
 const required = computed( () => new Set( getRequiredSubInputKeys( props.field ) ) );
 const subLabelPlacement = computed( () => getSubLabelPlacement( props.field ) );
 const layout = computed( () => getFieldLayout( props.field, props.displayConfig ) );
@@ -139,7 +141,9 @@ function subLabelClass(): string {
 					:value="parts[subInput.key] ?? ''"
 					:placeholder="subInput.placeholder ?? undefined"
 					:autocomplete="subInput.autocomplete ?? undefined"
-					:maxlength="subInput.type === 'number' ? undefined : SUB_INPUT_MAX_LENGTH"
+					:min="subInput.type === 'date' ? dateLimits.min : undefined"
+					:max="subInput.type === 'date' ? dateLimits.max : undefined"
+					:maxlength="subInput.type === 'number' || subInput.type === 'date' ? undefined : SUB_INPUT_MAX_LENGTH"
 					:required="required.has( subInput.key )"
 					:aria-required="required.has( subInput.key ) ? 'true' : undefined"
 					:aria-invalid="subErrors[subInput.key] ? true : undefined"

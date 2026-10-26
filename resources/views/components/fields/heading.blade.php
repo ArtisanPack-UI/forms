@@ -13,10 +13,16 @@
         'h6' => 'text-sm font-medium',
         default => 'text-xl font-semibold',
     };
+
+    $alignClass = match($field->getHeadingAlignment()) {
+        'center' => 'text-center',
+        'right' => 'text-right',
+        default => '',
+    };
 @endphp
 
 <{{ $tag }}
-    class="{{ $classes }} {{ $field->css_classes }}"
+    class="{{ $classes }} {{ $alignClass }} {{ $field->css_classes }}"
     id="heading-{{ $field->name }}"
 >
     {{ $field->getLayoutContent() }}

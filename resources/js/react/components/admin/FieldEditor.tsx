@@ -35,6 +35,7 @@ import {
 	getSettingInput,
 	getSettingsForTab,
 	isDraftStored,
+	supportsConditionalLogic,
 } from '../../../shared/fieldSettings';
 import { applySubInputUpdate, isCompositeField } from '../../../shared/composite';
 import { MERGE_TAGS } from '../../../shared/dynamicPopulation';
@@ -56,6 +57,7 @@ const OPTION_FIELD_TYPES: Set<FieldType> = new Set( [
 
 /** Field types that don't collect user data. */
 const LAYOUT_FIELD_TYPES: Set<FieldType> = new Set( [
+	'section',
 	'heading',
 	'paragraph',
 	'divider',
@@ -63,13 +65,14 @@ const LAYOUT_FIELD_TYPES: Set<FieldType> = new Set( [
 ] );
 
 /** Field types without a placeholder. */
-const NO_PLACEHOLDER_TYPES: Set<FieldType> = new Set( ['checkbox', 'toggle', 'radio', 'rating', 'consent', 'captcha'] );
+const NO_PLACEHOLDER_TYPES: Set<FieldType> = new Set( ['checkbox', 'toggle', 'radio', 'rating', 'consent', 'captcha', 'datetime', 'list'] );
 
 /**
- * Field types without a default value: a consent box is never pre-checked
- * and a CAPTCHA token comes from the provider (since 1.6.0).
+ * Field types without a default value: a consent box is never pre-checked,
+ * a CAPTCHA token comes from the provider and a list starts with empty rows
+ * (since 1.6.0).
  */
-const NO_DEFAULT_VALUE_TYPES: Set<FieldType> = new Set( ['consent', 'captcha'] );
+const NO_DEFAULT_VALUE_TYPES: Set<FieldType> = new Set( ['consent', 'captcha', 'list'] );
 
 /** Get the width options, translated at render. */
 function getWidthOptions(): Array<{ value: FieldWidth; label: string }> {
@@ -256,7 +259,8 @@ export function FieldEditor( {
 			} );
 		}
 
-		if ( !isLayoutField ) {
+		// A section's logic shows and hides the fields it groups (since 1.6.0)
+		if ( supportsConditionalLogic( field.type ) ) {
 			tabItems.push( {
 				name: 'conditional',
 				label: t( 'Conditional' ),
@@ -386,7 +390,7 @@ function GeneralTabContent( {
 
 	return (
 		<div className="space-y-4 p-4">
-			{/* Label (a heading's label is its text) */}
+			{/* Label (a heading's label is its text, a section's its title) */}
 			{field.type === 'heading' ? (
 				<Input
 					label={t( 'Heading Text' )}
@@ -395,7 +399,7 @@ function GeneralTabContent( {
 				/>
 			) : (
 				<Input
-					label={t( 'Label' )}
+					label={field.type === 'section' ? t( 'Section Title' ) : t( 'Label' )}
 					value={field.label ?? ''}
 					onChange={( e ) => updateField( { label: e.target.value } )}
 				/>
@@ -489,6 +493,7 @@ function GeneralTabContent( {
 					rows={6}
 					value={getLayoutContent( field )}
 					onChange={( e ) => updateField( buildLayoutContentUpdate( field, e.target.value ) )}
+					hint={t( 'Write {field_name} to show what a visitor entered, as they type.' )}
 				/>
 			)}
 
@@ -499,6 +504,7 @@ function GeneralTabContent( {
 					rows={4}
 					value={getLayoutContent( field )}
 					onChange={( e ) => updateField( buildLayoutContentUpdate( field, e.target.value ) )}
+					hint={t( 'Basic formatting is kept: <strong>, <em>, <u> and <a href>.' )}
 				/>
 			)}
 

@@ -4,7 +4,7 @@
             $field = $this->selectedField;
             $fieldConfig = \ArtisanPackUI\Forms\Config\FieldTypes::getTypeConfig($field->type);
             $hasOptions = \ArtisanPackUI\Forms\Config\FieldTypes::hasOptions($field->type);
-            $isContentLayoutField = in_array($field->type, ['heading', 'paragraph', 'html'], true);
+            $isContentLayoutField = in_array($field->type, ['heading', 'paragraph', 'html', 'section'], true);
         @endphp
 
         <div class="mb-4 flex items-center justify-between">
@@ -90,10 +90,14 @@
                     <div class="divider text-xs text-base-content/50">{{ __( 'Field Basics' ) }}</div>
                 @endif
 
-                {{-- Label (a heading's label is its text) --}}
+                {{-- Label (a heading's label is its text, a section's its title) --}}
                 <div class="form-control">
                     <label class="label" for="field-label">
-                        <span class="label-text text-xs">{{ 'heading' === $field->type ? __( 'Heading Text' ) : __( 'Label' ) }}</span>
+                        <span class="label-text text-xs">{{ match ($field->type) {
+                            'heading' => __( 'Heading Text' ),
+                            'section' => __( 'Section Title' ),
+                            default => __( 'Label' ),
+                        } }}</span>
                     </label>
                     <input
                         type="text"
@@ -119,8 +123,16 @@
                             id="field-content"
                             rows="{{ 'html' === $field->type ? 6 : 4 }}"
                             class="textarea textarea-sm textarea-bordered w-full @if ('html' === $field->type) font-mono text-xs @endif"
+                            aria-describedby="field-content-hint"
                             wire:change="updateLayoutContent($event.target.value)"
                         >{{ $field->getLayoutContent() }}</textarea>
+                        <label class="label" id="field-content-hint">
+                            <span class="label-text-alt text-xs text-base-content/50">
+                                {{ 'html' === $field->type
+                                    ? __( 'Write {field_name} to show what a visitor entered, as they type.' )
+                                    : __( 'Basic formatting is kept: <strong>, <em>, <u> and <a href>.' ) }}
+                            </span>
+                        </label>
                     </div>
                 @endif
 
@@ -274,7 +286,7 @@
                 @endforeach
 
                 {{-- Conditional Logic --}}
-                @if(!\ArtisanPackUI\Forms\Config\FieldTypes::isLayoutField($field->type))
+                @if(\ArtisanPackUI\Forms\Config\FieldTypes::supportsConditionalLogic($field->type))
                     <div class="divider text-xs text-base-content/50">{{ __( 'Conditional Logic' ) }}</div>
                     @include('forms::livewire.form-builder.condition-builder')
                 @else

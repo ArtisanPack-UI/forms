@@ -4,7 +4,9 @@
  * Main component that fetches a form definition from the API and renders
  * all fields with conditional logic, multi-step navigation, validation,
  * honeypot protection, and submission handling. Fields reach the form's
- * submit hooks through `SubmitHooksContext` (since 1.6.0).
+ * submit hooks through `SubmitHooksContext` and its fields and values
+ * through `FormValuesContext` (since 1.6.0). A section's fields are grouped
+ * in its fieldset (since 1.6.0).
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -12,14 +14,18 @@
  * @since      1.1.0
  */
 
+import { Fragment } from 'react';
 import { Button } from '@artisanpack-ui/react/form';
 
 import { getSubInputErrors } from '../../shared/composite';
 import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
-import type { FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
+import { getFieldSegments } from '../../shared/sections';
+import type { FormField, FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
 import { useForm } from '../hooks/useForm';
 import { FieldRenderer } from './fields/FieldRenderer';
+import { FormValuesContext } from './fields/FormValuesContext';
 import type { FieldComponentMap } from './fields/registry';
+import { SectionGroup } from './fields/SectionField';
 import { SubmitHooksContext } from './fields/SubmitHooksContext';
 import { MultiStepForm } from './MultiStepForm';
 
@@ -262,59 +268,80 @@ export function FormRenderer( {
 		</Button>
 	);
 
-	// Render form fields; they reach the form's submit hooks through the context
+	// Render one field, unless conditional logic hides it
+	const renderField = ( field: FormField ) => {
+		if ( hiddenFields[field.name] ) {
+			return null;
+		}
+
+		const confirms = requiresEmailConfirmation( field );
+
+		return (
+			<FieldRenderer
+				key={field.id}
+				field={field}
+				value={values[field.name]}
+				error={errors[field.name]?.[0]}
+				onChange={( value ) => setValue( field.name, value )}
+				onFileChange={( file ) => setFile( field.name, file )}
+				displayConfig={form.config.display}
+				otherValue={otherValues[field.name] ?? ''}
+				onOtherChange={( text ) => setOtherValue( field.name, text )}
+				subErrors={getSubInputErrors( errors, field.name )}
+				confirmValue={confirms ? String( values[getConfirmationKey( field )] ?? '' ) : undefined}
+				onConfirmChange={confirms ? ( text ) => setValue( getConfirmationKey( field ), text ) : undefined}
+				fieldComponents={fieldComponents}
+				layout={isInline ? 'inline' : 'stacked'}
+			/>
+		);
+	};
+
+	// Whether a field, or an input nested under it, has an error
+	const hasFieldErrors = ( field: FormField ) => Object.keys( errors ).some( ( key ) => key === field.name || key.startsWith( `${field.name}.` ) );
+
+	// Render form fields, each section's fields grouped in its fieldset (since 1.6.0);
+	// they reach the form's submit hooks and values through the contexts
 	const renderedFields = (
 		<SubmitHooksContext.Provider value={submitHooks}>
-			<div className="flex flex-wrap gap-4">
-				{currentFields.map( ( field ) => {
-					if ( hiddenFields[field.name] ) {
-						return null;
-					}
+			<FormValuesContext.Provider value={{ fields: form.fields, values, hiddenFields, otherValues }}>
+				<div className="flex flex-wrap gap-4">
+					{getFieldSegments( currentFields ).map( ( segment, index ) => ( segment.section ? (
+						<SectionGroup
+							key={segment.section.id}
+							section={segment.section}
+							hidden={hiddenFields[segment.section.name]}
+							holdsCaptcha={segment.fields.some( ( field ) => field.type === 'captcha' )}
+							hasErrors={segment.fields.some( hasFieldErrors )}
+						>
+							{segment.fields.map( renderField )}
+						</SectionGroup>
+					) : (
+						<Fragment key={`fields-${index}`}>{segment.fields.map( renderField )}</Fragment>
+					) ) )}
 
-					const confirms = requiresEmailConfirmation( field );
+					{/* Honeypot field (hidden from real users) */}
+					{form.config.honeypot.enabled && (
+						<div
+							style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, overflow: 'hidden' }}
+							aria-hidden="true"
+						>
+							<label htmlFor={`ap-hp-${form.slug}`}>
+								Leave this field empty
+							</label>
+							<input
+								type="text"
+								id={`ap-hp-${form.slug}`}
+								name={form.config.honeypot.field_name}
+								tabIndex={-1}
+								autoComplete="off"
+							/>
+						</div>
+					)}
 
-					return (
-						<FieldRenderer
-							key={field.id}
-							field={field}
-							value={values[field.name]}
-							error={errors[field.name]?.[0]}
-							onChange={( value ) => setValue( field.name, value )}
-							onFileChange={( file ) => setFile( field.name, file )}
-							displayConfig={form.config.display}
-							otherValue={otherValues[field.name] ?? ''}
-							onOtherChange={( text ) => setOtherValue( field.name, text )}
-							subErrors={getSubInputErrors( errors, field.name )}
-							confirmValue={confirms ? String( values[getConfirmationKey( field )] ?? '' ) : undefined}
-							onConfirmChange={confirms ? ( text ) => setValue( getConfirmationKey( field ), text ) : undefined}
-							fieldComponents={fieldComponents}
-							layout={isInline ? 'inline' : 'stacked'}
-						/>
-					);
-				} )}
-
-				{/* Honeypot field (hidden from real users) */}
-				{form.config.honeypot.enabled && (
-					<div
-						style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, overflow: 'hidden' }}
-						aria-hidden="true"
-					>
-						<label htmlFor={`ap-hp-${form.slug}`}>
-							Leave this field empty
-						</label>
-						<input
-							type="text"
-							id={`ap-hp-${form.slug}`}
-							name={form.config.honeypot.field_name}
-							tabIndex={-1}
-							autoComplete="off"
-						/>
-					</div>
-				)}
-
-				{/* Inline layout: the submit button is the last item in the field row */}
-				{isInline && submitButton}
-			</div>
+					{/* Inline layout: the submit button is the last item in the field row */}
+					{isInline && submitButton}
+				</div>
+			</FormValuesContext.Provider>
 		</SubmitHooksContext.Provider>
 	);
 

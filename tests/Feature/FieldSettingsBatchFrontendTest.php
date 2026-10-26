@@ -158,7 +158,7 @@ describe( 'Dynamic population in React and Vue (issue #95)', function () use ( $
 
     it( 'is part of the render payload type', function () use ( $resource ): void {
         expect( $resource( 'types/artisanpack-forms.d.ts' ) )->toContain( 'dynamic_parameter?: string | null;' )
-            ->toContain( 'resolved_default_value?: string | boolean | string[] | Record<string, string> | null;' );
+            ->toContain( 'resolved_default_value?: string | boolean | string[] | Record<string, string> | Array<Record<string, string>> | null;' );
     } );
 } );
 

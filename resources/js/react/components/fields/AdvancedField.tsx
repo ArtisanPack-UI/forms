@@ -1,8 +1,8 @@
 /**
  * Advanced field components.
  *
- * Renders file upload, date picker and star rating fields
- * using @artisanpack-ui/react components.
+ * Renders file upload, date picker, date and time (since 1.6.0) and star
+ * rating fields using @artisanpack-ui/react components.
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -13,19 +13,24 @@
 import { useState } from 'react';
 import { DatePicker, File as FileInput, Input } from '@artisanpack-ui/react/form';
 
-import { getDateBounds } from '../../../shared/dateConstraints';
+import { getDateBounds, getDateLimits } from '../../../shared/dateConstraints';
 import { getDateInputMode } from '../../../shared/dateTime';
 import {
 	allowsMultipleFiles,
 	getFieldLayout,
 	getFileAccept,
+	getFileLimitsHint,
 	getFileMaxCount,
 	getInputLabelProps,
 	getRatingSizeClass,
 	getRatingSteps,
+	getTimeStep,
 	isReadOnlyField,
 	ratingAllowsHalf,
+	withInputNotes,
 } from '../../../shared/fieldSettings';
+import type { InputLabelProps } from '../../../shared/fieldSettings';
+import type { FormField } from '../../../types/artisanpack-forms';
 import { t } from '../../../shared/i18n';
 
 import { DatePartsField } from './DateTimeParts';
@@ -37,7 +42,8 @@ import type { FieldComponentProps } from './types';
  *
  * A multi-file field (since 1.6.0) adds each file chosen or dropped to a
  * list with a remove button, up to its max files, and a polite live region
- * announces the changes. Files upload with the submission.
+ * announces the changes. Files upload with the submission. A note under
+ * the input lists the allowed types and size limits (since 1.6.0).
  */
 export function FileField( props: FieldComponentProps ) {
 	if ( allowsMultipleFiles( props.field ) ) {
@@ -48,6 +54,25 @@ export function FileField( props: FieldComponentProps ) {
 }
 
 /**
+ * Add the limits note's ID to a file input's `aria-describedby` (since 1.6.0).
+ *
+ * @returns The label props and the note, if the field sets limits.
+ */
+function withLimitsNote( props: InputLabelProps, field: FormField, error: string | undefined ): { props: InputLabelProps; note: React.ReactNode } {
+	const hint = getFileLimitsHint( field );
+	const id = `field-${field.name}-limits`;
+
+	if ( hint === undefined ) {
+		return { props, note: null };
+	}
+
+	return {
+		props: withInputNotes( props, field, error, [id] ),
+		note: <p id={id} className="fieldset-label mt-1">{hint}</p>,
+	};
+}
+
+/**
  * Renders a multi-file upload field: a drag-and-drop zone around a keyboard
  * operable file input, and the list of files to upload.
  *
@@ -55,7 +80,8 @@ export function FileField( props: FieldComponentProps ) {
  */
 function MultiFileField( { field, error, onFileChange, displayConfig }: FieldComponentProps ) {
 	const layout = getFieldLayout( field, displayConfig );
-	const { inline: _inline, ...labelProps } = getInputLabelProps( field, layout, displayConfig, error );
+	const limits = withLimitsNote( getInputLabelProps( field, layout, displayConfig, error ), field, error );
+	const { inline: _inline, ...labelProps } = limits.props;
 	const maxFiles = getFileMaxCount( field );
 	const [files, setFiles] = useState<File[]>( [] );
 	const [announcement, setAnnouncement] = useState( '' );
@@ -103,6 +129,7 @@ function MultiFileField( { field, error, onFileChange, displayConfig }: FieldCom
 				withDragDrop
 				onFilesSelected={add}
 			/>
+			{limits.note}
 
 			{files.length > 0 && (
 				<ul className="mt-3 flex flex-col gap-2" aria-label={t( 'Files for :field', { field: field.label ?? field.name } )}>
@@ -139,7 +166,8 @@ function formatFileSize( bytes: number ): string {
 function SingleFileField( { field, error, onFileChange, displayConfig }: FieldComponentProps ) {
 	const allowedTypes = getFileAccept( field );
 	const layout = getFieldLayout( field, displayConfig );
-	const { inline: _inline, ...labelProps } = getInputLabelProps( field, layout, displayConfig, error );
+	const limits = withLimitsNote( getInputLabelProps( field, layout, displayConfig, error ), field, error );
+	const { inline: _inline, ...labelProps } = limits.props;
 
 	return (
 		<FieldLayout field={field} layout={layout}>
@@ -168,6 +196,36 @@ function SingleFileField( { field, error, onFileChange, displayConfig }: FieldCo
 						onFileChange( Array.from( fileList ) );
 					}
 				}}
+			/>
+			{limits.note}
+		</FieldLayout>
+	);
+}
+
+/**
+ * Renders a date and time field (since 1.6.0): a native `datetime-local`
+ * input, bounded by the field's min and max dates from the start of the first
+ * day to the end of the last.
+ */
+export function DateTimeField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
+	const layout = getFieldLayout( field, displayConfig );
+	const limits = getDateLimits( field );
+
+	return (
+		<FieldLayout field={field} layout={layout}>
+			<Input
+				{...getInputLabelProps( field, layout, displayConfig, error )}
+				name={field.name}
+				type="datetime-local"
+				value={String( value ?? '' )}
+				error={error}
+				required={field.is_required}
+				readOnly={isReadOnlyField( field )}
+				className={field.css_classes ?? undefined}
+				onChange={( e ) => onChange( e.target.value )}
+				min={limits.min ? `${limits.min}T00:00` : undefined}
+				max={limits.max ? `${limits.max}T23:59` : undefined}
+				step={getTimeStep( field )}
 			/>
 		</FieldLayout>
 	);

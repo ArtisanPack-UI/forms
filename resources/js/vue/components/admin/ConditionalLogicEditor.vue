@@ -57,7 +57,7 @@ const OPERATOR_DEFINITIONS = computed( (): Array<{
 ] );
 
 /** Layout field types excluded from condition targets. */
-const LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'divider', 'html'] );
+const LAYOUT_TYPES = new Set( ['section', 'heading', 'paragraph', 'divider', 'html'] );
 
 const props = withDefaults( defineProps<{
 	/** Current conditional logic configuration, or null. */

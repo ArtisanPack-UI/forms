@@ -137,33 +137,7 @@
                         @endif
 
                         <div class="space-y-4">
-                            @foreach($this->currentFields as $field)
-                                @php
-                                    $isHidden = $hiddenFields[$field->name] ?? false;
-                                @endphp
-                                <div
-                                    wire:key="field-{{ $field->uuid }}-{{ $isHidden ? 'hidden' : 'visible' }}"
-                                    x-data="{ get visible() { return !($wire.hiddenFields?.['{{ $field->name }}'] ?? false); } }"
-                                    x-show="visible"
-                                    x-transition:enter="transition ease-out duration-200"
-                                    x-transition:enter-start="opacity-0 transform -translate-y-2"
-                                    x-transition:enter-end="opacity-100 transform translate-y-0"
-                                    x-transition:leave="transition ease-in duration-150"
-                                    x-transition:leave-start="opacity-100 transform translate-y-0"
-                                    x-transition:leave-end="opacity-0 transform -translate-y-2"
-                                    x-cloak
-                                    :class="{ 'hidden': !visible }"
-                                    :aria-hidden="!visible"
-                                    :inert="!visible"
-                                >
-                                    {!! \ArtisanPackUI\Forms\Support\FieldRenderer::render(
-                                        $field,
-                                        $formData[$field->name] ?? null,
-                                        \ArtisanPackUI\Forms\Support\FieldRenderer::fieldError($field, $errors),
-                                        \ArtisanPackUI\Forms\Support\FieldRenderer::subInputErrors($field, $errors),
-                                    ) !!}
-                                </div>
-                            @endforeach
+                            @include('forms::livewire.form-renderer.fields', ['fields' => $this->currentFields])
                         </div>
                     </div>
 
@@ -233,33 +207,7 @@
             @else
                 {{-- Single-step: Show all fields --}}
                 <div class="space-y-4">
-                    @foreach($this->currentFields as $field)
-                        @php
-                            $isHidden = $hiddenFields[$field->name] ?? false;
-                        @endphp
-                        <div
-                            wire:key="field-{{ $field->uuid }}-{{ $isHidden ? 'hidden' : 'visible' }}"
-                            x-data="{ get visible() { return !($wire.hiddenFields?.['{{ $field->name }}'] ?? false); } }"
-                            x-show="visible"
-                            x-transition:enter="transition ease-out duration-200"
-                            x-transition:enter-start="opacity-0 transform -translate-y-2"
-                            x-transition:enter-end="opacity-100 transform translate-y-0"
-                            x-transition:leave="transition ease-in duration-150"
-                            x-transition:leave-start="opacity-100 transform translate-y-0"
-                            x-transition:leave-end="opacity-0 transform -translate-y-2"
-                            x-cloak
-                            :class="{ 'hidden': !visible }"
-                            :aria-hidden="!visible"
-                            :inert="!visible"
-                        >
-                            {!! \ArtisanPackUI\Forms\Support\FieldRenderer::render(
-                                $field,
-                                $formData[$field->name] ?? null,
-                                \ArtisanPackUI\Forms\Support\FieldRenderer::fieldError($field, $errors),
-                                \ArtisanPackUI\Forms\Support\FieldRenderer::subInputErrors($field, $errors),
-                            ) !!}
-                        </div>
-                    @endforeach
+                    @include('forms::livewire.form-renderer.fields', ['fields' => $this->currentFields])
                 </div>
 
                 {{-- Submit Button --}}
@@ -289,6 +237,7 @@
     window.__formRendererConfig[@js($form->id)] = {
         fieldMap: @js($this->fieldMap),
         conditionalLogic: @js($this->conditionalLogicConfig),
+        sections: @js($this->sectionMembers),
         isMultiStep: @js($form->is_multi_step),
         currentStepIndex: @js($currentStepIndex),
         totalSteps: @js($this->totalSteps),
@@ -305,6 +254,7 @@
         Alpine.data('formRenderer', () => ({
             fieldMap: {},
             conditionalLogic: {},
+            sections: {},
             hiddenFields: {},
             isMultiStep: false,
             currentStepIndex: 0,
@@ -318,6 +268,7 @@
 
                 this.fieldMap = config.fieldMap || {};
                 this.conditionalLogic = config.conditionalLogic || {};
+                this.sections = config.sections || {};
                 this.isMultiStep = config.isMultiStep || false;
                 this.currentStepIndex = config.currentStepIndex || 0;
                 this.totalSteps = config.totalSteps || 1;
@@ -420,6 +371,12 @@
                     const visible = this.evaluateCondition(fieldName, formData);
                     newHiddenFields[fieldName] = !visible;
                 }
+                // A hidden section hides the fields it groups (CAPTCHAs are left out of the list)
+                for (const [section, members] of Object.entries(this.sections)) {
+                    if (newHiddenFields[section]) {
+                        members.forEach((member) => { newHiddenFields[member] = true; });
+                    }
+                }
                 this.hiddenFields = newHiddenFields;
                 // Sync hidden fields back to Livewire
                 this.$wire.set('hiddenFields', newHiddenFields);
@@ -478,6 +435,13 @@
                 let fieldValue = this.getFieldValue(fieldRef, formData);
 
                 // A rule on a whole composite field compares its filled parts, joined
+                // A list counts its filled rows, and a date and time is compared as stored
+                if (Array.isArray(fieldValue) && fieldValue.some(row => row && typeof row === 'object')) {
+                    fieldValue = fieldValue.filter(row => row && typeof row === 'object' && Object.values(row).some(cell => String(cell ?? '').trim() !== ''));
+                } else if (typeof fieldValue === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(fieldValue)) {
+                    fieldValue = fieldValue.replace('T', ' ');
+                }
+
                 if (fieldValue && typeof fieldValue === 'object' && !Array.isArray(fieldValue)) {
                     fieldValue = Object.values(fieldValue)
                         .filter(part => part !== null && part !== undefined && String(part).trim() !== '')

@@ -20,6 +20,7 @@ use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Contracts\FieldType;
 use ArtisanPackUI\Forms\Database\Factories\FormFieldFactory;
 use ArtisanPackUI\Forms\FieldTypes\CompositeFieldType;
+use ArtisanPackUI\Forms\FieldTypes\SectionFieldType;
 use ArtisanPackUI\Forms\Support\Autocomplete;
 use ArtisanPackUI\Forms\Support\ChoiceSources;
 use ArtisanPackUI\Forms\Support\DateConstraints;
@@ -143,7 +144,7 @@ class FormField extends Model
      *
      * @var list<string>
      */
-    public const SUB_INPUT_TYPES = ['text', 'email', 'tel', 'url', 'number', 'select'];
+    public const SUB_INPUT_TYPES = ['text', 'email', 'tel', 'url', 'number', 'select', 'date'];
 
     /**
      * Rules whose failure means a value is missing, which the custom required
@@ -172,6 +173,15 @@ class FormField extends Model
      * @var list<string>
      */
     public const HEADING_LEVELS = ['h2', 'h3', 'h4', 'h5', 'h6'];
+
+    /**
+     * Text alignments a heading may use.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const HEADING_ALIGNMENTS = ['left', 'center', 'right'];
 
     /**
      * Border styles the divider renderer accepts.
@@ -291,6 +301,27 @@ class FormField extends Model
         'safe'           => 1,
         'deny_attribute' => 'style',
         'elements'       => '*-style',
+    ];
+
+    /**
+     * htmLawed configuration for a paragraph's basic formatting.
+     *
+     * Bold, italic, underline and links to `http`, `https` and `mailto`
+     * addresses, marked `rel="nofollow"`; every attribute but `href` is
+     * removed.
+     *
+     * @since 1.6.0
+     *
+     * @var array<string, mixed>
+     */
+    public const PARAGRAPH_SANITIZE_CONFIG = [
+        'safe'           => 1,
+        'elements'       => 'a, b, br, em, i, strong, u',
+        'deny_attribute' => '* -href',
+        'schemes'        => 'href: http, https, mailto; *: http, https',
+        'anti_link_spam' => ['`.`', ''],
+        'comment'        => 1,
+        'cdata'          => 1,
     ];
 
     /**
@@ -624,6 +655,45 @@ class FormField extends Model
         }
 
         return array_values( array_unique( $normalized ) );
+    }
+
+    /**
+     * Gets the note that tells visitors a file field's limits.
+     *
+     * The number of files, the allowed types and the size limits, joined with
+     * ` · `. `resources/js/shared/fieldSettings.ts` mirrors it.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null The note, or null when the field sets no limits.
+     */
+    public function getFileLimitsHint(): ?string
+    {
+        $types    = $this->getFileAllowedTypes();
+        $maxSize  = $this->getFileMaxSize();
+        $maxFiles = $this->getFileMaxCount();
+        $maxTotal = $this->getFileMaxTotalSize();
+
+        $notes = array_filter( [
+            null !== $maxFiles ? __( 'Up to :count files', ['count' => $maxFiles] ) : null,
+            [] !== $types ? __( 'Allowed file types: :types', ['types' => implode( ', ', array_map( 'strtoupper', $types ) )] ) : null,
+            null !== $maxSize ? __( 'Maximum file size: :size KB', ['size' => $maxSize] ) : null,
+            null !== $maxTotal ? __( 'Maximum total size: :size KB', ['size' => $maxTotal] ) : null,
+        ] );
+
+        return [] === $notes ? null : implode( ' · ', $notes );
+    }
+
+    /**
+     * Checks whether a file field stores its uploads in the media library.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the `storage` setting is `media_library` and the type offers it.
+     */
+    public function usesMediaLibraryStorage(): bool
+    {
+        return 'media_library' === $this->getConfig( 'storage' ) && $this->offersSetting( 'storage' );
     }
 
     /**
@@ -1677,6 +1747,7 @@ class FormField extends Model
             null !== $this->getInputMask() ? 'mask-' . $this->name : null,
             $this->showsCounter() ? 'counter-' . $this->name : null,
             null !== $this->getAffixDescription() ? 'affix-' . $this->name : null,
+            $this->is_file_field && null !== $this->getFileLimitsHint() ? 'limits-' . $this->name : null,
         ] );
 
         return [] === $ids ? null : implode( ' ', $ids );
@@ -2037,6 +2108,81 @@ class FormField extends Model
     }
 
     /**
+     * Gets a paragraph's content as HTML, with basic formatting kept.
+     *
+     * Bold, italic, underline and links are kept (see
+     * PARAGRAPH_SANITIZE_CONFIG); everything else is removed with `kses()`.
+     * Line breaks become `<br>`. Without artisanpack-ui/security the content
+     * is escaped instead, as before 1.6.0.
+     *
+     * @since 1.6.0
+     *
+     * @return string Safe HTML.
+     */
+    public function getParagraphHtml(): string
+    {
+        $content = str_replace( ["\r\n", "\r"], "\n", $this->getLayoutContent() );
+
+        if ( ! function_exists( 'security' ) || ! app()->bound( 'security' ) ) {
+            return nl2br( e( $content ), false );
+        }
+
+        return nl2br( trim( security()->kses( $content, self::PARAGRAPH_SANITIZE_CONFIG ) ), false );
+    }
+
+    /**
+     * Gets a heading's text alignment.
+     *
+     * @since 1.6.0
+     *
+     * @return string `left`, `center` or `right`.
+     */
+    public function getHeadingAlignment(): string
+    {
+        $align = $this->getConfig( 'align' );
+
+        return is_string( $align ) && in_array( $align, self::HEADING_ALIGNMENTS, true ) ? $align : 'left';
+    }
+
+    /**
+     * Gets the description shown under a section's title.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null The trimmed description, or null when there is none.
+     */
+    public function getSectionDescription(): ?string
+    {
+        $description = SectionFieldType::TYPE === $this->type ? $this->getConfig( 'description' ) : null;
+
+        return is_string( $description ) && '' !== trim( $description ) ? trim( $description ) : null;
+    }
+
+    /**
+     * Checks whether visitors can collapse a section.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the `collapsible` setting is on and the type offers it.
+     */
+    public function isCollapsibleSection(): bool
+    {
+        return $this->configFlag( 'collapsible' ) && $this->offersSetting( 'collapsible' );
+    }
+
+    /**
+     * Checks whether a collapsible section starts collapsed.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when the section is collapsible and `collapsed` is on.
+     */
+    public function startsCollapsed(): bool
+    {
+        return $this->isCollapsibleSection() && $this->configFlag( 'collapsed' );
+    }
+
+    /**
      * Builds the Laravel validation rules array for this field.
      *
      * Asks the field type's handler for the rules of the field's own value.
@@ -2163,6 +2309,21 @@ class FormField extends Model
         $this->settingsForm = $form;
 
         return $this;
+    }
+
+    /**
+     * Gets the fields of the field's form, such as for an HTML block's merge tags.
+     *
+     * Uses the form given to withSettingsForm() when there is one, so a
+     * renderer that already loaded the fields runs no query.
+     *
+     * @since 1.6.0
+     *
+     * @return iterable<FormField> The form's fields, or none when the field has no form.
+     */
+    public function getFormFields(): iterable
+    {
+        return ( $this->settingsForm ?? $this->form )?->fields ?? [];
     }
 
     /**

@@ -16,12 +16,15 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
 
+use ArtisanPackUI\Forms\FieldTypes\DateTimeFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
 use ArtisanPackUI\Forms\FieldTypes\PhoneFieldType;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use ArtisanPackUI\Forms\Models\FormUpload;
+use ArtisanPackUI\Forms\Support\MediaLibraryStorage;
 use ArtisanPackUI\Forms\Support\NumberFormat;
 use ArtisanPackUI\Forms\Support\RichText;
 use ArtisanPackUI\Forms\Support\SubmissionRules;
@@ -36,6 +39,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
+use Throwable;
 
 /**
  * Submission service class.
@@ -68,6 +72,16 @@ class SubmissionService
      * @since 1.0.0
      */
     protected NotificationService $notificationService;
+
+    /**
+     * The files stored by the submission being created, removed again if its
+     * transaction rolls back. Cleared when the transaction commits.
+     *
+     * @since 1.6.0
+     *
+     * @var list<array{disk: string, path: string, media_id: int|null}>
+     */
+    protected array $storedFiles = [];
 
     /**
      * Creates a new submission service instance.
@@ -129,70 +143,17 @@ class SubmissionService
         // Administrative fields are never filled in by the public form
         $formData = array_diff_key( $formData, $fields->filter( fn ( FormField $field ): bool => $field->isAdministrative() )->all() );
 
-        $submission = DB::transaction( function () use ( $form, $fields, $formData, $files, $metadata ): FormSubmission {
-            // Create the submission record
-            $submission = FormSubmission::create( [
-                'form_id'      => $form->id,
-                'page_url'     => $metadata['page_url'] ?? null,
-                'referrer_url' => $metadata['referrer_url'] ?? null,
-                'ip_address'   => $metadata['ip_address'] ?? null,
-                'user_agent'   => $metadata['user_agent'] ?? null,
-                'is_read'      => false,
-                'is_spam'      => false,
-                'is_starred'   => false,
-            ] );
+        $this->storedFiles = [];
 
-            $transientValues = [];
+        try {
+            $submission = $this->createInTransaction( $form, $fields, $formData, $files, $metadata );
+        } catch ( Throwable $exception ) {
+            $this->deleteStoredFiles();
 
-            // Save each field value (except file fields which are handled separately)
-            foreach ( $formData as $fieldName => $value ) {
-                $field = $fields->get( $fieldName );
-
-                if ( ! $field ) {
-                    continue;
-                }
-
-                // Skip file fields - they're handled separately in handleFileUpload()
-                if ( $field->is_file_field ) {
-                    continue;
-                }
-
-                if ( ! $field->storesValues() ) {
-                    $transientValues[] = $this->buildValueAttributes( $submission, $field, $value );
-
-                    continue;
-                }
-
-                $this->saveFieldValue( $submission, $field, $value );
-            }
-
-            // Set before the transaction commits, so the FormSubmitted listeners
-            // (dispatched after commit) see the values that are not stored.
-            if ( [] !== $transientValues ) {
-                $submission->withTransientValues( $transientValues, $fields );
-            }
-
-            // Handle file uploads
-            foreach ( $files as $fieldName => $file ) {
-                $field = $fields->get( $fieldName );
-
-                if ( ! $field || ! $field->is_file_field ) {
-                    continue;
-                }
-
-                if ( is_array( $file ) && $field->allowsMultipleFiles() ) {
-                    $this->handleMultipleFileUploads( $submission, $field, $file );
-
-                    continue;
-                }
-
-                if ( $file instanceof UploadedFile ) {
-                    $this->handleFileUpload( $submission, $field, $file );
-                }
-            }
-
-            return $submission;
-        } );
+            throw $exception;
+        } finally {
+            $this->storedFiles = [];
+        }
 
         // Send notifications after transaction completes (outside transaction to ensure submission is persisted)
         $this->sendNotifications( $submission );
@@ -301,6 +262,9 @@ class SubmissionService
      * normalizeFormattedNumbers()), URLs typed without a scheme get
      * `https://` (see UrlSchemes) and rich text that holds no text, such as
      * an emptied editor's `<p><br></p>`, becomes blank so `required` sees it.
+     * A `datetime-local` value becomes `Y-m-d H:i`, and a list keeps only its
+     * filled rows, under their own keys, so an error names the row the
+     * visitor sees.
      *
      * @since 1.6.0
      *
@@ -322,6 +286,10 @@ class SubmissionService
                 $formData[ $field->name ] = UrlSchemes::withScheme( $formData[ $field->name ], $field->getAllowedUrlSchemes() );
             } elseif ( $field->usesRichText() ) {
                 $formData[ $field->name ] = RichText::blankIfEmpty( $formData[ $field->name ] );
+            } elseif ( DateTimeFieldType::TYPE === $field->type ) {
+                $formData[ $field->name ] = DateTimeFieldType::normalizeValue( $formData[ $field->name ] );
+            } elseif ( ListFieldType::TYPE === $field->type ) {
+                $formData[ $field->name ] = ListFieldType::filledRows( $field, $formData[ $field->name ], false );
             }
         }
 
@@ -693,6 +661,115 @@ class SubmissionService
     }
 
     /**
+     * Saves a submission, its values and its uploads in one transaction.
+     *
+     * @since 1.6.0
+     *
+     * @param  Form  $form  The form being submitted.
+     * @param  Collection<string, FormField>  $fields  The form's fields keyed by name.
+     * @param  array<string, mixed>  $formData  The form data to store.
+     * @param  array<string, array<array-key, UploadedFile>|UploadedFile|null>  $files  Uploaded files keyed by field name.
+     * @param  array<string, mixed>  $metadata  Additional metadata (ip, user_agent, etc.).
+     *
+     * @return FormSubmission The created submission.
+     */
+    protected function createInTransaction( Form $form, Collection $fields, array $formData, array $files, array $metadata ): FormSubmission
+    {
+        return DB::transaction( function () use ( $form, $fields, $formData, $files, $metadata ): FormSubmission {
+            // Registered before the first write, so once the transaction commits
+            // the files are kept even if a FormSubmitted listener then throws.
+            DB::afterCommit( function (): void {
+                $this->storedFiles = [];
+            } );
+
+            // Create the submission record
+            $submission = FormSubmission::create( [
+                'form_id'      => $form->id,
+                'page_url'     => $metadata['page_url'] ?? null,
+                'referrer_url' => $metadata['referrer_url'] ?? null,
+                'ip_address'   => $metadata['ip_address'] ?? null,
+                'user_agent'   => $metadata['user_agent'] ?? null,
+                'is_read'      => false,
+                'is_spam'      => false,
+                'is_starred'   => false,
+            ] );
+
+            $transientValues = [];
+
+            // Save each field value (except file fields which are handled separately)
+            foreach ( $formData as $fieldName => $value ) {
+                $field = $fields->get( $fieldName );
+
+                if ( ! $field ) {
+                    continue;
+                }
+
+                // Skip file fields - they're handled separately in handleFileUpload()
+                if ( $field->is_file_field ) {
+                    continue;
+                }
+
+                if ( ! $field->storesValues() ) {
+                    $transientValues[] = $this->buildValueAttributes( $submission, $field, $value );
+
+                    continue;
+                }
+
+                $this->saveFieldValue( $submission, $field, $value );
+            }
+
+            // Set before the transaction commits, so the FormSubmitted listeners
+            // (dispatched after commit) see the values that are not stored.
+            if ( [] !== $transientValues ) {
+                $submission->withTransientValues( $transientValues, $fields );
+            }
+
+            // Handle file uploads
+            foreach ( $files as $fieldName => $file ) {
+                $field = $fields->get( $fieldName );
+
+                if ( ! $field || ! $field->is_file_field ) {
+                    continue;
+                }
+
+                if ( is_array( $file ) && $field->allowsMultipleFiles() ) {
+                    $this->handleMultipleFileUploads( $submission, $field, $file );
+
+                    continue;
+                }
+
+                if ( $file instanceof UploadedFile ) {
+                    $this->handleFileUpload( $submission, $field, $file );
+                }
+            }
+
+            return $submission;
+        } );
+    }
+
+    /**
+     * Removes the files stored by a submission whose transaction rolled back,
+     * so none is left on a disk with no upload record pointing at it.
+     *
+     * @since 1.6.0
+     */
+    protected function deleteStoredFiles(): void
+    {
+        foreach ( $this->storedFiles as $stored ) {
+            try {
+                FormUpload::deleteStoredFile( $stored['disk'], $stored['path'], $stored['media_id'] );
+            } catch ( Throwable $exception ) {
+                Log::warning( 'ArtisanPackUI Forms: stored file not removed after a failed submission', [
+                    'disk'     => $stored['disk'],
+                    'path'     => $stored['path'],
+                    'media_id' => $stored['media_id'],
+                    'error'    => $exception::class,
+                ] );
+            }
+        }
+    }
+
+    /**
      * Resolves the configured max attempts, falling back to the
      * hardcoded default if the config is missing or malformed.
      *
@@ -883,6 +960,10 @@ class SubmissionService
     /**
      * Stores an uploaded file and records it as an upload of the submission.
      *
+     * A field with Media Library storage saves the file as a media item and
+     * records the item's file; when the media library does not take the file,
+     * it is stored on the forms disk as usual (see MediaLibraryStorage).
+     *
      * @since 1.6.0
      *
      * @param  FormSubmission  $submission  The form submission.
@@ -895,11 +976,27 @@ class SubmissionService
      */
     protected function storeUpload( FormSubmission $submission, FormField $field, UploadedFile $file ): FormUpload
     {
+        // Validate extension against allowlist, whichever storage takes the file
+        $extension = $this->getValidatedExtension( $file );
+
+        if ( $field->usesMediaLibraryStorage() && null !== ( $media = app( MediaLibraryStorage::class )->store( $file, $field, $extension ) ) ) {
+            $this->storedFiles[] = ['disk' => $media['disk'], 'path' => $media['path'], 'media_id' => $media['media_id']];
+
+            return FormUpload::create( [
+                'submission_id' => $submission->id,
+                'field_id'      => $field->id,
+                'media_id'      => $media['media_id'],
+                'original_name' => $file->getClientOriginalName(),
+                'stored_name'   => basename( $media['path'] ),
+                'disk'          => $media['disk'],
+                'path'          => $media['path'],
+                'mime_type'     => $media['mime_type'],
+                'size'          => $media['size'],
+            ] );
+        }
+
         $disk      = config( 'artisanpack.forms.uploads.disk', 'local' );
         $directory = config( 'artisanpack.forms.uploads.directory', 'form-uploads' );
-
-        // Validate extension against allowlist
-        $extension = $this->getValidatedExtension( $file );
 
         // Generate a unique filename with validated extension
         $storedName  = Str::uuid()->toString() . '.' . $extension;
@@ -914,6 +1011,8 @@ class SubmissionService
         if ( false === $path ) {
             throw new RuntimeException( __( 'Unable to store uploaded file.' ) );
         }
+
+        $this->storedFiles[] = ['disk' => $disk, 'path' => $path, 'media_id' => null];
 
         // Fallback: get size from stored file if original size was 0 or false
         if ( ! $fileSize ) {

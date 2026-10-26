@@ -96,6 +96,29 @@ class FieldRenderer
     }
 
     /**
+     * Checks whether a field's value, or any input nested under it, has an error.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     * @param  MessageBag|ViewErrorBag  $errors  The validation errors.
+     *
+     * @return bool True when there is an error.
+     */
+    public static function hasErrors( FormField $field, MessageBag|ViewErrorBag $errors ): bool
+    {
+        $key = ( $field->is_file_field ? 'files.' : 'formData.' ) . $field->name;
+
+        foreach ( $errors->keys() as $errorKey ) {
+            if ( $key === $errorKey || str_starts_with( (string) $errorKey, "{$key}." ) ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Gets the first error for each of a composite field's sub-inputs.
      *
      * @since 1.6.0

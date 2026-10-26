@@ -120,7 +120,7 @@ export interface UseFormReturn {
 }
 
 /** Layout field types that do not collect data. */
-const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );
+const LAYOUT_FIELDS = new Set( ['section', 'heading', 'paragraph', 'divider', 'html'] );
 
 /**
  * React hook for managing ArtisanPack form state.
@@ -514,9 +514,16 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				}
 
 				if ( Array.isArray( value ) ) {
-					for ( const item of value ) {
-						formDataObj.append( `data[${key}][]`, String( item ) );
-					}
+					value.forEach( ( item, index ) => {
+						if ( item !== null && typeof item === 'object' ) {
+							// A list's rows are maps of columns (since 1.6.0).
+							for ( const [column, cell] of Object.entries( item as Record<string, unknown> ) ) {
+								formDataObj.append( `data[${key}][${index}][${column}]`, String( cell ?? '' ) );
+							}
+						} else {
+							formDataObj.append( `data[${key}][]`, String( item ) );
+						}
+					} );
 				} else if ( value !== null && typeof value === 'object' ) {
 					// A composite field's value is a map of sub-inputs.
 					for ( const [subKey, part] of Object.entries( value as Record<string, unknown> ) ) {

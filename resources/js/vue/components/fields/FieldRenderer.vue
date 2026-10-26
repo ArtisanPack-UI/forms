@@ -7,7 +7,9 @@
   sub-inputs that has no component of its own, render as a composite field;
   consent and CAPTCHA fields have components of their own (since 1.6.0). A
   rich text textarea renders `RichTextField`, and a date or time field filled
-  in with separate inputs `DateTimePartsField` (since 1.6.0).
+  in with separate inputs `DateTimePartsField` (since 1.6.0). A list renders
+  `ListField`, a date range the composite field, a date and time field
+  `AdvancedField`, and a section on its own `SectionField` (since 1.6.0).
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -28,6 +30,8 @@ import ConsentField from './ConsentField.vue';
 import CaptchaField from './CaptchaField.vue';
 import DateTimePartsField from './DateTimePartsField.vue';
 import RichTextField from './RichTextField.vue';
+import ListField from './ListField.vue';
+import SectionField from './SectionField.vue';
 import { isCompositeField } from '../../../shared/composite';
 import { getDateInputMode, getTimeInputMode } from '../../../shared/dateTime';
 import { usesRichText } from '../../../shared/richText';
@@ -65,10 +69,10 @@ const emit = defineEmits<{
 /** Field types handled by each component group. */
 const TEXT_TYPES = new Set( ['text', 'email', 'phone', 'number', 'url', 'textarea', 'hidden', 'time'] );
 const CHOICE_TYPES = new Set( ['select', 'radio', 'checkbox', 'toggle', 'checkbox_group', 'select_multiple'] );
-const ADVANCED_TYPES = new Set( ['file', 'date'] );
+const ADVANCED_TYPES = new Set( ['file', 'date', 'datetime'] );
 const RATING_TYPES = new Set( ['rating'] );
 const LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'divider', 'html'] );
-const COMPOSITE_TYPES = new Set( ['name', 'address'] );
+const COMPOSITE_TYPES = new Set( ['name', 'address', 'date_range'] );
 const CONSENT_TYPES = new Set( ['consent'] );
 const CAPTCHA_TYPES = new Set( ['captcha'] );
 
@@ -93,11 +97,16 @@ function getInlineWidthClass( field: FormField ): string {
 	return width === 'full' ? 'flex-1 min-w-[min(12rem,100%)]' : WIDTH_CLASSES[width];
 }
 
-const widthClass = computed( () => (
-	props.layout === 'inline'
+// A section spans the row, like the fields it groups.
+const widthClass = computed( () => {
+	if ( props.field.type === 'section' ) {
+		return WIDTH_CLASSES.full;
+	}
+
+	return props.layout === 'inline'
 		? getInlineWidthClass( props.field )
-		: ( WIDTH_CLASSES[props.field.width] ?? WIDTH_CLASSES.full )
-) );
+		: ( WIDTH_CLASSES[props.field.width] ?? WIDTH_CLASSES.full );
+} );
 
 const componentGroup = computed( () => {
 	if ( requiresEmailConfirmation( props.field ) ) {
@@ -130,6 +139,14 @@ const componentGroup = computed( () => {
 
 	if ( LAYOUT_TYPES.has( props.field.type ) ) {
 		return 'layout';
+	}
+
+	if ( props.field.type === 'section' ) {
+		return 'section';
+	}
+
+	if ( props.field.type === 'list' ) {
+		return 'list';
 	}
 
 	if ( CONSENT_TYPES.has( props.field.type ) ) {
@@ -218,6 +235,19 @@ const componentGroup = computed( () => {
 		<LayoutField
 			v-else-if="componentGroup === 'layout'"
 			:field="field"
+		/>
+		<SectionField
+			v-else-if="componentGroup === 'section'"
+			:field="field"
+		/>
+		<ListField
+			v-else-if="componentGroup === 'list'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:sub-errors="subErrors"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
 		/>
 		<CompositeField
 			v-else-if="componentGroup === 'composite'"

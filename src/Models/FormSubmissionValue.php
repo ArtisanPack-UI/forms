@@ -21,6 +21,7 @@ namespace ArtisanPackUI\Forms\Models;
 use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Database\Factories\FormSubmissionValueFactory;
 use ArtisanPackUI\Forms\FieldTypes\AbstractFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
 use ArtisanPackUI\Forms\Support\FieldPrivacy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -288,7 +289,20 @@ class FormSubmissionValue extends Model
         }
 
         if ( ! empty( $this->value_array ) ) {
-            return implode( ', ', $this->value_array );
+            $hasRows = false;
+            $items   = [];
+
+            // A list's rows (since 1.6.0) are joined with semicolons, each row's filled cells with commas
+            foreach ( $this->value_array as $item ) {
+                if ( is_array( $item ) ) {
+                    $hasRows = true;
+                    $items[] = implode( ', ', array_filter( array_map( 'strval', array_filter( $item, 'is_scalar' ) ), fn ( string $cell ): bool => '' !== $cell ) );
+                } else {
+                    $items[] = is_scalar( $item ) ? (string) $item : '';
+                }
+            }
+
+            return implode( $hasRows ? '; ' : ', ', $items );
         }
 
         if ( $this->upload_id && $this->upload ) {
@@ -301,9 +315,10 @@ class FormSubmissionValue extends Model
     /**
      * Gets the stored value in its submitted shape.
      *
-     * A composite field's value is a map of sub-input keys, which is kept as
-     * an array so webhooks, the JSON export and notification conditions see
-     * each part. Every other value is getRawValue().
+     * A composite field's value is a map of sub-input keys, and a list
+     * field's a list of rows keyed by column, which are kept as arrays so
+     * webhooks, the JSON export and notification conditions see each part.
+     * Every other value is getRawValue().
      *
      * @since 1.6.0
      *
@@ -311,7 +326,7 @@ class FormSubmissionValue extends Model
      */
     public function getStructuredValue(): array|string
     {
-        if ( is_array( $this->value_array ) && [] !== $this->value_array && ! array_is_list( $this->value_array ) ) {
+        if ( is_array( $this->value_array ) && [] !== $this->value_array && ( ! array_is_list( $this->value_array ) || ListFieldType::TYPE === $this->field_type ) ) {
             return $this->value_array;
         }
 

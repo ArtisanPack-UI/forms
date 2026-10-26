@@ -30,6 +30,7 @@ import {
 	buildLayoutContentUpdate,
 	getLayoutContent,
 	getSettingsForTab,
+	supportsConditionalLogic,
 } from '../../../shared/fieldSettings';
 import { applySubInputUpdate, isCompositeField } from '../../../shared/composite';
 import type { SubInputSetting } from '../../../shared/composite';
@@ -51,16 +52,18 @@ const OPTION_FIELD_TYPES = new Set<FieldType>( [
 ] );
 
 /** Field types without a placeholder. */
-const NO_PLACEHOLDER_TYPES = new Set<FieldType>( ['checkbox', 'toggle', 'radio', 'rating'] );
+const NO_PLACEHOLDER_TYPES = new Set<FieldType>( ['checkbox', 'toggle', 'radio', 'rating', 'datetime'] );
 
 /**
- * Field types without a placeholder or a default value (since 1.6.0). Name
- * and address fields are composites, whose inputs have their own.
+ * Field types without a placeholder or a default value (since 1.6.0). Name,
+ * address and date range fields are composites, whose inputs have their own,
+ * and a list starts with empty rows.
  */
-const NO_VALUE_SETTING_TYPES = new Set<FieldType>( ['consent', 'captcha'] );
+const NO_VALUE_SETTING_TYPES = new Set<FieldType>( ['consent', 'captcha', 'list'] );
 
 /** Field types that don't collect user data. */
 const LAYOUT_FIELD_TYPES = new Set<FieldType>( [
+	'section',
 	'heading',
 	'paragraph',
 	'divider',
@@ -224,7 +227,8 @@ const tabs = computed( () => {
 		items.push( { name: 'validation', label: t( 'Validation' ) } );
 	}
 
-	if ( !isLayoutField.value ) {
+	// A section's logic shows and hides the fields it groups (since 1.6.0)
+	if ( supportsConditionalLogic( props.field.type ) ) {
 		items.push( { name: 'conditional', label: t( 'Conditional' ) } );
 	}
 
@@ -285,7 +289,7 @@ function confirmDelete(): void {
 			<!-- General Tab -->
 			<template #general>
 				<div class="space-y-4 p-4">
-					<!-- Label (a heading's label is its text) -->
+					<!-- Label (a heading's label is its text, a section's its title) -->
 					<Input
 						v-if="field.type === 'heading'"
 						:label="t( 'Heading Text' )"
@@ -294,7 +298,7 @@ function confirmDelete(): void {
 					/>
 					<Input
 						v-else
-						:label="t( 'Label' )"
+						:label="field.type === 'section' ? t( 'Section Title' ) : t( 'Label' )"
 						:model-value="field.label ?? ''"
 						@update:model-value="updateField( { label: ($event as string) } )"
 					/>
@@ -381,6 +385,7 @@ function confirmDelete(): void {
 						v-if="field.type === 'html'"
 						:label="t( 'HTML Content' )"
 						:rows="6"
+						:hint="t( 'Write {field_name} to show what a visitor entered, as they type.' )"
 						:model-value="getLayoutContent( field )"
 						@update:model-value="updateField( buildLayoutContentUpdate( currentField, ($event as string) ) )"
 					/>
@@ -390,6 +395,7 @@ function confirmDelete(): void {
 						v-if="field.type === 'paragraph'"
 						:label="t( 'Content' )"
 						:rows="4"
+						:hint="t( 'Basic formatting is kept: <strong>, <em>, <u> and <a href>.' )"
 						:model-value="getLayoutContent( field )"
 						@update:model-value="updateField( buildLayoutContentUpdate( currentField, ($event as string) ) )"
 					/>

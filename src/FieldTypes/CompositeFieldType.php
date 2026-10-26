@@ -30,7 +30,8 @@ use Illuminate\Validation\Rule;
  * - `required`: whether a required field requires the input (default false;
  *   when no enabled input is marked, a required field requires them all).
  * - `autocomplete`: the input's `autocomplete` token.
- * - `type`: `text` (default), `email`, `tel`, `url`, `number` or `select`.
+ * - `type`: `text` (default), `email`, `tel`, `url`, `number`, `select` or
+ *   (since 1.6.0) `date`, stored as `Y-m-d`.
  * - `wide`: whether the input spans the whole row (default false).
  * - `options`: a `select` input's choices, as value/label pairs or a
  *   value => label map; the value must be one of them.
@@ -184,6 +185,13 @@ abstract class CompositeFieldType extends AbstractFieldType
             $messages[ "{$key}.url" ]      = __( ':field: :part must be a valid URL.', $replace );
             $messages[ "{$key}.numeric" ]  = __( ':field: :part must be a number.', $replace );
             $messages[ "{$key}.in" ]       = __( ':field: please choose a valid :part.', $replace );
+
+            if ( 'date' === $subInput['type'] ) {
+                $messages[ "{$key}.date" ]            = __( ':field: :part must be a valid date.', $replace );
+                $messages[ "{$key}.date_format" ]     = __( ':field: :part must be a valid date.', $replace );
+                $messages[ "{$key}.after_or_equal" ]  = __( ':field: :part is too early.', $replace );
+                $messages[ "{$key}.before_or_equal" ] = __( ':field: :part is too late.', $replace );
+            }
         }
 
         return $messages;
@@ -503,6 +511,7 @@ abstract class CompositeFieldType extends AbstractFieldType
         }
 
         return match ( $type ) {
+            'date'   => ['date', 'date_format:Y-m-d'],
             'email'  => ['string', $maxLength, 'email'],
             'url'    => ['string', $maxLength, 'url'],
             'number' => ['numeric'],

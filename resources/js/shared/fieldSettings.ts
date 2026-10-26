@@ -40,10 +40,24 @@ import { showsCounter } from './counter';
 import { parseDateExpression } from './dateConstraints';
 import { getPageContext, getPopulatedValue, sanitizePopulatedValue } from './dynamicPopulation';
 import type { PopulationSource } from './dynamicPopulation';
+import { t } from './i18n';
+import { getInitialListRows, isListField } from './list';
 import { getInputMaskHint } from './mask';
 
 /** Field types whose content is edited in the builder's General tab. */
 export const CONTENT_LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'html'] );
+
+/** Layout field types, which collect no data (`section` since 1.6.0). */
+export const LAYOUT_FIELD_TYPES: ReadonlySet<string> = new Set( ['section', 'heading', 'paragraph', 'divider', 'html'] );
+
+/**
+ * Whether conditional logic can show and hide a field type: input types, and
+ * a section, which hides the fields it groups (since 1.6.0). Mirrors
+ * `FieldTypes::supportsConditionalLogic()`.
+ */
+export function supportsConditionalLogic( type: string ): boolean {
+	return !LAYOUT_FIELD_TYPES.has( type ) || type === 'section';
+}
 
 /** Field types whose required state means "must be checked". */
 export const ACCEPTANCE_FIELD_TYPES = new Set( ['checkbox', 'toggle', 'consent'] );
@@ -247,6 +261,37 @@ export function getTimeStep( field: FormField ): number | undefined {
 	const step = Number( readConfig( field, 'step' ) );
 
 	return Number.isFinite( step ) && step > 0 ? step : undefined;
+}
+
+/** Heading alignments, mirroring `FormField::HEADING_ALIGNMENTS` (since 1.6.0). */
+export const HEADING_ALIGNMENTS = ['left', 'center', 'right'] as const;
+
+/** Get a heading's text alignment class, as the Blade renderer applies it (since 1.6.0). */
+export function getHeadingAlignClass( field: FormField ): string {
+	const align = readConfig( field, 'align' );
+
+	return align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : '';
+}
+
+/**
+ * Get the note that tells visitors a file field's limits: the number of
+ * files, the allowed types and the size limits. Mirrors
+ * `FormField::getFileLimitsHint()` (since 1.6.0).
+ */
+export function getFileLimitsHint( field: FormField ): string | undefined {
+	const types = getFileAllowedTypes( field );
+	const maxSize = getFileMaxSize( field );
+	const maxFiles = getFileMaxCount( field );
+	const maxTotal = getFileMaxTotalSize( field );
+
+	const notes = [
+		maxFiles !== undefined ? t( 'Up to :count files', { count: maxFiles } ) : undefined,
+		types.length > 0 ? t( 'Allowed file types: :types', { types: types.map( ( type ) => type.toUpperCase() ).join( ', ' ) } ) : undefined,
+		maxSize !== undefined ? t( 'Maximum file size: :size KB', { size: maxSize } ) : undefined,
+		maxTotal !== undefined ? t( 'Maximum total size: :size KB', { size: maxTotal } ) : undefined,
+	].filter( ( note ): note is string => note !== undefined );
+
+	return notes.length > 0 ? notes.join( ' · ' ) : undefined;
 }
 
 /** Get the border style and spacing classes for a divider, as the Blade renderer applies them. */
@@ -555,9 +600,19 @@ export function getInitialFieldValue( field: FormField, population: PopulationSo
 		} ) );
 	}
 
+	// A list starts with empty rows to fill in (since 1.6.0)
+	if ( isListField( field ) ) {
+		return getInitialListRows( field );
+	}
+
 	const source: unknown = isReadOnlyField( field ) && field.read_only_value !== undefined
 		? field.read_only_value
 		: getPopulatedValue( field, population );
+
+	// A date and time input takes `YYYY-MM-DDTHH:MM` (since 1.6.0)
+	if ( field.type === 'datetime' && typeof source === 'string' ) {
+		return source.trim().replace( /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})(:\d{2})?$/, '$1T$2' );
+	}
 
 	if ( field.type === 'checkbox_group' || field.type === 'select_multiple' ) {
 		if ( Array.isArray( source ) ) {

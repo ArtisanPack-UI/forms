@@ -41,11 +41,15 @@ export type BuiltInFieldType =
     | 'file'
     | 'date'
     | 'time'
+    | 'datetime'
+    | 'date_range'
     | 'rating'
     | 'name'
     | 'address'
+    | 'list'
     | 'consent'
     | 'captcha'
+    | 'section'
     | 'heading'
     | 'paragraph'
     | 'divider'
@@ -150,7 +154,7 @@ export type CompositeExportFormat = 'columns' | 'single';
 /**
  * The input type of a composite field's sub-input (since 1.6.0).
  */
-export type SubInputType = 'text' | 'email' | 'tel' | 'url' | 'number' | 'select';
+export type SubInputType = 'text' | 'email' | 'tel' | 'url' | 'number' | 'select' | 'date';
 
 /**
  * A Name field's format (since 1.6.0): one `full` input, first and last, or
@@ -491,6 +495,11 @@ export interface FileFieldConfig extends BaseFieldConfig {
     max_width?: number;
     min_height?: number;
     max_height?: number;
+    /**
+     * Where uploads are kept (since 1.6.0): the private forms disk (default)
+     * or artisanpack-ui/media-library, whose disk is public by default.
+     */
+    storage?: 'forms' | 'media_library';
 }
 
 /**
@@ -657,7 +666,73 @@ export interface CommonFieldConfig extends BaseFieldConfig {
  * stored in the field `label`.
  */
 export interface ContentFieldConfig extends BaseFieldConfig {
+    /**
+     * A paragraph's text, which may use `<strong>`, `<em>`, `<u>` and
+     * `<a href>` (since 1.6.0), or an HTML block's markup, which may use
+     * `{field_name}` merge tags (since 1.6.0).
+     */
     content?: string;
+    /** A heading's level, `h2`–`h6`. */
+    level?: string;
+    /** A heading's alignment (since 1.6.0). Defaults to `left`. */
+    align?: 'left' | 'center' | 'right';
+}
+
+/**
+ * Configuration for sections (since 1.6.0). The section's title is its label.
+ */
+export interface SectionFieldConfig extends BaseFieldConfig {
+    /** Shown under the title. */
+    description?: string;
+    /** Whether visitors can show and hide the section's fields. */
+    collapsible?: boolean;
+    /** Whether a collapsible section starts collapsed. */
+    collapsed?: boolean;
+}
+
+/**
+ * Configuration for date and time fields (since 1.6.0). Values are submitted
+ * as `YYYY-MM-DDTHH:MM` and stored as `YYYY-MM-DD HH:MM`.
+ */
+export interface DateTimeFieldConfig extends CommonFieldConfig {
+    date_format?: DateFormat;
+    time_format?: TimeFormat;
+    /** The picker's step in seconds. */
+    step?: number;
+}
+
+/**
+ * Configuration for date range fields (since 1.6.0). A composite of `start`
+ * and `end` dates, stored as `YYYY-MM-DD`.
+ */
+export interface DateRangeFieldConfig extends CompositeFieldConfig {
+    date_format?: DateFormat;
+}
+
+/**
+ * Configuration for list (repeater) fields (since 1.6.0).
+ */
+export interface ListFieldConfig extends BaseFieldConfig {
+    /** One column per line: `Label | type | options` (see `ListColumn`). */
+    columns?: string;
+    /** Names one row in the add and remove buttons ("Attendee"). */
+    row_label?: string;
+    min_rows?: number;
+    max_rows?: number;
+    /** How the rows are exported to CSV. Defaults to `lines`. */
+    export_format?: 'lines' | 'json';
+}
+
+/**
+ * One column of a list field, parsed from its `columns` setting (since 1.6.0).
+ */
+export interface ListColumn {
+    /** The cell's key in each row: the label's slug. */
+    key: string;
+    label: string;
+    type: 'text' | 'email' | 'number' | 'select';
+    /** A select column's options; empty for other types. */
+    options: Array<{ value: string; label: string }>;
 }
 
 /**
@@ -683,6 +758,10 @@ export type FieldConfig =
     | TextareaFieldConfig
     | DateFieldConfig
     | TimeFieldConfig
+    | SectionFieldConfig
+    | DateTimeFieldConfig
+    | DateRangeFieldConfig
+    | ListFieldConfig
     | BaseFieldConfig
     | null;
 
@@ -825,6 +904,21 @@ export interface FormField {
      */
     affix_description?: string;
     /**
+     * A paragraph's content as sanitized HTML, with basic formatting and line
+     * breaks kept (since 1.6.0). Present only for paragraphs.
+     */
+    content_html?: string;
+    /**
+     * A composite field's display separator: what joins its filled parts
+     * (since 1.6.0). Present only for composite fields.
+     */
+    format_separator?: string;
+    /**
+     * A list field's columns, row limits and row label (since 1.6.0). Present
+     * only for list fields.
+     */
+    list?: { columns: ListColumn[]; min_rows: number | null; max_rows: number; row_label: string };
+    /**
      * How a phone field checks numbers, present only when it checks them
      * (since 1.6.0). `countries` lists the selector's countries for the
      * `international` format and is empty otherwise.
@@ -834,11 +928,11 @@ export interface FormField {
      * The value the field starts with: its default value with server merge
      * tags replaced, the options marked as defaults, or the
      * `ap.forms.fieldValue.{parameter}` filter's value; a map of sub-input
-     * keys for a composite field. Page tags (`{embed_url}`, `{referer}`,
-     * `{query:…}`) are left for the client. Only in the public render payload
-     * (since 1.6.0).
+     * keys for a composite field, and empty rows for a list. Page tags
+     * (`{embed_url}`, `{referer}`, `{query:…}`) are left for the client. Only
+     * in the public render payload (since 1.6.0).
      */
-    resolved_default_value?: string | boolean | string[] | Record<string, string> | null;
+    resolved_default_value?: string | boolean | string[] | Record<string, string> | Array<Record<string, string>> | null;
     /**
      * The field type's settings schema (since 1.6.0). Left out of the public
      * render payload.
