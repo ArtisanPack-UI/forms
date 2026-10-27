@@ -127,15 +127,27 @@ export function FormBuilder( {
 	const [showPreview, setShowPreview] = useState( false );
 	const [predefinedChoices, setPredefinedChoices] = useState<PredefinedChoiceList[]>( [] );
 
+	// The slug the server last saved. The API binds `{form}` by slug, so every
+	// request path uses it rather than the ID, and an unsaved slug edit does
+	// not break requests in the meantime (since 1.6.0).
+	const persistedSlugRef = useRef( '' );
+
+	// Build an API path under the form, e.g. `formPath( '/fields' )` (since 1.6.0)
+	const formPath = useCallback( ( path = '' ): string => `/${encodeURIComponent( persistedSlugRef.current )}${path}`, [] );
+
 	// Store an image choice's image and get its URL (since 1.6.0)
 	const uploadChoiceImage = useCallback( async ( file: File ): Promise<string> => {
+		if ( '' === persistedSlugRef.current ) {
+			throw new Error( t( 'Failed to load form.' ) );
+		}
+
 		const body = new FormData();
 		body.append( 'image', file );
 
-		const response = await post<{ data: { url: string } }>( `/${form?.id}/fields/choice-images`, body );
+		const response = await post<{ data: { url: string } }>( formPath( '/fields/choice-images' ), body );
 
 		return response.data.url;
-	}, [post, form?.id] );
+	}, [post, formPath] );
 
 	// Drag state
 	const [dragState, setDragState] = useState<DragState | null>( null );
@@ -180,11 +192,18 @@ export function FormBuilder( {
 
 			if ( Object.keys( data ).length > 0 ) {
 				const savedKeys = Object.keys( data );
-				const response = await put<{ data: Form }>( `/${form.id}`, data );
+				const response = await put<{ data: Form }>( formPath(), data );
 
 				// The server derives the slug when the auto slug is empty, such
 				// as for a non-Latin name slugify cannot transliterate (since 1.6.0)
 				const savedSlug = response?.data?.slug;
+
+				if ( savedSlug ) {
+					persistedSlugRef.current = savedSlug;
+				} else if ( typeof data.slug === 'string' && '' !== data.slug ) {
+					persistedSlugRef.current = data.slug;
+				}
+
 				if ( '' === data.slug && savedSlug ) {
 					setForm( ( prev ) => prev && '' === ( prev.slug ?? '' ) ? { ...prev, slug: savedSlug } : prev );
 				}
@@ -210,6 +229,7 @@ export function FormBuilder( {
 		try {
 			const response = await get<{ data: Form }>( `/${formSlug}` );
 			const formData = response.data;
+			persistedSlugRef.current = formData.slug ?? '';
 			setForm( formData );
 			setFields( formData.fields ?? [] );
 			setSteps( formData.steps ?? [] );
@@ -322,7 +342,7 @@ export function FormBuilder( {
 			};
 
 			const response = await post<{ data: FormField }>(
-				`/${form.id}/fields`,
+				formPath( '/fields' ),
 				request,
 			);
 
@@ -356,7 +376,7 @@ export function FormBuilder( {
 
 		try {
 			const response = await put<{ data: FormField }>(
-				`/${form.id}/fields/${fieldId}`,
+				formPath( `/fields/${fieldId}` ),
 				data,
 			);
 			setFields( ( prev ) => prev.map( ( f ) =>
@@ -383,7 +403,7 @@ export function FormBuilder( {
 		}
 
 		try {
-			await del( `/${form.id}/fields/${fieldId}` );
+			await del( formPath( `/fields/${fieldId}` ) );
 			setFields( ( prev ) => prev.filter( ( f ) => f.id !== fieldId ) );
 
 			if ( selectedFieldId === fieldId ) {
@@ -424,7 +444,7 @@ export function FormBuilder( {
 			};
 
 			const response = await post<{ data: FormField }>(
-				`/${form.id}/fields`,
+				formPath( '/fields' ),
 				request,
 			);
 
@@ -471,7 +491,7 @@ export function FormBuilder( {
 		// Persist to API
 		try {
 			const orderedUuids = updatedFields.map( ( f ) => f.uuid );
-			await post( `/${form.id}/fields/reorder`, {
+			await post( formPath( '/fields/reorder' ), {
 				ordered_uuids: orderedUuids,
 				step_id: form.is_multi_step ? activeStepId : null,
 			} );
@@ -512,7 +532,7 @@ export function FormBuilder( {
 			};
 
 			const response = await post<{ data: FormStep }>(
-				`/${form.id}/steps`,
+				formPath( '/steps' ),
 				request,
 			);
 
@@ -536,7 +556,7 @@ export function FormBuilder( {
 
 		try {
 			await put<{ data: FormStep }>(
-				`/${form.id}/steps/${stepId}`,
+				formPath( `/steps/${stepId}` ),
 				data,
 			);
 		} catch ( err ) {
@@ -560,7 +580,7 @@ export function FormBuilder( {
 		}
 
 		try {
-			await del( `/${form.id}/steps/${stepId}` );
+			await del( formPath( `/steps/${stepId}` ) );
 			setSteps( ( prev ) => prev.filter( ( s ) => s.id !== stepId ) );
 			setFields( ( prev ) => prev.map( ( f ) =>
 				f.step_id === stepId ? { ...f, step_id: null } : f,
@@ -600,7 +620,7 @@ export function FormBuilder( {
 		setSteps( updated );
 
 		try {
-			await post( `/${form.id}/steps/reorder`, {
+			await post( formPath( '/steps/reorder' ), {
 				ordered_ids: updated.map( ( s ) => s.id ),
 			} );
 		} catch ( err ) {
@@ -616,14 +636,14 @@ export function FormBuilder( {
 		}
 
 		try {
-			await put( `/${form.id}`, { is_multi_step: true } );
+			await put( formPath(), { is_multi_step: true } );
 			const updatedForm = { ...form, is_multi_step: true };
 			setForm( updatedForm );
 
 			// Create first step if none exist
 			if ( steps.length === 0 ) {
 				const request = { title: t( 'Step :number', { number: 1 } ), sort_order: 0 };
-				const response = await post<{ data: FormStep }>( `/${form.id}/steps`, request );
+				const response = await post<{ data: FormStep }>( formPath( '/steps' ), request );
 				setSteps( ( prev ) => [...prev, response.data] );
 				setActiveStepId( response.data.id );
 			}
@@ -638,7 +658,7 @@ export function FormBuilder( {
 		}
 
 		try {
-			await put( `/${form.id}`, { is_multi_step: false } );
+			await put( formPath(), { is_multi_step: false } );
 			setForm( ( prev ) => prev ? { ...prev, is_multi_step: false } : prev );
 			setActiveStepId( null );
 		} catch ( err ) {

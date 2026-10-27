@@ -75,7 +75,7 @@ describe( 'React', function () use ( $resource ): void {
             ->toContain( "aria-label={t( 'Image alt text: :label', { label: option.label || option.value } )}" )
             ->toContain( 'accept="image/jpeg,image/png,image/gif,image/webp"' )
             ->and( $resource( 'react/components/admin/FormBuilder.tsx' ) )
-            ->toContain( '`/${form?.id}/fields/choice-images`' )
+            ->toContain( "formPath( '/fields/choice-images' )" )
             ->and( $resource( 'react/hooks/useApi.ts' ) )
             ->toContain( 'headers: buildHeaders( !isFormData ),' )
             ->and( $resource( 'react/components/admin/FieldPalette.tsx' ) )
