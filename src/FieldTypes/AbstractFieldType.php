@@ -722,7 +722,7 @@ abstract class AbstractFieldType implements FieldType
                 'input' => 'toggle',
                 'tab'   => 'advanced',
                 'label' => __( 'Do not store' ),
-                'hint'  => __( 'Sent to notifications and webhooks for the submission, but never saved.' ),
+                'hint'  => __( 'Sent to notifications and webhooks for the submission, but never saved. Files are never attached to autoresponders or other emails sent to an address from the form.' ),
             ],
             [
                 'key'   => 'mask_in_admin',
