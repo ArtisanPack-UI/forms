@@ -100,8 +100,9 @@ const {
 	reset,
 	submitHooks,
 } = useForm( {
-	baseUrl: props.baseUrl,
-	formSlug: props.formSlug,
+	// Getters, so a new slug or API loads the new form (since 1.6.0)
+	baseUrl: () => props.baseUrl,
+	formSlug: () => props.formSlug,
 	clientValidation: props.clientValidation,
 	prefill: props.prefill,
 	onSuccess: ( response ) => emit( 'success', response ),

@@ -12,7 +12,8 @@
  * @since      1.1.0
  */
 
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, toValue, watch } from 'vue';
+import type { MaybeRefOrGetter } from 'vue';
 
 import type {
 	FormField,
@@ -32,10 +33,17 @@ import { validateFields } from '../../shared/validation';
 
 /** Configuration options for the useForm composable. */
 export interface UseFormOptions {
-	/** Base URL for the forms API (e.g. "https://example.com/api/v1/forms"). */
-	baseUrl: string;
-	/** The form slug or ID used in the API URL. */
-	formSlug: string;
+	/**
+	 * Base URL for the forms API (e.g. "https://example.com/api/v1/forms").
+	 * A ref or getter is watched, and the form reloads when it changes
+	 * (since 1.6.0).
+	 */
+	baseUrl: MaybeRefOrGetter<string>;
+	/**
+	 * The form slug or ID used in the API URL. A ref or getter is watched,
+	 * and the form reloads when it changes (since 1.6.0).
+	 */
+	formSlug: MaybeRefOrGetter<string>;
 	/** Optional callback when submission succeeds. */
 	onSuccess?: ( response: SubmitFormResponse ) => void;
 	/** Optional callback when submission fails. */
@@ -213,13 +221,18 @@ export function useForm( options: UseFormOptions ) {
 		return Math.round( ( ( currentStep.value + 1 ) / totalSteps.value ) * 100 );
 	} );
 
+	/** Counts form loads, so a response for a slug since replaced is ignored. */
+	let latestLoad = 0;
+
 	// Fetch form definition
 	async function fetchForm(): Promise<void> {
+		const load = ++latestLoad;
+
 		isLoading.value = true;
 		loadError.value = null;
 
 		try {
-			const url = `${baseUrl}/${encodeURIComponent( formSlug )}/render`;
+			const url = `${toValue( baseUrl )}/${encodeURIComponent( toValue( formSlug ) )}/render`;
 			const response = await fetch( url );
 
 			if ( !response.ok ) {
@@ -227,17 +240,36 @@ export function useForm( options: UseFormOptions ) {
 			}
 
 			const data: { data: FormRenderData } = await response.json();
+
+			if ( load !== latestLoad ) {
+				return;
+			}
+
 			form.value = data.data;
 			formLoadedAt.value = Math.floor( Date.now() / 1000 );
 			values.value = buildDefaults( data.data.fields, prefill );
+			errors.value = {};
+			files.value = {};
+			otherValues.value = {};
+			isSubmitted.value = false;
+			currentStep.value = 0;
 		} catch ( err ) {
-			loadError.value = err instanceof Error ? err.message : 'Failed to load form.';
+			if ( load === latestLoad ) {
+				loadError.value = err instanceof Error ? err.message : 'Failed to load form.';
+			}
 		} finally {
-			isLoading.value = false;
+			if ( load === latestLoad ) {
+				isLoading.value = false;
+			}
 		}
 	}
 
 	onMounted( fetchForm );
+
+	// Load the new form when the slug or API changes, as the React hook does (since 1.6.0)
+	watch( [() => toValue( baseUrl ), () => toValue( formSlug )], () => {
+		fetchForm();
+	} );
 
 	function setValue( name: string, value: unknown ): void {
 		const previous = values.value[name];
@@ -405,7 +437,7 @@ export function useForm( options: UseFormOptions ) {
 				throw hookError;
 			}
 
-			const url = `${baseUrl}/${encodeURIComponent( formSlug )}/submit`;
+			const url = `${toValue( baseUrl )}/${encodeURIComponent( toValue( formSlug ) )}/submit`;
 			const formDataObj = new FormData();
 			const submitted = {
 				...resolveOtherChoices( form.value.fields, values.value, otherValues.value ),
