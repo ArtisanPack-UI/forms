@@ -200,6 +200,17 @@ class SubmissionRules
     public const MIN_SELECTIONS = 'forms_min_selections';
 
     /**
+     * The name of the rule that limits a multiple-choice field with an "Other" choice to its options plus one typed value.
+     *
+     * Its parameters are the option values.
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const CHOICES_WITH_OTHER = 'forms_choices_with_other';
+
+    /**
      * Registers the rules with the validator.
      *
      * @since 1.6.0
@@ -223,6 +234,7 @@ class SubmissionRules
         $validator->extend( self::SIGNATURE, fn ( string $attribute, mixed $value ): bool => SignatureFieldType::isValidSignature( $value ) );
         $validator->extend( self::STEP, fn ( string $attribute, mixed $value, array $parameters ): bool => self::isOnStep( $value, $parameters ) );
         $validator->extend( self::DISTINCT, fn ( string $attribute, mixed $value ): bool => self::hasDistinctValues( $value ) );
+        $validator->extend( self::CHOICES_WITH_OTHER, fn ( string $attribute, mixed $value, array $parameters ): bool => self::hasAtMostOneOther( $value, $parameters ) );
         $validator->extend( self::MIN_SELECTIONS, fn ( string $attribute, mixed $value, array $parameters ): bool => self::hasMinimumSelections( $value, $parameters ) );
     }
 
@@ -284,6 +296,31 @@ class SubmissionRules
         $steps = ( (float) $value - (float) $base ) / (float) $step;
 
         return abs( $steps - round( $steps ) ) < 1e-9 * max( 1.0, abs( $steps ) );
+    }
+
+    /**
+     * Checks that a multiple-choice value holds at most one value outside its options.
+     *
+     * That one value is the text typed into the "Other" choice (checked by
+     * the OTHER_CHOICE rule). Values that are not lists pass, leaving them to
+     * the `array` rule.
+     *
+     * @since 1.6.0
+     *
+     * @param  mixed  $value  The submitted list.
+     * @param  array<int, string>  $options  The option values.
+     *
+     * @return bool True when no more than one value is not an option.
+     */
+    public static function hasAtMostOneOther( mixed $value, array $options ): bool
+    {
+        if ( ! is_array( $value ) ) {
+            return true;
+        }
+
+        $others = array_filter( $value, fn ( mixed $item ): bool => ! is_scalar( $item ) || ! in_array( (string) $item, $options, true ) );
+
+        return count( $others ) <= 1;
     }
 
     /**

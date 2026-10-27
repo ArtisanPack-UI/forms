@@ -14,6 +14,7 @@ namespace ArtisanPackUI\Forms\FieldTypes;
 
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
+use ArtisanPackUI\Forms\Support\SubmissionRules;
 use Illuminate\Validation\Rule;
 
 /**
@@ -43,6 +44,11 @@ abstract class ChoiceFieldType extends AbstractFieldType
         }
 
         if ( ! $this->limitsToChoices( $field ) ) {
+            // With "Other", a multiple-choice field still takes its options plus one typed value
+            if ( $field->isMultipleChoice() ) {
+                $rules[''][] = SubmissionRules::CHOICES_WITH_OTHER . substr( (string) Rule::in( $this->choiceValues( $field ) ), 2 );
+            }
+
             return $rules;
         }
 
@@ -106,6 +112,8 @@ abstract class ChoiceFieldType extends AbstractFieldType
 
         if ( $this->limitsToChoices( $field ) ) {
             $messages[ $field->isMultipleChoice() ? '*.in' : 'in' ] = $message;
+        } elseif ( $field->isMultipleChoice() ) {
+            $messages[ SubmissionRules::CHOICES_WITH_OTHER ] = $message;
         }
 
         return $messages;
