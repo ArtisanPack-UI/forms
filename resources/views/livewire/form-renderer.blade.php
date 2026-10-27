@@ -2,7 +2,7 @@
     class="artisanpack-form-renderer"
     wire:ignore.self
     x-data="formRenderer()"
-    @keydown.window="handleKeydown($event)"
+    x-on:keydown="handleKeydown($event)"
 >
     {{-- ARIA live region for step announcements --}}
     <div
@@ -34,7 +34,7 @@
             </div>
         @endif
     @else
-        <form wire:submit="submit" class="space-y-6" x-ref="form">
+        <form wire:submit="submit" class="space-y-6" x-ref="form" novalidate>
             {{-- Form Title & Description --}}
             @if($form->show_title && $form->title)
                 <h2 class="text-2xl font-bold">{{ $form->title }}</h2>
@@ -299,41 +299,63 @@
             },
 
             /**
-             * Handle keyboard navigation
+             * Handle keyboard navigation of a multi-step form.
+             *
+             * Only keys pressed inside this form count. Enter in a text-like
+             * input (or on a radio or checkbox) of a step before the last
+             * moves to the next step; Enter anywhere else keeps its own
+             * action (buttons, links, rich text, textareas, selects), and on
+             * the last step it submits the form as usual. Escape goes back a
+             * step unless a control inside the form handled it.
              */
             handleKeydown(event) {
-                if (!this.isMultiStep) return;
+                if (!this.isMultiStep || event.defaultPrevented) return;
 
-                // Don't interfere if event was already handled
-                if (event.defaultPrevented) return;
+                const target = event.target;
+
+                if (!(target instanceof Element) || !this.$root.contains(target)) return;
 
                 // Don't interfere with modals, dialogs, or components that capture their own keys
-                if (event.target.closest('[aria-modal="true"], [role="dialog"], .modal, [data-ignore-global-keys]')) {
+                if (target.closest('[aria-modal="true"], [role="dialog"], .modal, [data-ignore-global-keys]')) {
                     return;
                 }
 
-                // Don't interfere with form elements that need these keys
-                const tagName = event.target.tagName.toLowerCase();
-                const isTextarea = tagName === 'textarea';
-                const isSelect = tagName === 'select';
+                if (event.key === 'Enter') {
+                    if (event.isComposing || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
 
-                // Enter to advance (except in textarea or multi-line inputs)
-                if (event.key === 'Enter' && !isTextarea && !isSelect) {
-                    // Allow enter on submit buttons
-                    if (event.target.type === 'submit') return;
+                    if (!this.advancesOnEnter(target)) return;
 
-                    // Don't advance if we're on the last step (let form submit naturally)
+                    // On the last step, let the form submit naturally
                     if (this.currentStepIndex >= this.totalSteps - 1) return;
 
                     event.preventDefault();
                     this.$wire.nextStep();
+
+                    return;
                 }
 
-                // Escape to go back
                 if (event.key === 'Escape' && this.currentStepIndex > 0) {
+                    if (target.isContentEditable || target.closest('[role="combobox"], [role="listbox"]')) return;
+
                     event.preventDefault();
                     this.$wire.previousStep();
                 }
+            },
+
+            /**
+             * Whether Enter on an element moves to the next step.
+             */
+            advancesOnEnter(target) {
+                if (target.tagName !== 'INPUT' || target.isContentEditable) return false;
+
+                if (target.closest('button, a, [role="button"], [role="combobox"], [role="listbox"], [contenteditable="true"], [contenteditable=""]')) {
+                    return false;
+                }
+
+                return [
+                    'text', 'email', 'tel', 'url', 'number', 'date', 'time', 'datetime-local',
+                    'month', 'week', 'search', 'password', 'radio', 'checkbox',
+                ].includes(target.type);
             },
 
             /**

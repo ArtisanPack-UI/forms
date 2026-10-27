@@ -182,7 +182,7 @@
                 @if ($this->administrativeFields->isNotEmpty())
                     <x-artisanpack-card :title="__( 'Administrative Fields' )" separator>
                         <x-slot:subtitle>{{ __( 'Internal fields that are not shown on the public form' ) }}</x-slot:subtitle>
-                        <form wire:submit="saveAdministrativeFields" class="space-y-4">
+                        <form wire:submit="saveAdministrativeFields" class="space-y-4" novalidate>
                             @foreach ($this->administrativeFields as $field)
                                 <div wire:key="admin-field-{{ $field->uuid }}">
                                     @if ($field->is_file_field)
