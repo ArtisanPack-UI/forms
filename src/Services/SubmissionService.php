@@ -761,6 +761,11 @@ class SubmissionService
      */
     public function updateAdministrativeFiles( FormSubmission $submission, array $files ): FormSubmission
     {
+        // Nothing to replace, so the submission isn't touched and no updated event fires
+        if ( [] === array_filter( $files, fn ( mixed $file ): bool => null !== $file && [] !== $file ) ) {
+            return $submission;
+        }
+
         $submission->loadMissing( 'form.fields' );
 
         $replaced          = [];

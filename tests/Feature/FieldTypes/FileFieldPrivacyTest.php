@@ -102,6 +102,16 @@ describe( 'administrative file fields in the Livewire submission detail', functi
         Storage::disk( 'form-uploads' )->assertExists( $upload->path );
     } );
 
+    it( 'leaves the submission untouched when no file was chosen', function (): void {
+        $updatedAt = $this->submission->fresh()->updated_at;
+
+        $this->travel( 1 )->minutes();
+
+        app( SubmissionService::class )->updateAdministrativeFiles( $this->submission, ['document' => null] );
+
+        expect( $this->submission->fresh()->updated_at->equalTo( $updatedAt ) )->toBeTrue();
+    } );
+
     it( 'replaces the stored file and deletes the old one', function (): void {
         $detail = Livewire::test( SubmissionDetail::class, ['submission' => $this->submission] )
             ->set( 'adminFiles.document', UploadedFile::fake()->create( 'first.pdf', 20 ) )
