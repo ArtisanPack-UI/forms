@@ -318,6 +318,8 @@
     "Please answer :count highlighted rows in :field.",
     "Please choose a score from :min to :max for :field.",
     "Please choose a value for :field.",
+    "Please choose at least :min options.",
+    "Please choose no more than :max options.",
     "Please choose one of the available answers for :field.",
     "Please complete the verification check.",
     "Please draw your signature for :field, or type your full name (up to :max characters).",

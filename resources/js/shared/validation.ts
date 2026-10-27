@@ -13,6 +13,7 @@
 import type { FormField, ValidationRules } from '../types/artisanpack-forms';
 
 import { hasCaptchaWidget, runsOnSubmit } from './captcha';
+import { isMultipleChoiceField } from './choices';
 import {
 	getEnabledSubInputs,
 	getRequiredSubInputKeys,
@@ -202,6 +203,23 @@ function validateValue(
 
 			return errors;
 		}
+	}
+
+	// A checkbox group's or multi-select's min/max count its selections, as the
+	// server's `array` rules do; an unanswered optional one returned above (since 1.6.0)
+	if ( isMultipleChoiceField( field ) && Array.isArray( value ) ) {
+		const minSelections = numericLimit( rules?.min );
+		const maxSelections = numericLimit( rules?.max );
+
+		if ( minSelections !== undefined && value.length < minSelections ) {
+			errors.push( t( 'Please choose at least :min options.', { min: minSelections } ) );
+		}
+
+		if ( maxSelections !== undefined && value.length > maxSelections ) {
+			errors.push( t( 'Please choose no more than :max options.', { max: maxSelections } ) );
+		}
+
+		return errors;
 	}
 
 	// Rating validation reads `field_config`, so it runs even without validation rules
