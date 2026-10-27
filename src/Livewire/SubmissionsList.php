@@ -299,7 +299,13 @@ class SubmissionsList extends Component
      */
     public function bulkDelete(): void
     {
-        $count = $this->getOwnedSelectedQuery()->delete();
+        // Deleted one by one so each submission's files are removed too (see FormSubmission::boot())
+        $count = 0;
+
+        foreach ( $this->getOwnedSelectedQuery()->lazyById() as $submission ) {
+            $submission->delete();
+            $count++;
+        }
 
         $this->resetSelection();
         session()->flash( 'success', trans_choice( ':count submission deleted.|:count submissions deleted.', $count, ['count' => $count] ) );
