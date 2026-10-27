@@ -277,7 +277,7 @@ class SubmitFormApiRequest extends FormRequest
         );
 
         $this->merge( [
-            'data' => $submissionService->applyVisibleCalculations( $form->fields, $data ),
+            'data' => $submissionService->applyVisibleCalculations( $form->fields, $data, true ),
         ] );
     }
 }

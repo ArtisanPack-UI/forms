@@ -124,10 +124,16 @@ class SubmissionService
      * fields are worked out again from the submitted values, whatever the
      * client sent for them (see applyCalculations()).
      *
+     * Since 1.6.0, `$formData` must already have gone through
+     * normalizeSubmittedValues(), as both submit paths do before validation
+     * (the Livewire renderer and SubmitFormApiRequest); numbers are not
+     * normalized again, since a `decimal_comma` number is not read the same
+     * way twice. A read-only number's own value is normalized here.
+     *
      * @since 1.0.0
      *
      * @param  Form  $form  The form being submitted.
-     * @param  array<string, mixed>  $formData  The submitted form data.
+     * @param  array<string, mixed>  $formData  The submitted form data, normalized (see normalizeSubmittedValues()).
      * @param  array<string, array<array-key, UploadedFile>|UploadedFile|null>  $files  Uploaded files keyed by field name; a list for a multi-file field.
      * @param  array<string, mixed>  $metadata  Additional metadata (ip, user_agent, etc.).
      *
@@ -150,9 +156,10 @@ class SubmissionService
 
         // Read-only fields keep their own value whatever the client sent
         $formData = $this->applyReadOnlyValues( $fields, $formData, true );
+        $formData = $this->normalizeFormattedNumbers( $fields->filter( fn ( FormField $field ): bool => $field->isReadOnly() ), $formData );
 
         // Calculations are worked out on the server, never taken from the client
-        $formData = $this->applyCalculations( $fields, $formData, true );
+        $formData = $this->applyCalculations( $fields, $formData, true, true );
 
         // Administrative fields are never filled in by the public form
         $formData = array_diff_key( $formData, $fields->filter( fn ( FormField $field ): bool => $field->isAdministrative() )->all() );
@@ -522,17 +529,20 @@ class SubmissionService
      * directly or through others, has no result. Administrative fields read
      * as blank, whatever a client sent for them. Numbers typed in a number
      * field's format are read as plain decimals (see
-     * normalizeFormattedNumbers()).
+     * normalizeFormattedNumbers()), unless the values were already
+     * normalized: a `decimal_comma` number normalized twice is read wrong
+     * (`1234.50` becomes `123450`).
      *
      * @since 1.6.0
      *
      * @param  iterable<FormField>  $fields  The form fields.
      * @param  array<string, mixed>  $formData  The values keyed by field name.
      * @param  bool  $onlySubmitted  Whether to work out only the calculations present in the data, leaving out those conditional logic hid.
+     * @param  bool  $normalized  Whether the values already went through normalizeSubmittedValues().
      *
      * @return array<string, mixed> The values with calculations worked out.
      */
-    public function applyCalculations( iterable $fields, array $formData, bool $onlySubmitted = false ): array
+    public function applyCalculations( iterable $fields, array $formData, bool $onlySubmitted = false, bool $normalized = false ): array
     {
         $calculations = [];
 
@@ -546,7 +556,7 @@ class SubmissionService
             return $formData;
         }
 
-        $operands = $this->normalizeFormattedNumbers( $fields, $formData );
+        $operands = $normalized ? $formData : $this->normalizeFormattedNumbers( $fields, $formData );
         $results  = [];
 
         // Administrative fields are never filled in by the public form, so a formula reads them as blank
@@ -608,23 +618,24 @@ class SubmissionService
      *
      * @param  Collection<int, FormField>  $fields  The form fields.
      * @param  array<string, mixed>  $formData  The values keyed by field name.
+     * @param  bool  $normalized  Whether the values already went through normalizeSubmittedValues().
      *
      * @return array<string, mixed> The values with calculations worked out.
      */
-    public function applyVisibleCalculations( Collection $fields, array $formData ): array
+    public function applyVisibleCalculations( Collection $fields, array $formData, bool $normalized = false ): array
     {
         if ( ! $fields->contains( 'type', CalculationFieldType::TYPE ) ) {
             return $formData;
         }
 
-        $formData = $this->applyCalculations( $fields, $formData );
+        $formData = $this->applyCalculations( $fields, $formData, false, $normalized );
         $hidden   = array_filter( app( ConditionalLogicService::class )->getHiddenFields( $fields, $formData ) );
 
         if ( [] === $hidden ) {
             return $formData;
         }
 
-        $visible = $this->applyCalculations( $fields, array_diff_key( $formData, $hidden ) );
+        $visible = $this->applyCalculations( $fields, array_diff_key( $formData, $hidden ), false, $normalized );
 
         foreach ( $fields->where( 'type', CalculationFieldType::TYPE ) as $field ) {
             $formData[ $field->name ] = $visible[ $field->name ];
