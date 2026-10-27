@@ -100,3 +100,21 @@ describe( 'number step (FT-05)', function (): void {
         ] );
     } );
 } );
+
+describe( 'text length (FT-08)', function (): void {
+    it( 'counts characters as the server does, not UTF-16 code units', function (): void {
+        $errors = jsValidate( [
+            [['type' => 'text', 'validation_rules' => ['max' => 10]], str_repeat( '😀', 6 )],
+            [['type' => 'text', 'validation_rules' => ['max' => 10]], str_repeat( '😀', 11 )],
+            [['type' => 'text', 'validation_rules' => ['min' => 3]], '😀😀'],
+        ] );
+
+        if ( null === $errors ) {
+            $this->markTestSkipped( 'Node 22.7+ is needed to run the shared helpers.' );
+        }
+
+        expect( $errors[0] )->toBe( [] )
+            ->and( $errors[1] )->toHaveCount( 1 )
+            ->and( $errors[2] )->toHaveCount( 1 );
+    } );
+} );

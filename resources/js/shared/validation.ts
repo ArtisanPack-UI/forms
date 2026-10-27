@@ -323,7 +323,8 @@ function validateValue(
 	if ( typeof text === 'string' && TEXT_LENGTH_FIELDS.has( field.type ) ) {
 		const minLength = numericLimit( rules.min );
 		const maxLength = numericLimit( rules.max );
-		const length = usesRichText( field ) ? Array.from( text ).length : text.length;
+		// Characters, as the server's `mb_strlen()` counts them, not UTF-16 code units
+		const length = Array.from( text ).length;
 
 		if ( minLength !== undefined && length < minLength ) {
 			errors.push( `Must be at least ${minLength} characters.` );
