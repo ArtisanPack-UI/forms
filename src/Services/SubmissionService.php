@@ -298,7 +298,9 @@ class SubmissionService
      * (see ColorFieldType::normalizeValue()). A checkbox, toggle or consent
      * box sent as `true` / `false` / `on` / `off` (as HTML forms and
      * headless clients do) becomes `1` / `0`, which the `boolean` rule
-     * accepts.
+     * accepts. A phone number checked by format becomes E.164 (see
+     * normalizePhoneNumbers()), the form it is stored in, so "No duplicates"
+     * compares like with like.
      *
      * @since 1.6.0
      *
@@ -309,6 +311,7 @@ class SubmissionService
      */
     public function normalizeSubmittedValues( iterable $fields, array $formData ): array
     {
+        $formData = $this->normalizePhoneNumbers( $fields, $formData );
         $formData = $this->normalizeFormattedNumbers( $fields, $formData );
 
         foreach ( $fields as $field ) {
