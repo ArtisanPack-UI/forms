@@ -240,13 +240,18 @@ describe( 'read-only fields', function (): void {
 
         $html = Livewire::test( FormRenderer::class, ['form' => $form] )->html();
 
-        $tag = static function ( string $html, string $id ): string {
-            preg_match( '/<(?:input|textarea|select)\b[^>]*id="' . preg_quote( $id, '/' ) . '"[^>]*>/s', $html, $matches );
+        $tag = static function ( string $html, string $id, string $attribute = 'id' ): string {
+            preg_match( '/<(?:input|textarea|select)\b[^>]*' . $attribute . '="' . preg_quote( $id, '/' ) . '"[^>]*>/s', $html, $matches );
 
             return $matches[0] ?? '';
         };
 
-        foreach ( ['field-field_text', 'field-field_textarea', 'field-field_date', 'field-field_time'] as $id ) {
+        // Text and textarea inputs get the component's generated ID, so find them by their binding
+        foreach ( ['formData.field_text', 'formData.field_textarea'] as $model ) {
+            expect( $tag( $html, $model, 'wire:model\.live' ) )->toContain( 'readonly' )->not->toContain( 'disabled' );
+        }
+
+        foreach ( ['field-field_date', 'field-field_time'] as $id ) {
             expect( $tag( $html, $id ) )->toContain( 'readonly' )->not->toContain( 'disabled' );
         }
 

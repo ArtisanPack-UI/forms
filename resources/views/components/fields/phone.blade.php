@@ -13,12 +13,13 @@
     $countries = $field->usesPhoneCountrySelector() ? \ArtisanPackUI\Forms\FieldTypes\PhoneFieldType::countries() : [];
 @endphp
 
-@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true, 'renderError' => false])
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true])
 <x-artisanpack-input
     type="tel"
     :label="$layoutLabel ? null : $field->label"
     :placeholder="$field->placeholder ?? ([] === $countries ? __( '(123) 456-7890' ) : null)"
-    :error="$error"
+    :omit-error="true"
+    :aria-invalid="filled($error) ? 'true' : null"
     :required="$field->is_required"
     wire:model.live="formData.{{ $field->name }}"
     id="field-{{ $field->name }}"

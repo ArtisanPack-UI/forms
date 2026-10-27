@@ -751,7 +751,7 @@ describe( 'FormRenderer unsupported multiple flags (issue #84)', function (): vo
         ] );
 
         Livewire::test( FormRenderer::class, ['form' => $form] )
-            ->assertSeeHtml( 'id="field-pick"' )
+            ->assertSeeHtml( 'wire:model.live="formData.pick"' )
             ->assertDontSeeHtml( 'multiple' );
     } )->with( ['select'] ); // File fields support `multiple` since #114 (see MultiFileUploadTest).
 

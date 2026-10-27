@@ -191,9 +191,9 @@ describe( 'rendering', function (): void {
             ->and( $fieldset )->toContain( 'aria-describedby="section-guest_details-description"' )
             ->toContain( 'Guest details' )
             ->toContain( 'Tell us who is coming.<br />' )
-            ->toContain( 'id="field-guest_name"' )
-            ->toContain( 'id="field-diet"' )
-            ->not->toContain( 'id="field-notes"' )
+            ->toContain( 'wire:model.live="formData.guest_name"' )
+            ->toContain( 'wire:model.live="formData.diet"' )
+            ->not->toContain( 'wire:model.live="formData.notes"' )
             ->not->toContain( 'id="field-intro"' )
             ->and( strpos( $html, 'id="field-intro"' ) )->toBeLessThan( strpos( $html, 'id="section-guest_details"' ) );
     } );

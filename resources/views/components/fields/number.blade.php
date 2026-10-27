@@ -17,13 +17,14 @@
     $layoutLabel = 'top' !== $field->getLabelPlacement();
 @endphp
 
-@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true, 'renderError' => false])
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true])
 <x-artisanpack-input
     :type="null === $format ? 'number' : 'text'"
     :inputmode="null === $format ? null : ($field->isIntegerOnly() ? 'numeric' : 'decimal')"
     :label="$layoutLabel ? null : $field->label"
     :placeholder="$field->placeholder"
-    :error="$error"
+    :omit-error="true"
+    :aria-invalid="filled($error) ? 'true' : null"
     :required="$field->is_required"
     wire:model.live="formData.{{ $field->name }}"
     id="field-{{ $field->name }}"

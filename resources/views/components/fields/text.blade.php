@@ -6,13 +6,14 @@
     $mask = $field->getInputMask();
 @endphp
 
-@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true, 'renderError' => false])
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true])
 @component('forms::components.fields.partials.counter', ['field' => $field])
 <x-artisanpack-input
     type="text"
     :label="$layoutLabel ? null : $field->label"
     :placeholder="$field->placeholder"
-    :error="$error"
+    :omit-error="true"
+    :aria-invalid="filled($error) ? 'true' : null"
     :required="$field->is_required"
     wire:model.live="formData.{{ $field->name }}"
     id="field-{{ $field->name }}"
