@@ -94,6 +94,22 @@ class FormBuilder extends Component
     ];
 
     /**
+     * The attributes updateStep() may change.
+     *
+     * A step's form and order are changed only by the step actions.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const EDITABLE_STEP_ATTRIBUTES = [
+        'title',
+        'description',
+        'prev_button_text',
+        'next_button_text',
+    ];
+
+    /**
      * The form being edited.
      */
     public Form $form;
@@ -757,13 +773,30 @@ class FormBuilder extends Component
     /**
      * Update a step.
      *
+     * Since 1.6.0, only the attributes in EDITABLE_STEP_ATTRIBUTES are
+     * changed (any others are ignored), validated like the step API.
+     *
      * @param  array<string, mixed>  $data
      *
      * @throws AuthorizationException When the user may not update the form.
+     * @throws ValidationException When an attribute is not valid.
      */
     public function updateStep( int $stepId, array $data ): void
     {
         $this->authorizeUpdate();
+
+        $data = array_intersect_key( $data, array_flip( self::EDITABLE_STEP_ATTRIBUTES ) );
+
+        if ( [] === $data ) {
+            return;
+        }
+
+        $data = Validator::make( $data, [
+            'title'            => ['nullable', 'string', 'max:255'],
+            'description'      => ['nullable', 'string', 'max:1000'],
+            'prev_button_text' => ['nullable', 'string', 'max:100'],
+            'next_button_text' => ['nullable', 'string', 'max:100'],
+        ] )->validate();
 
         $step = $this->stepService->getById( $this->form, $stepId );
 

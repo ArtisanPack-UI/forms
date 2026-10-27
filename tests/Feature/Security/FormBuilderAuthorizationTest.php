@@ -106,6 +106,45 @@ describe( 'active step', function (): void {
     } );
 } );
 
+describe( 'updateStep', function (): void {
+    beforeEach( function (): void {
+        $this->builder = Livewire::actingAs( $this->owner )->test( FormBuilder::class, ['form' => $this->form] );
+    } );
+
+    it( 'changes the attributes the step editor edits', function (): void {
+        $this->builder->call( 'updateStep', $this->step->id, [
+            'title'            => 'Contact',
+            'description'      => 'How to reach you',
+            'prev_button_text' => 'Back',
+            'next_button_text' => 'Onward',
+        ] )->assertHasNoErrors();
+
+        expect( $this->step->fresh() )
+            ->title->toBe( 'Contact' )
+            ->description->toBe( 'How to reach you' )
+            ->prev_button_text->toBe( 'Back' )
+            ->next_button_text->toBe( 'Onward' );
+    } );
+
+    it( 'ignores the step\'s form and order', function (): void {
+        $otherForm = Form::factory()->create();
+
+        $this->builder->call( 'updateStep', $this->step->id, ['title' => 'Contact', 'form_id' => $otherForm->id, 'sort_order' => 99] );
+
+        expect( $this->step->fresh() )
+            ->title->toBe( 'Contact' )
+            ->form_id->toBe( $this->form->id )
+            ->sort_order->toBe( $this->step->sort_order );
+    } );
+
+    it( 'rejects invalid values', function (): void {
+        $this->builder->call( 'updateStep', $this->step->id, ['title' => str_repeat( 'x', 256 )] )
+            ->assertHasErrors( 'title' );
+
+        expect( $this->step->fresh()->title )->toBe( $this->step->title );
+    } );
+} );
+
 describe( 'updateField', function (): void {
     beforeEach( function (): void {
         $this->builder = Livewire::actingAs( $this->owner )->test( FormBuilder::class, ['form' => $this->form] )

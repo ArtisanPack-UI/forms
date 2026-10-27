@@ -56,6 +56,21 @@ describe( 'React and Vue submission detail', function () use ( $resource ): void
             ->toContain( ':key="`${field.id}-${adminFileInputsKey}`"' );
     } );
 
+    it( 'keep the uploaded files when saving the values fails', function () use ( $resource ): void {
+        $react = $resource( 'react/components/admin/SubmissionDetail.tsx' );
+        $vue   = $resource( 'vue/components/admin/SubmissionDetail.vue' );
+
+        expect( $react )
+            ->toContain( 'uploaded = await post<{ data: FormSubmission }>(' )
+            ->toContain( "setSubmission( uploaded.data );\n\t\t\t\tsetAdminFiles( {} );\n\t\t\t\tsetAdminFileInputsKey( ( key ) => key + 1 );" )
+            ->toContain( "if ( uploadFailed ) {\n\t\t\t\tsetAdminAnnouncement( t( 'The upload failed.' ) );" );
+
+        expect( $vue )
+            ->toContain( 'uploaded = await post<{ data: FormSubmission }>(' )
+            ->toContain( "submission.value = uploaded.data;\n\t\t\tadminFiles.value = {};\n\t\t\tadminFileInputsKey.value++;" )
+            ->toContain( "if ( uploadFailed ) {\n\t\t\tadminAnnouncement.value = t( 'The upload failed.' );" );
+    } );
+
     it( 'only require a file input while the field has no stored file', function () use ( $resource ): void {
         expect( $resource( 'react/components/admin/SubmissionDetail.tsx' ) )
             ->toContain( 'field={getFieldUploads( field, submission ).length > 0 ? { ...field, is_required: false } : field}' );

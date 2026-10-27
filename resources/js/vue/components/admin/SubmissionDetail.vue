@@ -262,13 +262,27 @@ async function saveAdministrativeFields(): Promise<void> {
 	isSavingAdmin.value = true;
 	adminErrors.value = {};
 
+	let uploadFailed = false;
+
 	try {
 		// Files go first in a multipart request, so a required file field is filled when the values are checked
 		if ( Object.keys( adminFiles.value ).length > 0 ) {
 			adminAnnouncement.value = t( 'Uploading files…' );
 
-			await post( `/${props.form.slug}/submissions/${props.submissionId}`, buildAdminFilesBody( adminFiles.value ) );
+			let uploaded: { data: FormSubmission };
 
+			try {
+				uploaded = await post<{ data: FormSubmission }>( `/${props.form.slug}/submissions/${props.submissionId}`, buildAdminFilesBody( adminFiles.value ) );
+			} catch ( uploadError ) {
+				uploadFailed = true;
+
+				throw uploadError;
+			}
+
+			// The files are saved now, whatever happens to the values, so show them and clear the inputs
+			submission.value = uploaded.data;
+			adminFiles.value = {};
+			adminFileInputsKey.value++;
 			adminAnnouncement.value = t( 'Upload finished.' );
 		}
 
@@ -290,9 +304,11 @@ async function saveAdministrativeFields(): Promise<void> {
 			}
 
 			adminErrors.value = serverErrors;
-			adminAnnouncement.value = '';
 		} else {
 			error.value = err instanceof Error ? err.message : t( 'Failed to update submission.' );
+		}
+
+		if ( uploadFailed ) {
 			adminAnnouncement.value = t( 'The upload failed.' );
 		}
 	} finally {

@@ -238,13 +238,27 @@ export function SubmissionDetail( {
 		setIsSavingAdmin( true );
 		setAdminErrors( {} );
 
+		let uploadFailed = false;
+
 		try {
 			// Files go first in a multipart request, so a required file field is filled when the values are checked
 			if ( Object.keys( adminFiles ).length > 0 ) {
 				setAdminAnnouncement( t( 'Uploading files…' ) );
 
-				await post( `/${form.id}/submissions/${submissionId}`, buildAdminFilesBody( adminFiles ) );
+				let uploaded: { data: FormSubmission };
 
+				try {
+					uploaded = await post<{ data: FormSubmission }>( `/${form.id}/submissions/${submissionId}`, buildAdminFilesBody( adminFiles ) );
+				} catch ( uploadError ) {
+					uploadFailed = true;
+
+					throw uploadError;
+				}
+
+				// The files are saved now, whatever happens to the values, so show them and clear the inputs
+				setSubmission( uploaded.data );
+				setAdminFiles( {} );
+				setAdminFileInputsKey( ( key ) => key + 1 );
 				setAdminAnnouncement( t( 'Upload finished.' ) );
 			}
 
@@ -266,9 +280,11 @@ export function SubmissionDetail( {
 				}
 
 				setAdminErrors( serverErrors );
-				setAdminAnnouncement( '' );
 			} else {
 				setError( err instanceof Error ? err.message : t( 'Failed to update submission.' ) );
+			}
+
+			if ( uploadFailed ) {
 				setAdminAnnouncement( t( 'The upload failed.' ) );
 			}
 		} finally {
