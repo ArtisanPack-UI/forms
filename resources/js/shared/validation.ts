@@ -308,16 +308,11 @@ function validateValue(
 
 	// Pattern validation for string values
 	if ( typeof value === 'string' ) {
-		if ( rules.pattern ) {
-			try {
-				const regex = new RegExp( rules.pattern );
+		// A pattern JS cannot run as the server does is left to the server
+		const regex = toClientPattern( rules.pattern );
 
-				if ( !regex.test( value ) ) {
-					errors.push( 'The value does not match the required format.' );
-				}
-			} catch {
-				// Invalid regex pattern — skip
-			}
+		if ( regex && !regex.test( value ) ) {
+			errors.push( 'The value does not match the required format.' );
 		}
 	}
 
@@ -334,6 +329,93 @@ function validateValue(
 	}
 
 	return errors;
+}
+
+/** The closing delimiter of each bracket-style PHP regex delimiter. */
+const BRACKET_DELIMITERS: Record<string, string> = { '(': ')', '{': '}', '[': ']', '<': '>' };
+
+/** The PCRE modifiers PHP accepts after a delimited pattern. */
+const PHP_PATTERN_MODIFIERS = /^[imsxuADSUXJn]*$/;
+
+/** The PCRE modifiers with the same meaning in a JS RegExp. */
+const JS_PATTERN_FLAGS = new Set( ['i', 'm', 's', 'u'] );
+
+/**
+ * Split a PHP-delimited pattern (`/^\d+$/i`, `#a#`, `{a}`) into its source
+ * and modifiers, finding the closing delimiter as PCRE does. Returns null
+ * when the string is not a valid delimited pattern, which the server then
+ * treats as undelimited.
+ */
+function splitDelimitedPattern( raw: string ): { source: string; modifiers: string } | null {
+	const open = raw[0];
+
+	if ( open === undefined || /[a-zA-Z0-9\\\s]/.test( open ) ) {
+		return null;
+	}
+
+	const close = BRACKET_DELIMITERS[open] ?? open;
+	let depth = 0;
+
+	for ( let i = 1; i < raw.length; i++ ) {
+		const char = raw[i];
+
+		if ( char === '\\' ) {
+			i++;
+
+			continue;
+		}
+
+		if ( close !== open && char === open ) {
+			depth++;
+		} else if ( char === close ) {
+			if ( depth === 0 ) {
+				const modifiers = raw.slice( i + 1 );
+
+				return PHP_PATTERN_MODIFIERS.test( modifiers ) ? { source: raw.slice( 1, i ), modifiers } : null;
+			}
+
+			depth--;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Build the RegExp a field's Pattern setting stands for, matching how the
+ * server reads it: a PHP-delimited pattern (`/^\d{6}$/i`) is unwrapped and
+ * its `i`, `m`, `s` and `u` modifiers become flags, and an undelimited one
+ * (`^[a-z]+$`) is used as is. Returns null, so the check is left to the
+ * server, when the pattern is empty, uses a modifier JS has no equivalent
+ * for, or is not valid JS.
+ *
+ * @since 1.6.0
+ */
+export function toClientPattern( raw: unknown ): RegExp | null {
+	if ( typeof raw !== 'string' || raw === '' ) {
+		return null;
+	}
+
+	const delimited = splitDelimitedPattern( raw );
+	let source = raw;
+	let flags = '';
+
+	if ( delimited ) {
+		const modifiers = new Set( delimited.modifiers.split( '' ) );
+
+		if ( [...modifiers].some( ( modifier ) => !JS_PATTERN_FLAGS.has( modifier ) ) ) {
+			return null;
+		}
+
+		source = delimited.source;
+		flags = [...modifiers].join( '' );
+	}
+
+	try {
+		return new RegExp( source, flags );
+	} catch {
+		return null;
+	}
 }
 
 /**
