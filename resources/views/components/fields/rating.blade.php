@@ -25,6 +25,7 @@
     @if($field->label) aria-labelledby="{{ $field->domId('label') }}" @endif
     @if($field->is_required) aria-required="true" @endif
     @if($readOnly) aria-readonly="true" @endif
+    @if(filled($error)) aria-invalid="true" @endif
     @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
 >
     {{-- Hidden "no rating" option for clearing --}}

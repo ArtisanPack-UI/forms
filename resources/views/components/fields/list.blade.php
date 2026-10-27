@@ -100,6 +100,7 @@
                                 id="{{ $inputId }}"
                                 wire:model="formData.{{ $field->name }}.{{ $index }}.{{ $column['key'] }}"
                                 @class(['select select-bordered w-full', 'select-error' => filled($cellError)])
+                                @if($field->is_required && 0 === $index && $loop->first) aria-required="true" @endif
                                 @if(filled($cellError)) aria-invalid="true" aria-describedby="{{ $inputId }}-error" @endif
                             >
                                 <option value="">{{ __( 'Select…' ) }}</option>
@@ -114,6 +115,7 @@
                                 wire:model="formData.{{ $field->name }}.{{ $index }}.{{ $column['key'] }}"
                                 @class(['input input-bordered w-full', 'input-error' => filled($cellError)])
                                 @if('number' !== $column['type']) maxlength="{{ \ArtisanPackUI\Forms\FieldTypes\ListFieldType::CELL_MAX_LENGTH }}" @endif
+                                @if($field->is_required && 0 === $index && $loop->first) aria-required="true" @endif
                                 @if(filled($cellError)) aria-invalid="true" aria-describedby="{{ $inputId }}-error" @endif
                             />
                         @endif

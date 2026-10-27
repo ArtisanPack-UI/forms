@@ -18,12 +18,16 @@
                    (for inputs whose ID the component generates; not groups).
     - $renderError Whether this layout renders the error. False when the input
                    component renders it.
+    - $requiredText Whether a required field's label also says "(required)" to
+                   screen readers, for groups that can't take `aria-required`
+                   (since 1.6.0).
 --}}
 @php
     $renderLabel = ( $renderLabel ?? true ) && filled( $field->label );
     $labelFor = $labelFor ?? null;
     $focusInput = $focusInput ?? false;
     $renderError = $renderError ?? true;
+    $requiredText = $requiredText ?? false;
     $labelPlacement = $field->getLabelPlacement();
     $descriptionPlacement = $field->getDescriptionPlacement();
     $isLeft = $renderLabel && 'left' === $labelPlacement;
@@ -39,7 +43,10 @@
             <span class="label-text">
                 {{ $field->label }}
                 @if($field->is_required)
-                    <span class="text-error">*</span>
+                    <span class="text-error" @if($requiredText) aria-hidden="true" @endif>*</span>
+                    @if($requiredText)
+                        <span class="sr-only">{{ __( '(required)' ) }}</span>
+                    @endif
                 @endif
             </span>
         </label>

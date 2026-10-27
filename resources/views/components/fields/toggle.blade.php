@@ -36,6 +36,7 @@
         role="switch"
         @if($field->is_required) required aria-required="true" @endif
         @if($field->isReadOnly()) disabled aria-readonly="true" @endif
+        @if(filled($error)) aria-invalid="true" @endif
         @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
     />
     <span @class(['label-text', 'sr-only' => 'hidden' === $field->getLabelPlacement()])>

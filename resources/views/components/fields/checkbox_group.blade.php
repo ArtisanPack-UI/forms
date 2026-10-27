@@ -10,13 +10,13 @@
     $showImages = $field->showsImageChoices();
 @endphp
 
-@component('forms::components.field-layout', ['field' => $field, 'error' => $error])
-{{-- `aria-invalid` goes on each checkbox: the `group` role does not take it. --}}
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'requiredText' => true])
+{{-- `aria-invalid` goes on each checkbox: the `group` role does not take it, nor
+     `aria-required`, so the label says "(required)" to screen readers instead. --}}
 <div
     class="{{ $field->css_classes }}"
     role="group"
     @if($field->label) aria-labelledby="{{ $field->domId('label') }}" @endif
-    @if($field->is_required) aria-required="true" @endif
     @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
 >
     @if($showSelectAll)
