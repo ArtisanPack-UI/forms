@@ -346,6 +346,31 @@ class FormSubmissionValue extends Model
     }
 
     /**
+     * Gets the value as conditional logic reads it.
+     *
+     * A list of choices stays a list, so `includes` / `not_includes` rules
+     * can test it; a composite or consent value stays a map; anything else
+     * is its stored text. A file value is its file names, as in
+     * getRawValue().
+     *
+     * @since 1.6.0
+     *
+     * @return array<array-key, mixed>|string The value.
+     */
+    public function getConditionValue(): array|string
+    {
+        if ( 'file' === $this->field_type ) {
+            return $this->getRawValue();
+        }
+
+        if ( is_array( $this->value_array ) && [] !== $this->value_array ) {
+            return $this->value_array;
+        }
+
+        return $this->value ?? '';
+    }
+
+    /**
      * Checks if this value is an array value.
      *
      * @since 1.0.0

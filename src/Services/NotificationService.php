@@ -311,7 +311,11 @@ class NotificationService
 
         $submission->loadMissing( 'form.fields' );
 
-        $formData  = $submission->data_array;
+        // Read from the stored values, so a checkbox group is still a list (data_array joins it for exports)
+        $formData = $submission->values
+            ->mapWithKeys( fn ( FormSubmissionValue $value ): array => [$value->field_name => $value->getConditionValue()] )
+            ->all();
+
         $action    = $logic['action'] ?? 'send'; // Default action for notifications
         $logicType = $logic['logic'] ?? 'all';
         $rules     = $logic['rules'];
