@@ -10,9 +10,13 @@
  * @since      1.1.0
  */
 
+import { normalizeColor } from './color';
 import { formatCompositeForCondition } from './composite';
 import { isListField, toListRows } from './list';
+import { getNumberFormat, normalizeFormattedNumber } from './numberFormat';
+import { blankIfEmptyRichText, usesRichText } from './richText';
 import { applySectionVisibility } from './sections';
+import { getAllowedUrlSchemes, withUrlScheme } from './url';
 import type {
 	ConditionalLogic,
 	ConditionalLogicRule,
@@ -349,17 +353,36 @@ export function evaluateFieldVisibility(
 
 /**
  * Put values in the shape the server evaluates rules against, after
- * `SubmissionService::normalizeSubmittedValues()`: a list keeps only its
- * filled rows (none is empty), and a date and time is `YYYY-MM-DD HH:MM`
- * (since 1.6.0).
+ * `SubmissionService::normalizeSubmittedValues()`: a number typed in its
+ * format is a plain decimal (`1,000` is `1000`), a URL typed without a
+ * scheme gets one, a color is `#rrggbb`, emptied rich text is blank, a list
+ * keeps only its filled rows (none is empty), and a date and time is
+ * `YYYY-MM-DD HH:MM` (since 1.6.0).
  */
 function normalizeConditionValues( fields: FormField[], formData: Record<string, unknown> ): Record<string, unknown> {
 	const values = { ...formData };
 
 	for ( const field of fields ) {
-		const value = values[field.name];
+		if ( !Object.prototype.hasOwnProperty.call( values, field.name ) ) {
+			continue;
+		}
 
-		if ( isListField( field ) ) {
+		const value = values[field.name];
+		const format = field.type === 'number' ? getNumberFormat( field ) : undefined;
+
+		if ( format !== undefined ) {
+			if ( typeof value === 'string' ) {
+				values[field.name] = normalizeFormattedNumber( value, format );
+			} else if ( typeof value === 'number' && format === 'currency' ) {
+				values[field.name] = normalizeFormattedNumber( String( value ), format );
+			}
+		} else if ( field.type === 'url' && typeof value === 'string' ) {
+			values[field.name] = withUrlScheme( value, getAllowedUrlSchemes( field ) );
+		} else if ( usesRichText( field ) && typeof value === 'string' ) {
+			values[field.name] = blankIfEmptyRichText( value );
+		} else if ( field.type === 'color' && typeof value === 'string' ) {
+			values[field.name] = normalizeColor( value );
+		} else if ( isListField( field ) ) {
 			const rows = toListRows( field, value ).filter( ( row ) => Object.values( row ).some( ( cell ) => cell.trim() !== '' ) );
 
 			values[field.name] = rows.length > 0 ? rows : null;
