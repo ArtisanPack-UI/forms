@@ -13,7 +13,7 @@
 import type { FormField, ValidationRules } from '../types/artisanpack-forms';
 
 import { hasCaptchaWidget, runsOnSubmit } from './captcha';
-import { isMultipleChoiceField } from './choices';
+import { getFieldOptions, isMultipleChoiceField } from './choices';
 import {
 	getEnabledSubInputs,
 	getRequiredSubInputKeys,
@@ -202,6 +202,17 @@ function validateValue(
 			errors.push( `Please specify ${getOtherChoiceLabel( field )} (up to ${OTHER_CHOICE_MAX_LENGTH} characters).` );
 
 			return errors;
+		}
+
+		// "Other" adds one answer of the visitor's own, not any number of them (since 1.6.0)
+		if ( isMultipleChoiceField( field ) ) {
+			const optionValues = new Set( getFieldOptions( field ).map( ( option ) => option.value ) );
+
+			if ( items.filter( ( item ) => !optionValues.has( String( item ) ) ).length > 1 ) {
+				errors.push( t( 'Please choose one of the available options for :field.', { field: field.label ?? field.name } ) );
+
+				return errors;
+			}
 		}
 	}
 

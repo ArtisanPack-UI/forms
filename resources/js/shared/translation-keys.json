@@ -321,6 +321,7 @@
     "Please choose at least :min options.",
     "Please choose no more than :max options.",
     "Please choose one of the available answers for :field.",
+    "Please choose one of the available options for :field.",
     "Please complete the verification check.",
     "Please draw your signature for :field, or type your full name (up to :max characters).",
     "Please enter a valid date and time for :field.",

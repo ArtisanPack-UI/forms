@@ -53,3 +53,25 @@ describe( 'selection counts (FT-03)', function (): void {
         ] );
     } );
 } );
+
+describe( 'the Other choice (FT-04)', function (): void {
+    it( 'accepts one answer of the visitor\'s own in a checkbox group, not more', function (): void {
+        $group = ['type' => 'checkbox_group', 'other_choice_label' => 'Other', 'options' => [['value' => 'a', 'label' => 'A'], ['value' => 'b', 'label' => 'B']]];
+
+        $errors = jsValidate( [
+            [$group, ['a', 'my text']],
+            [$group, ['a', 'b']],
+            [$group, ['a', 'x', 'y']],
+        ] );
+
+        if ( null === $errors ) {
+            $this->markTestSkipped( 'Node 22.7+ is needed to run the shared helpers.' );
+        }
+
+        expect( $errors )->toBe( [
+            [],
+            [],
+            ['Please choose one of the available options for Answer.'],
+        ] );
+    } );
+} );
