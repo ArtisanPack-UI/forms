@@ -6,15 +6,20 @@
     (FormRenderer::removeFile()). Each file shows its progress and a remove
     button; a polite live region announces when uploads start and finish.
     The list and live region are managed by Alpine, so Livewire leaves them
-    alone (`wire:ignore`).
+    alone (`wire:ignore`). Since 1.6.0 the list starts with the files already
+    uploaded (`$files`), so it survives a step change or a show/hide; a
+    single-file field shows its uploaded file with a remove button.
 
     Since 1.6.0 the note under the input lists the allowed types next to the
     size limits (FormField::getFileLimitsHint()), and the input's
     `aria-describedby` references it.
 --}}
-@props(['field', 'error' => null])
+@props(['field', 'error' => null, 'files' => null])
 
 @php
+    $uploadedFiles = collect(is_array($files) ? $files : [])
+        ->filter(fn ($file) => $file instanceof \Illuminate\Http\UploadedFile);
+    $uploadedFile = $files instanceof \Illuminate\Http\UploadedFile ? $files : null;
     $allowedTypes = $field->getFileAllowedTypes();
     $accept = !empty($allowedTypes) ? implode(',', array_map(fn($type) => '.' . $type, $allowedTypes)) : null;
     $multiple = $field->allowsMultipleFiles();
@@ -26,7 +31,13 @@
 @if($multiple)
 <div
     x-data="{
-        items: [],
+        items: @js($uploadedFiles->map(fn ($file, $key) => [
+            'key' => (string) $key,
+            'name' => $file->getClientOriginalName(),
+            'size' => $file->getSize(),
+            'progress' => 100,
+            'status' => 'done',
+        ])->values()->all()),
         dragging: false,
         announcement: '',
         maxFiles: @js($maxFiles),
@@ -157,11 +168,28 @@
     id="field-{{ $field->name }}"
     class="file-input file-input-bordered w-full {{ $field->css_classes }} @error('files.' . $field->name) file-input-error @enderror"
     @if($accept) accept="{{ $accept }}" @endif
-    @if($field->is_required) required aria-required="true" @endif
+    @if($field->is_required) @if(null === $uploadedFile) required @endif aria-required="true" @endif
     @if($error) aria-invalid="true" @endif
     @unless(filled($field->label)) aria-label="{{ \Illuminate\Support\Str::headline($field->name) }}" @endunless
     @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
 />
+
+@if($uploadedFile)
+    <div class="mt-2 flex items-center gap-3 rounded-box bg-base-200 p-2" data-forms-uploaded-file>
+        <p class="min-w-0 grow truncate text-sm">
+            <span class="sr-only">{{ __( 'Uploaded file:' ) }}</span>
+            {{ $uploadedFile->getClientOriginalName() }}
+        </p>
+        <button
+            type="button"
+            class="btn btn-ghost btn-sm btn-square"
+            wire:click="$set(@js('files.' . $field->name), null)"
+            aria-label="{{ __( 'Remove :name', ['name' => $uploadedFile->getClientOriginalName()] ) }}"
+        >
+            <x-artisanpack-icon name="o-x-mark" class="h-4 w-4" aria-hidden="true" />
+        </button>
+    </div>
+@endif
 
 <div wire:loading wire:target="files.{{ $field->name }}" class="mt-2">
     <span class="loading loading-spinner loading-sm"></span>
