@@ -505,7 +505,6 @@ function handleMultiSelectChange( event: Event ): void {
 				:id="layout.custom ? layout.inputId : undefined"
 				:name="field.name"
 				multiple
-				:value="selectedArray"
 				:required="field.is_required"
 				:disabled="readOnly"
 				:aria-readonly="readOnly ? 'true' : undefined"
@@ -515,10 +514,12 @@ function handleMultiSelectChange( event: Event ): void {
 				:aria-describedby="describedBy"
 				@change="handleMultiSelectChange"
 			>
+				<!-- Each option carries its own selection: Vue sets a select's `value` as one string -->
 				<option
 					v-for="option in options"
 					:key="option.value"
 					:value="option.value"
+					:selected="selectedArray.includes( option.value )"
 				>
 					{{ option.label }}
 				</option>
