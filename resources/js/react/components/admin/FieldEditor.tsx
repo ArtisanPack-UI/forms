@@ -159,8 +159,14 @@ export function FieldEditor( {
 	// selects a different field.
 	const [field, setField] = useState<FormField>( serverField );
 
+	// The latest mirror, so an update built after an await (an image upload)
+	// starts from the settings saved since, not a stale snapshot (since 1.6.0).
+	const fieldRef = useRef( field );
+	fieldRef.current = field;
+
 	useEffect( () => {
 		setField( serverField );
+		fieldRef.current = serverField;
 	}, [serverField.id] );
 
 	const isLayoutField = LAYOUT_FIELD_TYPES.has( field.type );
@@ -179,6 +185,7 @@ export function FieldEditor( {
 
 	const updateField = useCallback(
 		( data: UpdateFieldRequest ) => {
+			fieldRef.current = { ...fieldRef.current, ...data } as FormField;
 			setField( ( prev ) => ( { ...prev, ...data } as FormField ) );
 			pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...data };
 
@@ -216,11 +223,12 @@ export function FieldEditor( {
 		return ( field.field_config as { options?: FieldOption[] } )?.options ?? field.options ?? [];
 	}, [field, hasOptions] );
 
+	// `field_config` is saved whole, so the options join the latest settings, never an older copy
 	const handleSetOptions = useCallback(
 		( newOptions: FieldOption[] ) => {
-			updateField( { field_config: { ...( field.field_config ?? {} ), options: newOptions } } );
+			updateField( { field_config: { ...( fieldRef.current.field_config ?? {} ), options: newOptions } } );
 		},
-		[field.field_config, updateField],
+		[updateField],
 	);
 
 	// Show a sub-input change at once; the server rebuilds `sub_inputs` on save.
