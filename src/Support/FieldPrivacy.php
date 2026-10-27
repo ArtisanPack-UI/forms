@@ -100,7 +100,8 @@ class FieldPrivacy
      * Checks whether an upload's file is masked from a user.
      *
      * A file uploaded to a field with "Mask in admin" on is hidden (its name,
-     * preview and download) unless the user may reveal masked values.
+     * preview and download) unless the user may reveal masked values. Once
+     * the field is deleted, the setting copied onto the upload is used.
      *
      * @since 1.6.0
      *
@@ -111,7 +112,9 @@ class FieldPrivacy
      */
     public static function masksUpload( FormUpload $upload, ?Authenticatable $user = null ): bool
     {
-        return true === $upload->field?->isMaskedInAdmin() && ! self::canReveal( $user );
+        $masked = null !== $upload->field ? $upload->field->isMaskedInAdmin() : true === (bool) $upload->is_masked;
+
+        return $masked && ! self::canReveal( $user );
     }
 
     /**

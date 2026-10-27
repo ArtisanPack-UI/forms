@@ -173,10 +173,56 @@ class PruneFormSubmissions extends Command
             }
         }
 
+        $total += $this->redactOrphanedValues( $isDryRun );
+
         if ( $total > 0 ) {
             $this->info( $isDryRun
                 ? "[Dry Run] Would redact {$total} field value(s) past their field's redaction period."
                 : "Redacted {$total} field value(s) past their field's redaction period." );
+        }
+
+        return $total;
+    }
+
+    /**
+     * Clears stored values of deleted fields whose redaction period has passed.
+     *
+     * A deleted field's values keep the "Redact after N days" setting copied
+     * onto them when they were stored (`redact_after_days`), so they are
+     * still redacted on time.
+     *
+     * @since 1.6.0
+     *
+     * @param bool $isDryRun Whether to only count the values.
+     *
+     * @return int The number of values redacted, or that would be.
+     */
+    protected function redactOrphanedValues( bool $isDryRun ): int
+    {
+        $total = 0;
+
+        $periods = FormSubmissionValue::query()
+            ->whereNull( 'field_id' )
+            ->whereNull( 'redacted_at' )
+            ->whereNotNull( 'redact_after_days' )
+            ->distinct()
+            ->pluck( 'redact_after_days' );
+
+        foreach ( $periods as $days ) {
+            $query = fn (): Builder => FormSubmissionValue::query()
+                ->whereNull( 'field_id' )
+                ->whereNull( 'redacted_at' )
+                ->where( 'redact_after_days', $days )
+                ->whereIn( 'submission_id', FormSubmission::query()->select( 'id' )->where( 'created_at', '<', now()->subDays( (int) $days ) ) );
+
+            if ( $isDryRun ) {
+                $total += $query()->count();
+
+                continue;
+            }
+
+            $total += $this->redactFileValues( $query()->where( 'field_type', 'file' ) );
+            $total += $query()->where( 'field_type', '!=', 'file' )->update( ['value' => null, 'value_array' => null, 'redacted_at' => now()] );
         }
 
         return $total;

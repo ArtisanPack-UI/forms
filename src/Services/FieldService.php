@@ -19,10 +19,15 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Services;
 
 use ArtisanPackUI\Forms\Config\FieldTypes;
+use ArtisanPackUI\Forms\FieldTypes\CalculationFieldType;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
+use ArtisanPackUI\Forms\Support\Calculation;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -83,6 +88,12 @@ class FieldService
     /**
      * Updates an existing field.
      *
+     * Since 1.6.0, a change that would show a masked field's values to users
+     * who may not reveal them (turning "Mask in admin" off, a type change to
+     * a type that cannot be masked, or a rename) needs the
+     * `changeFieldPrivacy` form ability, and a calculation may not use a
+     * masked field.
+     *
      * @since 1.0.0
      *
      * @param FormField            $field The field to update.
@@ -90,6 +101,8 @@ class FieldService
      *
      * @throws InvalidArgumentException If an invalid field type is provided.
      * @throws RuntimeException If the field cannot be refreshed after update.
+     * @throws AuthorizationException If the change weakens privacy and the user may not do that.
+     * @throws ValidationException If a calculation's formula uses a masked field.
      *
      * @return FormField The updated field.
      *
@@ -109,6 +122,8 @@ class FieldService
                 $field->id,
             );
         }
+
+        $this->guardPrivacyChange( $field, $data );
 
         $field->update( $data );
 
@@ -132,6 +147,10 @@ class FieldService
      */
     public function delete( FormField $field ): bool
     {
+        if ( $field->isMaskedInAdmin() && $field->submissionValues()->exists() ) {
+            Gate::authorize( 'changeFieldPrivacy', $field->form );
+        }
+
         return (bool) $field->delete();
     }
 
@@ -333,5 +352,52 @@ class FieldService
         }
 
         return $query->exists();
+    }
+
+    /**
+     * Checks that an update does not weaken a masked field's privacy without permission.
+     *
+     * @since 1.6.0
+     *
+     * @param FormField            $field The field before the update.
+     * @param array<string, mixed> $data  The changes.
+     *
+     * @throws AuthorizationException If the change weakens privacy and the user may not do that.
+     * @throws ValidationException If a calculation's formula uses a masked field.
+     *
+     * @return void
+     */
+    protected function guardPrivacyChange( FormField $field, array $data ): void
+    {
+        $updated = clone $field;
+        $updated->fill( $data );
+
+        if ( $field->isMaskedInAdmin() ) {
+            $unmasks = ! $updated->isMaskedInAdmin();
+            $renames = array_key_exists( 'name', $data ) && (string) $data['name'] !== (string) $field->name;
+
+            if ( $unmasks || $renames ) {
+                Gate::authorize( 'changeFieldPrivacy', $field->form );
+            }
+        }
+
+        if ( 'calculation' !== $updated->type ) {
+            return;
+        }
+
+        $masked = $field->form->fields()
+            ->whereKeyNot( $field->getKey() )
+            ->get()
+            ->filter( fn ( FormField $candidate ): bool => $candidate->isMaskedInAdmin() )
+            ->pluck( 'name' )
+            ->all();
+
+        foreach ( Calculation::references( CalculationFieldType::formula( $updated ) ) as $name ) {
+            if ( in_array( $name, $masked, true ) ) {
+                throw ValidationException::withMessages( [
+                    'field_config.formula' => __( 'The formula may not use {:name}, because its values are masked in the admin.', ['name' => $name] ),
+                ] );
+            }
+        }
     }
 }

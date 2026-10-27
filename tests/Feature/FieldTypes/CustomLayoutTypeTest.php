@@ -8,6 +8,7 @@ use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Services\SubmissionService;
 use ArtisanPackUI\Forms\Support\FieldSettings;
 use Livewire\Livewire;
+use Tests\Models\User;
 
 /**
  * Guards issue #88: a custom layout type registered through
@@ -62,7 +63,7 @@ describe( 'custom layout field types', function (): void {
     } )->with( [1, '1'] );
 
     it( 'is not offered as a notification condition field', function (): void {
-        $fields = Livewire::test( NotificationEditor::class, ['form' => $this->form] )
+        $fields = Livewire::actingAs( User::factory()->create() )->test( NotificationEditor::class, ['form' => $this->form] )
             ->instance()
             ->availableConditionFields();
 

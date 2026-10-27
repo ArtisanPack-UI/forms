@@ -687,13 +687,21 @@ class FormField extends Model
     /**
      * Checks whether a file field stores its uploads in the media library.
      *
+     * Media items follow the media library's visibility (public by default)
+     * and are listed to everyone with media library access, so a field with
+     * "Mask in admin" or "Do not store" on always keeps its files on the
+     * private forms disk, whatever its Storage setting.
+     *
      * @since 1.6.0
      *
-     * @return bool True when the `storage` setting is `media_library` and the type offers it.
+     * @return bool True when the `storage` setting is `media_library`, the type offers it, and the field is neither masked nor "Do not store".
      */
     public function usesMediaLibraryStorage(): bool
     {
-        return 'media_library' === $this->getConfig( 'storage' ) && $this->offersSetting( 'storage' );
+        return 'media_library' === $this->getConfig( 'storage' )
+            && $this->offersSetting( 'storage' )
+            && $this->storesValues()
+            && ! $this->isMaskedInAdmin();
     }
 
     /**

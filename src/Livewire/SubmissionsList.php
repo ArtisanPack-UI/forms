@@ -299,7 +299,13 @@ class SubmissionsList extends Component
      */
     public function bulkDelete(): void
     {
-        $count = $this->getOwnedSelectedQuery()->delete();
+        // Deleted one by one so each submission's files are removed too (see FormSubmission::boot())
+        $count = 0;
+
+        foreach ( $this->getOwnedSelectedQuery()->lazyById() as $submission ) {
+            $submission->delete();
+            $count++;
+        }
 
         $this->resetSelection();
         session()->flash( 'success', trans_choice( ':count submission deleted.|:count submissions deleted.', $count, ['count' => $count] ) );
@@ -553,16 +559,21 @@ class SubmissionsList extends Component
 
         // Apply search filter (escape special LIKE characters). Masked values
         // are not searched unless the user may reveal them, so a search can't
-        // be used to guess them.
+        // be used to guess them. A deleted field's values use the masking
+        // copied onto them when they were stored.
         if ( '' !== $this->search ) {
             $search         = str_replace( ['%', '_'], ['\%', '\_'], $this->search );
-            $maskedFieldIds = FieldPrivacy::canReveal() ? [] : FieldPrivacy::maskedFieldIds();
+            $canReveal      = FieldPrivacy::canReveal();
+            $maskedFieldIds = $canReveal ? [] : FieldPrivacy::maskedFieldIds();
 
-            $query->where( function ( $q ) use ( $search, $maskedFieldIds ): void {
+            $query->where( function ( $q ) use ( $search, $canReveal, $maskedFieldIds ): void {
                 $q->where( 'submission_number', 'like', "%{$search}%" )
-                    ->orWhereHas( 'values', function ( $vq ) use ( $search, $maskedFieldIds ): void {
+                    ->orWhereHas( 'values', function ( $vq ) use ( $search, $canReveal, $maskedFieldIds ): void {
                         $vq->where( 'value', 'like', "%{$search}%" )
-                            ->when( [] !== $maskedFieldIds, fn ( $masked ) => $masked->whereNotIn( 'field_id', $maskedFieldIds ) );
+                            ->when( ! $canReveal, fn ( $masked ) => $masked->where( function ( $visible ) use ( $maskedFieldIds ): void {
+                                $visible->where( fn ( $live ) => $live->whereNotNull( 'field_id' )->when( [] !== $maskedFieldIds, fn ( $live ) => $live->whereNotIn( 'field_id', $maskedFieldIds ) ) )
+                                    ->orWhere( fn ( $orphan ) => $orphan->whereNull( 'field_id' )->where( fn ( $unmasked ) => $unmasked->whereNull( 'is_masked' )->orWhere( 'is_masked', false ) ) );
+                            } ) );
                     } );
             } );
         }

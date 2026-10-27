@@ -276,13 +276,19 @@ class FormSubmissionNotification extends Mailable
      * they are deleted once the submission's deliveries are sent (see
      * TransientUploads).
      *
+     * A notification whose recipient comes from the submission (an
+     * autoresponder, or any notification with a recipient field) never
+     * carries the files: the visitor chooses that address, so attaching
+     * would let anyone have the site mail a file of their choosing to
+     * someone else.
+     *
      * @since 1.0.0
      *
      * @return array<int, Attachment> The message attachments.
      */
     public function attachments(): array
     {
-        if ( ! $this->notification->include_submission_data ) {
+        if ( ! $this->notification->include_submission_data || $this->sendsToSubmittedAddress() ) {
             return [];
         }
 
@@ -292,6 +298,19 @@ class FormSubmissionNotification extends Mailable
                 ->withMime( $upload->mime_type ?? 'application/octet-stream' ),
             TransientUploads::uploadsOf( $this->submission ),
         );
+    }
+
+    /**
+     * Checks whether the notification goes to an address taken from the submission.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True for an autoresponder or a notification with a recipient field.
+     */
+    protected function sendsToSubmittedAddress(): bool
+    {
+        return FormNotification::TYPE_AUTORESPONDER === $this->notification->type
+            || ( is_string( $this->notification->to_field ) && '' !== $this->notification->to_field );
     }
 
     /**

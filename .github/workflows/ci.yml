@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'release/**']
   pull_request:
-    branches: [main]
+    branches: [main, 'release/**']
 
 jobs:
   lint:
@@ -40,8 +40,7 @@ jobs:
         run: ./vendor/bin/php-cs-fixer fix --dry-run --diff
 
       - name: Run PHPCS
-        continue-on-error: true
-        run: ./vendor/bin/phpcs src/ routes/ tests/
+        run: ./vendor/bin/phpcs
 
   test:
     runs-on: ubuntu-latest
@@ -86,6 +85,13 @@ jobs:
         env:
           XDEBUG_MODE: off
         run: vendor/bin/pest tests/Unit --no-coverage
+
+      # The PHP/TypeScript parity tests run the shared helpers with Node
+      # (22.6+ strips TypeScript types); with CI set they fail rather than skip
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
       - name: Run Feature tests
         env:

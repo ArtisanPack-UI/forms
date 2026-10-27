@@ -980,7 +980,7 @@ class FormRenderer extends Component
             return;
         }
 
-        $visible = $this->submissionService->applyCalculations( $fields, $this->visibleFormData() );
+        $visible = $this->submissionService->applyCalculations( $fields, $this->visibleFormData(), false, true );
 
         foreach ( $fields->where( 'type', CalculationFieldType::TYPE ) as $field ) {
             $this->formData[ $field->name ] = $visible[ $field->name ];

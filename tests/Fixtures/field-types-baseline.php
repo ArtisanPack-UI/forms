@@ -9,7 +9,10 @@
  * they allow other schemes (#120), so their rule is `url:http,https`. Date
  * fields require `Y-m-d` dates (`date_format:Y-m-d`, #122 / #123). Choice
  * fields only accept their option values (`in:`), and a multiple-choice
- * field's values must each be a string (`{name}.*`, #153).
+ * field's values must each be a string (`{name}.*`, #153). A multiple-choice
+ * field's "Min Selections" lets an optional field be left empty
+ * (`forms_min_selections`, FT-03). A number field's "Step Increment" is
+ * checked on the server (`forms_step`, FT-05).
  */
 
 return  [
@@ -491,15 +494,17 @@ return  [
            [
             0 => 'nullable',
             1 => 'numeric',
-            2 => 'min:0',
-            3 => 'max:5',
+            2 => 'forms_step:0,0.5',
+            3 => 'min:0',
+            4 => 'max:5',
           ],
           'required' => 
            [
             0 => 'required',
             1 => 'numeric',
-            2 => 'min:0',
-            3 => 'max:5',
+            2 => 'forms_step:0,0.5',
+            3 => 'min:0',
+            4 => 'max:5',
           ],
         ],
         'phone' => 
@@ -590,13 +595,13 @@ return  [
            [
             0 => 'nullable',
             1 => 'array',
-            2 => 'min:1',
+            2 => 'forms_min_selections:1',
           ],
           'required' => 
            [
             0 => 'required',
             1 => 'array',
-            2 => 'min:1',
+            2 => 'forms_min_selections:1',
           ],
         ],
         'select_multiple' => 
@@ -775,8 +780,9 @@ return  [
              [
               0 => 'nullable',
               1 => 'numeric',
-              2 => 'min:0',
-              3 => 'max:5',
+              2 => 'forms_step:0,0.5',
+              3 => 'min:0',
+              4 => 'max:5',
             ],
           ],
           'required' => 
@@ -785,8 +791,9 @@ return  [
              [
               0 => 'required',
               1 => 'numeric',
-              2 => 'min:0',
-              3 => 'max:5',
+              2 => 'forms_step:0,0.5',
+              3 => 'min:0',
+              4 => 'max:5',
             ],
           ],
         ],
@@ -916,7 +923,7 @@ return  [
              [
               0 => 'nullable',
               1 => 'array',
-              2 => 'min:1',
+              2 => 'forms_min_selections:1',
             ],
             'formData.checkbox_group.*' => 
              [
@@ -930,7 +937,7 @@ return  [
              [
               0 => 'required',
               1 => 'array',
-              2 => 'min:1',
+              2 => 'forms_min_selections:1',
             ],
             'formData.checkbox_group.*' => 
              [
@@ -1116,10 +1123,12 @@ return  [
          [
           'optional' => 
            [
+            'formData.number.forms_step' => 'The Number must be in steps of 0.5.',
           ],
           'required' => 
            [
-            'formData.number.required' => 'The Number field is required.',
+            'formData.number.required'   => 'The Number field is required.',
+            'formData.number.forms_step' => 'The Number must be in steps of 0.5.',
           ],
         ],
         'phone' => 
@@ -1190,14 +1199,16 @@ return  [
          [
           'optional' => 
            [
-            'formData.checkbox_group.*.string' => 'Please choose one of the available options for Checkbox_group.',
-            'formData.checkbox_group.*.in'     => 'Please choose one of the available options for Checkbox_group.',
+            'formData.checkbox_group.*.string'             => 'Please choose one of the available options for Checkbox_group.',
+            'formData.checkbox_group.*.in'                 => 'Please choose one of the available options for Checkbox_group.',
+            'formData.checkbox_group.forms_min_selections' => 'Please choose at least 1 option for Checkbox_group.',
           ],
           'required' => 
            [
-            'formData.checkbox_group.required' => 'The Checkbox_group field is required.',
-            'formData.checkbox_group.*.string' => 'Please choose one of the available options for Checkbox_group.',
-            'formData.checkbox_group.*.in'     => 'Please choose one of the available options for Checkbox_group.',
+            'formData.checkbox_group.required'             => 'The Checkbox_group field is required.',
+            'formData.checkbox_group.*.string'             => 'Please choose one of the available options for Checkbox_group.',
+            'formData.checkbox_group.*.in'                 => 'Please choose one of the available options for Checkbox_group.',
+            'formData.checkbox_group.forms_min_selections' => 'Please choose at least 1 option for Checkbox_group.',
           ],
         ],
         'select_multiple' => 

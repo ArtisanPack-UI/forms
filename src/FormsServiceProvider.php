@@ -47,6 +47,7 @@ use Illuminate\Contracts\Validation\Factory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 use RuntimeException;
@@ -147,6 +148,7 @@ class FormsServiceProvider extends ServiceProvider
         $this->loadApiRoutes();
         $this->registerLivewireComponents();
         $this->publishViews();
+        $this->warnAboutStalePublishedViews();
         $this->publishTypeDefinitions();
         $this->publishReactComponents();
         $this->publishVueComponents();
@@ -415,6 +417,44 @@ class FormsServiceProvider extends ServiceProvider
                 __DIR__ . '/../resources/views' => resource_path( 'views/vendor/forms' ),
             ], [ 'artisanpack-forms-views', 'forms-views' ] );
         }
+    }
+
+    /**
+     * Logs a warning when a published renderer view from 1.5 or earlier shadows the package's.
+     *
+     * Those copies write to the renderer's `hiddenFields` from the browser,
+     * which 1.6 locks, so every form with conditional logic throws
+     * `CannotUpdateLockedPropertyException` until the views are republished.
+     * Only checked locally or in the console, so production requests read no
+     * extra file.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True when a stale view was found.
+     */
+    protected function warnAboutStalePublishedViews(): bool
+    {
+        if ( ! $this->app->isLocal() && ! $this->app->runningInConsole() ) {
+            return false;
+        }
+
+        $path = resource_path( 'views/vendor/forms/livewire/form-renderer.blade.php' );
+
+        if ( ! is_file( $path ) ) {
+            return false;
+        }
+
+        $contents = (string) file_get_contents( $path );
+
+        if ( ! str_contains( $contents, "set('hiddenFields'" ) && ! str_contains( $contents, 'set("hiddenFields"' ) ) {
+            return false;
+        }
+
+        Log::warning( 'ArtisanPackUI Forms: the published form renderer view is from an older version and breaks conditional logic. Republish it with `php artisan vendor:publish --tag=forms-views --force` and re-apply your changes.', [
+            'path' => $path,
+        ] );
+
+        return true;
     }
 
     /**
