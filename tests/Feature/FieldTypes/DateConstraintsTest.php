@@ -144,7 +144,7 @@ describe( 'submission', function (): void {
         $this->date->update( ['validation_rules' => ['date_range' => 'no_past']] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.when', '2026-06-14' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.when' => 'after_or_equal'] )
@@ -172,7 +172,7 @@ describe( 'submission', function (): void {
         $this->date->update( ['validation_rules' => ['min_age' => 18, 'max_age' => 65]] );
 
         $test = Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.when', $birthdate )
             ->call( 'submit' );
 

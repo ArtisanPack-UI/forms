@@ -213,7 +213,7 @@ describe( 'Livewire', function (): void {
 
     it( 'validates and stores the rows', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.attendees.0', ['name' => 'Ada', 'email' => 'bad', 'role' => '', 'age' => ''] )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.attendees.0.email' => 'email'] )

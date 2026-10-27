@@ -128,7 +128,7 @@ describe( 'read-only fields', function (): void {
         ] );
 
         Livewire::test( FormRenderer::class, ['form' => $form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.plan', 'personal' )
             ->assertSet( 'hiddenFields.company_vat', true )
             ->call( 'submit' )
@@ -164,7 +164,7 @@ describe( 'read-only fields', function (): void {
 
         Livewire::test( FormRenderer::class, ['form' => $form] )
             ->assertSet( 'formData.owner', 'owner@example.com' )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.owner', 'not-an-email' )
             ->call( 'submit' )
             ->assertHasNoErrors()
@@ -201,7 +201,7 @@ describe( 'read-only fields', function (): void {
 
         Livewire::test( FormRenderer::class, ['form' => $form] )
             ->assertSet( 'formData.subscribed', $checked )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->call( 'submit' )
             ->assertHasNoErrors()
             ->assertSet( 'isSubmitted', true );

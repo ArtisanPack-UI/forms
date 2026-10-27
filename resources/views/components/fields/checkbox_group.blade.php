@@ -11,6 +11,7 @@
 @endphp
 
 @component('forms::components.field-layout', ['field' => $field, 'error' => $error])
+{{-- `aria-invalid` goes on each checkbox: the `group` role does not take it. --}}
 <div
     class="{{ $field->css_classes }}"
     role="group"
@@ -54,6 +55,7 @@
                         class="checkbox checkbox-primary checkbox-sm"
                         id="field-{{ $field->name }}-{{ $index }}"
                         aria-labelledby="field-{{ $field->name }}-{{ $index }}-label"
+                        @if($error) aria-invalid="true" @endif
                     />
                 @endcomponent
             @else
@@ -64,6 +66,7 @@
                     value="{{ $optionValue }}"
                     class="checkbox checkbox-primary"
                     id="field-{{ $field->name }}-{{ $index }}"
+                    @if($error) aria-invalid="true" @endif
                 />
                 <span class="label-text">{{ $optionLabel }}</span>
             </label>
@@ -79,6 +82,7 @@
                     class="checkbox checkbox-primary"
                     id="field-{{ $field->name }}-other"
                     @if($otherSelected) aria-controls="field-{{ $field->name }}-other-text" @endif
+                    @if($error) aria-invalid="true" @endif
                 />
                 <span class="label-text">{{ $field->getOtherChoiceLabel() }}</span>
             </label>

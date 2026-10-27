@@ -67,7 +67,7 @@ describe( 'validation', function (): void {
 
     it( 'rejects an invalid US number and stores a valid one in E.164 form', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.phone', '12345' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.phone' => 'phone'] )
@@ -90,7 +90,7 @@ describe( 'validation', function (): void {
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
             ->assertSet( 'formData.phone_country', 'US' )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.phone_country', 'GB' )
             ->set( 'formData.phone', '020 7946 0958' )
             ->call( 'submit' )

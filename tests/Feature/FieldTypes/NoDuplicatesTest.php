@@ -66,7 +66,7 @@ describe( 'no duplicates validation', function (): void {
         ] );
 
         $this->submit = fn ( array $data ) => Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData', $data )
             ->call( 'submit' );
     } );

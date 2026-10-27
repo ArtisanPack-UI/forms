@@ -112,7 +112,7 @@ describe( 'address types', function (): void {
         $this->address->update( ['field_config' => ['address_type' => 'us']] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.address', ['street' => '1 Main St', 'city' => 'Albany', 'state' => 'NY', 'postal_code' => '1220'] )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.address.postal_code' => 'regex'] )

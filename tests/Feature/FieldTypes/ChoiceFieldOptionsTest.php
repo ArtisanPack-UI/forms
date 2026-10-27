@@ -235,7 +235,7 @@ describe( 'searchable select', function () use ( $options ): void {
         FormField::factory()->for( $form )->required()->create( ['type' => 'select_multiple', 'name' => 'colors', 'field_config' => ['options' => $options(), 'searchable' => true]] );
 
         Livewire::test( FormRenderer::class, ['form' => $form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->call( 'submit' )
             ->assertHasErrors( ['formData.colors' => 'required'] )
             ->set( 'formData.colors', ['red', 'blue'] )

@@ -36,7 +36,7 @@ beforeEach( function (): void {
     ] );
 
     $this->submit = fn ( FormField $field ) => Livewire::test( FormRenderer::class, ['form' => $field->form->fresh()] )
-        ->set( 'formLoadedAt', time() - 10 )
+        ->afterSpamDelay()
         ->set( 'files.resume', UploadedFile::fake()->create( 'cv.pdf', 50, 'application/pdf' ) )
         ->call( 'submit' )
         ->assertHasNoErrors();

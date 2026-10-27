@@ -25,6 +25,8 @@
     @if($step) step="{{ $step }}" @endif
     @if($field->isReadOnly()) readonly @endif
     @if($field->is_required) required aria-required="true" @endif
+    @if($error) aria-invalid="true" @endif
+    @unless($field->label) aria-label="{{ \Illuminate\Support\Str::headline($field->name) }}" @endunless
     @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
 />
 @endcomponent

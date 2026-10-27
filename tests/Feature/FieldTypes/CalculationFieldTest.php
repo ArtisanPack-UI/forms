@@ -245,7 +245,7 @@ describe( 'Livewire renderer', function (): void {
             ->assertSet( 'formData.total', '10.00' )
             ->assertSeeHtml( 'value="10.00"' )
             ->set( 'formData.total', '1.00' )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->call( 'submit' )
             ->assertHasNoErrors();
 

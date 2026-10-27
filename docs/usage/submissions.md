@@ -110,6 +110,10 @@ $submissions = FormSubmission::where('form_id', $formId)
 3. Choose format (CSV, Excel)
 4. Download the file
 
+### Spreadsheet Formulas
+
+Since 1.6.0 the CSV export neutralises values a spreadsheet would run as a formula (CSV injection). A header or cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return gets a leading `'`, so Excel, LibreOffice and Google Sheets show it as text. Plain numbers such as `-12.5` and phone numbers such as `+15551234567` are left as they are. This runs after the `ap.forms.exportHeaders` and `ap.forms.exportData` filters, so values those filters add are covered too. The JSON export keeps raw values.
+
 ### Programmatically
 
 ```php

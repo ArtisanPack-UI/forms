@@ -146,7 +146,7 @@ class SubmitFormApiRequest extends FormRequest
     }
 
     /**
-     * Gets the sanitized form data with hidden and administrative fields removed.
+     * Gets the sanitized form data with hidden, administrative and layout fields removed.
      *
      * @since 1.1.0
      *
@@ -181,9 +181,10 @@ class SubmitFormApiRequest extends FormRequest
             }
         }
 
-        // Administrative fields are filled in by admins on the submission
+        // Administrative fields are filled in by admins on the submission,
+        // and layout fields collect nothing (since 1.6.0)
         foreach ( $form->fields as $field ) {
-            if ( $field->isAdministrative() ) {
+            if ( $field->isAdministrative() || $field->isLayoutField() ) {
                 unset( $data[ $field->name ] );
             }
         }

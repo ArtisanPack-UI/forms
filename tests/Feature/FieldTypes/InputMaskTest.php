@@ -89,7 +89,7 @@ describe( 'validation', function (): void {
 
     it( 'rejects an incomplete value and stores a complete one with its literals', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.ssn', '123-45-67' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.ssn' => 'regex'] )
@@ -109,7 +109,7 @@ describe( 'validation', function (): void {
 
     it( 'leaves an empty optional field alone', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->call( 'submit' )
             ->assertHasNoErrors();
     } );

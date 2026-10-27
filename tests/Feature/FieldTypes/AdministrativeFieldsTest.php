@@ -55,7 +55,7 @@ describe( 'administrative fields on the public form', function (): void {
             ->assertSee( 'Your Name' )
             ->assertDontSee( 'Follow-up Status' )
             ->assertSet( 'formData', ['name' => ''] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.name', 'Ada' )
             ->call( 'submit' )
             ->assertHasNoErrors()
@@ -64,7 +64,7 @@ describe( 'administrative fields on the public form', function (): void {
 
     it( 'drop a value a visitor submits for them', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.name', 'Ada' )
             ->set( 'formData.status', 'done' )
             ->call( 'submit' );

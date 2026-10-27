@@ -124,7 +124,7 @@ describe( 'storage', function (): void {
     it( 'stores a drawn signature from the Livewire renderer', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
             ->assertSet( 'formData.signature', '' )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.signature', $this->drawn )
             ->call( 'submit' )
             ->assertHasNoErrors();

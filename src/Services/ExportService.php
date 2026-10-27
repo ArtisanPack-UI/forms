@@ -37,6 +37,16 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class ExportService
 {
     /**
+     * The characters that make a spreadsheet read a CSV cell as a formula
+     * when the cell starts with one.
+     *
+     * @since 1.6.0
+     *
+     * @var array<int, string>
+     */
+    public const FORMULA_TRIGGERS = ['=', '+', '-', '@', "\t", "\r"];
+
+    /**
      * Exports submissions to CSV format.
      *
      * Applies the 'ap.forms.exportHeaders' and 'ap.forms.exportData' filter hooks
@@ -84,7 +94,9 @@ class ExportService
      *
      * Applies the 'ap.forms.exportHeaders' filter hook to allow
      * third-party packages to modify export headers. Fields masked in the
-     * admin are left out unless the user may reveal them.
+     * admin are left out unless the user may reveal them. Since 1.6.0 each
+     * header is neutralised after the filter runs, since field labels come
+     * from the builder (see neutraliseFormula()).
      *
      * @since 1.0.0
      *
@@ -122,7 +134,7 @@ class ExportService
         // Apply filter hook for extensibility
         $headers = applyFilters( 'ap.forms.exportHeaders', $headers, $form );
 
-        return $headers;
+        return array_map( [$this, 'neutraliseFormula'], $headers );
     }
 
     /**
@@ -152,7 +164,9 @@ class ExportService
      * Builds a single CSV row from a submission.
      *
      * Applies the 'ap.forms.exportData' filter hook to allow
-     * third-party packages to modify export row data.
+     * third-party packages to modify export row data. Since 1.6.0 each cell
+     * is neutralised after the filter runs, so a submitted value can't run as
+     * a spreadsheet formula (see neutraliseFormula()).
      *
      * @since 1.0.0
      *
@@ -202,7 +216,7 @@ class ExportService
         // Apply filter hook for extensibility
         $row = applyFilters( 'ap.forms.exportData', $row, $submission );
 
-        return $row;
+        return array_map( [$this, 'neutraliseFormula'], $row );
     }
 
     /**
@@ -252,6 +266,35 @@ class ExportService
         }
 
         return $data;
+    }
+
+    /**
+     * Neutralises a CSV cell a spreadsheet would read as a formula.
+     *
+     * A string starting with `=`, `+`, `-`, `@`, a tab or a carriage return
+     * gets a leading `'`, so Excel, LibreOffice and Google Sheets show it as
+     * text (CSV injection, CWE-1236). A plain number such as `-12.5` or an
+     * E.164 phone number such as `+15551234567` can't run as a formula, so it
+     * is left as it is. Only the CSV export calls this; the JSON export keeps
+     * raw values.
+     *
+     * @since 1.6.0
+     *
+     * @param  mixed  $cell  The cell value.
+     *
+     * @return mixed The cell, prefixed with `'` when it could run as a formula.
+     */
+    public function neutraliseFormula( mixed $cell ): mixed
+    {
+        if ( ! is_string( $cell ) || '' === $cell || ! in_array( $cell[0], self::FORMULA_TRIGGERS, true ) ) {
+            return $cell;
+        }
+
+        if ( 1 === preg_match( '/^[+-](?:\d+(?:\.\d+)?|\.\d+)$/D', $cell ) ) {
+            return $cell;
+        }
+
+        return "'" . $cell;
     }
 
     /**

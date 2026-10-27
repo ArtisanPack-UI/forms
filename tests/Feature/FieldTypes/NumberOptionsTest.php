@@ -61,7 +61,7 @@ describe( 'validation and storage', function (): void {
         $this->amount->update( ['validation_rules' => ['min' => 1000]] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.amount', '999.99' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.amount' => 'min'] )
@@ -99,7 +99,7 @@ describe( 'validation and storage', function (): void {
             ->and( $field->buildValidationMessages()['multiple_of'] )->toBe( 'Please enter a whole number for Amount.' );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.amount', '2.5' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.amount' => 'multiple_of'] )

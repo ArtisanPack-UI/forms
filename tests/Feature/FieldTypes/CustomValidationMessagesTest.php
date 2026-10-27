@@ -83,7 +83,7 @@ describe( 'custom validation messages', function (): void {
         ] );
 
         Livewire::test( FormRenderer::class, ['form' => $form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.member_id', '' )
             ->call( 'submit' )
             ->assertSee( 'Your member ID is required' )

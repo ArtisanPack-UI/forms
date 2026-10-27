@@ -67,7 +67,7 @@ describe( 'definition', function (): void {
 describe( 'validation', function (): void {
     it( 'requires the box to be checked, even after being unchecked', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.gdpr', true )
             ->set( 'formData.gdpr', false )
             ->call( 'submit' )
@@ -87,7 +87,7 @@ describe( 'storage', function (): void {
         Carbon::setTestNow( '2026-10-24 12:00:00' );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.gdpr', true )
             ->call( 'submit' )
             ->assertHasNoErrors();
@@ -99,7 +99,8 @@ describe( 'storage', function (): void {
             'text'         => 'I agree to the privacy policy.',
             'description'  => ConsentFieldType::description( $this->consent ),
             'revision'     => ConsentFieldType::revision( $this->consent ),
-            'consented_at' => '2026-10-24T12:00:00+00:00',
+            // afterSpamDelay() moved the clock on 10 seconds before submitting
+            'consented_at' => '2026-10-24T12:00:10+00:00',
         ] )
             ->and( $value->display_value )->toBe( 'Consented' );
     } );

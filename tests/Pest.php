@@ -3,6 +3,8 @@
 declare( strict_types=1 );
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Livewire\Features\SupportTesting\Testable;
 use Tests\TestCase;
 
 /*
@@ -22,6 +24,23 @@ pest()->extend( TestCase::class )
 
 pest()->extend( TestCase::class )
     ->in( 'Unit' );
+
+/*
+|--------------------------------------------------------------------------
+| Livewire
+|--------------------------------------------------------------------------
+|
+| FormRenderer's formLoadedAt is locked (since 1.6.0), so a test can't
+| backdate it to pass the minimum-time spam check. afterSpamDelay() moves
+| the clock past that check instead; the base test case resets the clock.
+|
+*/
+
+Testable::macro( 'afterSpamDelay', function ( int $seconds = 10 ): Testable {
+    Carbon::setTestNow( now()->addSeconds( $seconds ) );
+
+    return $this;
+} );
 
 /*
 |--------------------------------------------------------------------------

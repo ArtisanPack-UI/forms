@@ -244,7 +244,7 @@ describe( 'field', function (): void {
 describe( 'Livewire pipeline', function (): void {
     it( 'requires the token', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.email', 'jane@example.com' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.verify' => 'required'] )
@@ -255,7 +255,7 @@ describe( 'Livewire pipeline', function (): void {
         fakeSiteVerify( ['success' => true] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.email', 'jane@example.com' )
             ->set( 'formData.verify', 'good-token' )
             ->call( 'submit' )
@@ -273,7 +273,7 @@ describe( 'Livewire pipeline', function (): void {
         Http::fake();
 
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.verify', 'good-token' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.email' => 'required'] );
@@ -285,7 +285,7 @@ describe( 'Livewire pipeline', function (): void {
         fakeSiteVerify( ['success' => false, 'error-codes' => ['invalid-input-response']] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.email', 'jane@example.com' )
             ->set( 'formData.verify', 'bad-token' )
             ->call( 'submit' )
@@ -308,10 +308,11 @@ describe( 'Livewire pipeline', function (): void {
         fakeSiteVerify( ['success' => false] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.email', 'jane@example.com' )
             ->set( 'formData.verify', 'token' )
-            ->set( 'currentStepIndex', 1 )
+            ->call( 'nextStep' )
+            ->assertSet( 'currentStepIndex', 1 )
             ->call( 'submit' )
             ->assertSet( 'currentStepIndex', 0 )
             ->assertHasErrors( 'formData.verify' );

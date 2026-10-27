@@ -122,12 +122,20 @@ class FormRenderer extends Component
 
     /**
      * Current step index for multi-step forms (0-based).
+     *
+     * Locked since 1.6.0: steps change only through nextStep(),
+     * previousStep() and goToStep(), which validate the steps passed.
      */
+    #[Locked]
     public int $currentStepIndex = 0;
 
     /**
      * Timestamp when the form was loaded (for bot detection).
+     *
+     * Locked since 1.6.0, so the browser can't backdate it to pass the
+     * minimum-time spam check.
      */
+    #[Locked]
     public int $formLoadedAt;
 
     /**
@@ -138,8 +146,13 @@ class FormRenderer extends Component
     /**
      * Fields hidden by conditional logic.
      *
+     * Locked since 1.6.0: the server works it out from the form data
+     * (evaluateConditionalLogic()), so the browser can't hide a required
+     * field to skip its validation.
+     *
      * @var array<string, bool>
      */
+    #[Locked]
     public array $hiddenFields = [];
 
     /**
@@ -171,7 +184,7 @@ class FormRenderer extends Component
     public function mount( Form $form, array $prefill = [] ): void
     {
         $this->form            = $form->load( ['fields', 'steps.fields'] );
-        $this->formLoadedAt    = time();
+        $this->formLoadedAt    = now()->getTimestamp();
         $this->choiceSeed      = random_int( 1, 2147483647 );
         $this->initialFormData = $this->buildInitialFormData( PopulationContext::fromPageRequest( request() ), $prefill );
         $this->initializeFormData();
@@ -626,6 +639,9 @@ class FormRenderer extends Component
 
     /**
      * Reset the form to allow another submission.
+     *
+     * Conditional logic is worked out again for the starting values, since
+     * the browser no longer sends hidden fields back (since 1.6.0).
      */
     public function resetForm(): void
     {
@@ -634,8 +650,9 @@ class FormRenderer extends Component
         $this->errorMessage     = null;
         $this->files            = [];
         $this->otherValues      = [];
-        $this->formLoadedAt     = time();
+        $this->formLoadedAt     = now()->getTimestamp();
         $this->initializeFormData();
+        $this->evaluateConditionalLogic();
         $this->clearComputedProperties();
 
         $this->dispatch( 'form-reset', formId: $this->form->id );

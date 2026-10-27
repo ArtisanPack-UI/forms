@@ -77,14 +77,14 @@ describe( 'date range', function (): void {
 
     it( 'rejects a reversed range in Livewire and the API', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.stay', ['start' => '2026-11-05', 'end' => '2026-11-01'] )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.stay' => SubmissionRules::DATE_RANGE] );
 
         $this->postJson( route( 'api.forms.submit', $this->form ), [
             'data'            => ['stay' => ['start' => '2026-11-05', 'end' => '2026-11-01']],
-            '_form_loaded_at' => time() - 10,
+            '_form_loaded_at' => now()->subSeconds( 10 )->getTimestamp(),
         ] )->assertUnprocessable()
             ->assertJsonValidationErrors( ['data.stay' => 'Please enter both dates for Stay, with the end date on or after the start date.'] );
     } );
@@ -94,7 +94,7 @@ describe( 'date range', function (): void {
 
         $this->postJson( route( 'api.forms.submit', $this->form ), [
             'data'            => ['stay' => ['start' => '2026-11-01', 'end' => '2026-11-05']],
-            '_form_loaded_at' => time() - 10,
+            '_form_loaded_at' => now()->subSeconds( 10 )->getTimestamp(),
         ] )->assertCreated();
 
         $value = $this->form->submissions()->first()->values->first();
@@ -155,7 +155,7 @@ describe( 'date and time', function (): void {
 
     it( 'accepts a datetime-local value and stores it as Y-m-d H:i', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.appointment', '2026-11-01T09:30' )
             ->call( 'submit' )
             ->assertHasNoErrors();
@@ -168,12 +168,12 @@ describe( 'date and time', function (): void {
 
         $this->postJson( route( 'api.forms.submit', $this->form ), [
             'data'            => ['appointment' => 'next tuesday'],
-            '_form_loaded_at' => time() - 10,
+            '_form_loaded_at' => now()->subSeconds( 10 )->getTimestamp(),
         ] )->assertUnprocessable()->assertJsonValidationErrors( ['data.appointment' => 'Please enter a valid date and time for Appointment.'] );
 
         $this->postJson( route( 'api.forms.submit', $this->form ), [
             'data'            => ['appointment' => '2026-10-24T23:00'],
-            '_form_loaded_at' => time() - 10,
+            '_form_loaded_at' => now()->subSeconds( 10 )->getTimestamp(),
         ] )->assertUnprocessable()->assertJsonValidationErrors( ['data.appointment' => 'The Appointment must be on or after 2026-10-25.'] );
     } );
 
