@@ -30,6 +30,7 @@ import { getDateLimits } from '../../../shared/dateConstraints';
 import { getFieldLayout } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 import type { DisplayConfig, FormField } from '../../../types/artisanpack-forms';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = withDefaults( defineProps<{
 	field: FormField;
@@ -58,8 +59,8 @@ const hiddenLabel = computed( () =>
 );
 const errorCount = computed( () => subInputs.value.filter( ( subInput ) => props.subErrors[subInput.key] ).length );
 const hasErrors = computed( () => Boolean( props.error ) || errorCount.value > 0 );
-const hintId = computed( () => ( props.field.help_text ? `${props.field.name}-hint` : undefined ) );
-const errorId = computed( () => ( hasErrors.value ? `${props.field.name}-error` : undefined ) );
+const hintId = computed( () => ( props.field.help_text ? `${fieldIdKey( props.field )}-hint` : undefined ) );
+const errorId = computed( () => ( hasErrors.value ? `${fieldIdKey( props.field )}-error` : undefined ) );
 const describedBy = computed( () => [hintId.value, errorId.value].filter( Boolean ).join( ' ' ) || undefined );
 const summary = computed( () => {
 	if ( props.error ) {
@@ -88,7 +89,7 @@ function subLabelClass(): string {
 
 <template>
 	<fieldset
-		:id="`field-${field.name}`"
+		:id="`field-${fieldIdKey( field )}`"
 		:class="['fieldset', field.css_classes ?? '']"
 		:data-forms-composite="field.type"
 		:aria-describedby="describedBy"

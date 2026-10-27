@@ -66,6 +66,8 @@ const props = defineProps<{
 	confirmValue?: string;
 	/** A composite field's first error per sub-input, keyed by sub-input (since 1.6.0). */
 	subErrors?: Record<string, string>;
+	/** The files the form holds for a file field (since 1.6.0). */
+	files?: File | File[];
 }>();
 
 const emit = defineEmits<{
@@ -239,6 +241,7 @@ const componentGroup = computed( () => {
 			:model-value="modelValue"
 			:error="error"
 			:display-config="displayConfig"
+			:files="files"
 			@update:model-value="emit( 'update:modelValue', $event )"
 			@file-change="emit( 'fileChange', $event )"
 		/>

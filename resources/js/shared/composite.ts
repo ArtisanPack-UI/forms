@@ -19,6 +19,7 @@ import type {
 	SubLabelPlacement,
 	UpdateFieldRequest,
 } from '../types/artisanpack-forms';
+import { fieldIdKey } from './domIds';
 
 /** The longest text one sub-input accepts, mirroring `CompositeFieldType::SUB_INPUT_MAX_LENGTH`. */
 export const SUB_INPUT_MAX_LENGTH = 255;
@@ -92,7 +93,7 @@ export function toCompositeValue( value: unknown ): Record<string, string> {
 
 /** Get the ID of a sub-input's input. */
 export function getSubInputId( field: FormField, key: string ): string {
-	return `field-${field.name}-${key}`;
+	return `field-${fieldIdKey( field )}-${key}`;
 }
 
 /**

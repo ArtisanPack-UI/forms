@@ -15,6 +15,7 @@ namespace ArtisanPackUI\Forms\FieldTypes;
 use ArtisanPackUI\Forms\Config\FieldTypes;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Support\NumberFormat;
+use ArtisanPackUI\Forms\Support\SubmissionRules;
 
 /**
  * Numeric input.
@@ -93,7 +94,13 @@ class NumberFieldType extends AbstractFieldType
      */
     protected function typeRules( FormField $field ): array
     {
-        return $field->isIntegerOnly() ? ['numeric', 'multiple_of:1'] : ['numeric'];
+        $rules = $field->isIntegerOnly() ? ['numeric', 'multiple_of:1'] : ['numeric'];
+
+        if ( null !== ( $step = $this->stepIncrement( $field ) ) ) {
+            $rules[] = SubmissionRules::STEP . ':' . $this->stepBase( $field ) . ',' . $step;
+        }
+
+        return $rules;
     }
 
     /**
@@ -103,6 +110,47 @@ class NumberFieldType extends AbstractFieldType
      */
     protected function typeMessages( FormField $field ): array
     {
-        return $field->isIntegerOnly() ? ['multiple_of' => __( 'Please enter a whole number for :field.', ['field' => $field->label] )] : [];
+        $messages = $field->isIntegerOnly() ? ['multiple_of' => __( 'Please enter a whole number for :field.', ['field' => $field->label] )] : [];
+
+        if ( null !== ( $step = $this->stepIncrement( $field ) ) ) {
+            $messages[ SubmissionRules::STEP ] = __( 'The :field must be in steps of :step.', ['field' => $field->label, 'step' => $step] );
+        }
+
+        return $messages;
+    }
+
+    /**
+     * Gets the "Step Increment" a value must be a whole number of steps from "Min Value" by.
+     *
+     * The browser checks it too (`validateNumericRules()` in
+     * `resources/js/shared/validation.ts`).
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     *
+     * @return string|null The step, or null when unset or not positive.
+     */
+    protected function stepIncrement( FormField $field ): ?string
+    {
+        $step = $this->validationLimit( $field, 'step' );
+
+        return null !== $step && is_numeric( $step ) && (float) $step > 0 ? $step : null;
+    }
+
+    /**
+     * Gets the number steps are counted from: "Min Value", or 0.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     *
+     * @return string The base.
+     */
+    protected function stepBase( FormField $field ): string
+    {
+        $min = $this->validationLimit( $field, 'min' );
+
+        return null !== $min && is_numeric( $min ) ? $min : '0';
     }
 }

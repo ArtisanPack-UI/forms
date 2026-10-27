@@ -17,6 +17,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import type { FormField } from '../../../types/artisanpack-forms';
 import { COUNTER_ANNOUNCE_DELAY, getCounterState, showsCounter } from '../../../shared/counter';
 import { getInputMaskHint } from '../../../shared/mask';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = defineProps<{
 	field: FormField;
@@ -43,11 +44,11 @@ onBeforeUnmount( () => clearTimeout( timer ) );
 </script>
 
 <template>
-	<p v-if="maskHint" :id="`field-${field.name}-mask`" class="fieldset-label mt-1">{{ maskHint }}</p>
-	<span v-if="field.affix_description" :id="`field-${field.name}-affix`" class="sr-only">{{ field.affix_description }}</span>
+	<p v-if="maskHint" :id="`field-${fieldIdKey( field )}-mask`" class="fieldset-label mt-1">{{ maskHint }}</p>
+	<span v-if="field.affix_description" :id="`field-${fieldIdKey( field )}-affix`" class="sr-only">{{ field.affix_description }}</span>
 	<template v-if="hasCounter">
 		<p
-			:id="`field-${field.name}-counter`"
+			:id="`field-${fieldIdKey( field )}-counter`"
 			class="fieldset-label mt-1 justify-end"
 			:class="{ 'text-error': counter.overLimit }"
 		>

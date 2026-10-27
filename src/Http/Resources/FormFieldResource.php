@@ -46,6 +46,20 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class FormFieldResource extends JsonResource
 {
     /**
+     * The types whose date limits are resolved on the server for the renderers.
+     *
+     * "Today" and relative limits such as "+30 days" are worked out in the
+     * app's time zone, so the React and Vue renderers use these rather than
+     * the visitor's clock (see `getDateLimits()` in
+     * `resources/js/shared/dateConstraints.ts`).
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const DATE_TYPES = ['date', 'datetime', 'date_range'];
+
+    /**
      * Whether to include the field type's settings schema.
      *
      * @since 1.6.0
@@ -180,6 +194,8 @@ class FormFieldResource extends JsonResource
                 'default_country' => $this->resource->getPhoneDefaultCountry(),
                 'countries'       => $this->resource->usesPhoneCountrySelector() ? PhoneFieldType::countries() : [],
             ] ),
+            'date_limits'            => $this->when( in_array( $this->type, self::DATE_TYPES, true ), fn (): array => $this->resource->getDateLimits() ),
+            'date_bounds'            => $this->when( 'date' === $this->type, fn (): array => $this->resource->getDateBounds() ),
             'label_placement'        => $this->when( $this->includeResolvedDefault, fn (): ?string => $this->resource->getConfiguredLabelPlacement() ),
             'description_placement'  => $this->when( $this->includeResolvedDefault, fn (): ?string => $this->resource->getConfiguredDescriptionPlacement() ),
             'resolved_default_value' => $this->when(

@@ -30,14 +30,14 @@
     $subErrors = array_intersect_key($subErrors ?? [], $subInputs);
     $hasErrors = filled($error) || [] !== $subErrors;
     $describedBy = trim(implode(' ', array_filter([
-        filled($field->help_text) ? 'hint-' . $field->name : null,
-        $hasErrors ? 'error-' . $field->name : null,
+        filled($field->help_text) ? $field->domId('hint') : null,
+        $hasErrors ? $field->domId('error') : null,
     ])));
 @endphp
 
 <fieldset
     class="fieldset {{ $field->css_classes }}"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     data-forms-composite="{{ $field->type }}"
     @if($describedBy) aria-describedby="{{ $describedBy }}" @endif
 >
@@ -51,13 +51,13 @@
     @endif
 
     @if(filled($field->help_text) && 'above' === $descriptionPlacement)
-        <p class="fieldset-label" id="hint-{{ $field->name }}">{{ $field->help_text }}</p>
+        <p class="fieldset-label" id="{{ $field->domId('hint') }}">{{ $field->help_text }}</p>
     @endif
 
     <div @class(['grid grid-cols-1 gap-3', 'sm:grid-cols-2' => count($subInputs) > 1])>
         @foreach($subInputs as $key => $subInput)
             @php
-                $inputId = 'field-' . $field->name . '-' . $key;
+                $inputId = $field->domId() . '-' . $key;
                 $subError = $subErrors[$key] ?? null;
                 $isRequired = in_array($key, $requiredKeys, true);
             @endphp
@@ -80,7 +80,7 @@
                         @class(['select select-bordered w-full', 'select-error' => filled($subError)])
                         @if(filled($subInput['autocomplete'])) autocomplete="{{ $subInput['autocomplete'] }}" @endif
                         @if($isRequired) required aria-required="true" @endif
-                        @if(filled($subError)) aria-invalid="true" aria-describedby="error-{{ $field->name }}-{{ $key }}" @endif
+                        @if(filled($subError)) aria-invalid="true" aria-describedby="{{ $field->domId('error') }}-{{ $key }}" @endif
                     >
                         <option value="">{{ filled($subInput['placeholder']) ? $subInput['placeholder'] : __( 'Select…' ) }}</option>
                         @foreach($subInput['options'] as $option)
@@ -100,7 +100,7 @@
                         @if('date' === $subInput['type'] && null !== $dateLimits['min']) min="{{ $dateLimits['min'] }}" @endif
                         @if('date' === $subInput['type'] && null !== $dateLimits['max']) max="{{ $dateLimits['max'] }}" @endif
                         @if($isRequired) required aria-required="true" @endif
-                        @if(filled($subError)) aria-invalid="true" aria-describedby="error-{{ $field->name }}-{{ $key }}" @endif
+                        @if(filled($subError)) aria-invalid="true" aria-describedby="{{ $field->domId('error') }}-{{ $key }}" @endif
                     />
                 @endif
 
@@ -114,18 +114,18 @@
                 @endif
 
                 @if(filled($subError))
-                    <p class="text-xs text-error" id="error-{{ $field->name }}-{{ $key }}">{{ $subError }}</p>
+                    <p class="text-xs text-error" id="{{ $field->domId('error') }}-{{ $key }}">{{ $subError }}</p>
                 @endif
             </div>
         @endforeach
     </div>
 
     @if(filled($field->help_text) && 'below' === $descriptionPlacement)
-        <p class="fieldset-label" id="hint-{{ $field->name }}">{{ $field->help_text }}</p>
+        <p class="fieldset-label" id="{{ $field->domId('hint') }}">{{ $field->help_text }}</p>
     @endif
 
     @if($hasErrors)
-        <p class="fieldset-label text-error" id="error-{{ $field->name }}" role="alert">
+        <p class="fieldset-label text-error" id="{{ $field->domId('error') }}">
             {{ filled($error) ? $error : trans_choice( 'Please fix :count highlighted part of :field.|Please fix :count highlighted parts of :field.', count($subErrors), ['count' => count($subErrors), 'field' => $field->label] ) }}
         </p>
     @endif

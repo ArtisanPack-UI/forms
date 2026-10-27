@@ -32,6 +32,7 @@ import {
 import type { ListRow } from '../../../shared/list';
 
 import type { FieldComponentProps } from './types';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /**
  * Renders a list field.
@@ -46,8 +47,8 @@ export function ListField( { field, value, error, subErrors = {}, onChange, disp
 	const hiddenLabel = layout.label === 'hidden' || ( !layout.custom && displayConfig.label_position === 'hidden' );
 	const cellErrorCount = Object.keys( subErrors ).length;
 	const hasErrors = Boolean( error ) || cellErrorCount > 0;
-	const hintId = field.help_text ? `${field.name}-hint` : undefined;
-	const errorId = hasErrors ? `${field.name}-error` : undefined;
+	const hintId = field.help_text ? `${fieldIdKey( field )}-hint` : undefined;
+	const errorId = hasErrors ? `${fieldIdKey( field )}-error` : undefined;
 	const describedBy = [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
 	const gridStyle = { gridTemplateColumns: `repeat(${Math.max( 1, columns.length )}, minmax(0, 1fr)) auto` };
 	const hint = hintId ? <p id={hintId} className="fieldset-label">{field.help_text}</p> : null;
@@ -64,7 +65,7 @@ export function ListField( { field, value, error, subErrors = {}, onChange, disp
 		if ( focusTarget === 'add' ) {
 			addButton.current?.focus();
 		} else if ( focusTarget && columns[0] ) {
-			document.getElementById( `field-${field.name}-${focusTarget.row}-${columns[0].key}` )?.focus();
+			document.getElementById( `field-${fieldIdKey( field )}-${focusTarget.row}-${columns[0].key}` )?.focus();
 		}
 
 		if ( focusTarget ) {
@@ -98,7 +99,7 @@ export function ListField( { field, value, error, subErrors = {}, onChange, disp
 
 	return (
 		<fieldset
-			id={`field-${field.name}`}
+			id={`field-${fieldIdKey( field )}`}
 			className={`fieldset ${field.css_classes ?? ''}`}
 			data-forms-list={field.name}
 			aria-describedby={describedBy}
@@ -119,7 +120,7 @@ export function ListField( { field, value, error, subErrors = {}, onChange, disp
 
 			<div className="flex flex-col gap-3 sm:gap-2">
 				{rows.map( ( row, index ) => {
-					const rowId = `field-${field.name}-row-${index}`;
+					const rowId = `field-${fieldIdKey( field )}-row-${index}`;
 
 					return (
 						<div
@@ -132,7 +133,7 @@ export function ListField( { field, value, error, subErrors = {}, onChange, disp
 							<span id={`${rowId}-label`} className="sr-only">{`${rowLabel} ${index + 1}`}</span>
 
 							{columns.map( ( column ) => {
-								const inputId = `field-${field.name}-${index}-${column.key}`;
+								const inputId = `field-${fieldIdKey( field )}-${index}-${column.key}`;
 								const cellError = subErrors[`${index}.${column.key}`];
 								const shared = {
 									id: inputId,

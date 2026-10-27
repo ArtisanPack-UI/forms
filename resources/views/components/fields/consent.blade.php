@@ -16,7 +16,7 @@
 @php
     $description = \ArtisanPackUI\Forms\FieldTypes\ConsentFieldType::description($field);
     $describedBy = trim(implode(' ', array_filter([
-        '' !== $description ? 'consent-description-' . $field->name : null,
+        '' !== $description ? $field->domId('consent-description') : null,
         $field->getDescribedBy($error),
     ])));
 @endphp
@@ -24,7 +24,7 @@
 @component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => false])
 <div class="flex flex-col gap-2">
     @if(filled($field->label))
-        <p @class(['label-text font-medium', 'sr-only' => 'hidden' === $field->getLabelPlacement()]) id="label-{{ $field->name }}">
+        <p @class(['label-text font-medium', 'sr-only' => 'hidden' === $field->getLabelPlacement()]) id="{{ $field->domId('label') }}">
             {{ $field->label }}
             @if($field->is_required)
                 <span class="text-error" aria-hidden="true">*</span>
@@ -36,18 +36,18 @@
         <input
             type="checkbox"
             wire:model.live="formData.{{ $field->name }}"
-            id="field-{{ $field->name }}"
+            id="{{ $field->domId() }}"
             class="checkbox checkbox-primary {{ $field->css_classes }}"
             @if($field->is_required) required aria-required="true" @endif
             @if(filled($error)) aria-invalid="true" @endif
             @if($describedBy) aria-describedby="{{ $describedBy }}" @endif
-            @if(filled($field->label)) aria-labelledby="label-{{ $field->name }} consent-text-{{ $field->name }}" @endif
+            @if(filled($field->label)) aria-labelledby="{{ $field->domId('label') }} {{ $field->domId('consent-text') }}" @endif
         />
-        <span class="label-text whitespace-normal" id="consent-text-{{ $field->name }}">{{ \ArtisanPackUI\Forms\FieldTypes\ConsentFieldType::checkboxText($field) }}</span>
+        <span class="label-text whitespace-normal" id="{{ $field->domId('consent-text') }}">{{ \ArtisanPackUI\Forms\FieldTypes\ConsentFieldType::checkboxText($field) }}</span>
     </label>
 
     @if('' !== $description)
-        <div class="prose prose-sm max-w-none text-base-content/70" id="consent-description-{{ $field->name }}">{!! $description !!}</div>
+        <div class="prose prose-sm max-w-none text-base-content/70" id="{{ $field->domId('consent-description') }}">{!! $description !!}</div>
     @endif
 </div>
 @endcomponent

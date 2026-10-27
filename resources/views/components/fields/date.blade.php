@@ -18,11 +18,11 @@
 {{-- A plain input rather than <x-artisanpack-input>: that component nests the
      input inside a `.input` wrapper, where daisyUI's `input[type=date]` rule
      makes it inline-block and pins the date text to the top of the box. --}}
-@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => 'field-' . $field->name])
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => $field->domId()])
 <input
     type="date"
     wire:model.live="formData.{{ $field->name }}"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     class="input input-bordered w-full {{ $field->css_classes }} @if($error) input-error @endif"
     @if(filled($bounds['min'])) min="{{ $bounds['min'] }}" @endif
     @if(filled($bounds['max'])) max="{{ $bounds['max'] }}" @endif
@@ -50,7 +50,7 @@
 @endphp
 <fieldset
     class="fieldset {{ $field->css_classes }}"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     @if($describedBy) aria-describedby="{{ $describedBy }}" @endif
     x-data="{
         value: $wire.entangle(@js('formData.' . $field->name)).live,
@@ -92,13 +92,13 @@
     @endif
 
     @if(filled($field->help_text) && 'above' === $descriptionPlacement)
-        <p class="fieldset-label" id="hint-{{ $field->name }}">{{ $field->help_text }}</p>
+        <p class="fieldset-label" id="{{ $field->domId('hint') }}">{{ $field->help_text }}</p>
     @endif
 
     <div class="flex flex-wrap gap-3">
         @foreach($order as $part)
             @php
-                $partId = 'field-' . $field->name . '-' . $part;
+                $partId = $field->domId() . '-' . $part;
                 $partAutocomplete = 'bday' === $autocomplete ? 'bday-' . $part : null;
             @endphp
             <div @class(['flex flex-col gap-1', 'grow basis-40' => 'month' === $part && 'dropdowns' === $inputMode, 'w-24' => 'month' !== $part || 'fields' === $inputMode])>
@@ -140,11 +140,11 @@
     </div>
 
     @if(filled($field->help_text) && 'below' === $descriptionPlacement)
-        <p class="fieldset-label" id="hint-{{ $field->name }}">{{ $field->help_text }}</p>
+        <p class="fieldset-label" id="{{ $field->domId('hint') }}">{{ $field->help_text }}</p>
     @endif
 
     @if(filled($error))
-        <p class="fieldset-label text-error" id="error-{{ $field->name }}" role="alert">{{ $error }}</p>
+        <p class="fieldset-label text-error" id="{{ $field->domId('error') }}">{{ $error }}</p>
     @endif
 </fieldset>
 @endif

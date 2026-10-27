@@ -37,6 +37,7 @@ import { t } from '../../../shared/i18n';
 import type { FormField } from '../../../types/artisanpack-forms';
 
 import type { FieldComponentProps } from './types';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /** Props for the PartsFieldset component. */
 interface PartsFieldsetProps extends Pick<FieldComponentProps, 'field' | 'error' | 'displayConfig'> {
@@ -50,13 +51,13 @@ interface PartsFieldsetProps extends Pick<FieldComponentProps, 'field' | 'error'
 function PartsFieldset( { field, error, displayConfig, children }: PartsFieldsetProps ) {
 	const layout = getFieldLayout( field, displayConfig );
 	const hiddenLabel = layout.label === 'hidden' || ( !layout.custom && displayConfig.label_position === 'hidden' );
-	const hintId = field.help_text ? `${field.name}-hint` : undefined;
-	const errorId = error ? `${field.name}-error` : undefined;
+	const hintId = field.help_text ? `${fieldIdKey( field )}-hint` : undefined;
+	const errorId = error ? `${fieldIdKey( field )}-error` : undefined;
 	const describedBy = [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
 	const hint = hintId ? <p id={hintId} className="fieldset-label">{field.help_text}</p> : null;
 
 	return (
-		<fieldset id={`field-${field.name}`} className={`fieldset ${field.css_classes ?? ''}`} aria-describedby={describedBy}>
+		<fieldset id={`field-${fieldIdKey( field )}`} className={`fieldset ${field.css_classes ?? ''}`} aria-describedby={describedBy}>
 			{field.label && (
 				<legend className={`fieldset-legend ${hiddenLabel ? 'sr-only' : ''}`}>
 					{field.label}
@@ -167,7 +168,7 @@ export function DatePartsField( { field, value, error, onChange, displayConfig }
 	return (
 		<PartsFieldset field={field} error={error} displayConfig={displayConfig}>
 			{DATE_PART_ORDER[getDateFormat( field )].map( ( part ) => {
-				const id = `field-${field.name}-${part}`;
+				const id = `field-${fieldIdKey( field )}-${part}`;
 				const autoComplete = birthdate ? `bday-${part}` : undefined;
 
 				if ( mode === 'dropdowns' ) {
@@ -238,7 +239,7 @@ export function TimePartsField( { field, value, error, onChange, displayConfig }
 	return (
 		<PartsFieldset field={field} error={error} displayConfig={displayConfig}>
 			<PartSelect
-				id={`field-${field.name}-hour`}
+				id={`field-${fieldIdKey( field )}-hour`}
 				label={t( 'Hour' )}
 				value={parts.hour}
 				options={hours.map( ( hour ) => ( { value: String( hour ), label: twelveHour ? String( hour ) : pad( hour ) } ) )}
@@ -247,7 +248,7 @@ export function TimePartsField( { field, value, error, onChange, displayConfig }
 				onChange={( hour ) => update( { ...parts, hour } )}
 			/>
 			<PartSelect
-				id={`field-${field.name}-minute`}
+				id={`field-${fieldIdKey( field )}-minute`}
 				label={t( 'Minute' )}
 				value={parts.minute}
 				options={getMinuteOptions( getTimeStep( field ) ).map( ( minute ) => ( { value: String( minute ), label: pad( minute ) } ) )}
@@ -257,7 +258,7 @@ export function TimePartsField( { field, value, error, onChange, displayConfig }
 			/>
 			{twelveHour && (
 				<PartSelect
-					id={`field-${field.name}-period`}
+					id={`field-${fieldIdKey( field )}-period`}
 					label={t( 'AM or PM' )}
 					value={parts.period}
 					options={[{ value: 'am', label: t( 'AM' ) }, { value: 'pm', label: t( 'PM' ) }]}

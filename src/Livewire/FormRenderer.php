@@ -22,8 +22,7 @@ namespace ArtisanPackUI\Forms\Livewire;
 use ArtisanPackUI\Forms\Captcha\CaptchaVerifier;
 use ArtisanPackUI\Forms\FieldTypes\CalculationFieldType;
 use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
-use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
-use ArtisanPackUI\Forms\FieldTypes\RankingFieldType;
+use ArtisanPackUI\Forms\Livewire\Concerns\ManagesStructuredFieldValues;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormStep;
@@ -36,6 +35,7 @@ use Exception;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -56,6 +56,7 @@ use Livewire\WithFileUploads;
  */
 class FormRenderer extends Component
 {
+    use ManagesStructuredFieldValues;
     use WithFileUploads;
 
     /**
@@ -156,6 +157,37 @@ class FormRenderer extends Component
     public array $hiddenFields = [];
 
     /**
+     * The prefix of the field element IDs, unique to this form on the page.
+     *
+     * `f{form id}`, with `-2`, `-3`… for further renderers of the same form
+     * in one request. Set on mount and locked, so the IDs stay the same
+     * across re-renders (see FormField::domId()).
+     *
+     * @since 1.6.0
+     */
+    #[Locked]
+    public string $idPrefix = '';
+
+    /**
+     * The URL of the page the form was loaded on, recorded with the submission.
+     *
+     * Captured on mount, since submit() runs during a Livewire update
+     * request whose URL is the Livewire endpoint.
+     *
+     * @since 1.6.0
+     */
+    #[Locked]
+    public ?string $pageUrl = null;
+
+    /**
+     * The referrer of the page the form was loaded on, recorded with the submission.
+     *
+     * @since 1.6.0
+     */
+    #[Locked]
+    public ?string $referrerUrl = null;
+
+    /**
      * The submission service instance.
      */
     protected SubmissionService $submissionService;
@@ -186,6 +218,9 @@ class FormRenderer extends Component
         $this->form            = $form->load( ['fields', 'steps.fields'] );
         $this->formLoadedAt    = now()->getTimestamp();
         $this->choiceSeed      = random_int( 1, 2147483647 );
+        $this->idPrefix        = $this->claimIdPrefix( $form );
+        $this->pageUrl         = request()->fullUrl();
+        $this->referrerUrl     = request()->header( 'referer' );
         $this->initialFormData = $this->buildInitialFormData( PopulationContext::fromPageRequest( request() ), $prefill );
         $this->initializeFormData();
         $this->evaluateConditionalLogic();
@@ -219,7 +254,7 @@ class FormRenderer extends Component
 
         return $fields
             ->reject( fn ( FormField $field ): bool => $field->isAdministrative() )
-            ->each( fn ( FormField $field ): FormField => $field->withSettingsForm( $this->form )->withChoiceSeed( $this->choiceSeed ) )
+            ->each( fn ( FormField $field ): FormField => $field->withSettingsForm( $this->form )->withChoiceSeed( $this->choiceSeed )->withDomIdPrefix( $this->idPrefix ) )
             ->values();
     }
 
@@ -350,6 +385,32 @@ class FormRenderer extends Component
         );
     }
 
+    /**
+     * Get the invisible CAPTCHAs of earlier steps, rendered again on the last step.
+     *
+     * An invisible CAPTCHA fetches its token when the form is submitted,
+     * which only happens on the last step, so a multi-step form renders the
+     * ones on other steps there too (their widget shows nothing).
+     *
+     * @since 1.6.0
+     *
+     * @return Collection<int, FormField>
+     */
+    #[Computed]
+    public function deferredCaptchaFields(): Collection
+    {
+        if ( ! $this->form->is_multi_step || ! $this->isLastStep ) {
+            return new Collection();
+        }
+
+        $stepId = $this->currentStep?->id;
+
+        return $this->form->fields
+            ->filter( fn ( FormField $field ): bool => $field->step_id !== $stepId && ! $field->isAdministrative() && $this->isInvisibleCaptcha( $field ) )
+            ->each( fn ( FormField $field ): FormField => $field->withSettingsForm( $this->form )->withDomIdPrefix( $this->idPrefix ) )
+            ->values();
+    }
+
     // =========================================
     // Navigation Methods
     // =========================================
@@ -364,8 +425,14 @@ class FormRenderer extends Component
         }
 
         // Validate current step fields before proceeding
-        if ( ! $this->validateCurrentStep() ) {
-            return;
+        try {
+            if ( ! $this->validateCurrentStep() ) {
+                return;
+            }
+        } catch ( ValidationException $e ) {
+            $this->dispatchValidationFailed( $e );
+
+            throw $e;
         }
 
         $this->currentStepIndex++;
@@ -417,7 +484,17 @@ class FormRenderer extends Component
                 $this->currentStepIndex = $i;
                 $this->clearComputedProperties();
 
-                if ( ! $this->validateCurrentStep() ) {
+                try {
+                    $passed = $this->validateCurrentStep();
+                } catch ( ValidationException $e ) {
+                    // Show the step whose fields failed
+                    $this->clearComputedProperties();
+                    $this->dispatchValidationFailed( $e );
+
+                    throw $e;
+                }
+
+                if ( ! $passed ) {
                     // Restore original index on validation failure
                     $this->currentStepIndex = $originalStepIndex;
                     $this->clearComputedProperties();
@@ -444,6 +521,12 @@ class FormRenderer extends Component
     {
         $this->errorMessage = null;
 
+        if ( ! $this->form->is_active ) {
+            $this->errorMessage = __( 'This form is not accepting submissions.' );
+
+            return;
+        }
+
         // Check for spam
         if ( $this->submissionService->isSpam( $this->honeypot, $this->formLoadedAt ) ) {
             // Silent success for bots - don't save but pretend it worked
@@ -456,7 +539,7 @@ class FormRenderer extends Component
         // Check rate limiting
         $ipAddress = request()->ip() ?? 'unknown';
         if ( $this->submissionService->isRateLimited( $ipAddress, $this->form->id ) ) {
-            $this->errorMessage = 'Too many submissions. Please try again later.';
+            $this->errorMessage = __( 'Too many submissions. Please try again later.' );
 
             return;
         }
@@ -466,8 +549,10 @@ class FormRenderer extends Component
             if ( ! $this->validateAllFields() ) {
                 return;
             }
-        } catch ( \Illuminate\Validation\ValidationException $e ) {
-            // Validation errors are handled by Livewire
+        } catch ( ValidationException $e ) {
+            // Livewire shows the errors; the renderer announces them and focuses the first
+            $this->dispatchValidationFailed( $e );
+
             throw $e;
         }
 
@@ -481,7 +566,10 @@ class FormRenderer extends Component
 
         try {
             // Get metadata
-            $metadata = $this->submissionService->getRequestMetadata( request() );
+            $metadata = array_replace( $this->submissionService->getRequestMetadata( request() ), [
+                'page_url'     => $this->pageUrl,
+                'referrer_url' => $this->referrerUrl,
+            ] );
 
             // Create the submission
             $submission = $this->submissionService->create(
@@ -496,9 +584,11 @@ class FormRenderer extends Component
             // Dispatch success event
             $this->dispatch( 'form-submitted', formId: $this->form->id, submissionId: $submission->id );
 
-            // Handle redirect if configured
-            if ( $this->form->redirect_url ) {
-                $this->dispatch( 'redirect-to', url: $this->form->redirect_url );
+            $redirectUrl = $this->safeRedirectUrl();
+
+            if ( null !== $redirectUrl ) {
+                $this->dispatch( 'redirect-to', url: $redirectUrl );
+                $this->redirect( $redirectUrl );
             }
 
         } catch ( Exception $e ) {
@@ -507,7 +597,7 @@ class FormRenderer extends Component
                 'error'   => $e->getMessage(),
             ] );
 
-            $this->errorMessage = 'An error occurred while submitting the form. Please try again.';
+            $this->errorMessage = __( 'An error occurred while submitting the form. Please try again.' );
 
             // The challenge token was spent, so a retry needs a new one
             $this->dispatch( 'forms-captcha-reset', formId: $this->form->id );
@@ -534,113 +624,6 @@ class FormRenderer extends Component
         unset( $this->files[ $fieldName ][ $key ] );
 
         $this->resetValidation( "files.{$fieldName}" );
-    }
-
-    /**
-     * Adds an empty row to a list field, up to its max rows.
-     *
-     * Dispatches `forms-list-row-added` with the field and the new row's
-     * index, so the partial can focus the row and announce it.
-     *
-     * @since 1.6.0
-     *
-     * @param  string  $fieldName  The list field's name.
-     */
-    public function addListRow( string $fieldName ): void
-    {
-        $field = $this->listField( $fieldName );
-
-        if ( null === $field ) {
-            return;
-        }
-
-        $rows = $this->listRows( $fieldName );
-
-        if ( count( $rows ) >= ListFieldType::maxRows( $field ) ) {
-            return;
-        }
-
-        $rows[]                       = array_fill_keys( array_column( ListFieldType::columns( $field ), 'key' ), '' );
-        $this->formData[ $fieldName ] = $rows;
-
-        $this->evaluateConditionalLogic();
-
-        $this->dispatch( 'forms-list-row-added', field: $fieldName, index: count( $rows ) - 1 );
-    }
-
-    /**
-     * Removes a row from a list field, keeping one empty row when it was the last.
-     *
-     * Clears the field's errors, since the rows after it move up, and
-     * dispatches `forms-list-row-removed` with the field and the removed row's
-     * index.
-     *
-     * @since 1.6.0
-     *
-     * @param  string  $fieldName  The list field's name.
-     * @param  int  $index  The row's index.
-     */
-    public function removeListRow( string $fieldName, int $index ): void
-    {
-        $field = $this->listField( $fieldName );
-        $rows  = $this->listRows( $fieldName );
-
-        if ( null === $field || ! array_key_exists( $index, $rows ) ) {
-            return;
-        }
-
-        unset( $rows[ $index ] );
-
-        $this->formData[ $fieldName ] = [] === $rows
-            ? [array_fill_keys( array_column( ListFieldType::columns( $field ), 'key' ), '' )]
-            : array_values( $rows );
-
-        $this->evaluateConditionalLogic();
-
-        foreach ( $this->getErrorBag()->keys() as $key ) {
-            if ( "formData.{$fieldName}" === $key || str_starts_with( (string) $key, "formData.{$fieldName}." ) ) {
-                $this->resetValidation( $key );
-            }
-        }
-
-        $this->dispatch( 'forms-list-row-removed', field: $fieldName, index: $index );
-    }
-
-    /**
-     * Moves one choice of a ranking field to a new position.
-     *
-     * Positions count from 0. Dispatches `forms-ranking-moved` with the
-     * field, the choice's value and its new position, so the partial can keep
-     * focus on the moved choice and announce where it went.
-     *
-     * @since 1.6.0
-     *
-     * @param  string  $fieldName  The ranking field's name.
-     * @param  int  $from  The choice's position.
-     * @param  int  $to  The position to move it to.
-     */
-    public function moveRankingItem( string $fieldName, int $from, int $to ): void
-    {
-        $field = $this->form->fields->firstWhere( 'name', $fieldName );
-
-        if ( ! $field instanceof FormField || RankingFieldType::TYPE !== $field->type || $field->isAdministrative() || $field->isReadOnly() ) {
-            return;
-        }
-
-        $order = RankingFieldType::order( $field, $this->formData[ $fieldName ] ?? [] );
-        $moved = RankingFieldType::move( $order, $from, $to );
-
-        if ( $moved === $order ) {
-            return;
-        }
-
-        $this->formData[ $fieldName ] = $moved;
-
-        $this->evaluateConditionalLogic();
-
-        $this->resetValidation( "formData.{$fieldName}" );
-
-        $this->dispatch( 'forms-ranking-moved', field: $fieldName, value: $moved[ $to ], position: $to );
     }
 
     /**
@@ -788,12 +771,16 @@ class FormRenderer extends Component
     {
         $this->resetReadOnlyValues();
 
+        // An invisible CAPTCHA gets its token when the form is submitted, so
+        // it is checked with all fields on submit, not when leaving its step
+        $fields = $this->currentFields->reject( fn ( FormField $field ): bool => $this->isInvisibleCaptcha( $field ) );
+
         $rules = $this->submissionService->buildValidationRules(
-            $this->currentFields,
+            $fields,
             $this->hiddenFields,
         );
 
-        $messages = $this->submissionService->buildValidationMessages( $this->currentFields );
+        $messages = $this->submissionService->buildValidationMessages( $fields );
 
         if ( empty( $rules ) ) {
             return true;
@@ -806,6 +793,12 @@ class FormRenderer extends Component
 
     /**
      * Validate all form fields.
+     *
+     * Since 1.6.0, when a field on another step fails (a rule that depends on
+     * the time or the database can fail after its step passed), a multi-step
+     * form moves to that field's step so the visitor sees the error.
+     *
+     * @throws ValidationException When a field fails.
      */
     protected function validateAllFields(): bool
     {
@@ -822,7 +815,18 @@ class FormRenderer extends Component
             return true;
         }
 
-        $this->withResolvedOtherChoices()->validate( $rules, $messages );
+        try {
+            $this->withResolvedOtherChoices()->validate( $rules, $messages );
+        } catch ( ValidationException $e ) {
+            $field = $this->fieldForErrorKey( (string) array_key_first( $e->errors() ) );
+
+            // An invisible CAPTCHA is rendered on the last step too
+            if ( null !== $field && ! $this->isInvisibleCaptcha( $field ) ) {
+                $this->goToStepOfField( $field->name );
+            }
+
+            throw $e;
+        }
 
         return true;
     }
@@ -853,14 +857,12 @@ class FormRenderer extends Component
             $this->addError( "formData.{$fieldName}", $message );
         }
 
-        if ( $this->form->is_multi_step ) {
-            $stepId = $this->form->fields->firstWhere( 'name', array_key_first( $errors ) )?->step_id;
-            $index  = $this->steps->search( fn ( FormStep $step ): bool => $step->id === $stepId );
+        // An invisible CAPTCHA is rendered on the last step too, so the
+        // visitor stays there and the next submit fetches a new token
+        $failed = $this->form->fields->firstWhere( 'name', array_key_first( $errors ) );
 
-            if ( false !== $index ) {
-                $this->currentStepIndex = (int) $index;
-                $this->clearComputedProperties();
-            }
+        if ( $failed instanceof FormField && ! $this->isInvisibleCaptcha( $failed ) ) {
+            $this->goToStepOfField( $failed->name );
         }
 
         $this->dispatch( 'forms-captcha-reset', formId: $this->form->id );
@@ -980,7 +982,7 @@ class FormRenderer extends Component
             return;
         }
 
-        $visible = $this->submissionService->applyCalculations( $fields, $this->visibleFormData() );
+        $visible = $this->submissionService->applyCalculations( $fields, $this->visibleFormData(), false, true );
 
         foreach ( $fields->where( 'type', CalculationFieldType::TYPE ) as $field ) {
             $this->formData[ $field->name ] = $visible[ $field->name ];
@@ -994,35 +996,140 @@ class FormRenderer extends Component
     // =========================================
 
     /**
-     * Gets a list field of the form by name.
+     * Gets a list or ranking field of the public form by name.
+     *
+     * Administrative fields are filled in on the submission, not here.
      *
      * @since 1.6.0
      *
      * @param  string  $fieldName  The field's name.
+     * @param  string  $type  The field type the action expects.
      *
-     * @return FormField|null The field, or null when the form has no list field by that name.
+     * @return FormField|null The field, or null when the form has no such public field.
      */
-    protected function listField( string $fieldName ): ?FormField
+    protected function structuredValueField( string $fieldName, string $type ): ?FormField
     {
         $field = $this->form->fields->firstWhere( 'name', $fieldName );
 
-        return $field instanceof FormField && ListFieldType::TYPE === $field->type && ! $field->isAdministrative() ? $field : null;
+        return $field instanceof FormField && $type === $field->type && ! $field->isAdministrative() ? $field : null;
     }
 
     /**
-     * Gets a list field's rows from the form data, numbered from 0.
+     * Works out conditional logic again after a list or ranking action.
      *
      * @since 1.6.0
      *
      * @param  string  $fieldName  The field's name.
-     *
-     * @return list<array<string, mixed>> The rows.
      */
-    protected function listRows( string $fieldName ): array
+    protected function structuredValueChanged( string $fieldName ): void
     {
-        $rows = $this->formData[ $fieldName ] ?? [];
+        $this->evaluateConditionalLogic();
+    }
 
-        return is_array( $rows ) ? array_values( array_filter( $rows, 'is_array' ) ) : [];
+    /**
+     * Tells the renderer's script that validation failed.
+     *
+     * Dispatches `forms-validation-failed` with the form ID and the number
+     * of fields with errors, so the script announces them and moves focus to
+     * the first invalid control.
+     *
+     * @since 1.6.0
+     *
+     * @param  ValidationException  $exception  The validation failure.
+     */
+    protected function dispatchValidationFailed( ValidationException $exception ): void
+    {
+        $this->dispatch( 'forms-validation-failed', formId: $this->form->id, count: count( $exception->errors() ) );
+    }
+
+    /**
+     * Works out a field ID prefix no other renderer in this request uses.
+     *
+     * @since 1.6.0
+     *
+     * @param  Form  $form  The form being mounted.
+     *
+     * @return string The prefix: `f{id}`, then `f{id}-2`, `f{id}-3`…
+     */
+    protected function claimIdPrefix( Form $form ): string
+    {
+        $attributes = request()->attributes;
+        $mounted    = (array) $attributes->get( 'artisanpack.forms.renderers', [] );
+        $count      = (int) ( $mounted[ $form->id ] ?? 0 ) + 1;
+
+        $mounted[ $form->id ] = $count;
+        $attributes->set( 'artisanpack.forms.renderers', $mounted );
+
+        return 'f' . $form->id . ( $count > 1 ? '-' . $count : '' );
+    }
+
+    /**
+     * Gets the field a validation error key belongs to.
+     *
+     * Keys look like `formData.{name}`, `formData.{name}.{part}` or
+     * `files.{name}.{index}`; an email's confirmation input and a phone's
+     * country selector belong to their field.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $key  The error key.
+     *
+     * @return FormField|null The field, or null when no field matches.
+     */
+    protected function fieldForErrorKey( string $key ): ?FormField
+    {
+        $name = explode( '.', (string) preg_replace( '/^(formData|files)\./', '', $key ), 2 )[0];
+
+        foreach ( [$name, (string) preg_replace( '/_(confirmation|country)$/', '', $name )] as $candidate ) {
+            $field = $this->form->fields->firstWhere( 'name', $candidate );
+
+            if ( $field instanceof FormField ) {
+                return $field;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Moves a multi-step form to the step that holds a field.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $fieldName  The field's name.
+     */
+    protected function goToStepOfField( string $fieldName ): void
+    {
+        if ( ! $this->form->is_multi_step ) {
+            return;
+        }
+
+        $field = $this->form->fields->firstWhere( 'name', $fieldName );
+
+        if ( ! $field instanceof FormField || null === $field->step_id ) {
+            return;
+        }
+
+        $index = $this->steps->search( fn ( FormStep $step ): bool => $step->id === $field->step_id );
+
+        if ( false !== $index && (int) $index !== $this->currentStepIndex ) {
+            $this->currentStepIndex = (int) $index;
+            $this->clearComputedProperties();
+        }
+    }
+
+    /**
+     * Checks whether a field is a CAPTCHA that runs when the form is submitted.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     *
+     * @return bool True for a CAPTCHA whose widget is invisible.
+     */
+    protected function isInvisibleCaptcha( FormField $field ): bool
+    {
+        return CaptchaFieldType::TYPE === $field->type && 'invisible' === ( CaptchaFieldType::widget( $field )['size'] ?? null );
     }
 
     /**
@@ -1041,6 +1148,34 @@ class FormRenderer extends Component
             $this->fieldMap,
             $this->conditionalLogicConfig,
             $this->sectionMembers,
+            $this->deferredCaptchaFields,
         );
+    }
+
+    /**
+     * Returns the form's redirect URL when it is safe to send the visitor to.
+     *
+     * Only `http`/`https` URLs and site paths are followed, so a stored
+     * `javascript:` or other scheme can never run in the visitor's browser.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null The URL to redirect to, or null for none.
+     */
+    protected function safeRedirectUrl(): ?string
+    {
+        $url = trim( (string) $this->form->redirect_url );
+
+        if ( '' === $url ) {
+            return null;
+        }
+
+        if ( str_starts_with( $url, '/' ) && ! str_starts_with( $url, '//' ) ) {
+            return $url;
+        }
+
+        $scheme = strtolower( (string) parse_url( $url, PHP_URL_SCHEME ) );
+
+        return in_array( $scheme, ['http', 'https'], true ) ? $url : null;
     }
 }

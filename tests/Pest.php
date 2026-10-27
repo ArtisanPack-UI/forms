@@ -72,10 +72,14 @@ expect()->extend( 'toBeOne', function () {
  * Checks whether Node can run TypeScript with its types stripped (22.6+).
  *
  * The parity tests skip when it cannot, and fail when it can but a shared
- * helper does not run, so a broken helper is not reported as skipped.
+ * helper does not run, so a broken helper is not reported as skipped. In CI
+ * (the `CI` environment variable is set) a missing Node fails the test
+ * instead of skipping it, so the parity checks cannot silently stop running.
  *
  * Node before 22.6 rejects the `--experimental-strip-types` flag, so a run
  * with it shows whether TypeScript files can be imported.
+ *
+ * @throws RuntimeException When Node cannot run TypeScript in CI.
  *
  * @return bool True when Node accepts `--experimental-strip-types`.
  */
@@ -92,6 +96,10 @@ function nodeRunsTypeScript(): bool
         } catch ( Throwable ) {
             $available = false;
         }
+    }
+
+    if ( ! $available && false !== getenv( 'CI' ) && '' !== getenv( 'CI' ) ) {
+        throw new RuntimeException( 'Node 22.6+ is required in CI to run the PHP/TypeScript parity tests.' );
     }
 
     return $available;

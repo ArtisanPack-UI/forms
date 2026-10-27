@@ -377,6 +377,10 @@ class Form extends Model
      *
      * Sets up model event listeners for creating, updating, created, updated, and deleted events.
      *
+     * Since 1.6.0, deleting a form deletes its submissions' uploads as models
+     * first, so their stored files and media library items are removed too;
+     * the database cascade alone would leave them behind.
+     *
      * @since 1.0.0
      */
     protected static function boot(): void
@@ -414,6 +418,13 @@ class Form extends Model
 
             // Dispatch Laravel event
             FormUpdated::dispatch( $form );
+        } );
+
+        static::deleting( function ( Form $form ): void {
+            FormUpload::query()
+                ->whereIn( 'submission_id', $form->submissions()->select( 'id' ) )
+                ->lazyById()
+                ->each( fn ( FormUpload $upload ) => $upload->delete() );
         } );
 
         static::deleted( function ( Form $form ): void {

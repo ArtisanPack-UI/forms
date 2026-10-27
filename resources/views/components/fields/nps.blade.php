@@ -18,7 +18,7 @@
     $labels = $npsType::endLabels($field);
     $readOnly = $field->isReadOnly();
     $selected = is_numeric($value) ? (string) (int) $value : null;
-    $endsId = 'field-' . $field->name . '-ends';
+    $endsId = $field->domId() . '-ends';
     $describedBy = trim(implode(' ', array_filter([$endsId, $field->getDescribedBy($error)])));
 @endphp
 
@@ -27,7 +27,7 @@
     <div
         role="radiogroup"
         class="grid grid-cols-6 gap-1 sm:grid-cols-11"
-        @if($field->label) aria-labelledby="label-{{ $field->name }}" @endif
+        @if($field->label) aria-labelledby="{{ $field->domId('label') }}" @endif
         @if($field->is_required) aria-required="true" @endif
         @if($readOnly) aria-readonly="true" @endif
         @if(filled($error)) aria-invalid="true" @endif
@@ -47,7 +47,7 @@
                     wire:model.live="formData.{{ $field->name }}"
                     name="{{ $field->name }}"
                     value="{{ $score }}"
-                    id="field-{{ $field->name }}-{{ $score }}"
+                    id="{{ $field->domId() }}-{{ $score }}"
                     class="peer sr-only"
                     @checked((string) $score === $selected)
                     @disabled($readOnly)

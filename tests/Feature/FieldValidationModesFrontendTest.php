@@ -91,8 +91,8 @@ describe( 'shared helpers', function () use ( $resource, $between ): void {
             ->and( $between( $validation, 'function validateDateField(', "\n}\n" ) )
             ->toContain( 'if ( !parseIsoDate( value ) ) {' )
             ->toContain( 'if ( !isAllowedDay( field, value ) ) {' )
-            ->toContain( 'if ( minAge !== undefined && value > latestBirthdate( minAge ) ) {' )
-            ->toContain( 'if ( maxAge !== undefined && value < earliestBirthdate( maxAge ) ) {' );
+            ->toContain( 'if ( minAge !== undefined && latest !== undefined && value > latest ) {' )
+            ->toContain( 'if ( maxAge !== undefined && earliest !== undefined && value < earliest ) {' );
     } );
 } );
 
@@ -123,7 +123,7 @@ describe( 'React renderer', function () use ( $resource, $between ): void {
         $parts = $resource( 'react/components/fields/DateTimeParts.tsx' );
 
         expect( $parts )
-            ->toContain( '<fieldset id={`field-${field.name}`}' )
+            ->toContain( '<fieldset id={`field-${fieldIdKey( field )}`}' )
             ->toContain( '<legend className=' )
             ->toContain( 'DATE_PART_ORDER[getDateFormat( field )].map(' )
             ->toContain( 'onChange( combineDate( next ) );' )
@@ -167,7 +167,7 @@ describe( 'Vue renderer', function () use ( $resource ): void {
 
     it( 'renders date and time parts in a fieldset with a legend', function () use ( $resource ): void {
         expect( $resource( 'vue/components/fields/DateTimePartsField.vue' ) )
-            ->toContain( '<fieldset :id="`field-${field.name}`"' )
+            ->toContain( '<fieldset :id="`field-${fieldIdKey( field )}`"' )
             ->toContain( '<legend v-if="field.label"' )
             ->toContain( "emit( 'update:modelValue', combineDate( dateParts.value ) );" )
             ->toContain( "emit( 'update:modelValue', combineTime( timeParts.value, twelveHour.value ) );" )

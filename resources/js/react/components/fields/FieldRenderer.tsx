@@ -58,6 +58,8 @@ export interface FieldRendererProps {
 	onChange: ( value: unknown ) => void;
 	/** Callback to set a file for file fields. */
 	onFileChange?: ( file: File | File[] ) => void;
+	/** The files the form holds for a file field (since 1.6.0). */
+	files?: File | File[];
 	/** Display configuration from the form. */
 	displayConfig: DisplayConfig;
 	/** Text typed into the field's "Other" choice (since 1.6.0). */
@@ -173,6 +175,7 @@ export function FieldRenderer( {
 	error,
 	onChange,
 	onFileChange,
+	files,
 	displayConfig,
 	otherValue,
 	onOtherChange,
@@ -213,6 +216,7 @@ export function FieldRenderer( {
 				error={error}
 				onChange={onChange}
 				onFileChange={onFileChange}
+				files={files}
 				displayConfig={displayConfig}
 				otherValue={otherValue}
 				onOtherChange={onOtherChange}

@@ -60,8 +60,15 @@
         },
         saveOptions() {
             const cleanOptions = this.options.map(({ _id, default: isDefault, ...rest }) => (isDefault ? { ...rest, default: true } : rest));
-            const fieldConfig = { ...@js($field->field_config ?? []), options: cleanOptions };
-            this.$wire.updateField({ field_config: fieldConfig });
+            this.$wire.updateOptions(cleanOptions);
+        },
+        optionsUpdated(detail) {
+            if (detail?.field !== @js($field->uuid) || ! Array.isArray(detail.options)) {
+                return;
+            }
+
+            // Keep each row's key, so a save does not re-create the inputs being edited
+            this.options = detail.options.map((opt, i) => ({ ...opt, default: opt.default === true, _id: this.options[i]?._id ?? this.nextId++ }));
         },
         openBulk() {
             this.bulkText = this.options.map(opt => (opt.value === opt.label || opt.value === '' ? opt.label : `${opt.value}|${opt.label}`)).filter(line => line !== '').join('\n');
@@ -121,6 +128,7 @@
             this.saveOptions();
         }
     }"
+    x-on:forms-options-updated.window="optionsUpdated($event.detail)"
     @if ($mediaPicker) x-on:media-selected.window="mediaSelected($event.detail)" @endif
 >
     <div class="text-xs text-base-content/60">

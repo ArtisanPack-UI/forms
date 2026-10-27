@@ -66,7 +66,7 @@ class InputMask
      * @var array<string, string>
      */
     protected const TOKENS = [
-        '9' => '\d',
+        '9' => '[0-9]',
         'a' => '[a-zA-Z]',
         '*' => '[a-zA-Z0-9]',
     ];

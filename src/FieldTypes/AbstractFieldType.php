@@ -18,7 +18,9 @@ use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use ArtisanPackUI\Forms\Support\Autocomplete;
 use ArtisanPackUI\Forms\Support\FieldSettings;
 use ArtisanPackUI\Forms\Support\InputMask;
+use ArtisanPackUI\Forms\Support\RegexPattern;
 use ArtisanPackUI\Forms\Support\SubmissionRules;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Default behaviour shared by every field type.
@@ -406,7 +408,7 @@ abstract class AbstractFieldType implements FieldType
             $rules[] = "max:{$max}";
         }
 
-        if ( $pattern = $field->getValidationRule( 'pattern' ) ) {
+        if ( null !== ( $pattern = $this->validationPattern( $field ) ) ) {
             $rules[] = "regex:{$pattern}";
         }
 
@@ -417,6 +419,47 @@ abstract class AbstractFieldType implements FieldType
         }
 
         return $rules;
+    }
+
+    /**
+     * Gets the field's "Pattern (Regex)" setting as a PHP pattern.
+     *
+     * A pattern without delimiters is wrapped; one that does not compile is
+     * left out (and logged once per field), so it cannot fail every
+     * submission (see RegexPattern).
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     *
+     * @return string|null The pattern, or null when there is none to apply.
+     */
+    protected function validationPattern( FormField $field ): ?string
+    {
+        static $warned = [];
+
+        $raw = $field->getValidationRule( 'pattern' );
+
+        if ( null === $raw || '' === $raw ) {
+            return null;
+        }
+
+        $pattern = RegexPattern::normalize( $raw );
+
+        if ( null === $pattern ) {
+            $key = $field->getKey() ?? $field->name;
+
+            if ( ! isset( $warned[ $key ] ) ) {
+                $warned[ $key ] = true;
+
+                Log::warning( 'ArtisanPackUI Forms: ignored a field pattern that is not a valid regular expression', [
+                    'field_id' => $field->getKey(),
+                    'field'    => $field->name,
+                ] );
+            }
+        }
+
+        return $pattern;
     }
 
     /**
@@ -722,7 +765,7 @@ abstract class AbstractFieldType implements FieldType
                 'input' => 'toggle',
                 'tab'   => 'advanced',
                 'label' => __( 'Do not store' ),
-                'hint'  => __( 'Sent to notifications and webhooks for the submission, but never saved.' ),
+                'hint'  => __( 'Sent to notifications and webhooks for the submission, but never saved. Files are never attached to autoresponders or other emails sent to an address from the form.' ),
             ],
             [
                 'key'   => 'mask_in_admin',
@@ -1004,7 +1047,7 @@ abstract class AbstractFieldType implements FieldType
             'tab'         => 'validation',
             'label'       => __( 'Pattern (Regex)' ),
             'placeholder' => '/^[a-z]+$/i',
-            'hint'        => __( 'Regular expression the value must match.' ),
+            'hint'        => __( 'Regular expression the value must match. Delimiters and flags are optional.' ),
             'monospace'   => true,
         ];
     }

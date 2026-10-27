@@ -29,8 +29,8 @@
     $rowErrorCount = collect($errorBag->keys())->filter(fn ($key) => str_starts_with((string) $key, 'formData.' . $field->name . '.'))->count();
     $hasErrors = filled($error) || $rowErrorCount > 0;
     $describedBy = trim(implode(' ', array_filter([
-        filled($field->help_text) ? 'hint-' . $field->name : null,
-        $hasErrors ? 'error-' . $field->name : null,
+        filled($field->help_text) ? $field->domId('hint') : null,
+        $hasErrors ? $field->domId('error') : null,
     ])));
 @endphp
 
@@ -39,7 +39,7 @@
     <div
         role="radiogroup"
         class="flex flex-wrap gap-x-6 gap-y-2 {{ $field->css_classes }}"
-        @if($field->label) aria-labelledby="label-{{ $field->name }}" @endif
+        @if($field->label) aria-labelledby="{{ $field->domId('label') }}" @endif
         @if($field->is_required) aria-required="true" @endif
         @if($readOnly) aria-readonly="true" @endif
         @if(filled($error)) aria-invalid="true" @endif
@@ -52,7 +52,7 @@
                     wire:model.live="formData.{{ $field->name }}"
                     name="{{ $field->name }}"
                     value="{{ $column['value'] }}"
-                    id="field-{{ $field->name }}-{{ $index }}"
+                    id="{{ $field->domId() }}-{{ $index }}"
                     class="radio radio-primary"
                     @disabled($readOnly)
                 />
@@ -64,7 +64,7 @@
 @else
 <fieldset
     class="fieldset {{ $field->css_classes }}"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     @if($describedBy) aria-describedby="{{ $describedBy }}" @endif
 >
     @if(filled($field->label))
@@ -77,7 +77,7 @@
     @endif
 
     @if(filled($field->help_text) && 'above' === $descriptionPlacement)
-        <p class="fieldset-label" id="hint-{{ $field->name }}">{{ $field->help_text }}</p>
+        <p class="fieldset-label" id="{{ $field->domId('hint') }}">{{ $field->help_text }}</p>
     @endif
 
     <div class="overflow-x-auto">
@@ -86,14 +86,14 @@
                 <tr>
                     <td><span class="sr-only">{{ __( 'Statement' ) }}</span></td>
                     @foreach($columns as $index => $column)
-                        <th scope="col" id="field-{{ $field->name }}-col-{{ $index }}" class="text-center align-bottom font-medium">{{ $column['label'] }}</th>
+                        <th scope="col" id="{{ $field->domId() }}-col-{{ $index }}" class="text-center align-bottom font-medium">{{ $column['label'] }}</th>
                     @endforeach
                 </tr>
             </thead>
             <tbody>
                 @foreach($rows as $row)
                     @php
-                        $rowId = 'field-' . $field->name . '-row-' . $row['key'];
+                        $rowId = $field->domId() . '-row-' . $row['key'];
                         $rowError = $errorBag->first('formData.' . $field->name . '.' . $row['key']);
                         $answer = is_array($value) ? ($value[$row['key']] ?? '') : '';
                     @endphp
@@ -113,7 +113,7 @@
                                     value="{{ $column['value'] }}"
                                     id="{{ $rowId }}-{{ $index }}"
                                     class="radio radio-primary"
-                                    aria-labelledby="{{ $rowId }} field-{{ $field->name }}-col-{{ $index }}"
+                                    aria-labelledby="{{ $rowId }} {{ $field->domId() }}-col-{{ $index }}"
                                     @if(filled($rowError)) aria-invalid="true" aria-describedby="{{ $rowId }}-error" @endif
                                     @checked((string) $answer === $column['value'])
                                     @disabled($readOnly)
@@ -127,11 +127,11 @@
     </div>
 
     @if(filled($field->help_text) && 'below' === $descriptionPlacement)
-        <p class="fieldset-label" id="hint-{{ $field->name }}">{{ $field->help_text }}</p>
+        <p class="fieldset-label" id="{{ $field->domId('hint') }}">{{ $field->help_text }}</p>
     @endif
 
     @if($hasErrors)
-        <p class="fieldset-label text-error" id="error-{{ $field->name }}" role="alert">
+        <p class="fieldset-label text-error" id="{{ $field->domId('error') }}">
             {{ filled($error) ? $error : trans_choice( 'Please answer :count highlighted row in :field.|Please answer :count highlighted rows in :field.', $rowErrorCount, ['count' => $rowErrorCount, 'field' => $field->label] ) }}
         </p>
     @endif

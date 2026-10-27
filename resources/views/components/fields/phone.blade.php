@@ -13,27 +13,28 @@
     $countries = $field->usesPhoneCountrySelector() ? \ArtisanPackUI\Forms\FieldTypes\PhoneFieldType::countries() : [];
 @endphp
 
-@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true, 'renderError' => false])
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true])
 <x-artisanpack-input
     type="tel"
     :label="$layoutLabel ? null : $field->label"
-    :placeholder="$field->placeholder ?? '(123) 456-7890'"
-    :error="$error"
+    :placeholder="$field->placeholder ?? ([] === $countries ? __( '(123) 456-7890' ) : null)"
+    :omit-error="true"
+    :aria-invalid="filled($error) ? 'true' : null"
     :required="$field->is_required"
     wire:model.live="formData.{{ $field->name }}"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     :autocomplete="$field->getAutocomplete()"
     :readonly="$field->isReadOnly()"
     :class="$field->css_classes"
     :aria-required="$field->is_required ? 'true' : 'false'"
-    :aria-labelledby="$layoutLabel && filled($field->label) ? 'label-' . $field->name : null"
+    :aria-labelledby="$layoutLabel && filled($field->label) ? $field->domId('label') : null"
     :aria-describedby="$field->getDescribedBy($error)"
     :x-mask="$mask"
 >
     @if([] !== $countries)
         <x-slot:prepend>
             <select
-                id="field-{{ $field->getPhoneCountryKey() }}"
+                id="{{ $field->domId() }}_country"
                 wire:model.live="formData.{{ $field->getPhoneCountryKey() }}"
                 class="select join-item w-auto max-w-48"
                 autocomplete="country"

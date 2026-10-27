@@ -29,6 +29,7 @@ import type { SignatureMode } from '../../../shared/signature';
 
 import { FieldLayout } from './FieldLayout';
 import type { FieldComponentProps } from './types';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /**
  * Renders a signature field.
@@ -36,13 +37,13 @@ import type { FieldComponentProps } from './types';
 export function SignatureField( { field, value, error, onChange, displayConfig }: FieldComponentProps ) {
 	const padHeight = getSignaturePadHeight( field );
 	const layout = getFieldLayout( field, displayConfig );
-	const labelId = field.label ? ( layout.custom ? layout.labelId : `${field.name}-label` ) : undefined;
+	const labelId = field.label ? ( layout.custom ? layout.labelId : `${fieldIdKey( field )}-label` ) : undefined;
 	const hintId = layout.custom
 		? ( field.help_text ? layout.descriptionId : undefined )
-		: ( field.help_text && !error ? `${field.name}-hint` : undefined );
-	const errorId = error ? `${field.name}-error` : undefined;
+		: ( field.help_text && !error ? `${fieldIdKey( field )}-hint` : undefined );
+	const errorId = error ? `${fieldIdKey( field )}-error` : undefined;
 	const describedBy = [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
-	const idPrefix = `field-${field.name}-`;
+	const idPrefix = `field-${fieldIdKey( field )}-`;
 
 	const [mode, setMode] = useState<SignatureMode>( () => getSignatureMode( value ) );
 	const [typed, setTyped] = useState( () => ( getSignatureMode( value ) === 'type' ? String( value ) : '' ) );

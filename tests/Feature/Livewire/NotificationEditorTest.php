@@ -7,6 +7,12 @@ use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormNotification;
 use Livewire\Livewire;
+use Tests\Models\User;
+
+// The editor checks the manageNotifications ability since 1.6.0.
+beforeEach( function (): void {
+    $this->actingAs( User::factory()->create() );
+} );
 
 describe( 'NotificationEditor Livewire Component', function (): void {
     describe( 'mounting', function (): void {

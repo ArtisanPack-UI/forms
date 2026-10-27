@@ -17,6 +17,7 @@
     <exclude-pattern>*/database/migrations/*</exclude-pattern>
     <exclude-pattern>*/resources/views/*</exclude-pattern>
     <exclude-pattern>*/tests/views/*</exclude-pattern>
+    <exclude-pattern>*.blade.php</exclude-pattern>
 
     <!--
     NOTE: PHP-CS-Fixer handles most formatting rules (spacing, alignment, braces, etc.)

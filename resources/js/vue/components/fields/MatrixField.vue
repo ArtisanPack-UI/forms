@@ -19,6 +19,7 @@ import { getFieldLayout } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 import { getMatrixColumns, getMatrixRows, isSingleScale, toMatrixAnswers } from '../../../shared/matrix';
 import FieldLayout from './FieldLayout.vue';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = withDefaults( defineProps<{
 	field: FormField;
@@ -55,20 +56,20 @@ const labelId = computed( () => {
 		return undefined;
 	}
 
-	return layout.value.custom ? layout.value.labelId : `${props.field.name}-label`;
+	return layout.value.custom ? layout.value.labelId : `${fieldIdKey( props.field )}-label`;
 } );
 const hintId = computed( () => {
 	if ( !single.value ) {
-		return props.field.help_text ? `${props.field.name}-hint` : undefined;
+		return props.field.help_text ? `${fieldIdKey( props.field )}-hint` : undefined;
 	}
 
 	if ( layout.value.custom ) {
 		return props.field.help_text ? layout.value.descriptionId : undefined;
 	}
 
-	return props.field.help_text && !props.error ? `${props.field.name}-hint` : undefined;
+	return props.field.help_text && !props.error ? `${fieldIdKey( props.field )}-hint` : undefined;
 } );
-const errorId = computed( () => ( hasErrors.value ? `${props.field.name}-error` : undefined ) );
+const errorId = computed( () => ( hasErrors.value ? `${fieldIdKey( props.field )}-error` : undefined ) );
 const describedBy = computed( () => [hintId.value, errorId.value].filter( Boolean ).join( ' ' ) || undefined );
 
 const summary = computed( () => props.error || ( rowErrorCount.value === 1
@@ -77,7 +78,7 @@ const summary = computed( () => props.error || ( rowErrorCount.value === 1
 
 /** The ID of a row's statement. */
 function rowId( key: string ): string {
-	return `field-${props.field.name}-row-${key}`;
+	return `field-${fieldIdKey( props.field )}-row-${key}`;
 }
 
 /** Store a row's answer. */
@@ -109,7 +110,7 @@ function answer( key: string, value: string ): void {
 			>
 				<label v-for="( column, index ) in columns" :key="column.value" class="label cursor-pointer justify-start gap-2">
 					<input
-						:id="`field-${field.name}-${index}`"
+						:id="`field-${fieldIdKey( field )}-${index}`"
 						type="radio"
 						:name="field.name"
 						:value="column.value"
@@ -132,7 +133,7 @@ function answer( key: string, value: string ): void {
 
 	<fieldset
 		v-else
-		:id="`field-${field.name}`"
+		:id="`field-${fieldIdKey( field )}`"
 		:class="['fieldset', field.css_classes ?? '']"
 		:aria-describedby="describedBy"
 	>
@@ -150,7 +151,7 @@ function answer( key: string, value: string ): void {
 						<td><span class="sr-only">{{ t( 'Statement' ) }}</span></td>
 						<th
 							v-for="( column, index ) in columns"
-							:id="`field-${field.name}-col-${index}`"
+							:id="`field-${fieldIdKey( field )}-col-${index}`"
 							:key="column.value"
 							scope="col"
 							class="text-center align-bottom font-medium"
@@ -172,7 +173,7 @@ function answer( key: string, value: string ): void {
 								:name="`${field.name}[${row.key}]`"
 								:value="column.value"
 								class="radio radio-primary"
-								:aria-labelledby="`${rowId( row.key )} field-${field.name}-col-${index}`"
+								:aria-labelledby="`${rowId( row.key )} field-${fieldIdKey( field )}-col-${index}`"
 								:aria-invalid="subErrors[row.key] ? 'true' : undefined"
 								:aria-describedby="subErrors[row.key] ? `${rowId( row.key )}-error` : undefined"
 								:checked="answers[row.key] === column.value"

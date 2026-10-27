@@ -27,6 +27,7 @@ import {
 	getTimeStep,
 	isReadOnlyField,
 	ratingAllowsHalf,
+	toFileList,
 	withInputNotes,
 } from '../../../shared/fieldSettings';
 import type { InputLabelProps } from '../../../shared/fieldSettings';
@@ -36,6 +37,7 @@ import { t } from '../../../shared/i18n';
 import { DatePartsField } from './DateTimeParts';
 import { FieldLayout } from './FieldLayout';
 import type { FieldComponentProps } from './types';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /**
  * Renders a file upload field.
@@ -43,7 +45,9 @@ import type { FieldComponentProps } from './types';
  * A multi-file field (since 1.6.0) adds each file chosen or dropped to a
  * list with a remove button, up to its max files, and a polite live region
  * announces the changes. Files upload with the submission. A note under
- * the input lists the allowed types and size limits (since 1.6.0).
+ * the input lists the allowed types and size limits (since 1.6.0). The
+ * chosen files are the form's (`files`), so they are still listed after a
+ * step change or conditional logic remounts the field (since 1.6.0).
  */
 export function FileField( props: FieldComponentProps ) {
 	if ( allowsMultipleFiles( props.field ) ) {
@@ -60,7 +64,7 @@ export function FileField( props: FieldComponentProps ) {
  */
 function withLimitsNote( props: InputLabelProps, field: FormField, error: string | undefined ): { props: InputLabelProps; note: React.ReactNode } {
 	const hint = getFileLimitsHint( field );
-	const id = `field-${field.name}-limits`;
+	const id = `field-${fieldIdKey( field )}-limits`;
 
 	if ( hint === undefined ) {
 		return { props, note: null };
@@ -78,16 +82,16 @@ function withLimitsNote( props: InputLabelProps, field: FormField, error: string
  *
  * @since 1.6.0
  */
-function MultiFileField( { field, error, onFileChange, displayConfig }: FieldComponentProps ) {
+function MultiFileField( { field, error, onFileChange, files: selected, displayConfig }: FieldComponentProps ) {
 	const layout = getFieldLayout( field, displayConfig );
 	const limits = withLimitsNote( getInputLabelProps( field, layout, displayConfig, error ), field, error );
 	const { inline: _inline, ...labelProps } = limits.props;
 	const maxFiles = getFileMaxCount( field );
-	const [files, setFiles] = useState<File[]>( [] );
+	// The form holds the files, so a remounted field still lists them
+	const files = toFileList( selected );
 	const [announcement, setAnnouncement] = useState( '' );
 
 	const update = ( next: File[], message: string ): void => {
-		setFiles( next );
 		setAnnouncement( message );
 		onFileChange?.( next );
 	};
@@ -162,17 +166,24 @@ function formatFileSize( bytes: number ): string {
 
 /**
  * Renders a single-file upload field. Several files dropped at once keep
- * only the first, since the field takes one file (since 1.6.0).
+ * only the first, since the field takes one file (since 1.6.0). The chosen
+ * file is the form's (`files`) and is shown with a remove button, since a
+ * native file input forgets it when a step change or conditional logic
+ * remounts the field (since 1.6.0).
  */
-function SingleFileField( { field, error, onFileChange, displayConfig }: FieldComponentProps ) {
+function SingleFileField( { field, error, onFileChange, files: selected, displayConfig }: FieldComponentProps ) {
 	const allowedTypes = getFileAccept( field );
 	const layout = getFieldLayout( field, displayConfig );
 	const limits = withLimitsNote( getInputLabelProps( field, layout, displayConfig, error ), field, error );
 	const { inline: _inline, ...labelProps } = limits.props;
+	const [file] = toFileList( selected );
+	// Remounts the native input on remove, so it forgets the file too
+	const [inputKey, setInputKey] = useState( 0 );
 
 	return (
 		<FieldLayout field={field} layout={layout}>
 			<FileInput
+				key={inputKey}
 				{...labelProps}
 				name={field.name}
 				accept={allowedTypes}
@@ -195,6 +206,24 @@ function SingleFileField( { field, error, onFileChange, displayConfig }: FieldCo
 				}}
 			/>
 			{limits.note}
+
+			{file && (
+				<div className="mt-3 flex items-center gap-3 rounded-box bg-base-200 p-2">
+					<span className="min-w-0 grow truncate text-sm">{file.name}</span>
+					<span className="shrink-0 text-xs text-base-content/60">{formatFileSize( file.size )}</span>
+					<button
+						type="button"
+						className="btn btn-ghost btn-sm btn-square"
+						aria-label={t( 'Remove :name', { name: file.name } )}
+						onClick={() => {
+							onFileChange?.( [] );
+							setInputKey( ( key ) => key + 1 );
+						}}
+					>
+						<span aria-hidden="true">✕</span>
+					</button>
+				</div>
+			)}
 		</FieldLayout>
 	);
 }
@@ -307,11 +336,11 @@ export function RatingField( { field, value, error, onChange, displayConfig }: F
 	const selected = Number.isFinite( current ) ? current : 0;
 
 	const layout = getFieldLayout( field, displayConfig );
-	const labelId = field.label ? ( layout.custom ? layout.labelId : `${field.name}-label` ) : undefined;
+	const labelId = field.label ? ( layout.custom ? layout.labelId : `${fieldIdKey( field )}-label` ) : undefined;
 	const hintId = layout.custom
 		? ( field.help_text ? layout.descriptionId : undefined )
-		: ( field.help_text && !error ? `${field.name}-hint` : undefined );
-	const errorId = error ? `${field.name}-error` : undefined;
+		: ( field.help_text && !error ? `${fieldIdKey( field )}-hint` : undefined );
+	const errorId = error ? `${fieldIdKey( field )}-error` : undefined;
 	const describedBy = [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
 	const labelHidden = displayConfig.label_position === 'hidden';
 

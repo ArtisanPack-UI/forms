@@ -71,7 +71,7 @@
 
         <p
             class="label-text-alt text-base-content/70 mt-1 text-right"
-            id="counter-{{ $field->name }}"
+            id="{{ $field->domId('counter') }}"
             x-text="text"
             x-bind:class="{ 'text-error': limit !== null && count > limit }"
         >{{ str_replace([':count', ':max'], ['0', (string) $limit], $counterTemplate) }}</p>

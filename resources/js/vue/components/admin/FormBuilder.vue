@@ -86,10 +86,15 @@ const predefinedChoices = ref<PredefinedChoiceList[]>( [] );
 
 /** Store an image choice's image and get its URL (since 1.6.0). */
 async function uploadChoiceImage( file: File ): Promise<string> {
+	// The API binds `{form}` by slug, not by ID.
+	if ( !persistedSlug.value ) {
+		throw new Error( t( 'Failed to load form.' ) );
+	}
+
 	const body = new FormData();
 	body.append( 'image', file );
 
-	const response = await post<{ data: { url: string } }>( `/${form.value?.id}/fields/choice-images`, body );
+	const response = await post<{ data: { url: string } }>( `/${encodeURIComponent( persistedSlug.value )}/fields/choice-images`, body );
 
 	return response.data.url;
 }
@@ -126,9 +131,12 @@ const { isDirty, isSaving, lastSavedAt, saveError, markDirty, saveNow, clearDirt
 
 		if ( Object.keys( data ).length > 0 ) {
 			const savedKeys = Object.keys( data );
-			await put( `/${persistedSlug.value}`, data );
+			const response = await put<{ data: Form }>( `/${persistedSlug.value}`, data );
 
-			if ( data.slug ) {
+			// The server derives the slug when the auto slug is empty (since 1.6.0).
+			if ( response?.data?.slug ) {
+				persistedSlug.value = response.data.slug;
+			} else if ( data.slug ) {
 				persistedSlug.value = data.slug as string;
 			}
 

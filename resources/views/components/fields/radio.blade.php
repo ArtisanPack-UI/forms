@@ -12,7 +12,7 @@
 <div
     class="{{ $field->getChoiceLayoutClasses() }} {{ $field->css_classes }}"
     role="radiogroup"
-    @if($field->label) aria-labelledby="label-{{ $field->name }}" @endif
+    @if($field->label) aria-labelledby="{{ $field->domId('label') }}" @endif
     @if($field->is_required) aria-required="true" @endif
     @if($field->isReadOnly()) aria-readonly="true" @endif
     @if($error) aria-invalid="true" @endif
@@ -28,7 +28,7 @@
                 'image' => \ArtisanPackUI\Forms\Support\ChoiceImages::url($option),
                 'alt' => \ArtisanPackUI\Forms\Support\ChoiceImages::alt($option),
                 'label' => $optionLabel,
-                'labelId' => 'field-' . $field->name . '-' . $index . '-label',
+                'labelId' => $field->domId() . '-' . $index . '-label',
             ])
                 <input
                     type="radio"
@@ -36,8 +36,8 @@
                     name="{{ $field->name }}"
                     value="{{ $optionValue }}"
                     class="radio radio-primary radio-sm"
-                    id="field-{{ $field->name }}-{{ $index }}"
-                    aria-labelledby="field-{{ $field->name }}-{{ $index }}-label"
+                    id="{{ $field->domId() }}-{{ $index }}"
+                    aria-labelledby="{{ $field->domId() }}-{{ $index }}-label"
                     @disabled($field->isReadOnly())
                 />
             @endcomponent
@@ -49,7 +49,7 @@
                 name="{{ $field->name }}"
                 value="{{ $optionValue }}"
                 class="radio radio-primary"
-                id="field-{{ $field->name }}-{{ $index }}"
+                id="{{ $field->domId() }}-{{ $index }}"
                 @disabled($field->isReadOnly())
             />
             <span class="label-text">{{ $optionLabel }}</span>
@@ -65,8 +65,8 @@
                 name="{{ $field->name }}"
                 value="{{ \ArtisanPackUI\Forms\Models\FormField::OTHER_CHOICE_VALUE }}"
                 class="radio radio-primary"
-                id="field-{{ $field->name }}-other"
-                @if($otherSelected) aria-controls="field-{{ $field->name }}-other-text" @endif
+                id="{{ $field->domId() }}-other"
+                @if($otherSelected) aria-controls="{{ $field->domId() }}-other-text" @endif
                 @disabled($field->isReadOnly())
             />
             <span class="label-text">{{ $field->getOtherChoiceLabel() }}</span>

@@ -103,7 +103,7 @@ describe( 'React schema-driven field settings (issue #91)', function () use ( $r
 
     it( 'keeps other field_config keys when editing options', function (): void {
         // Every options edit (add, update, remove, defaults, bulk) goes through OptionsEditor's onChange.
-        expect( substr_count( $this->editor, 'field_config: { ...( field.field_config ?? {} ), options: newOptions }' ) )->toBe( 1 )
+        expect( substr_count( $this->editor, 'field_config: { ...( fieldRef.current.field_config ?? {} ), options: newOptions }' ) )->toBe( 1 )
             ->and( $this->editor )->toContain( 'onChange={setOptions}' );
     } );
 } );

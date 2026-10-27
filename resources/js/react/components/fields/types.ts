@@ -23,6 +23,11 @@ export interface FieldComponentProps {
 	onChange: ( value: unknown ) => void;
 	/** Callback to set a file for file fields. */
 	onFileChange?: ( file: File | File[] ) => void;
+	/**
+	 * The files the form holds for a file field, so its selection survives a
+	 * remount on a step change or by conditional logic (since 1.6.0).
+	 */
+	files?: File | File[];
 	/** Display configuration from the form. */
 	displayConfig: DisplayConfig;
 	/** Text typed into the field's "Other" choice (since 1.6.0). */

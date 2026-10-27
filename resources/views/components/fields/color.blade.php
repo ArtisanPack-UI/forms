@@ -20,7 +20,7 @@
     $colorType = \ArtisanPackUI\Forms\FieldTypes\ColorFieldType::class;
     $current = is_string($value) ? $value : '';
     $readOnly = $field->isReadOnly();
-    $inputId = 'field-' . $field->name;
+    $inputId = $field->domId();
 @endphp
 
 @component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => $inputId])

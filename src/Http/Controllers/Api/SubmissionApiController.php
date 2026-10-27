@@ -265,7 +265,7 @@ class SubmissionApiController extends Controller
         $captchaErrors = $this->captchaVerifier->verify(
             $form->fields,
             $data,
-            app( ConditionalLogicService::class )->getHiddenFields( $form->fields, $data ),
+            app( ConditionalLogicService::class )->getHiddenFields( $form->fields, $data, true ),
             $request->ip(),
         );
 

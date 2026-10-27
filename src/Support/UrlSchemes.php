@@ -35,7 +35,22 @@ class UrlSchemes
     public const DEFAULT = ['http', 'https'];
 
     /**
+     * The schemes a URL field may never allow.
+     *
+     * A link with one of these runs script or reads local data when an admin
+     * opens it (for example `javascript:` in the submission detail), so they
+     * are dropped from a field's allowed schemes.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const BLOCKED = ['javascript', 'data', 'vbscript', 'file', 'blob'];
+
+    /**
      * Normalizes a stored scheme list: lowercase schemes without `:` or `://`, invalid entries removed.
+     *
+     * The schemes in BLOCKED are removed too.
      *
      * @since 1.6.0
      *
@@ -58,7 +73,7 @@ class UrlSchemes
 
             $scheme = mb_strtolower( preg_replace( '/:(\/\/)?$/', '', trim( $scheme ) ) ?? '' );
 
-            if ( 1 === preg_match( '/^[a-z][a-z0-9+.\-]*$/', $scheme ) && ! in_array( $scheme, $normalized, true ) ) {
+            if ( 1 === preg_match( '/^[a-z][a-z0-9+.\-]*$/', $scheme ) && ! in_array( $scheme, self::BLOCKED, true ) && ! in_array( $scheme, $normalized, true ) ) {
                 $normalized[] = $scheme;
             }
         }

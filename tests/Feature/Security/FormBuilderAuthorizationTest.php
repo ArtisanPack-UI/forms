@@ -63,6 +63,7 @@ describe( 'builder actions', function (): void {
         'updateLayoutContent'    => ['updateLayoutContent', fn (): array => ['Changed']],
         'storeChoiceImage'       => ['storeChoiceImage', fn (): array => []],
         'applyBulkChoices'       => ['applyBulkChoices', fn (): array => ["a\nb"]],
+        'updateOptions'          => ['updateOptions', fn (): array => [[['value' => 'a', 'label' => 'A']]]],
         'updateSubInput'         => ['updateSubInput', fn (): array => ['first', 'label', 'Given']],
         'updateConditionalLogic' => ['updateConditionalLogic', fn (): array => [['action' => 'show', 'logic' => 'all', 'rules' => []]]],
         'clearConditionalLogic'  => ['clearConditionalLogic', fn (): array => []],

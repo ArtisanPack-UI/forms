@@ -17,17 +17,18 @@ import { getFieldLayout } from '../../../shared/fieldSettings';
 
 import { FieldLayout } from './FieldLayout';
 import type { FieldComponentProps } from './types';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /**
  * Renders a calculation field.
  */
 export function CalculationField( { field, value, error, displayConfig }: FieldComponentProps ) {
 	const layout = getFieldLayout( field, displayConfig );
-	const inputId = layout.custom ? layout.inputId : `field-${field.name}`;
+	const inputId = layout.custom ? layout.inputId : `field-${fieldIdKey( field )}`;
 	const hintId = layout.custom
 		? ( field.help_text ? layout.descriptionId : undefined )
-		: ( field.help_text && !error ? `${field.name}-hint` : undefined );
-	const errorId = error ? `${field.name}-error` : undefined;
+		: ( field.help_text && !error ? `${fieldIdKey( field )}-hint` : undefined );
+	const errorId = error ? `${fieldIdKey( field )}-error` : undefined;
 	const describedBy = [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
 
 	return (

@@ -157,9 +157,9 @@ describe( 'React', function () use ( $resource, $between ): void {
     it( 'names each matrix radio by its row and column', function () use ( $resource, $between ): void {
         $matrix = $between( $resource( 'react/components/fields/SurveyField.tsx' ), 'export function MatrixField(', "\n}\n" );
 
-        expect( $matrix )->toContain( '<th key={column.value} scope="col" id={`field-${field.name}-col-${index}`}' )
+        expect( $matrix )->toContain( '<th key={column.value} scope="col" id={`field-${fieldIdKey( field )}-col-${index}`}' )
             ->toContain( '<th scope="row"' )
-            ->toContain( 'aria-labelledby={`${rowId} field-${field.name}-col-${index}`}' )
+            ->toContain( 'aria-labelledby={`${rowId} field-${fieldIdKey( field )}-col-${index}`}' )
             ->toContain( 'name={`${field.name}[${row.key}]`}' )
             ->toContain( 'const rowError = subErrors[row.key];' );
     } );
@@ -234,7 +234,7 @@ describe( 'Vue', function () use ( $resource ): void {
         expect( $resource( 'vue/components/fields/MatrixField.vue' ) )
             ->toContain( 'scope="col"' )
             ->toContain( 'scope="row"' )
-            ->toContain( ':aria-labelledby="`${rowId( row.key )} field-${field.name}-col-${index}`"' )
+            ->toContain( ':aria-labelledby="`${rowId( row.key )} field-${fieldIdKey( field )}-col-${index}`"' )
             ->toContain( ':name="`${field.name}[${row.key}]`"' );
     } );
 

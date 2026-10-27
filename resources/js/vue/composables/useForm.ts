@@ -12,7 +12,8 @@
  * @since      1.1.0
  */
 
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, toValue, watch } from 'vue';
+import type { MaybeRefOrGetter } from 'vue';
 
 import type {
 	FormField,
@@ -24,17 +25,26 @@ import { isCalculationField, resolveCalculatedValues } from '../../shared/calcul
 import { createSubmitHooks, SubmitHookError } from '../../shared/captcha';
 import type { SubmitHooks } from '../../shared/captcha';
 import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composite';
+import { createIdPrefix, withIdPrefix } from '../../shared/domIds';
 import { getInitialFieldValue, resolveOtherChoices } from '../../shared/fieldSettings';
 import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
 import { t } from '../../shared/i18n';
+import { appendSubmissionValue, mapServerErrors } from '../../shared/submission';
 import { validateFields } from '../../shared/validation';
 
 /** Configuration options for the useForm composable. */
 export interface UseFormOptions {
-	/** Base URL for the forms API (e.g. "https://example.com/api/v1/forms"). */
-	baseUrl: string;
-	/** The form slug or ID used in the API URL. */
-	formSlug: string;
+	/**
+	 * Base URL for the forms API (e.g. "https://example.com/api/v1/forms").
+	 * A ref or getter is watched, and the form reloads when it changes
+	 * (since 1.6.0).
+	 */
+	baseUrl: MaybeRefOrGetter<string>;
+	/**
+	 * The form slug or ID used in the API URL. A ref or getter is watched,
+	 * and the form reloads when it changes (since 1.6.0).
+	 */
+	formSlug: MaybeRefOrGetter<string>;
 	/** Optional callback when submission succeeds. */
 	onSuccess?: ( response: SubmitFormResponse ) => void;
 	/** Optional callback when submission fails. */
@@ -132,7 +142,21 @@ export function useForm( options: UseFormOptions ) {
 	const isSubmitted = ref( false );
 	const currentStep = ref( 0 );
 	const loadError = ref<string | null>( null );
+
+	/**
+	 * Counts the times validation failed (a step, or the submission on the
+	 * client or the server), so the renderer can move focus to the first
+	 * invalid field each time (since 1.6.0).
+	 */
+	const validationFailures = ref( 0 );
 	const formLoadedAt = ref( 0 );
+
+	/**
+	 * The prefix this form instance's element IDs start with, so two forms on
+	 * one page do not share IDs. Each field carries it as `id_prefix` (since
+	 * 1.6.0; see `fieldIdKey()`).
+	 */
+	const idPrefix = createIdPrefix();
 
 	/** The form's submit hooks, which fields such as the CAPTCHA register with (since 1.6.0). */
 	const submitHooks: SubmitHooks = createSubmitHooks();
@@ -212,31 +236,56 @@ export function useForm( options: UseFormOptions ) {
 		return Math.round( ( ( currentStep.value + 1 ) / totalSteps.value ) * 100 );
 	} );
 
+	/** Counts form loads, so a response for a slug since replaced is ignored. */
+	let latestLoad = 0;
+
 	// Fetch form definition
 	async function fetchForm(): Promise<void> {
+		const load = ++latestLoad;
+
 		isLoading.value = true;
 		loadError.value = null;
 
 		try {
-			const url = `${baseUrl}/${encodeURIComponent( formSlug )}/render`;
+			const url = `${toValue( baseUrl )}/${encodeURIComponent( toValue( formSlug ) )}/render`;
 			const response = await fetch( url );
 
 			if ( !response.ok ) {
-				throw new Error( `Failed to load form: ${response.statusText}` );
+				throw new Error( t( 'Failed to load form: :status', { status: response.statusText } ) );
 			}
 
 			const data: { data: FormRenderData } = await response.json();
-			form.value = data.data;
+
+			if ( load !== latestLoad ) {
+				return;
+			}
+
+			// Each field carries the instance's ID prefix for its element IDs (since 1.6.0)
+			form.value = { ...data.data, fields: withIdPrefix( data.data.fields, idPrefix ) };
 			formLoadedAt.value = Math.floor( Date.now() / 1000 );
 			values.value = buildDefaults( data.data.fields, prefill );
+			errors.value = {};
+			files.value = {};
+			otherValues.value = {};
+			isSubmitted.value = false;
+			currentStep.value = 0;
 		} catch ( err ) {
-			loadError.value = err instanceof Error ? err.message : 'Failed to load form.';
+			if ( load === latestLoad ) {
+				loadError.value = err instanceof Error ? err.message : t( 'Failed to load form.' );
+			}
 		} finally {
-			isLoading.value = false;
+			if ( load === latestLoad ) {
+				isLoading.value = false;
+			}
 		}
 	}
 
 	onMounted( fetchForm );
+
+	// Load the new form when the slug or API changes, as the React hook does (since 1.6.0)
+	watch( [() => toValue( baseUrl ), () => toValue( formSlug )], () => {
+		fetchForm();
+	} );
 
 	function setValue( name: string, value: unknown ): void {
 		const previous = values.value[name];
@@ -306,6 +355,7 @@ export function useForm( options: UseFormOptions ) {
 
 		if ( Object.keys( stepErrors ).length > 0 ) {
 			errors.value = { ...errors.value, ...stepErrors };
+			validationFailures.value++;
 
 			return false;
 		}
@@ -342,6 +392,7 @@ export function useForm( options: UseFormOptions ) {
 
 		if ( Object.keys( stepErrors ).length > 0 ) {
 			errors.value = { ...errors.value, ...stepErrors };
+			validationFailures.value++;
 
 			return;
 		}
@@ -362,6 +413,7 @@ export function useForm( options: UseFormOptions ) {
 
 		if ( Object.keys( validationErrors ).length > 0 ) {
 			errors.value = validationErrors;
+			validationFailures.value++;
 
 			// Navigate to first step with errors (multi-step)
 			if ( form.value.is_multi_step && sortedSteps.value.length > 0 ) {
@@ -397,6 +449,7 @@ export function useForm( options: UseFormOptions ) {
 			} catch ( hookError ) {
 				if ( hookError instanceof SubmitHookError ) {
 					errors.value = { [hookError.field]: [t( 'The verification check failed. Please try again.' )] };
+					validationFailures.value++;
 
 					return;
 				}
@@ -404,7 +457,7 @@ export function useForm( options: UseFormOptions ) {
 				throw hookError;
 			}
 
-			const url = `${baseUrl}/${encodeURIComponent( formSlug )}/submit`;
+			const url = `${toValue( baseUrl )}/${encodeURIComponent( toValue( formSlug ) )}/submit`;
 			const formDataObj = new FormData();
 			const submitted = {
 				...resolveOtherChoices( form.value.fields, values.value, otherValues.value ),
@@ -424,25 +477,8 @@ export function useForm( options: UseFormOptions ) {
 					continue;
 				}
 
-				if ( Array.isArray( value ) ) {
-					value.forEach( ( item, index ) => {
-						if ( item !== null && typeof item === 'object' ) {
-							// A list's rows are maps of columns (since 1.6.0).
-							for ( const [column, cell] of Object.entries( item as Record<string, unknown> ) ) {
-								formDataObj.append( `data[${key}][${index}][${column}]`, String( cell ?? '' ) );
-							}
-						} else {
-							formDataObj.append( `data[${key}][]`, String( item ) );
-						}
-					} );
-				} else if ( value !== null && typeof value === 'object' ) {
-					// A composite field's value is a map of sub-inputs.
-					for ( const [subKey, part] of Object.entries( value as Record<string, unknown> ) ) {
-						formDataObj.append( `data[${key}][${subKey}]`, String( part ?? '' ) );
-					}
-				} else if ( value !== null && value !== undefined ) {
-					formDataObj.append( `data[${key}]`, String( value ) );
-				}
+				// Lists, arrays and composite maps are expanded; booleans are sent as '1'/'0'.
+				appendSubmissionValue( formDataObj, key, value );
 			}
 
 			// Add files
@@ -480,16 +516,11 @@ export function useForm( options: UseFormOptions ) {
 
 			if ( response.status === 422 ) {
 				const errorData = await response.json();
-				const serverErrors: Record<string, string[]> = {};
-
-				if ( errorData.errors ) {
-					for ( const [key, messages] of Object.entries( errorData.errors ) ) {
-						const fieldName = key.replace( /^(data|files)\./, '' );
-						serverErrors[fieldName] = messages as string[];
-					}
-				}
+				// "data.field_name" becomes "field_name"; errors for no field on the form go to `_form`.
+				const serverErrors = mapServerErrors( errorData.errors, allFields.value );
 
 				errors.value = serverErrors;
+				validationFailures.value++;
 				outcome = { ok: false, errors: serverErrors };
 
 				// Navigate to first step with server errors (multi-step)
@@ -513,14 +544,15 @@ export function useForm( options: UseFormOptions ) {
 
 			if ( response.status === 429 ) {
 				errors.value = {
-					_form: ['Too many submissions. Please try again later.'],
+					_form: [t( 'Too many submissions. Please try again later.' )],
 				};
+				validationFailures.value++;
 
 				return;
 			}
 
 			if ( !response.ok ) {
-				throw new Error( 'Form submission failed.' );
+				throw new Error( t( 'Form submission failed.' ) );
 			}
 
 			const result: SubmitFormResponse = await response.json();
@@ -535,7 +567,7 @@ export function useForm( options: UseFormOptions ) {
 
 			onSuccess?.( result );
 		} catch ( err ) {
-			const error = err instanceof Error ? err : new Error( 'Form submission failed.' );
+			const error = err instanceof Error ? err : new Error( t( 'Form submission failed.' ) );
 			onError?.( error );
 		} finally {
 			isSubmitting.value = false;
@@ -573,10 +605,14 @@ export function useForm( options: UseFormOptions ) {
 		isSubmitted,
 		currentStep,
 		totalSteps,
+		/** A multi-step form's steps in order; empty for single-step forms (since 1.6.0). */
+		steps: sortedSteps,
+		validationFailures,
 		progressPercentage,
 		currentFields,
 		currentStepData,
 		loadError,
+		idPrefix,
 		setValue,
 		setFile,
 		setOtherValue,

@@ -17,6 +17,7 @@ import { getFieldLayout, isReadOnlyField } from '../../../shared/fieldSettings';
 import { isChecked } from './ChoiceField';
 import { FieldLayout } from './FieldLayout';
 import type { FieldComponentProps } from './types';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /**
  * Renders a consent field.
@@ -30,18 +31,18 @@ export function ConsentField( { field, value, error, onChange, displayConfig }: 
 	const hiddenLabel = layout.label === 'hidden' || ( !layout.custom && displayConfig.label_position === 'hidden' );
 	const text = field.consent?.text ?? '';
 	const description = field.consent?.description ?? '';
-	const descriptionId = description !== '' ? `consent-description-${field.name}` : undefined;
+	const descriptionId = description !== '' ? `consent-description-${fieldIdKey( field )}` : undefined;
 	const hintId = layout.custom
 		? ( field.help_text ? layout.descriptionId : undefined )
-		: ( field.help_text ? `${field.name}-hint` : undefined );
-	const errorId = error ? `${field.name}-error` : undefined;
+		: ( field.help_text ? `${fieldIdKey( field )}-hint` : undefined );
+	const errorId = error ? `${fieldIdKey( field )}-error` : undefined;
 	const describedBy = [descriptionId, hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
 
 	return (
 		<FieldLayout field={field} layout={layout} renderLabel={false}>
 			<div className="flex flex-col gap-2">
 				{field.label && (
-					<p id={`label-${field.name}`} className={`label-text font-medium ${hiddenLabel ? 'sr-only' : ''}`}>
+					<p id={`label-${fieldIdKey( field )}`} className={`label-text font-medium ${hiddenLabel ? 'sr-only' : ''}`}>
 						{field.label}
 						{field.is_required && <span className="text-error ml-1" aria-hidden="true">*</span>}
 					</p>
@@ -50,7 +51,7 @@ export function ConsentField( { field, value, error, onChange, displayConfig }: 
 				<label className="label cursor-pointer justify-start gap-3">
 					<input
 						type="checkbox"
-						id={`field-${field.name}`}
+						id={`field-${fieldIdKey( field )}`}
 						name={field.name}
 						className={`checkbox checkbox-primary ${field.css_classes ?? ''}`}
 						checked={checked}
@@ -61,10 +62,10 @@ export function ConsentField( { field, value, error, onChange, displayConfig }: 
 						aria-invalid={error ? true : undefined}
 						aria-describedby={describedBy}
 						// Named by the field label and the text, so two consent fields with the same text differ.
-						aria-labelledby={field.label ? `label-${field.name} consent-text-${field.name}` : undefined}
+						aria-labelledby={field.label ? `label-${fieldIdKey( field )} consent-text-${fieldIdKey( field )}` : undefined}
 						onChange={( e ) => onChange( e.target.checked )}
 					/>
-					<span id={`consent-text-${field.name}`} className="label-text whitespace-normal">{text}</span>
+					<span id={`consent-text-${fieldIdKey( field )}`} className="label-text whitespace-normal">{text}</span>
 				</label>
 
 				{descriptionId && (

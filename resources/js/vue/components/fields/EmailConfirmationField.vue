@@ -18,6 +18,7 @@ import { computed } from 'vue';
 import type { DisplayConfig, FormField } from '../../../types/artisanpack-forms';
 import { getSubLabelPlacement } from '../../../shared/composite';
 import { getConfirmationKey, getFieldLayout, isReadOnlyField } from '../../../shared/fieldSettings';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = withDefaults( defineProps<{
 	field: FormField;
@@ -48,14 +49,14 @@ const hiddenLabel = computed( () =>
 /** Where the email and confirm inputs show their sub-labels. */
 const subLabelPlacement = computed( () => getSubLabelPlacement( props.field ) );
 
-const hintId = computed( () => ( props.field.help_text ? `${props.field.name}-hint` : undefined ) );
-const errorId = computed( () => ( props.error ? `${props.field.name}-error` : undefined ) );
+const hintId = computed( () => ( props.field.help_text ? `${fieldIdKey( props.field )}-hint` : undefined ) );
+const errorId = computed( () => ( props.error ? `${fieldIdKey( props.field )}-error` : undefined ) );
 const describedBy = computed( () => [hintId.value, errorId.value].filter( Boolean ).join( ' ' ) || undefined );
 
 /** The email and confirm inputs. */
 const inputs = computed( () => [
 	{
-		id: `field-${props.field.name}`,
+		id: `field-${fieldIdKey( props.field )}`,
 		name: props.field.name,
 		label: props.field.email_confirmation?.email ?? '',
 		placeholder: props.field.placeholder ?? undefined,
@@ -63,7 +64,7 @@ const inputs = computed( () => [
 		confirm: false,
 	},
 	{
-		id: `field-${getConfirmationKey( props.field )}`,
+		id: `field-${fieldIdKey( props.field )}_confirmation`,
 		name: getConfirmationKey( props.field ),
 		label: props.field.email_confirmation?.confirm ?? '',
 		placeholder: props.field.email_confirmation?.confirm_placeholder ?? undefined,
@@ -90,7 +91,7 @@ function subLabelClass(): string {
 </script>
 
 <template>
-	<fieldset :id="`fieldset-${field.name}`" :class="['fieldset', field.css_classes ?? '']" :aria-describedby="describedBy">
+	<fieldset :id="`fieldset-${fieldIdKey( field )}`" :class="['fieldset', field.css_classes ?? '']" :aria-describedby="describedBy">
 		<legend v-if="field.label" :class="['fieldset-legend', hiddenLabel ? 'sr-only' : '']">
 			{{ field.label }}
 			<span v-if="field.is_required" class="text-error ml-1" aria-hidden="true">*</span>

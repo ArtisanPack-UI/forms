@@ -33,6 +33,7 @@ import {
 import type { DatePart, DatePartValues, TimePartValues } from '../../../shared/dateTime';
 import { getFieldLayout, getTimeStep, isReadOnlyField } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = withDefaults( defineProps<{
 	field: FormField;
@@ -95,8 +96,8 @@ const layout = computed( () => getFieldLayout( props.field, props.displayConfig 
 const hiddenLabel = computed( () =>
 	layout.value.label === 'hidden' || ( !layout.value.custom && props.displayConfig.label_position === 'hidden' ),
 );
-const hintId = computed( () => ( props.field.help_text ? `${props.field.name}-hint` : undefined ) );
-const errorId = computed( () => ( props.error ? `${props.field.name}-error` : undefined ) );
+const hintId = computed( () => ( props.field.help_text ? `${fieldIdKey( props.field )}-hint` : undefined ) );
+const errorId = computed( () => ( props.error ? `${fieldIdKey( props.field )}-error` : undefined ) );
 const describedBy = computed( () => [hintId.value, errorId.value].filter( Boolean ).join( ' ' ) || undefined );
 
 /** Pad a number to two digits. */
@@ -118,7 +119,7 @@ function datePartLabel( part: DatePart ): string {
 
 /** The group's inputs, in order. */
 const inputs = computed( (): PartInput[] => {
-	const id = ( key: string ): string => `field-${props.field.name}-${key}`;
+	const id = ( key: string ): string => `field-${fieldIdKey( props.field )}-${key}`;
 
 	if ( isDate.value ) {
 		const select = dateMode.value === 'dropdowns';
@@ -206,7 +207,7 @@ function update( key: string, value: string ): void {
 </script>
 
 <template>
-	<fieldset :id="`field-${field.name}`" :class="['fieldset', field.css_classes ?? '']" :aria-describedby="describedBy">
+	<fieldset :id="`field-${fieldIdKey( field )}`" :class="['fieldset', field.css_classes ?? '']" :aria-describedby="describedBy">
 		<legend v-if="field.label" :class="['fieldset-legend', { 'sr-only': hiddenLabel }]">
 			{{ field.label }}
 			<span v-if="field.is_required" class="text-error ml-1" aria-hidden="true">*</span>

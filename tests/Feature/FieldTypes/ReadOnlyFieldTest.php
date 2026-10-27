@@ -240,20 +240,25 @@ describe( 'read-only fields', function (): void {
 
         $html = Livewire::test( FormRenderer::class, ['form' => $form] )->html();
 
-        $tag = static function ( string $html, string $id ): string {
-            preg_match( '/<(?:input|textarea|select)\b[^>]*id="' . preg_quote( $id, '/' ) . '"[^>]*>/s', $html, $matches );
+        $tag = static function ( string $html, string $id, string $attribute = 'id' ): string {
+            preg_match( '/<(?:input|textarea|select)\b[^>]*' . $attribute . '="' . preg_quote( $id, '/' ) . '"[^>]*>/s', $html, $matches );
 
             return $matches[0] ?? '';
         };
 
-        foreach ( ['field-field_text', 'field-field_textarea', 'field-field_date', 'field-field_time'] as $id ) {
+        // Text and textarea inputs get the component's generated ID, so find them by their binding
+        foreach ( ['formData.field_text', 'formData.field_textarea'] as $model ) {
+            expect( $tag( $html, $model, 'wire:model\.live' ) )->toContain( 'readonly' )->not->toContain( 'disabled' );
+        }
+
+        foreach ( ["field-f{$form->id}-field_date", "field-f{$form->id}-field_time"] as $id ) {
             expect( $tag( $html, $id ) )->toContain( 'readonly' )->not->toContain( 'disabled' );
         }
 
-        expect( $tag( $html, 'field-field_radio-0' ) )->toContain( 'disabled' )
-            ->and( $tag( $html, 'field-field_checkbox' ) )->toContain( 'disabled' )
-            ->and( $tag( $html, 'field-field_checkbox' ) )->toContain( 'aria-readonly="true"' )
-            ->and( $tag( $html, 'field-field_rating-1' ) )->toContain( 'disabled' )
+        expect( $tag( $html, "field-f{$form->id}-field_radio-0" ) )->toContain( 'disabled' )
+            ->and( $tag( $html, "field-f{$form->id}-field_checkbox" ) )->toContain( 'disabled' )
+            ->and( $tag( $html, "field-f{$form->id}-field_checkbox" ) )->toContain( 'aria-readonly="true"' )
+            ->and( $tag( $html, "field-f{$form->id}-field_rating-1" ) )->toContain( 'disabled' )
             ->and( substr_count( $html, 'aria-readonly="true"' ) )->toBeGreaterThanOrEqual( 3 );
     } );
 
@@ -264,7 +269,7 @@ describe( 'read-only fields', function (): void {
 
         $html = Livewire::test( FormRenderer::class, ['form' => $form] )->html();
 
-        preg_match( '/<input\b[^>]*id="field-pick-0"[^>]*>/s', $html, $radio );
+        preg_match( '/<input\b[^>]*id="field-f' . $form->id . '-pick-0"[^>]*>/s', $html, $radio );
 
         expect( $html )->not->toContain( 'readonly' )
             ->and( $html )->not->toContain( 'aria-readonly' )

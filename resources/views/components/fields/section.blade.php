@@ -27,14 +27,14 @@
     $members = $renderMembers ? $members : [];
     $collapsible = $field->isCollapsibleSection();
     $description = $field->getSectionDescription();
-    $contentId = 'section-' . $field->name . '-content';
-    $descriptionId = 'section-' . $field->name . '-description';
+    $contentId = $field->domId('section') . '-content';
+    $descriptionId = $field->domId('section') . '-description';
     $holdsCaptcha = collect($members)->contains(fn ($member) => 'captcha' === $member->type);
     $hasErrors = $renderMembers && collect($members)->contains(fn ($member) => \ArtisanPackUI\Forms\Support\FieldRenderer::hasErrors($member, $errors ?? new \Illuminate\Support\ViewErrorBag()));
 @endphp
 
 <fieldset
-    id="section-{{ $field->name }}"
+    id="{{ $field->domId('section') }}"
     wire:key="section-{{ $field->uuid }}"
     class="fieldset w-full rounded-box border border-base-300 p-4 {{ $field->css_classes }}"
     data-forms-section="{{ $field->name }}"

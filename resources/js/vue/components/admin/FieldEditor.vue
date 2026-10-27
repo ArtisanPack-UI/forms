@@ -300,20 +300,20 @@ function confirmDelete(): void {
 					<Input
 						v-if="field.type === 'heading'"
 						:label="t( 'Heading Text' )"
-						:model-value="getLayoutContent( field )"
+						:model-value="getLayoutContent( currentField )"
 						@update:model-value="updateField( buildLayoutContentUpdate( currentField, ($event as string) ) )"
 					/>
 					<Input
 						v-else
 						:label="field.type === 'section' ? t( 'Section Title' ) : t( 'Label' )"
-						:model-value="field.label ?? ''"
+						:model-value="currentField.label ?? ''"
 						@update:model-value="updateField( { label: ($event as string) } )"
 					/>
 
 					<!-- Name (machine name) -->
 					<Input
 						:label="t( 'Name' )"
-						:model-value="field.name"
+						:model-value="currentField.name"
 						:hint="t( 'Machine-readable name. Used as the form data key.' )"
 						@update:model-value="updateField( { name: ($event as string) } )"
 					/>
@@ -323,7 +323,7 @@ function confirmDelete(): void {
 						<Input
 							v-if="!isLayoutField && !isComposite && !NO_PLACEHOLDER_TYPES.has( field.type )"
 							:label="t( 'Placeholder' )"
-							:model-value="field.placeholder ?? ''"
+							:model-value="currentField.placeholder ?? ''"
 							@update:model-value="updateField( { placeholder: ($event as string) || null } )"
 						/>
 					</template>
@@ -340,7 +340,7 @@ function confirmDelete(): void {
 					<Input
 						v-if="!isLayoutField"
 						:label="t( 'Help Text' )"
-						:model-value="field.help_text ?? ''"
+						:model-value="currentField.help_text ?? ''"
 						@update:model-value="updateField( { help_text: ($event as string) || null } )"
 					/>
 
@@ -348,7 +348,7 @@ function confirmDelete(): void {
 					<Input
 						v-if="!isLayoutField && !isComposite && field.type !== 'file' && !NO_VALUE_SETTING_TYPES.has( field.type )"
 						:label="t( 'Default Value' )"
-						:model-value="field.default_value ?? ''"
+						:model-value="currentField.default_value ?? ''"
 						:hint="t( 'Merge tags: :tags', { tags: MERGE_TAGS.join( ', ' ) } )"
 						@update:model-value="updateField( { default_value: ($event as string) || null } )"
 					/>
@@ -357,14 +357,14 @@ function confirmDelete(): void {
 					<Checkbox
 						v-if="!isLayoutField"
 						:label="t( 'Required' )"
-						:model-value="field.is_required"
+						:model-value="currentField.is_required"
 						@update:model-value="updateField( { is_required: ($event as boolean) } )"
 					/>
 
 					<!-- Width -->
 					<Select
 						:label="t( 'Width' )"
-						:model-value="field.width"
+						:model-value="currentField.width"
 						:options="widthOptions"
 						option-value="value"
 						option-label="label"
@@ -374,7 +374,7 @@ function confirmDelete(): void {
 					<!-- CSS Classes -->
 					<Input
 						:label="t( 'CSS Classes' )"
-						:model-value="field.css_classes ?? ''"
+						:model-value="currentField.css_classes ?? ''"
 						@update:model-value="updateField( { css_classes: ($event as string) || null } )"
 					/>
 
@@ -394,7 +394,7 @@ function confirmDelete(): void {
 						:label="t( 'HTML Content' )"
 						:rows="6"
 						:hint="t( 'Write {field_name} to show what a visitor entered, as they type.' )"
-						:model-value="getLayoutContent( field )"
+						:model-value="getLayoutContent( currentField )"
 						@update:model-value="updateField( buildLayoutContentUpdate( currentField, ($event as string) ) )"
 					/>
 
@@ -404,7 +404,7 @@ function confirmDelete(): void {
 						:label="t( 'Content' )"
 						:rows="4"
 						:hint="t( 'Basic formatting is kept: <strong>, <em>, <u> and <a href>.' )"
-						:model-value="getLayoutContent( field )"
+						:model-value="getLayoutContent( currentField )"
 						@update:model-value="updateField( buildLayoutContentUpdate( currentField, ($event as string) ) )"
 					/>
 
@@ -450,7 +450,7 @@ function confirmDelete(): void {
 			<!-- Conditional Tab -->
 			<template #conditional>
 				<ConditionalLogicEditor
-					:value="field.conditional_logic"
+					:value="currentField.conditional_logic"
 					:fields="allFields"
 					:exclude-field-id="field.id"
 					@update:value="updateField( { conditional_logic: $event } )"

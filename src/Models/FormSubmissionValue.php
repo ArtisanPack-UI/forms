@@ -46,6 +46,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $value
  * @property array|null $value_array
  * @property int|null $upload_id
+ * @property bool|null $is_masked
+ * @property int|null $redact_after_days
  * @property \Illuminate\Support\Carbon|null $redacted_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property-read FormSubmission $submission
@@ -90,6 +92,8 @@ class FormSubmissionValue extends Model
         'value',
         'value_array',
         'upload_id',
+        'is_masked',
+        'redact_after_days',
         'redacted_at',
         'created_at',
     ];
@@ -342,6 +346,31 @@ class FormSubmissionValue extends Model
     }
 
     /**
+     * Gets the value as conditional logic reads it.
+     *
+     * A list of choices stays a list, so `includes` / `not_includes` rules
+     * can test it; a composite or consent value stays a map; anything else
+     * is its stored text. A file value is its file names, as in
+     * getRawValue().
+     *
+     * @since 1.6.0
+     *
+     * @return array<array-key, mixed>|string The value.
+     */
+    public function getConditionValue(): array|string
+    {
+        if ( 'file' === $this->field_type ) {
+            return $this->getRawValue();
+        }
+
+        if ( is_array( $this->value_array ) && [] !== $this->value_array ) {
+            return $this->value_array;
+        }
+
+        return $this->value ?? '';
+    }
+
+    /**
      * Checks if this value is an array value.
      *
      * @since 1.0.0
@@ -405,7 +434,9 @@ class FormSubmissionValue extends Model
     /**
      * Checks whether the value's field masks it in the admin.
      *
-     * Values of a deleted field are not masked, since its settings are gone.
+     * Reads the field's current setting. Once the field is deleted, the
+     * setting copied onto the value when it was stored (`is_masked`) is used,
+     * so deleting a masked field does not reveal its values.
      *
      * @since 1.6.0
      *
@@ -413,7 +444,13 @@ class FormSubmissionValue extends Model
      */
     public function isMasked(): bool
     {
-        return true === $this->getSourceField()?->isMaskedInAdmin();
+        $field = $this->getSourceField();
+
+        if ( null !== $field ) {
+            return $field->isMaskedInAdmin();
+        }
+
+        return true === (bool) $this->is_masked;
     }
 
     /**
@@ -450,9 +487,11 @@ class FormSubmissionValue extends Model
     protected function casts(): array
     {
         return [
-            'value_array' => 'array',
-            'redacted_at' => 'datetime',
-            'created_at'  => 'datetime',
+            'value_array'       => 'array',
+            'is_masked'         => 'boolean',
+            'redact_after_days' => 'integer',
+            'redacted_at'       => 'datetime',
+            'created_at'        => 'datetime',
         ];
     }
 

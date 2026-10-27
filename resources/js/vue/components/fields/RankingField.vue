@@ -18,6 +18,7 @@ import type { DisplayConfig, FormField } from '../../../types/artisanpack-forms'
 import { getFieldLayout, isReadOnlyField } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 import { getRankingChoices, getRankingOrder, moveRankingItem } from '../../../shared/ranking';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = defineProps<{
 	field: FormField;
@@ -35,10 +36,10 @@ const order = computed( () => getRankingOrder( props.field, props.modelValue ) )
 const readOnly = computed( () => isReadOnlyField( props.field ) );
 const layout = computed( () => getFieldLayout( props.field, props.displayConfig ) );
 const hiddenLabel = computed( () => layout.value.label === 'hidden' || ( !layout.value.custom && props.displayConfig.label_position === 'hidden' ) );
-const idPrefix = computed( () => `field-${props.field.name}-` );
+const idPrefix = computed( () => `field-${fieldIdKey( props.field )}-` );
 const instructionsId = computed( () => ( readOnly.value ? undefined : `${idPrefix.value}instructions` ) );
-const hintId = computed( () => ( props.field.help_text ? `${props.field.name}-hint` : undefined ) );
-const errorId = computed( () => ( props.error ? `${props.field.name}-error` : undefined ) );
+const hintId = computed( () => ( props.field.help_text ? `${fieldIdKey( props.field )}-hint` : undefined ) );
+const errorId = computed( () => ( props.error ? `${fieldIdKey( props.field )}-error` : undefined ) );
 const describedBy = computed( () => [instructionsId.value, hintId.value, errorId.value].filter( Boolean ).join( ' ' ) || undefined );
 
 const announcement = ref( '' );
@@ -109,7 +110,7 @@ function drop( index: number ): void {
 
 <template>
 	<fieldset
-		:id="`field-${field.name}`"
+		:id="`field-${fieldIdKey( field )}`"
 		:class="['fieldset', field.css_classes ?? '']"
 		:data-forms-ranking="field.name"
 		:aria-describedby="describedBy"

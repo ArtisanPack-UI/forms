@@ -26,7 +26,7 @@
     $current = is_string($value) ? $value : '';
     $isDrawn = $signatureType::isDrawn($current);
     $padHeight = $signatureType::padHeight($field);
-    $idPrefix = 'field-' . $field->name . '-';
+    $idPrefix = $field->domId() . '-';
     $describedBy = $field->getDescribedBy($error);
 @endphp
 
@@ -34,7 +34,7 @@
 <div
     role="group"
     class="flex flex-col gap-2 {{ $field->css_classes }}"
-    @if($field->label) aria-labelledby="label-{{ $field->name }}" @endif
+    @if($field->label) aria-labelledby="{{ $field->domId('label') }}" @endif
     @if($describedBy) aria-describedby="{{ $describedBy }}" @endif
     x-data="{
         mode: @js('' !== $current && ! $isDrawn ? 'type' : 'draw'),

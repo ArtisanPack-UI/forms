@@ -26,6 +26,7 @@ import {
 } from '../../../shared/richText';
 import type { RichTextCommand } from '../../../shared/richText';
 import type { FormField } from '../../../types/artisanpack-forms';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /** Props for the RichTextEditor component. */
 export interface RichTextEditorProps {
@@ -49,7 +50,7 @@ export function RichTextEditor( { field, value, error, labelId, describedBy, onC
 	const [pressed, setPressed] = useState<Partial<Record<RichTextCommand['command'], boolean>>>( {} );
 	const commands = getRichTextCommands();
 	const readOnly = isReadOnlyField( field );
-	const editorId = `field-${field.name}`;
+	const editorId = `field-${fieldIdKey( field )}`;
 	const fieldName = field.label ?? field.name;
 
 	// Follow value changes from outside the editor (a reset or prefill) without moving the caret while typing.

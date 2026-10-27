@@ -2,7 +2,8 @@
     class="artisanpack-form-renderer"
     wire:ignore.self
     x-data="formRenderer()"
-    @keydown.window="handleKeydown($event)"
+    x-on:keydown="handleKeydown($event)"
+    x-on:forms-validation-failed.window="onValidationFailed($event)"
 >
     {{-- ARIA live region for step announcements --}}
     <div
@@ -33,8 +34,12 @@
                 </x-artisanpack-button>
             </div>
         @endif
+    @elseif(! $form->is_active)
+        <div class="alert alert-info" role="status">
+            <span>{{ __( 'This form is not accepting submissions.' ) }}</span>
+        </div>
     @else
-        <form wire:submit="submit" class="space-y-6" x-ref="form">
+        <form wire:submit="submit" class="space-y-6" x-ref="form" novalidate>
             {{-- Form Title & Description --}}
             @if($form->show_title && $form->title)
                 <h2 class="text-2xl font-bold">{{ $form->title }}</h2>
@@ -93,7 +98,7 @@
                                     </button>
                                 @else
                                     <span
-                                        class="text-sm {{ $index > $currentStepIndex ? 'text-base-content/50' : '' }}"
+                                        class="text-sm {{ $index > $currentStepIndex ? 'text-base-content/70' : '' }}"
                                         @if($index === $currentStepIndex) aria-current="step" @endif
                                     >
                                         {{ $step->title }}
@@ -107,11 +112,11 @@
 
             {{-- Honeypot Field (spam protection) --}}
             <div class="hidden" aria-hidden="true" style="position: absolute; left: -9999px;">
-                <label for="website_url">{{ __( 'Leave this field empty' ) }}</label>
+                <label for="website_url_{{ $idPrefix }}">{{ __( 'Leave this field empty' ) }}</label>
                 <input
                     type="text"
                     name="website_url"
-                    id="website_url"
+                    id="website_url_{{ $idPrefix }}"
                     wire:model="honeypot"
                     tabindex="-1"
                     autocomplete="off"
@@ -138,6 +143,11 @@
 
                         <div class="space-y-4">
                             @include('forms::livewire.form-renderer.fields', ['fields' => $this->currentFields])
+
+                            {{-- Invisible CAPTCHAs of earlier steps fetch their token when the form is submitted --}}
+                            @foreach($this->deferredCaptchaFields as $field)
+                                @include('forms::livewire.form-renderer.field', ['field' => $field])
+                            @endforeach
                         </div>
                     </div>
 
@@ -197,7 +207,7 @@
                     </div>
 
                     {{-- Keyboard navigation hint --}}
-                    <div class="mt-4 text-center text-xs text-base-content/40">
+                    <div class="mt-4 text-center text-xs text-base-content/70">
                         {!! __( 'Press :enter to continue', ['enter' => '<kbd class="kbd kbd-xs">Enter</kbd>'] ) !!}
                         @if(!$this->isFirstStep)
                             {!! __( 'or :escape to go back', ['escape' => '<kbd class="kbd kbd-xs">Escape</kbd>'] ) !!}
@@ -243,7 +253,9 @@
         totalSteps: @js($this->totalSteps),
         formId: @js($form->id),
         translations: {
-            stepAnnouncement: @js(__( 'Now on step :current of :total' ))
+            stepAnnouncement: @js(__( 'Now on step :current of :total' )),
+            validationFailedOne: @js(__( 'There is 1 error in the form. Please fix it and try again.' )),
+            validationFailedMany: @js(__( 'There are :count errors in the form. Please fix them and try again.' ))
         }
     };
 </script>
@@ -260,11 +272,14 @@
             currentStepIndex: 0,
             totalSteps: 1,
             translations: {},
+            formId: null,
 
             init() {
                 // Load config from window object using form ID from $wire
                 const formId = this.$wire.get('form.id');
                 const config = window.__formRendererConfig?.[formId] || {};
+
+                this.formId = formId;
 
                 this.fieldMap = config.fieldMap || {};
                 this.conditionalLogic = config.conditionalLogic || {};
@@ -294,41 +309,63 @@
             },
 
             /**
-             * Handle keyboard navigation
+             * Handle keyboard navigation of a multi-step form.
+             *
+             * Only keys pressed inside this form count. Enter in a text-like
+             * input (or on a radio or checkbox) of a step before the last
+             * moves to the next step; Enter anywhere else keeps its own
+             * action (buttons, links, rich text, textareas, selects), and on
+             * the last step it submits the form as usual. Escape goes back a
+             * step unless a control inside the form handled it.
              */
             handleKeydown(event) {
-                if (!this.isMultiStep) return;
+                if (!this.isMultiStep || event.defaultPrevented) return;
 
-                // Don't interfere if event was already handled
-                if (event.defaultPrevented) return;
+                const target = event.target;
+
+                if (!(target instanceof Element) || !this.$root.contains(target)) return;
 
                 // Don't interfere with modals, dialogs, or components that capture their own keys
-                if (event.target.closest('[aria-modal="true"], [role="dialog"], .modal, [data-ignore-global-keys]')) {
+                if (target.closest('[aria-modal="true"], [role="dialog"], .modal, [data-ignore-global-keys]')) {
                     return;
                 }
 
-                // Don't interfere with form elements that need these keys
-                const tagName = event.target.tagName.toLowerCase();
-                const isTextarea = tagName === 'textarea';
-                const isSelect = tagName === 'select';
+                if (event.key === 'Enter') {
+                    if (event.isComposing || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
 
-                // Enter to advance (except in textarea or multi-line inputs)
-                if (event.key === 'Enter' && !isTextarea && !isSelect) {
-                    // Allow enter on submit buttons
-                    if (event.target.type === 'submit') return;
+                    if (!this.advancesOnEnter(target)) return;
 
-                    // Don't advance if we're on the last step (let form submit naturally)
+                    // On the last step, let the form submit naturally
                     if (this.currentStepIndex >= this.totalSteps - 1) return;
 
                     event.preventDefault();
                     this.$wire.nextStep();
+
+                    return;
                 }
 
-                // Escape to go back
                 if (event.key === 'Escape' && this.currentStepIndex > 0) {
+                    if (target.isContentEditable || target.closest('[role="combobox"], [role="listbox"]')) return;
+
                     event.preventDefault();
                     this.$wire.previousStep();
                 }
+            },
+
+            /**
+             * Whether Enter on an element moves to the next step.
+             */
+            advancesOnEnter(target) {
+                if (target.tagName !== 'INPUT' || target.isContentEditable) return false;
+
+                if (target.closest('button, a, [role="button"], [role="combobox"], [role="listbox"], [contenteditable="true"], [contenteditable=""]')) {
+                    return false;
+                }
+
+                return [
+                    'text', 'email', 'tel', 'url', 'number', 'date', 'time', 'datetime-local',
+                    'month', 'week', 'search', 'password', 'radio', 'checkbox',
+                ].includes(target.type);
             },
 
             /**
@@ -344,19 +381,82 @@
             },
 
             /**
+             * Announce a failed submission or step and focus the first invalid control
+             */
+            onValidationFailed(event) {
+                const detail = Array.isArray(event.detail) ? event.detail[0] : event.detail;
+
+                if (!detail || String(detail.formId) !== String(this.formId)) return;
+
+                const count = Number(detail.count) || 1;
+                const template = count === 1
+                    ? (this.translations.validationFailedOne || 'There is 1 error in the form. Please fix it and try again.')
+                    : (this.translations.validationFailedMany || 'There are :count errors in the form. Please fix them and try again.');
+
+                const announcer = this.$refs.announcer;
+
+                if (announcer) {
+                    // Cleared first, so the same message is announced again
+                    announcer.textContent = '';
+                    this.$nextTick(() => { announcer.textContent = template.replaceAll(':count', count); });
+                }
+
+                this.$nextTick(() => this.focusFirstInvalid());
+            },
+
+            /**
+             * Whether an element can take focus: enabled and not hidden by conditional logic
+             */
+            isFocusable(el) {
+                return Boolean(el)
+                    && !el.disabled
+                    && !el.closest('[inert], [aria-hidden="true"]')
+                    && el.offsetParent !== null;
+            },
+
+            /**
+             * Focus the first invalid control; returns whether one was focused
+             */
+            focusFirstInvalid() {
+                const candidates = this.$root.querySelectorAll(
+                    '[aria-invalid="true"], ' +
+                    'fieldset[aria-describedby*="error-"] :is(input:not([type="hidden"]), select, textarea, [contenteditable="true"])'
+                );
+
+                for (const el of candidates) {
+                    if (this.isFocusable(el)) {
+                        el.focus();
+
+                        return true;
+                    }
+                }
+
+                return false;
+            },
+
+            /**
              * Focus the first visible field in the current step
              */
             focusFirstField() {
                 this.$nextTick(() => {
+                    // A step change after a failed submit goes to the error
+                    if (this.focusFirstInvalid()) return;
+
                     const stepContent = this.$refs.stepContent;
-                    if (stepContent) {
-                        const firstInput = stepContent.querySelector(
-                            'input:not([type="hidden"]):not([disabled]), ' +
-                            'select:not([disabled]), ' +
-                            'textarea:not([disabled])'
-                        );
-                        if (firstInput) {
-                            firstInput.focus();
+                    if (!stepContent) return;
+
+                    const inputs = stepContent.querySelectorAll(
+                        'input:not([type="hidden"]):not([disabled]), ' +
+                        'select:not([disabled]), ' +
+                        'textarea:not([disabled]), ' +
+                        '[contenteditable="true"]'
+                    );
+
+                    for (const input of inputs) {
+                        if (this.isFocusable(input)) {
+                            input.focus();
+
+                            return;
                         }
                     }
                 });

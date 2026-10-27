@@ -23,7 +23,7 @@
 
 <{{ $tag }}
     class="{{ $classes }} {{ $alignClass }} {{ $field->css_classes }}"
-    id="heading-{{ $field->name }}"
+    id="{{ $field->domId('heading') }}"
 >
     {{ $field->getLayoutContent() }}
 </{{ $tag }}>

@@ -943,6 +943,15 @@ export interface FieldSettingDefinition {
 // ---------------------------------------------------------------------------
 
 /**
+ * Earliest and latest dates the server resolved for a date field, as
+ * `YYYY-MM-DD`; null when unbounded (since 1.6.0).
+ */
+export interface ServerDateBounds {
+    min: string | null;
+    max: string | null;
+}
+
+/**
  * Form field as returned by the API (FormFieldResource).
  */
 export interface FormField {
@@ -1003,6 +1012,23 @@ export interface FormField {
      * neither sets one. Only in the public render payload (since 1.6.0).
      */
     description_placement?: DescriptionPlacement | null;
+    /**
+     * The ID prefix of the form instance rendering the field, which its
+     * element IDs start with (see `fieldIdKey()`). Set by the React and Vue
+     * renderers, not the API (since 1.6.0).
+     */
+    id_prefix?: string;
+    /**
+     * A date, date and time or date range field's earliest and latest allowed
+     * dates (`YYYY-MM-DD`, null when unbounded), resolved by the server for
+     * its "today" so relative limits match its validation (since 1.6.0).
+     */
+    date_limits?: ServerDateBounds;
+    /**
+     * A date field's limits narrowed by its age limits, resolved by the
+     * server: the bounds its input offers (since 1.6.0).
+     */
+    date_bounds?: ServerDateBounds;
     /**
      * A composite field's sub-inputs, enabled or not (since 1.6.0). Present
      * only for composite fields.

@@ -46,6 +46,7 @@ import ImageChoice from './ImageChoice.vue';
 import FieldLayout from './FieldLayout.vue';
 import { vAutocomplete } from './autocomplete';
 import { vDescribedBy } from './describedBy';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = defineProps<{
 	field: FormField;
@@ -167,10 +168,10 @@ const hintId = computed( () => {
 		return props.field.help_text ? layout.value.descriptionId : undefined;
 	}
 
-	return props.field.help_text && !props.error ? `${props.field.name}-hint` : undefined;
+	return props.field.help_text && !props.error ? `${fieldIdKey( props.field )}-hint` : undefined;
 } );
 const errorId = computed( () =>
-	props.error ? `${props.field.name}-error` : undefined,
+	props.error ? `${fieldIdKey( props.field )}-error` : undefined,
 );
 const describedBy = computed( () =>
 	[hintId.value, errorId.value].filter( Boolean ).join( ' ' ) || undefined,
@@ -180,11 +181,11 @@ const legendId = computed( () => {
 		return undefined;
 	}
 
-	return layout.value.custom ? layout.value.labelId : `${props.field.name}-label`;
+	return layout.value.custom ? layout.value.labelId : `${fieldIdKey( props.field )}-label`;
 } );
 
 /** The ID of the "Other" choice's text input. */
-const otherInputId = computed( () => `field-${props.field.name}-other-text` );
+const otherInputId = computed( () => `field-${fieldIdKey( props.field )}-other-text` );
 
 function handleCheckboxGroupChange( optionValue: string, checked: boolean ): void {
 	const updated = checked
@@ -220,7 +221,7 @@ function handleMultiSelectChange( event: Event ): void {
 		<div class="fieldset">
 			<label
 				v-if="!layout.custom && field.label"
-				:id="`${field.name}-label`"
+				:id="`${fieldIdKey( field )}-label`"
 				:for="layout.inputId"
 				:class="['fieldset-legend', displayConfig.label_position === 'hidden' ? 'sr-only' : '']"
 			>
@@ -258,7 +259,7 @@ function handleMultiSelectChange( event: Event ): void {
 			v-bind="selectLabelProps"
 			:name="field.name"
 			:model-value="stringValue"
-			:placeholder="field.placeholder ?? 'Select an option...'"
+			:placeholder="field.placeholder ?? t( 'Select an option...' )"
 			:error="error"
 			:required="field.is_required"
 			:class="field.css_classes ?? undefined"
@@ -299,10 +300,10 @@ function handleMultiSelectChange( event: Event ): void {
 						<ImageChoice
 							v-if="showsImages && option.value !== OTHER_CHOICE_VALUE"
 							:option="option"
-							:label-id="`field-${field.name}-${index}-label`"
+							:label-id="`field-${fieldIdKey( field )}-${index}-label`"
 						>
 							<input
-								:id="`field-${field.name}-${index}`"
+								:id="`field-${fieldIdKey( field )}-${index}`"
 								type="radio"
 								:name="field.name"
 								:value="option.value"
@@ -310,17 +311,17 @@ function handleMultiSelectChange( event: Event ): void {
 								:checked="stringValue === option.value"
 								:required="field.is_required && index === 0"
 								:disabled="readOnly"
-								:aria-labelledby="`field-${field.name}-${index}-label`"
+								:aria-labelledby="`field-${fieldIdKey( field )}-${index}-label`"
 								@change="!readOnly && emit( 'update:modelValue', option.value )"
 							/>
 						</ImageChoice>
 						<label
 							v-else
-							:for="`field-${field.name}-${option.value === OTHER_CHOICE_VALUE ? 'other' : index}`"
+							:for="`field-${fieldIdKey( field )}-${option.value === OTHER_CHOICE_VALUE ? 'other' : index}`"
 							class="flex items-center gap-2 cursor-pointer"
 						>
 							<input
-								:id="`field-${field.name}-${option.value === OTHER_CHOICE_VALUE ? 'other' : index}`"
+								:id="`field-${fieldIdKey( field )}-${option.value === OTHER_CHOICE_VALUE ? 'other' : index}`"
 								type="radio"
 								:name="field.name"
 								:value="option.value"
@@ -416,17 +417,17 @@ function handleMultiSelectChange( event: Event ): void {
 			</legend>
 			<label
 				v-if="showSelectAll"
-				:for="`field-${field.name}-select-all`"
+				:for="`field-${fieldIdKey( field )}-select-all`"
 				class="mb-2 flex cursor-pointer items-center gap-2 font-medium"
 			>
 				<input
-					:id="`field-${field.name}-select-all`"
+					:id="`field-${fieldIdKey( field )}-select-all`"
 					ref="selectAllInput"
 					type="checkbox"
 					class="checkbox checkbox-primary"
 					:checked="selectedOptionCount === optionValues.length"
 					:disabled="readOnly"
-					:aria-controls="optionValues.map( ( _, index ) => `field-${field.name}-${index}` ).join( ' ' )"
+					:aria-controls="optionValues.map( ( _, index ) => `field-${fieldIdKey( field )}-${index}` ).join( ' ' )"
 					@change="handleSelectAll( ( $event.target as HTMLInputElement ).checked )"
 				/>
 				<span>{{ t( 'Select All' ) }}</span>
@@ -436,23 +437,23 @@ function handleMultiSelectChange( event: Event ): void {
 					<ImageChoice
 						v-if="showsImages && option.value !== OTHER_CHOICE_VALUE"
 						:option="option"
-						:label-id="`field-${field.name}-${index}-label`"
+						:label-id="`field-${fieldIdKey( field )}-${index}-label`"
 					>
 						<input
-							:id="`field-${field.name}-${index}`"
+							:id="`field-${fieldIdKey( field )}-${index}`"
 							type="checkbox"
 							:name="`${field.name}[]`"
 							:value="option.value"
 							class="checkbox checkbox-primary checkbox-sm"
 							:checked="selectedArray.includes( option.value )"
 							:disabled="readOnly"
-							:aria-labelledby="`field-${field.name}-${index}-label`"
+							:aria-labelledby="`field-${fieldIdKey( field )}-${index}-label`"
 							@change="handleCheckboxGroupChange( option.value, ( $event.target as HTMLInputElement ).checked )"
 						/>
 					</ImageChoice>
 					<Checkbox
 						v-else
-						:id="option.value === OTHER_CHOICE_VALUE ? `field-${field.name}-other` : `field-${field.name}-${index}`"
+						:id="option.value === OTHER_CHOICE_VALUE ? `field-${fieldIdKey( field )}-other` : `field-${fieldIdKey( field )}-${index}`"
 						:label="option.label"
 						:name="`${field.name}[]`"
 						:model-value="selectedArray.includes( option.value )"
@@ -505,7 +506,6 @@ function handleMultiSelectChange( event: Event ): void {
 				:id="layout.custom ? layout.inputId : undefined"
 				:name="field.name"
 				multiple
-				:value="selectedArray"
 				:required="field.is_required"
 				:disabled="readOnly"
 				:aria-readonly="readOnly ? 'true' : undefined"
@@ -515,10 +515,12 @@ function handleMultiSelectChange( event: Event ): void {
 				:aria-describedby="describedBy"
 				@change="handleMultiSelectChange"
 			>
+				<!-- Each option carries its own selection: Vue sets a select's `value` as one string -->
 				<option
 					v-for="option in options"
 					:key="option.value"
 					:value="option.value"
+					:selected="selectedArray.includes( option.value )"
 				>
 					{{ option.label }}
 				</option>

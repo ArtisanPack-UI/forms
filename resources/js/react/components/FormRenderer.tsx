@@ -14,11 +14,14 @@
  * @since      1.1.0
  */
 
-import { Fragment } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { Button } from '@artisanpack-ui/react/form';
 
+import { getOffStepSubmitCaptchas } from '../../shared/captcha';
 import { getSubInputErrors } from '../../shared/composite';
 import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
+import { focusFirstInvalid } from '../../shared/focus';
+import { t } from '../../shared/i18n';
 import { getFieldSegments } from '../../shared/sections';
 import type { FormField, FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
 import { useForm } from '../hooks/useForm';
@@ -196,11 +199,15 @@ export function FormRenderer( {
 		isSubmitted,
 		currentStep,
 		totalSteps,
+		steps,
+		validationFailures,
 		progressPercentage,
 		currentFields,
 		currentStepData,
 		loadError,
+		idPrefix,
 		setValue,
+		files,
 		setFile,
 		otherValues,
 		setOtherValue,
@@ -219,6 +226,15 @@ export function FormRenderer( {
 		prefill,
 	} );
 
+	const formRef = useRef<HTMLFormElement>( null );
+
+	// When validation fails, move focus to the first invalid field or the error summary, as Livewire does (since 1.6.0)
+	useEffect( () => {
+		if ( validationFailures > 0 ) {
+			focusFirstInvalid( formRef.current );
+		}
+	}, [validationFailures] );
+
 	// Loading state
 	if ( isLoading ) {
 		return <>{loadingComponent ?? <DefaultLoading />}</>;
@@ -231,7 +247,7 @@ export function FormRenderer( {
 
 	// No form loaded
 	if ( !form ) {
-		return <ErrorComponent message="Form not found." />;
+		return <ErrorComponent message={t( 'Form not found.' )} />;
 	}
 
 	// Success state
@@ -239,10 +255,10 @@ export function FormRenderer( {
 		return (
 			<div className="space-y-4">
 				<SuccessComponent
-					message={form.success_message ?? 'Form submitted successfully.'}
+					message={form.success_message ?? t( 'Form submitted successfully.' )}
 				/>
 				<Button type="button" onClick={reset}>
-					Submit another response
+					{t( 'Submit another response' )}
 				</Button>
 			</div>
 		);
@@ -264,7 +280,7 @@ export function FormRenderer( {
 			disabled={isSubmitting}
 			className={submitClasses}
 		>
-			{isSubmitting ? 'Submitting...' : form.submit_button_text}
+			{isSubmitting ? t( 'Submitting...' ) : form.submit_button_text}
 		</Button>
 	);
 
@@ -284,6 +300,7 @@ export function FormRenderer( {
 				error={errors[field.name]?.[0]}
 				onChange={( value ) => setValue( field.name, value )}
 				onFileChange={( file ) => setFile( field.name, file )}
+				files={files[field.name]}
 				displayConfig={form.config.display}
 				otherValue={otherValues[field.name] ?? ''}
 				onOtherChange={( text ) => setOtherValue( field.name, text )}
@@ -295,6 +312,11 @@ export function FormRenderer( {
 			/>
 		);
 	};
+
+	// A multi-step form's invisible CAPTCHAs on other steps (since 1.6.0)
+	const offStepCaptchas = form.is_multi_step && currentStepData
+		? getOffStepSubmitCaptchas( form.fields, currentStepData.id, hiddenFields )
+		: [];
 
 	// Whether a field, or an input nested under it, has an error
 	const hasFieldErrors = ( field: FormField ) => Object.keys( errors ).some( ( key ) => key === field.name || key.startsWith( `${field.name}.` ) );
@@ -325,12 +347,12 @@ export function FormRenderer( {
 							style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, overflow: 'hidden' }}
 							aria-hidden="true"
 						>
-							<label htmlFor={`ap-hp-${form.slug}`}>
-								Leave this field empty
+							<label htmlFor={`ap-hp-${idPrefix}${form.slug}`}>
+								{t( 'Leave this field empty' )}
 							</label>
 							<input
 								type="text"
-								id={`ap-hp-${form.slug}`}
+								id={`ap-hp-${idPrefix}${form.slug}`}
 								name={form.config.honeypot.field_name}
 								tabIndex={-1}
 								autoComplete="off"
@@ -341,6 +363,13 @@ export function FormRenderer( {
 					{/* Inline layout: the submit button is the last item in the field row */}
 					{isInline && submitButton}
 				</div>
+
+				{/* Invisible CAPTCHAs on other steps stay mounted, so their submit hooks fetch a token */}
+				{offStepCaptchas.length > 0 && (
+					<div className="sr-only">
+						{offStepCaptchas.map( renderField )}
+					</div>
+				)}
 			</FormValuesContext.Provider>
 		</SubmitHooksContext.Provider>
 	);
@@ -348,13 +377,21 @@ export function FormRenderer( {
 	// Form-level errors
 	const formErrors = errors._form;
 
+	// Enter in a field submits the form; before the last step it moves on instead, as in Blade
 	const handleFormSubmit = ( e: React.FormEvent ) => {
 		e.preventDefault();
+
+		if ( form.is_multi_step && currentStep < totalSteps - 1 ) {
+			nextStep();
+
+			return;
+		}
+
 		submit();
 	};
 
 	return (
-		<form className={className} onSubmit={handleFormSubmit} noValidate>
+		<form ref={formRef} className={className} onSubmit={handleFormSubmit} noValidate>
 			{/* Form description */}
 			{form.description && (
 				<p className="mb-4 opacity-70">{form.description}</p>
@@ -362,7 +399,7 @@ export function FormRenderer( {
 
 			{/* Form-level error messages */}
 			{formErrors && formErrors.length > 0 && (
-				<div className="alert alert-error mb-4" role="alert">
+				<div className="alert alert-error mb-4" role="alert" tabIndex={-1} data-forms-error-summary="">
 					{formErrors.map( ( msg, i ) => (
 						<span key={i}>{msg}</span>
 					) )}
@@ -375,6 +412,7 @@ export function FormRenderer( {
 					currentStepData={currentStepData}
 					currentStep={currentStep}
 					totalSteps={totalSteps}
+					steps={steps}
 					progressPercentage={progressPercentage}
 					showProgressBar={form.show_progress_bar}
 					allowStepNavigation={form.allow_step_navigation}

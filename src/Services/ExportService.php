@@ -19,6 +19,7 @@ namespace ArtisanPackUI\Forms\Services;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use ArtisanPackUI\Forms\Support\FieldPrivacy;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Response;
@@ -235,11 +236,8 @@ class ExportService
      */
     public function exportToJson( Form $form, Collection $submissions ): array
     {
-        $data         = [];
-        $maskedFields = array_diff(
-            $form->fields()->pluck( 'name' )->all(),
-            $this->exportableFields( $form )->pluck( 'name' )->all(),
-        );
+        $data      = [];
+        $canReveal = FieldPrivacy::canReveal();
 
         foreach ( $submissions as $submission ) {
             // Build metadata, respecting privacy settings
@@ -259,7 +257,7 @@ class ExportService
                 'id'                => $submission->id,
                 'submission_number' => $submission->submission_number,
                 'submitted_at'      => $submission->created_at->toIso8601String(),
-                'data'              => array_diff_key( $submission->data_array, array_flip( $maskedFields ) ),
+                'data'              => $this->exportableData( $submission, $canReveal ),
                 'metadata'          => $metadata,
             ];
 
@@ -300,6 +298,29 @@ class ExportService
         }
 
         return "'" . $cell;
+    }
+
+    /**
+     * Gets a submission's values for the JSON export, keyed by stored field name.
+     *
+     * Masked values are left out unless the user may reveal them. Masking is
+     * decided per value (by its field, or the setting copied onto it once the
+     * field is deleted), so a renamed or deleted masked field's values are
+     * not exported under their stored name.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormSubmission  $submission  The submission.
+     * @param  bool  $canReveal  Whether the user may reveal masked values.
+     *
+     * @return array<string, mixed> The values.
+     */
+    protected function exportableData( FormSubmission $submission, bool $canReveal ): array
+    {
+        return $submission->values
+            ->reject( fn ( FormSubmissionValue $value ): bool => ! $canReveal && $value->isMasked() )
+            ->mapWithKeys( fn ( FormSubmissionValue $value ): array => [$value->field_name => $value->getStructuredValue()] )
+            ->all();
     }
 
     /**

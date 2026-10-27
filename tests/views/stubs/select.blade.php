@@ -1,14 +1,14 @@
 <div class="select-stub">
     @if($label)
-        <label class="label">{{ $label }}</label>
+        <legend class="fieldset-legend">{{ $label }}</legend>
     @endif
-    @if($error)
+    @if($error && ! $omitError)
         <span class="error">{{ $error }}</span>
     @endif
     @if($hint)
         <span class="hint">{{ $hint }}</span>
     @endif
-    <select name="{{ $name }}" class="select select-bordered" {{ $required ? 'required' : '' }} {{ $attributes }}>
+    <select id="artisanpack-stub-{{ $id }}" name="{{ $name }}" class="select select-bordered" {{ $required ? 'required' : '' }} {{ $attributes }}>
         @if($placeholder)
             <option value="">{{ $placeholder }}</option>
         @endif

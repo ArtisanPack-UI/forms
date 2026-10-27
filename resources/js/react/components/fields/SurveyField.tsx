@@ -30,6 +30,7 @@ import type { FormField } from '../../../types/artisanpack-forms';
 
 import { FieldLayout } from './FieldLayout';
 import type { FieldComponentProps } from './types';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /** Focus ring shown on an NPS button while its hidden radio has keyboard focus. */
 const SCORE_FOCUS_CLASSES = 'peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary';
@@ -44,11 +45,11 @@ interface GroupIds {
 
 /** Work out a field's label, hint and error IDs for its layout. */
 function getGroupIds( field: FormField, layout: FieldLayoutSettings, error?: string ): GroupIds {
-	const labelId = field.label ? ( layout.custom ? layout.labelId : `${field.name}-label` ) : undefined;
+	const labelId = field.label ? ( layout.custom ? layout.labelId : `${fieldIdKey( field )}-label` ) : undefined;
 	const hintId = layout.custom
 		? ( field.help_text ? layout.descriptionId : undefined )
-		: ( field.help_text && !error ? `${field.name}-hint` : undefined );
-	const errorId = error ? `${field.name}-error` : undefined;
+		: ( field.help_text && !error ? `${fieldIdKey( field )}-hint` : undefined );
+	const errorId = error ? `${fieldIdKey( field )}-error` : undefined;
 
 	return { labelId, hintId, errorId, describedBy: [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined };
 }
@@ -95,7 +96,7 @@ export function SliderField( { field, value, error, onChange, displayConfig }: F
 	const readOnly = isReadOnlyField( field );
 	const layout = getFieldLayout( field, displayConfig );
 	const ids = getGroupIds( field, layout, error );
-	const inputId = layout.custom ? layout.inputId : `field-${field.name}`;
+	const inputId = layout.custom ? layout.inputId : `field-${fieldIdKey( field )}`;
 	const text = formatSliderValue( field, current );
 
 	return (
@@ -140,7 +141,7 @@ export function NpsField( { field, value, error, onChange, displayConfig }: Fiel
 	const readOnly = isReadOnlyField( field );
 	const layout = getFieldLayout( field, displayConfig );
 	const ids = getGroupIds( field, layout, error );
-	const endsId = `field-${field.name}-ends`;
+	const endsId = `field-${fieldIdKey( field )}-ends`;
 	const selected = value === null || value === undefined || value === '' ? undefined : String( value );
 
 	return (
@@ -160,7 +161,7 @@ export function NpsField( { field, value, error, onChange, displayConfig }: Fiel
 						<label key={score} className="cursor-pointer">
 							<input
 								type="radio"
-								id={`field-${field.name}-${score}`}
+								id={`field-${fieldIdKey( field )}-${score}`}
 								name={field.name}
 								value={String( score )}
 								className="peer sr-only"
@@ -204,8 +205,8 @@ export function MatrixField( props: FieldComponentProps ) {
 	const hiddenLabel = layout.label === 'hidden' || ( !layout.custom && displayConfig.label_position === 'hidden' );
 	const rowErrorCount = Object.keys( subErrors ).length;
 	const hasErrors = Boolean( error ) || rowErrorCount > 0;
-	const hintId = field.help_text ? `${field.name}-hint` : undefined;
-	const errorId = hasErrors ? `${field.name}-error` : undefined;
+	const hintId = field.help_text ? `${fieldIdKey( field )}-hint` : undefined;
+	const errorId = hasErrors ? `${fieldIdKey( field )}-error` : undefined;
 	const describedBy = [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
 	const hint = hintId ? <p id={hintId} className="fieldset-label">{field.help_text}</p> : null;
 	const summary = error || ( rowErrorCount === 1
@@ -213,7 +214,7 @@ export function MatrixField( props: FieldComponentProps ) {
 		: t( 'Please answer :count highlighted rows in :field.', { count: rowErrorCount, field: field.label ?? field.name } ) );
 
 	return (
-		<fieldset id={`field-${field.name}`} className={`fieldset ${field.css_classes ?? ''}`} aria-describedby={describedBy}>
+		<fieldset id={`field-${fieldIdKey( field )}`} className={`fieldset ${field.css_classes ?? ''}`} aria-describedby={describedBy}>
 			{field.label && (
 				<legend className={`fieldset-legend ${hiddenLabel ? 'sr-only' : ''}`}>
 					{field.label}
@@ -229,7 +230,7 @@ export function MatrixField( props: FieldComponentProps ) {
 						<tr>
 							<td><span className="sr-only">{t( 'Statement' )}</span></td>
 							{columns.map( ( column, index ) => (
-								<th key={column.value} scope="col" id={`field-${field.name}-col-${index}`} className="text-center align-bottom font-medium">
+								<th key={column.value} scope="col" id={`field-${fieldIdKey( field )}-col-${index}`} className="text-center align-bottom font-medium">
 									{column.label}
 								</th>
 							) )}
@@ -237,7 +238,7 @@ export function MatrixField( props: FieldComponentProps ) {
 					</thead>
 					<tbody>
 						{rows.map( ( row ) => {
-							const rowId = `field-${field.name}-row-${row.key}`;
+							const rowId = `field-${fieldIdKey( field )}-row-${row.key}`;
 							const rowError = subErrors[row.key];
 
 							return (
@@ -254,7 +255,7 @@ export function MatrixField( props: FieldComponentProps ) {
 												name={`${field.name}[${row.key}]`}
 												value={column.value}
 												className="radio radio-primary"
-												aria-labelledby={`${rowId} field-${field.name}-col-${index}`}
+												aria-labelledby={`${rowId} field-${fieldIdKey( field )}-col-${index}`}
 												aria-invalid={rowError ? true : undefined}
 												aria-describedby={rowError ? `${rowId}-error` : undefined}
 												checked={answers[row.key] === column.value}
@@ -301,7 +302,7 @@ function SingleScaleField( { field, value, error, onChange, displayConfig }: Fie
 					<label key={column.value} className="label cursor-pointer justify-start gap-2">
 						<input
 							type="radio"
-							id={`field-${field.name}-${index}`}
+							id={`field-${fieldIdKey( field )}-${index}`}
 							name={field.name}
 							value={column.value}
 							className="radio radio-primary"

@@ -18,6 +18,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire;
 
+use ArtisanPackUI\Forms\Livewire\Concerns\ManagesStructuredFieldValues;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
@@ -47,6 +48,7 @@ use Livewire\WithFileUploads;
  */
 class SubmissionDetail extends Component
 {
+    use ManagesStructuredFieldValues;
     use WithFileUploads;
 
     /**
@@ -111,9 +113,14 @@ class SubmissionDetail extends Component
 
     /**
      * Initialize the component.
+     *
+     * Requires the `view` ability on the submission (since 1.6.0), which
+     * also covers marking it read.
      */
     public function mount( FormSubmission $submission ): void
     {
+        Gate::authorize( 'view', $submission );
+
         $this->submissionId = $submission->id;
         $this->adminNotes   = $submission->admin_notes ?? '';
 
@@ -258,12 +265,16 @@ class SubmissionDetail extends Component
 
     /**
      * Save admin notes (auto-save on change).
+     *
+     * Requires the `update` ability on the submission (since 1.6.0).
      */
     public function updatedAdminNotes(): void
     {
         $submission = FormSubmission::find( $this->submissionId );
 
         if ( $submission ) {
+            Gate::authorize( 'update', $submission );
+
             $submission->update( ['admin_notes' => $this->adminNotes] );
         }
     }
@@ -352,12 +363,16 @@ class SubmissionDetail extends Component
 
     /**
      * Toggle the starred status.
+     *
+     * Requires the `update` ability on the submission (since 1.6.0).
      */
     public function toggleStar(): void
     {
         $submission = FormSubmission::find( $this->submissionId );
 
         if ( $submission ) {
+            Gate::authorize( 'update', $submission );
+
             $submission->toggleStar();
             unset( $this->submission ); // Clear cached computed property
         }
@@ -365,12 +380,16 @@ class SubmissionDetail extends Component
 
     /**
      * Toggle the spam status.
+     *
+     * Requires the `markAsSpam` ability on the submission (since 1.6.0).
      */
     public function toggleSpam(): void
     {
         $submission = FormSubmission::find( $this->submissionId );
 
         if ( $submission ) {
+            Gate::authorize( 'markAsSpam', $submission );
+
             $submission->toggleSpam();
             unset( $this->submission ); // Clear cached computed property
         }
@@ -378,12 +397,16 @@ class SubmissionDetail extends Component
 
     /**
      * Mark the submission as read.
+     *
+     * Requires the `update` ability on the submission (since 1.6.0).
      */
     public function markAsRead(): void
     {
         $submission = FormSubmission::find( $this->submissionId );
 
         if ( $submission ) {
+            Gate::authorize( 'update', $submission );
+
             $submission->markAsRead();
             unset( $this->submission ); // Clear cached computed property
         }
@@ -391,12 +414,16 @@ class SubmissionDetail extends Component
 
     /**
      * Mark the submission as unread.
+     *
+     * Requires the `update` ability on the submission (since 1.6.0).
      */
     public function markAsUnread(): void
     {
         $submission = FormSubmission::find( $this->submissionId );
 
         if ( $submission ) {
+            Gate::authorize( 'update', $submission );
+
             $submission->markAsUnread();
             unset( $this->submission ); // Clear cached computed property
         }
@@ -404,12 +431,16 @@ class SubmissionDetail extends Component
 
     /**
      * Delete the submission.
+     *
+     * Requires the `delete` ability on the submission (since 1.6.0).
      */
     public function delete(): void
     {
         $submission = FormSubmission::find( $this->submissionId );
 
         if ( $submission ) {
+            Gate::authorize( 'delete', $submission );
+
             $formSlug = $submission->form->slug;
             $submission->delete();
 
@@ -451,6 +482,38 @@ class SubmissionDetail extends Component
     public function render(): View
     {
         return view( 'forms::livewire.submission-detail' );
+    }
+
+    /**
+     * Gets an administrative list or ranking field the user edits here.
+     *
+     * Used by the list and ranking actions (ManagesStructuredFieldValues),
+     * which change only $formData; saveAdministrativeFields() stores it.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $fieldName  The field's name.
+     * @param  string  $type  The field type the action expects.
+     *
+     * @return FormField|null The field, or null when there is no such administrative field.
+     */
+    protected function structuredValueField( string $fieldName, string $type ): ?FormField
+    {
+        $field = $this->administrativeFields->firstWhere( 'name', $fieldName );
+
+        return $field instanceof FormField && $type === $field->type ? $field : null;
+    }
+
+    /**
+     * Marks the administrative fields unsaved after a list or ranking action.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $fieldName  The field's name.
+     */
+    protected function structuredValueChanged( string $fieldName ): void
+    {
+        $this->administrativeFieldsSaved = false;
     }
 
     /**

@@ -12,11 +12,14 @@
   @since      1.1.0
 -->
 <script setup lang="ts">
-import { computed, provide } from 'vue';
+import { computed, nextTick, provide, ref, watch } from 'vue';
 import type { FunctionalComponent } from 'vue';
 import { Button } from '@artisanpack-ui/vue/form';
+import { getOffStepSubmitCaptchas } from '../../shared/captcha';
 import { getSubInputErrors } from '../../shared/composite';
 import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
+import { focusFirstInvalid } from '../../shared/focus';
+import { t } from '../../shared/i18n';
 import { getFieldSegments } from '../../shared/sections';
 import type { FieldSegment } from '../../shared/sections';
 import type { FormField, FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
@@ -84,11 +87,15 @@ const {
 	isSubmitted,
 	currentStep,
 	totalSteps,
+	steps,
+	validationFailures,
 	progressPercentage,
 	currentFields,
 	currentStepData,
 	loadError,
+	idPrefix,
 	setValue,
+	files,
 	setFile,
 	otherValues,
 	setOtherValue,
@@ -99,12 +106,22 @@ const {
 	reset,
 	submitHooks,
 } = useForm( {
-	baseUrl: props.baseUrl,
-	formSlug: props.formSlug,
+	// Getters, so a new slug or API loads the new form (since 1.6.0)
+	baseUrl: () => props.baseUrl,
+	formSlug: () => props.formSlug,
 	clientValidation: props.clientValidation,
 	prefill: props.prefill,
 	onSuccess: ( response ) => emit( 'success', response ),
 	onError: ( error ) => emit( 'error', error ),
+} );
+
+/** The form element, which focus moves within when validation fails. */
+const formElement = ref<HTMLFormElement | null>( null );
+
+// When validation fails, move focus to the first invalid field or the error summary, as Livewire does (since 1.6.0).
+watch( validationFailures, async () => {
+	await nextTick();
+	focusFirstInvalid( formElement.value );
 } );
 
 // Fields such as the CAPTCHA register their submit hooks with the form (since 1.6.0).
@@ -120,6 +137,14 @@ provide( FORM_VALUES_KEY, computed( () => ( {
 
 /** The current fields, with each section's fields grouped (since 1.6.0). */
 const segments = computed( () => getFieldSegments( currentFields.value ) );
+
+/**
+ * A multi-step form's invisible CAPTCHAs on other steps, kept mounted so
+ * their submit hooks fetch a token (since 1.6.0).
+ */
+const offStepCaptchas = computed( () => ( form.value?.is_multi_step && currentStepData.value
+	? getOffStepSubmitCaptchas( form.value.fields, currentStepData.value.id, hiddenFields.value )
+	: [] ) );
 
 /** Renders the fields before the first section as they are, without a wrapper. */
 const FieldGroup: FunctionalComponent = ( _props, { slots } ) => slots.default?.();
@@ -159,8 +184,16 @@ function setConfirmValue( field: FormField, text: string ): void {
 /** Whether the single-step form renders its submit button in the field row. */
 const isInline = computed( () => props.layout === 'inline' );
 
+/** Enter in a field submits the form; before the last step it moves on instead, as in Blade. */
 function handleFormSubmit( e: Event ): void {
 	e.preventDefault();
+
+	if ( form.value?.is_multi_step && currentStep.value < totalSteps.value - 1 ) {
+		nextStep();
+
+		return;
+	}
+
 	submit();
 }
 </script>
@@ -188,30 +221,30 @@ function handleFormSubmit( e: Event ): void {
 
 	<!-- No form -->
 	<div v-else-if="!form" class="alert alert-error" role="alert">
-		<span>Form not found.</span>
+		<span>{{ t( 'Form not found.' ) }}</span>
 	</div>
 
 	<!-- Success state -->
 	<div v-else-if="isSubmitted" class="space-y-4">
-		<slot name="success" :message="form.success_message ?? 'Form submitted successfully.'">
+		<slot name="success" :message="form.success_message ?? t( 'Form submitted successfully.' )">
 			<div class="alert alert-success" role="status">
-				<span>{{ form.success_message ?? 'Form submitted successfully.' }}</span>
+				<span>{{ form.success_message ?? t( 'Form submitted successfully.' ) }}</span>
 			</div>
 		</slot>
 		<Button type="button" @click="reset">
-			Submit another response
+			{{ t( 'Submit another response' ) }}
 		</Button>
 	</div>
 
 	<!-- Form -->
-	<form v-else :class="formClass" novalidate @submit="handleFormSubmit">
+	<form v-else ref="formElement" :class="formClass" novalidate @submit="handleFormSubmit">
 		<!-- Form description -->
 		<p v-if="form.description" class="mb-4 opacity-70">
 			{{ form.description }}
 		</p>
 
 		<!-- Form-level error messages -->
-		<div v-if="errors._form?.length" class="alert alert-error mb-4" role="alert">
+		<div v-if="errors._form?.length" class="alert alert-error mb-4" role="alert" tabindex="-1" data-forms-error-summary>
 			<span v-for="( msg, i ) in errors._form" :key="i">{{ msg }}</span>
 		</div>
 
@@ -221,6 +254,7 @@ function handleFormSubmit( e: Event ): void {
 			:current-step-data="currentStepData"
 			:current-step="currentStep"
 			:total-steps="totalSteps"
+			:steps="steps"
 			:progress-percentage="progressPercentage"
 			:show-progress-bar="form.show_progress_bar"
 			:allow-step-navigation="form.allow_step_navigation"
@@ -245,6 +279,7 @@ function handleFormSubmit( e: Event ): void {
 								:other-value="otherValues[field.name] ?? ''"
 								:confirm-value="getConfirmValue( field )"
 								:sub-errors="getSubInputErrors( errors, field.name )"
+								:files="files[field.name]"
 								@update:model-value="setValue( field.name, $event )"
 								@update:other-value="setOtherValue( field.name, $event )"
 								@update:confirm-value="setConfirmValue( field, $event )"
@@ -257,7 +292,21 @@ function handleFormSubmit( e: Event ): void {
 				<HoneypotField
 					v-if="form.config.honeypot.enabled"
 					:slug="form.slug"
+					:id-prefix="idPrefix"
 					:field-name="form.config.honeypot.field_name"
+				/>
+			</div>
+
+			<!-- Invisible CAPTCHAs on other steps stay mounted, so their submit hooks fetch a token -->
+			<div v-if="offStepCaptchas.length > 0" class="sr-only">
+				<FieldRenderer
+					v-for="field in offStepCaptchas"
+					:key="field.id"
+					:field="field"
+					:model-value="values[field.name]"
+					:error="errors[field.name]?.[0]"
+					:display-config="form.config.display"
+					@update:model-value="setValue( field.name, $event )"
 				/>
 			</div>
 		</MultiStepForm>
@@ -278,6 +327,7 @@ function handleFormSubmit( e: Event ): void {
 								:other-value="otherValues[field.name] ?? ''"
 								:confirm-value="getConfirmValue( field )"
 								:sub-errors="getSubInputErrors( errors, field.name )"
+								:files="files[field.name]"
 								@update:model-value="setValue( field.name, $event )"
 								@update:other-value="setOtherValue( field.name, $event )"
 								@update:confirm-value="setConfirmValue( field, $event )"
@@ -290,6 +340,7 @@ function handleFormSubmit( e: Event ): void {
 				<HoneypotField
 					v-if="form.config.honeypot.enabled"
 					:slug="form.slug"
+					:id-prefix="idPrefix"
 					:field-name="form.config.honeypot.field_name"
 				/>
 
@@ -301,12 +352,12 @@ function handleFormSubmit( e: Event ): void {
 					:disabled="isSubmitting"
 					:class="['shrink-0 self-end', submitClassName]"
 				>
-					{{ isSubmitting ? 'Submitting...' : form.submit_button_text }}
+					{{ isSubmitting ? t( 'Submitting...' ) : form.submit_button_text }}
 				</Button>
 			</div>
 			<div v-if="!isInline">
 				<Button type="submit" color="primary" :disabled="isSubmitting" :class="submitClassName">
-					{{ isSubmitting ? 'Submitting...' : form.submit_button_text }}
+					{{ isSubmitting ? t( 'Submitting...' ) : form.submit_button_text }}
 				</Button>
 			</div>
 		</div>

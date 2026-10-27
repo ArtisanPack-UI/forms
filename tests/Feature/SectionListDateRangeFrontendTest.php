@@ -106,9 +106,11 @@ describe( 'shared helpers', function () use ( $resource, $between ): void {
 
     it( 'sends list rows as nested form data from both renderers', function () use ( $resource ): void {
         foreach ( ['react/hooks/useForm.ts', 'vue/composables/useForm.ts'] as $path ) {
-            expect( $resource( $path ) )->toContain( 'formDataObj.append( `data[${key}][${index}][${column}]`, String( cell ?? \'\' ) );' )
+            expect( $resource( $path ) )->toContain( 'appendSubmissionValue( formDataObj, key, value );' )
                 ->toContain( "const LAYOUT_FIELDS = new Set( ['section', 'heading', 'paragraph', 'divider', 'html'] );" );
         }
+
+        expect( $resource( 'shared/submission.ts' ) )->toContain( 'body.append( `data[${name}][${index}][${column}]`, toFormValue( cell ) );' );
     } );
 } );
 

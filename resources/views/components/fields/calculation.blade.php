@@ -17,10 +17,10 @@
     $result = is_scalar($value) ? (string) $value : '';
 @endphp
 
-@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => 'field-' . $field->name])
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => $field->domId()])
 <input
     type="text"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     name="{{ $field->name }}"
     value="{{ $result }}"
     readonly

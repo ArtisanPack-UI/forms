@@ -17,7 +17,9 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Services;
 
 use ArtisanPackUI\Forms\FieldTypes\CalculationFieldType;
+use ArtisanPackUI\Forms\FieldTypes\CheckboxFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ColorFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ConsentFieldType;
 use ArtisanPackUI\Forms\FieldTypes\DateTimeFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
 use ArtisanPackUI\Forms\FieldTypes\PhoneFieldType;
@@ -122,10 +124,16 @@ class SubmissionService
      * fields are worked out again from the submitted values, whatever the
      * client sent for them (see applyCalculations()).
      *
+     * Since 1.6.0, `$formData` must already have gone through
+     * normalizeSubmittedValues(), as both submit paths do before validation
+     * (the Livewire renderer and SubmitFormApiRequest); numbers are not
+     * normalized again, since a `decimal_comma` number is not read the same
+     * way twice. A read-only number's own value is normalized here.
+     *
      * @since 1.0.0
      *
      * @param  Form  $form  The form being submitted.
-     * @param  array<string, mixed>  $formData  The submitted form data.
+     * @param  array<string, mixed>  $formData  The submitted form data, normalized (see normalizeSubmittedValues()).
      * @param  array<string, array<array-key, UploadedFile>|UploadedFile|null>  $files  Uploaded files keyed by field name; a list for a multi-file field.
      * @param  array<string, mixed>  $metadata  Additional metadata (ip, user_agent, etc.).
      *
@@ -148,9 +156,10 @@ class SubmissionService
 
         // Read-only fields keep their own value whatever the client sent
         $formData = $this->applyReadOnlyValues( $fields, $formData, true );
+        $formData = $this->normalizeFormattedNumbers( $fields->filter( fn ( FormField $field ): bool => $field->isReadOnly() ), $formData );
 
         // Calculations are worked out on the server, never taken from the client
-        $formData = $this->applyCalculations( $fields, $formData, true );
+        $formData = $this->applyCalculations( $fields, $formData, true, true );
 
         // Administrative fields are never filled in by the public form
         $formData = array_diff_key( $formData, $fields->filter( fn ( FormField $field ): bool => $field->isAdministrative() )->all() );
@@ -286,7 +295,12 @@ class SubmissionService
      * A `datetime-local` value becomes `Y-m-d H:i`, and a list keeps only its
      * filled rows, under their own keys, so an error names the row the
      * visitor sees. A color typed as `FF8800` or `#F80` becomes `#ff8800`
-     * (see ColorFieldType::normalizeValue()).
+     * (see ColorFieldType::normalizeValue()). A checkbox, toggle or consent
+     * box sent as `true` / `false` / `on` / `off` (as HTML forms and
+     * headless clients do) becomes `1` / `0`, which the `boolean` rule
+     * accepts. A phone number checked by format becomes E.164 (see
+     * normalizePhoneNumbers()), the form it is stored in, so "No duplicates"
+     * compares like with like.
      *
      * @since 1.6.0
      *
@@ -297,6 +311,7 @@ class SubmissionService
      */
     public function normalizeSubmittedValues( iterable $fields, array $formData ): array
     {
+        $formData = $this->normalizePhoneNumbers( $fields, $formData );
         $formData = $this->normalizeFormattedNumbers( $fields, $formData );
 
         foreach ( $fields as $field ) {
@@ -314,6 +329,8 @@ class SubmissionService
                 $formData[ $field->name ] = ListFieldType::filledRows( $field, $formData[ $field->name ], false );
             } elseif ( ColorFieldType::TYPE === $field->type ) {
                 $formData[ $field->name ] = ColorFieldType::normalizeValue( $formData[ $field->name ] );
+            } elseif ( $field->fieldType() instanceof CheckboxFieldType || $field->fieldType() instanceof ConsentFieldType ) {
+                $formData[ $field->name ] = $this->normalizeBooleanString( $formData[ $field->name ] );
             }
         }
 
@@ -515,17 +532,20 @@ class SubmissionService
      * directly or through others, has no result. Administrative fields read
      * as blank, whatever a client sent for them. Numbers typed in a number
      * field's format are read as plain decimals (see
-     * normalizeFormattedNumbers()).
+     * normalizeFormattedNumbers()), unless the values were already
+     * normalized: a `decimal_comma` number normalized twice is read wrong
+     * (`1234.50` becomes `123450`).
      *
      * @since 1.6.0
      *
      * @param  iterable<FormField>  $fields  The form fields.
      * @param  array<string, mixed>  $formData  The values keyed by field name.
      * @param  bool  $onlySubmitted  Whether to work out only the calculations present in the data, leaving out those conditional logic hid.
+     * @param  bool  $normalized  Whether the values already went through normalizeSubmittedValues().
      *
      * @return array<string, mixed> The values with calculations worked out.
      */
-    public function applyCalculations( iterable $fields, array $formData, bool $onlySubmitted = false ): array
+    public function applyCalculations( iterable $fields, array $formData, bool $onlySubmitted = false, bool $normalized = false ): array
     {
         $calculations = [];
 
@@ -539,7 +559,7 @@ class SubmissionService
             return $formData;
         }
 
-        $operands = $this->normalizeFormattedNumbers( $fields, $formData );
+        $operands = $normalized ? $formData : $this->normalizeFormattedNumbers( $fields, $formData );
         $results  = [];
 
         // Administrative fields are never filled in by the public form, so a formula reads them as blank
@@ -601,23 +621,24 @@ class SubmissionService
      *
      * @param  Collection<int, FormField>  $fields  The form fields.
      * @param  array<string, mixed>  $formData  The values keyed by field name.
+     * @param  bool  $normalized  Whether the values already went through normalizeSubmittedValues().
      *
      * @return array<string, mixed> The values with calculations worked out.
      */
-    public function applyVisibleCalculations( Collection $fields, array $formData ): array
+    public function applyVisibleCalculations( Collection $fields, array $formData, bool $normalized = false ): array
     {
         if ( ! $fields->contains( 'type', CalculationFieldType::TYPE ) ) {
             return $formData;
         }
 
-        $formData = $this->applyCalculations( $fields, $formData );
-        $hidden   = array_filter( app( ConditionalLogicService::class )->getHiddenFields( $fields, $formData ) );
+        $formData = $this->applyCalculations( $fields, $formData, false, $normalized );
+        $hidden   = array_filter( app( ConditionalLogicService::class )->getHiddenFields( $fields, $formData, $normalized ) );
 
         if ( [] === $hidden ) {
             return $formData;
         }
 
-        $visible = $this->applyCalculations( $fields, array_diff_key( $formData, $hidden ) );
+        $visible = $this->applyCalculations( $fields, array_diff_key( $formData, $hidden ), false, $normalized );
 
         foreach ( $fields->where( 'type', CalculationFieldType::TYPE ) as $field ) {
             $formData[ $field->name ] = $visible[ $field->name ];
@@ -998,6 +1019,32 @@ class SubmissionService
     }
 
     /**
+     * Maps a boolean sent as text to `1` or `0`.
+     *
+     * `true` / `on` / `yes` become `1` and `false` / `off` / `no` become `0`
+     * (in any case); any other value is returned unchanged, so the `boolean`
+     * rule still rejects it.
+     *
+     * @since 1.6.0
+     *
+     * @param  mixed  $value  The submitted value.
+     *
+     * @return mixed The value, `1` or `0`.
+     */
+    protected function normalizeBooleanString( mixed $value ): mixed
+    {
+        if ( ! is_string( $value ) ) {
+            return $value;
+        }
+
+        return match ( strtolower( trim( $value ) ) ) {
+            'true', 'on', 'yes'  => '1',
+            'false', 'off', 'no' => '0',
+            default              => $value,
+        };
+    }
+
+    /**
      * Saves a submission, its values and its uploads in one transaction.
      *
      * @since 1.6.0
@@ -1258,6 +1305,8 @@ class SubmissionService
             'field_label'       => $field->label,
             'field_admin_label' => $field->getStoredAdminLabel(),
             'field_type'        => $field->type,
+            'is_masked'         => $field->isMaskedInAdmin(),
+            'redact_after_days' => $field->getRedactAfterDays(),
             'created_at'        => now(),
         ];
 
@@ -1397,6 +1446,8 @@ class SubmissionService
             'field_admin_label' => $field->getStoredAdminLabel(),
             'field_type'        => $field->type,
             'upload_id'         => $upload->id,
+            'is_masked'         => $field->isMaskedInAdmin(),
+            'redact_after_days' => $field->getRedactAfterDays(),
             'created_at'        => now(),
         ];
     }
@@ -1438,6 +1489,7 @@ class SubmissionService
                 'mime_type'          => $media['mime_type'],
                 'size'               => $media['size'],
                 'pending_deliveries' => $transient ? 1 : null,
+                'is_masked'          => $field->isMaskedInAdmin(),
             ] );
         }
 
@@ -1476,6 +1528,7 @@ class SubmissionService
             'mime_type'          => $file->getMimeType() ?? 'application/octet-stream',
             'size'               => $fileSize ?: 0,
             'pending_deliveries' => $transient ? 1 : null,
+            'is_masked'          => $field->isMaskedInAdmin(),
         ] );
     }
 

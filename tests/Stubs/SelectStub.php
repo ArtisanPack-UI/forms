@@ -23,11 +23,13 @@ class SelectStub extends Component
      * @param  array<int, array<string, string>>|null  $options
      */
     public function __construct(
+        public ?string $id = null,
         public ?string $label = null,
         public ?string $name = null,
         public ?string $placeholder = null,
         public ?string $hint = null,
         public ?string $error = null,
+        public bool $omitError = false,
         public bool $required = false,
         public ?array $options = null,
         public ?string $optionValue = 'value',
