@@ -27,6 +27,7 @@ import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composi
 import { getInitialFieldValue, resolveOtherChoices } from '../../shared/fieldSettings';
 import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
 import { t } from '../../shared/i18n';
+import { appendSubmissionValue } from '../../shared/submission';
 import { validateFields } from '../../shared/validation';
 
 /** Configuration options for the useForm composable. */
@@ -424,25 +425,8 @@ export function useForm( options: UseFormOptions ) {
 					continue;
 				}
 
-				if ( Array.isArray( value ) ) {
-					value.forEach( ( item, index ) => {
-						if ( item !== null && typeof item === 'object' ) {
-							// A list's rows are maps of columns (since 1.6.0).
-							for ( const [column, cell] of Object.entries( item as Record<string, unknown> ) ) {
-								formDataObj.append( `data[${key}][${index}][${column}]`, String( cell ?? '' ) );
-							}
-						} else {
-							formDataObj.append( `data[${key}][]`, String( item ) );
-						}
-					} );
-				} else if ( value !== null && typeof value === 'object' ) {
-					// A composite field's value is a map of sub-inputs.
-					for ( const [subKey, part] of Object.entries( value as Record<string, unknown> ) ) {
-						formDataObj.append( `data[${key}][${subKey}]`, String( part ?? '' ) );
-					}
-				} else if ( value !== null && value !== undefined ) {
-					formDataObj.append( `data[${key}]`, String( value ) );
-				}
+				// Lists, arrays and composite maps are expanded; booleans are sent as '1'/'0'.
+				appendSubmissionValue( formDataObj, key, value );
 			}
 
 			// Add files

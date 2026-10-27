@@ -209,7 +209,7 @@ describe( 'Vue submit hooks', function () use ( $resource, $between ): void {
             ->toContain( 'if ( hookError instanceof SubmitHookError ) {' )
             ->toContain( "errors.value = { [hookError.field]: [t( 'The verification check failed. Please try again.' )] };" )
             ->toContain( '...collected,' )
-            ->toContain( 'formDataObj.append( `data[${key}]`, String( value ) );' );
+            ->toContain( 'appendSubmissionValue( formDataObj, key, value );' );
     } );
 
     it( 'settles the hooks for every outcome of the request', function () use ( $resource, $between ): void {

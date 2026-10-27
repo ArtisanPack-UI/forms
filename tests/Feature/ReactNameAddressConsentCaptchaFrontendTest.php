@@ -192,7 +192,7 @@ describe( 'React submit hooks', function () use ( $resource ): void {
             ->toContain( 'collected = await submitHooks.collect();' )
             ->toContain( 'if ( err instanceof SubmitHookError ) {' )
             ->toContain( "setErrors( { [err.field]: [t( 'The verification check failed. Please try again.' )] } );" )
-            ->toContain( 'formDataObj.append( `data[${key}]`, String( value ) );' )
+            ->toContain( 'formDataObj.append( `data[${key}]`, toFormValue( value ) );' )
             ->toContain( 'submitHooks.settle( { ok: false, errors: serverErrors } );' )
             ->toContain( 'submitHooks.settle( { ok: true, errors: {} } );' )
             ->and( substr_count( $hook, 'submitHooks.settle( { ok: false, errors: {} } );' ) )->toBe( 2 );
