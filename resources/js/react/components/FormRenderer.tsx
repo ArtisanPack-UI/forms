@@ -17,6 +17,7 @@
 import { Fragment } from 'react';
 import { Button } from '@artisanpack-ui/react/form';
 
+import { getOffStepSubmitCaptchas } from '../../shared/captcha';
 import { getSubInputErrors } from '../../shared/composite';
 import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
 import { getFieldSegments } from '../../shared/sections';
@@ -296,6 +297,11 @@ export function FormRenderer( {
 		);
 	};
 
+	// A multi-step form's invisible CAPTCHAs on other steps (since 1.6.0)
+	const offStepCaptchas = form.is_multi_step && currentStepData
+		? getOffStepSubmitCaptchas( form.fields, currentStepData.id, hiddenFields )
+		: [];
+
 	// Whether a field, or an input nested under it, has an error
 	const hasFieldErrors = ( field: FormField ) => Object.keys( errors ).some( ( key ) => key === field.name || key.startsWith( `${field.name}.` ) );
 
@@ -341,6 +347,13 @@ export function FormRenderer( {
 					{/* Inline layout: the submit button is the last item in the field row */}
 					{isInline && submitButton}
 				</div>
+
+				{/* Invisible CAPTCHAs on other steps stay mounted, so their submit hooks fetch a token */}
+				{offStepCaptchas.length > 0 && (
+					<div className="sr-only">
+						{offStepCaptchas.map( renderField )}
+					</div>
+				)}
 			</FormValuesContext.Provider>
 		</SubmitHooksContext.Provider>
 	);

@@ -15,6 +15,7 @@
 import { computed, provide } from 'vue';
 import type { FunctionalComponent } from 'vue';
 import { Button } from '@artisanpack-ui/vue/form';
+import { getOffStepSubmitCaptchas } from '../../shared/captcha';
 import { getSubInputErrors } from '../../shared/composite';
 import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
 import { getFieldSegments } from '../../shared/sections';
@@ -120,6 +121,14 @@ provide( FORM_VALUES_KEY, computed( () => ( {
 
 /** The current fields, with each section's fields grouped (since 1.6.0). */
 const segments = computed( () => getFieldSegments( currentFields.value ) );
+
+/**
+ * A multi-step form's invisible CAPTCHAs on other steps, kept mounted so
+ * their submit hooks fetch a token (since 1.6.0).
+ */
+const offStepCaptchas = computed( () => ( form.value?.is_multi_step && currentStepData.value
+	? getOffStepSubmitCaptchas( form.value.fields, currentStepData.value.id, hiddenFields.value )
+	: [] ) );
 
 /** Renders the fields before the first section as they are, without a wrapper. */
 const FieldGroup: FunctionalComponent = ( _props, { slots } ) => slots.default?.();
@@ -258,6 +267,19 @@ function handleFormSubmit( e: Event ): void {
 					v-if="form.config.honeypot.enabled"
 					:slug="form.slug"
 					:field-name="form.config.honeypot.field_name"
+				/>
+			</div>
+
+			<!-- Invisible CAPTCHAs on other steps stay mounted, so their submit hooks fetch a token -->
+			<div v-if="offStepCaptchas.length > 0" class="sr-only">
+				<FieldRenderer
+					v-for="field in offStepCaptchas"
+					:key="field.id"
+					:field="field"
+					:model-value="values[field.name]"
+					:error="errors[field.name]?.[0]"
+					:display-config="form.config.display"
+					@update:model-value="setValue( field.name, $event )"
 				/>
 			</div>
 		</MultiStepForm>
