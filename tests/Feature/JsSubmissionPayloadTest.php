@@ -54,3 +54,43 @@ describe( 'boolean values (RX1)', function (): void {
             ->and( $source )->not->toContain( 'formDataObj.append( `data[${key}]`, String( value ) )' );
     } )->with( ['react/hooks/useForm.ts', 'vue/composables/useForm.ts'] );
 } );
+
+describe( 'server errors (VU-04)', function (): void {
+    it( 'routes errors for no field on the form to _form', function (): void {
+        $errors = SharedTypeScript::run( <<<'JS'
+            const { mapServerErrors } = await load( 'submission' );
+            const fields = [
+                { name: 'email', type: 'email', email_confirmation: {} },
+                { name: 'address', type: 'address' },
+                { name: 'docs', type: 'file' },
+            ];
+            return mapServerErrors( {
+                data: ['The data field must be present.'],
+                'data.email': ['The email is invalid.'],
+                'data.address.city': ['City is required.'],
+                'data.email_confirmation': ['Confirm it.'],
+                'data.gone': ['Unknown field.'],
+                'files.docs': ['Too big.'],
+            }, fields );
+            JS );
+
+        if ( null === $errors ) {
+            $this->markTestSkipped( 'Node 22.7+ is needed to run the shared helpers.' );
+        }
+
+        expect( $errors )->toBe( [
+            '_form'              => ['The data field must be present.', 'Unknown field.'],
+            'email'              => ['The email is invalid.'],
+            'address.city'       => ['City is required.'],
+            'email_confirmation' => ['Confirm it.'],
+            'docs'               => ['Too big.'],
+        ] );
+    } );
+
+    it( 'maps 422 errors with the shared helper in both renderers', function ( string $path, string $call ): void {
+        expect( jsSubmissionSource( $path ) )->toContain( $call );
+    } )->with( [
+        ['react/hooks/useForm.ts', 'const serverErrors = mapServerErrors( errorData.errors, allFields );'],
+        ['vue/composables/useForm.ts', 'const serverErrors = mapServerErrors( errorData.errors, allFields.value );'],
+    ] );
+} );

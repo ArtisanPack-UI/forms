@@ -27,7 +27,7 @@ import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composi
 import { getInitialFieldValue, resolveOtherChoices } from '../../shared/fieldSettings';
 import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
 import { t } from '../../shared/i18n';
-import { appendSubmissionValue } from '../../shared/submission';
+import { appendSubmissionValue, mapServerErrors } from '../../shared/submission';
 import { validateFields } from '../../shared/validation';
 
 /** Configuration options for the useForm composable. */
@@ -464,14 +464,8 @@ export function useForm( options: UseFormOptions ) {
 
 			if ( response.status === 422 ) {
 				const errorData = await response.json();
-				const serverErrors: Record<string, string[]> = {};
-
-				if ( errorData.errors ) {
-					for ( const [key, messages] of Object.entries( errorData.errors ) ) {
-						const fieldName = key.replace( /^(data|files)\./, '' );
-						serverErrors[fieldName] = messages as string[];
-					}
-				}
+				// "data.field_name" becomes "field_name"; errors for no field on the form go to `_form`.
+				const serverErrors = mapServerErrors( errorData.errors, allFields.value );
 
 				errors.value = serverErrors;
 				outcome = { ok: false, errors: serverErrors };

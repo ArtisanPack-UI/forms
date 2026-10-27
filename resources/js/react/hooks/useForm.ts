@@ -33,7 +33,7 @@ import {
 	resolveOtherChoices,
 } from '../../shared/fieldSettings';
 import { t } from '../../shared/i18n';
-import { appendSubmissionValue, toFormValue } from '../../shared/submission';
+import { appendSubmissionValue, mapServerErrors, toFormValue } from '../../shared/submission';
 import { validateFields } from '../../shared/validation';
 
 /** Configuration options for the useForm hook. */
@@ -559,15 +559,8 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 			if ( response.status === 422 ) {
 				const errorData = await response.json();
-				const serverErrors: Record<string, string[]> = {};
-
-				if ( errorData.errors ) {
-					for ( const [key, messages] of Object.entries( errorData.errors ) ) {
-						// Server errors come as "data.field_name", strip the prefix
-						const fieldName = key.replace( /^(data|files)\./, '' );
-						serverErrors[fieldName] = messages as string[];
-					}
-				}
+				// "data.field_name" becomes "field_name"; errors for no field on the form go to `_form`.
+				const serverErrors = mapServerErrors( errorData.errors, allFields );
 
 				setErrors( serverErrors );
 				submitHooks.settle( { ok: false, errors: serverErrors } );

@@ -2,13 +2,18 @@
  * Submission helpers shared by the React and Vue `useForm`.
  *
  * Builds the multipart body the submit API expects (`data[...]` values) in
- * the shape Laravel's validator reads.
+ * the shape Laravel's validator reads, and maps the API's validation errors
+ * back to the form's fields.
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
  *
  * @since      1.6.0
  */
+
+import type { FormField } from '../types/artisanpack-forms';
+import { getErrorFieldName } from './composite';
+import { getConfirmationKey, requiresEmailConfirmation } from './fieldSettings';
 
 /**
  * Convert a value to the string sent for it. Booleans (checkbox, toggle and
@@ -53,4 +58,56 @@ export function appendSubmissionValue( body: FormData, name: string, value: unkn
 	} else if ( value !== null && value !== undefined ) {
 		body.append( `data[${name}]`, toFormValue( value ) );
 	}
+}
+
+/**
+ * Map the submit API's 422 errors to the renderer's error keys.
+ *
+ * The `data.` and `files.` prefixes are stripped, so `data.email` becomes
+ * `email` and `data.address.city` stays keyed by sub-input (`address.city`).
+ * An error that belongs to no field on the form, such as the request-level
+ * `data` error, goes to `_form` so the visitor still sees it.
+ *
+ * @since 1.6.0
+ *
+ * @param  raw  The response's `errors` object.
+ * @param  fields  The form's fields.
+ */
+export function mapServerErrors( raw: unknown, fields: FormField[] ): Record<string, string[]> {
+	const mapped: Record<string, string[]> = {};
+
+	if ( !raw || typeof raw !== 'object' ) {
+		return mapped;
+	}
+
+	const known = new Set<string>( ['_form'] );
+
+	for ( const field of fields ) {
+		known.add( field.name );
+
+		if ( requiresEmailConfirmation( field ) ) {
+			known.add( getConfirmationKey( field ) );
+		}
+	}
+
+	const add = ( key: string, messages: string[] ): void => {
+		const existing = mapped[key] ?? [];
+
+		mapped[key] = [...existing, ...messages.filter( ( message ) => !existing.includes( message ) )];
+	};
+
+	for ( const [key, value] of Object.entries( raw as Record<string, unknown> ) ) {
+		const messages = ( Array.isArray( value ) ? value : [value] )
+			.filter( ( message ): message is string => typeof message === 'string' && message !== '' );
+
+		if ( messages.length === 0 ) {
+			continue;
+		}
+
+		const name = key.replace( /^(data|files)\./, '' );
+
+		add( known.has( getErrorFieldName( name ) ) ? name : '_form', messages );
+	}
+
+	return mapped;
 }
