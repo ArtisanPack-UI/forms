@@ -22,10 +22,10 @@
     $affixes = $sliderType::valueAffixes($field);
     $current = is_numeric($value) ? (string) $value : $sliderType::initialValue($field, null);
     $readOnly = $field->isReadOnly();
-    $valueId = 'field-' . $field->name . '-value';
+    $valueId = $field->domId() . '-value';
 @endphp
 
-@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => 'field-' . $field->name])
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => $field->domId()])
 <div
     class="flex items-center gap-4"
     x-data="{
@@ -37,7 +37,7 @@
 >
     <input
         type="range"
-        id="field-{{ $field->name }}"
+        id="{{ $field->domId() }}"
         name="{{ $field->name }}"
         wire:model.live.debounce.250ms="formData.{{ $field->name }}"
         x-on:input="value = $event.target.value"
@@ -57,7 +57,7 @@
     @if($sliderType::showsValue($field))
         <output
             id="{{ $valueId }}"
-            for="field-{{ $field->name }}"
+            for="{{ $field->domId() }}"
             class="min-w-16 text-right font-medium tabular-nums"
             aria-hidden="true"
             x-text="text"

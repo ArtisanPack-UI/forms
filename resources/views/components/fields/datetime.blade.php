@@ -12,11 +12,11 @@
     $step = $field->getConfig('step');
 @endphp
 
-@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => 'field-' . $field->name])
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => $field->domId()])
 <input
     type="datetime-local"
     wire:model.live="formData.{{ $field->name }}"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     class="input input-bordered w-full {{ $field->css_classes }} @if($error) input-error @endif"
     @if(filled($limits['min'])) min="{{ $limits['min'] }}T00:00" @endif
     @if(filled($limits['max'])) max="{{ $limits['max'] }}T23:59" @endif

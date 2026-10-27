@@ -27,7 +27,7 @@
     $limitsHint = $field->getFileLimitsHint();
 @endphp
 
-@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => 'field-' . $field->name])
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => $field->domId()])
 @if($multiple)
 <div
     x-data="{
@@ -114,7 +114,7 @@
             type="file"
             multiple
             x-ref="input"
-            id="field-{{ $field->name }}"
+            id="{{ $field->domId() }}"
             class="file-input file-input-bordered w-full @if($error) file-input-error @endif"
             x-on:change="add($event.target.files); $event.target.value = ''"
             @if($accept) accept="{{ $accept }}" @endif
@@ -157,7 +157,7 @@
 </div>
 
 @if($limitsHint)
-    <p class="label" id="limits-{{ $field->name }}">
+    <p class="label" id="{{ $field->domId('limits') }}">
         <span class="label-text-alt text-base-content/60">{{ $limitsHint }}</span>
     </p>
 @endif
@@ -165,7 +165,7 @@
 <input
     type="file"
     wire:model="files.{{ $field->name }}"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     class="file-input file-input-bordered w-full {{ $field->css_classes }} @error('files.' . $field->name) file-input-error @enderror"
     @if($accept) accept="{{ $accept }}" @endif
     @if($field->is_required) @if(null === $uploadedFile) required @endif aria-required="true" @endif
@@ -197,7 +197,7 @@
 </div>
 
 @if($limitsHint)
-    <p class="label" id="limits-{{ $field->name }}">
+    <p class="label" id="{{ $field->domId('limits') }}">
         <span class="label-text-alt text-base-content/60">{{ $limitsHint }}</span>
     </p>
 @endif

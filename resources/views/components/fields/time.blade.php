@@ -14,11 +14,11 @@
 @endphp
 
 @if('picker' === $field->getTimeInputMode())
-@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => 'field-' . $field->name])
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => $field->domId()])
 <input
     type="time"
     wire:model.live="formData.{{ $field->name }}"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     class="input input-bordered w-full {{ $field->css_classes }} @if($error) input-error @endif"
     @if($minTime) min="{{ $minTime }}" @endif
     @if($maxTime) max="{{ $maxTime }}" @endif
@@ -49,7 +49,7 @@
 @endphp
 <fieldset
     class="fieldset {{ $field->css_classes }}"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     @if($describedBy) aria-describedby="{{ $describedBy }}" @endif
     x-data="{
         value: $wire.entangle(@js('formData.' . $field->name)).live,
@@ -101,12 +101,12 @@
     @endif
 
     @if(filled($field->help_text) && 'above' === $descriptionPlacement)
-        <p class="fieldset-label" id="hint-{{ $field->name }}">{{ $field->help_text }}</p>
+        <p class="fieldset-label" id="{{ $field->domId('hint') }}">{{ $field->help_text }}</p>
     @endif
 
     <div class="flex flex-wrap gap-3">
         @foreach($selects as $part => $select)
-            @php($partId = 'field-' . $field->name . '-' . $part)
+            @php($partId = $field->domId() . '-' . $part)
             <div class="flex w-24 flex-col gap-1">
                 <label for="{{ $partId }}" class="label text-sm">{{ $select['label'] }}</label>
                 <select
@@ -130,11 +130,11 @@
     </div>
 
     @if(filled($field->help_text) && 'below' === $descriptionPlacement)
-        <p class="fieldset-label" id="hint-{{ $field->name }}">{{ $field->help_text }}</p>
+        <p class="fieldset-label" id="{{ $field->domId('hint') }}">{{ $field->help_text }}</p>
     @endif
 
     @if(filled($error))
-        <p class="fieldset-label text-error" id="error-{{ $field->name }}" role="alert">{{ $error }}</p>
+        <p class="fieldset-label text-error" id="{{ $field->domId('error') }}" role="alert">{{ $error }}</p>
     @endif
 </fieldset>
 @endif

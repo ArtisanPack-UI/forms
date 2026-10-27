@@ -5,7 +5,7 @@
 @endphp
 
 @if($field->isSearchable())
-	@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => 'field-' . $field->name])
+	@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'labelFor' => $field->domId()])
 		@include('forms::components.combobox', ['field' => $field, 'error' => $error, 'options' => $options, 'multiple' => true])
 	@endcomponent
 @else
@@ -17,14 +17,14 @@
 	:aria-invalid="filled($error) ? 'true' : null"
 	:required="$field->is_required"
 	wire:model.live="formData.{{ $field->name }}"
-	id="field-{{ $field->name }}"
+	id="{{ $field->domId() }}"
 	:class="$field->css_classes"
 	:multiple="true"
 	:options="$options"
 	option-value="value"
 	option-label="label"
 	:aria-required="$field->is_required ? 'true' : 'false'"
-	:aria-labelledby="filled($field->label) ? 'label-' . $field->name : null"
+	:aria-labelledby="filled($field->label) ? $field->domId('label') : null"
 	:aria-label="filled($field->label) ? null : \Illuminate\Support\Str::headline($field->name)"
 	:aria-describedby="$field->getDescribedBy($error)"
 />

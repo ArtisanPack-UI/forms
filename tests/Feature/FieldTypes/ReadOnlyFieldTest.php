@@ -251,14 +251,14 @@ describe( 'read-only fields', function (): void {
             expect( $tag( $html, $model, 'wire:model\.live' ) )->toContain( 'readonly' )->not->toContain( 'disabled' );
         }
 
-        foreach ( ['field-field_date', 'field-field_time'] as $id ) {
+        foreach ( ["field-f{$form->id}-field_date", "field-f{$form->id}-field_time"] as $id ) {
             expect( $tag( $html, $id ) )->toContain( 'readonly' )->not->toContain( 'disabled' );
         }
 
-        expect( $tag( $html, 'field-field_radio-0' ) )->toContain( 'disabled' )
-            ->and( $tag( $html, 'field-field_checkbox' ) )->toContain( 'disabled' )
-            ->and( $tag( $html, 'field-field_checkbox' ) )->toContain( 'aria-readonly="true"' )
-            ->and( $tag( $html, 'field-field_rating-1' ) )->toContain( 'disabled' )
+        expect( $tag( $html, "field-f{$form->id}-field_radio-0" ) )->toContain( 'disabled' )
+            ->and( $tag( $html, "field-f{$form->id}-field_checkbox" ) )->toContain( 'disabled' )
+            ->and( $tag( $html, "field-f{$form->id}-field_checkbox" ) )->toContain( 'aria-readonly="true"' )
+            ->and( $tag( $html, "field-f{$form->id}-field_rating-1" ) )->toContain( 'disabled' )
             ->and( substr_count( $html, 'aria-readonly="true"' ) )->toBeGreaterThanOrEqual( 3 );
     } );
 
@@ -269,7 +269,7 @@ describe( 'read-only fields', function (): void {
 
         $html = Livewire::test( FormRenderer::class, ['form' => $form] )->html();
 
-        preg_match( '/<input\b[^>]*id="field-pick-0"[^>]*>/s', $html, $radio );
+        preg_match( '/<input\b[^>]*id="field-f' . $form->id . '-pick-0"[^>]*>/s', $html, $radio );
 
         expect( $html )->not->toContain( 'readonly' )
             ->and( $html )->not->toContain( 'aria-readonly' )

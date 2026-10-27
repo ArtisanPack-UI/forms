@@ -21,7 +21,7 @@
     - $error The validation error, or null.
 --}}
 @php
-    $editorId = 'field-' . $field->name;
+    $editorId = $field->domId();
     $readOnly = $field->isReadOnly();
     $fieldName = filled($field->label) ? $field->label : \Illuminate\Support\Str::headline($field->name);
     $buttons = [
@@ -157,7 +157,7 @@
         style="min-height: {{ max( 1, (int) $field->getConfig('rows', 4) ) * 1.5 }}rem"
         contenteditable="{{ $readOnly ? 'false' : 'true' }}"
         @if(filled($field->placeholder)) data-placeholder="{{ $field->placeholder }}" @endif
-        @if(filled($field->label)) aria-labelledby="label-{{ $field->name }}" @else aria-label="{{ $fieldName }}" @endif
+        @if(filled($field->label)) aria-labelledby="{{ $field->domId('label') }}" @else aria-label="{{ $fieldName }}" @endif
         x-bind:aria-describedby="describedBy"
         @if($field->is_required) aria-required="true" @endif
         @if($readOnly) aria-readonly="true" @endif

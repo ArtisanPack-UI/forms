@@ -9,9 +9,9 @@
     The character counter wraps the input instead (see counter.blade.php).
 --}}
 @if(null !== ($maskHint = $field->getInputMaskHint()))
-    <p class="label-text-alt text-base-content/70 mt-1" id="mask-{{ $field->name }}">{{ $maskHint }}</p>
+    <p class="label-text-alt text-base-content/70 mt-1" id="{{ $field->domId('mask') }}">{{ $maskHint }}</p>
 @endif
 
 @if(null !== ($affixDescription = $field->getAffixDescription()))
-    <span class="sr-only" id="affix-{{ $field->name }}">{{ $affixDescription }}</span>
+    <span class="sr-only" id="{{ $field->domId('affix') }}">{{ $affixDescription }}</span>
 @endif

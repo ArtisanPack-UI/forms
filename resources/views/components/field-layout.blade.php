@@ -32,7 +32,7 @@
 <div @class(['form-control', 'md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:items-start md:gap-x-4' => $isLeft])>
     @if($renderLabel)
         <label
-            id="label-{{ $field->name }}"
+            id="{{ $field->domId('label') }}"
             @class(['label', 'sr-only' => 'hidden' === $labelPlacement, 'md:pt-3' => $isLeft])
             @if($labelFor) for="{{ $labelFor }}" @elseif($focusInput) x-on:click="$el.nextElementSibling?.querySelector('input:not([type=hidden]), select, textarea')?.focus()" @endif
         >
@@ -47,7 +47,7 @@
 
     <div @class(['md:col-start-2' => $isLeft])>
         @if(filled($field->help_text) && 'above' === $descriptionPlacement)
-            <label class="label" id="hint-{{ $field->name }}">
+            <label class="label" id="{{ $field->domId('hint') }}">
                 <span class="label-text-alt">{{ $field->help_text }}</span>
             </label>
         @endif
@@ -55,13 +55,13 @@
         {{ $slot }}
 
         @if(filled($field->help_text) && 'below' === $descriptionPlacement)
-            <label class="label" id="hint-{{ $field->name }}">
+            <label class="label" id="{{ $field->domId('hint') }}">
                 <span class="label-text-alt">{{ $field->help_text }}</span>
             </label>
         @endif
 
         @if($renderError && $error)
-            <label class="label" id="error-{{ $field->name }}">
+            <label class="label" id="{{ $field->domId('error') }}">
                 <span class="label-text-alt text-error">{{ $error }}</span>
             </label>
         @endif

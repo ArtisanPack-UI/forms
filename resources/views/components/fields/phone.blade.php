@@ -22,19 +22,19 @@
     :aria-invalid="filled($error) ? 'true' : null"
     :required="$field->is_required"
     wire:model.live="formData.{{ $field->name }}"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     :autocomplete="$field->getAutocomplete()"
     :readonly="$field->isReadOnly()"
     :class="$field->css_classes"
     :aria-required="$field->is_required ? 'true' : 'false'"
-    :aria-labelledby="$layoutLabel && filled($field->label) ? 'label-' . $field->name : null"
+    :aria-labelledby="$layoutLabel && filled($field->label) ? $field->domId('label') : null"
     :aria-describedby="$field->getDescribedBy($error)"
     :x-mask="$mask"
 >
     @if([] !== $countries)
         <x-slot:prepend>
             <select
-                id="field-{{ $field->getPhoneCountryKey() }}"
+                id="{{ $field->domId() }}_country"
                 wire:model.live="formData.{{ $field->getPhoneCountryKey() }}"
                 class="select join-item w-auto max-w-48"
                 autocomplete="country"

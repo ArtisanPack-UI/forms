@@ -157,6 +157,18 @@ class FormRenderer extends Component
     public array $hiddenFields = [];
 
     /**
+     * The prefix of the field element IDs, unique to this form on the page.
+     *
+     * `f{form id}`, with `-2`, `-3`… for further renderers of the same form
+     * in one request. Set on mount and locked, so the IDs stay the same
+     * across re-renders (see FormField::domId()).
+     *
+     * @since 1.6.0
+     */
+    #[Locked]
+    public string $idPrefix = '';
+
+    /**
      * The URL of the page the form was loaded on, recorded with the submission.
      *
      * Captured on mount, since submit() runs during a Livewire update
@@ -206,6 +218,7 @@ class FormRenderer extends Component
         $this->form            = $form->load( ['fields', 'steps.fields'] );
         $this->formLoadedAt    = now()->getTimestamp();
         $this->choiceSeed      = random_int( 1, 2147483647 );
+        $this->idPrefix        = $this->claimIdPrefix( $form );
         $this->pageUrl         = request()->fullUrl();
         $this->referrerUrl     = request()->header( 'referer' );
         $this->initialFormData = $this->buildInitialFormData( PopulationContext::fromPageRequest( request() ), $prefill );
@@ -241,7 +254,7 @@ class FormRenderer extends Component
 
         return $fields
             ->reject( fn ( FormField $field ): bool => $field->isAdministrative() )
-            ->each( fn ( FormField $field ): FormField => $field->withSettingsForm( $this->form )->withChoiceSeed( $this->choiceSeed ) )
+            ->each( fn ( FormField $field ): FormField => $field->withSettingsForm( $this->form )->withChoiceSeed( $this->choiceSeed )->withDomIdPrefix( $this->idPrefix ) )
             ->values();
     }
 
@@ -394,7 +407,7 @@ class FormRenderer extends Component
 
         return $this->form->fields
             ->filter( fn ( FormField $field ): bool => $field->step_id !== $stepId && ! $field->isAdministrative() && $this->isInvisibleCaptcha( $field ) )
-            ->each( fn ( FormField $field ): FormField => $field->withSettingsForm( $this->form ) )
+            ->each( fn ( FormField $field ): FormField => $field->withSettingsForm( $this->form )->withDomIdPrefix( $this->idPrefix ) )
             ->values();
     }
 
@@ -985,6 +998,27 @@ class FormRenderer extends Component
     protected function structuredValueChanged( string $fieldName ): void
     {
         $this->evaluateConditionalLogic();
+    }
+
+    /**
+     * Works out a field ID prefix no other renderer in this request uses.
+     *
+     * @since 1.6.0
+     *
+     * @param  Form  $form  The form being mounted.
+     *
+     * @return string The prefix: `f{id}`, then `f{id}-2`, `f{id}-3`…
+     */
+    protected function claimIdPrefix( Form $form ): string
+    {
+        $attributes = request()->attributes;
+        $mounted    = (array) $attributes->get( 'artisanpack.forms.renderers', [] );
+        $count      = (int) ( $mounted[ $form->id ] ?? 0 ) + 1;
+
+        $mounted[ $form->id ] = $count;
+        $attributes->set( 'artisanpack.forms.renderers', $mounted );
+
+        return 'f' . $form->id . ( $count > 1 ? '-' . $count : '' );
     }
 
     /**

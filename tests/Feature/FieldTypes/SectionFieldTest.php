@@ -184,18 +184,18 @@ describe( 'rendering', function (): void {
     it( 'wraps a section\'s fields in a fieldset with a legend and description', function (): void {
         $html = Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )->html();
 
-        $fieldset = substr( $html, strpos( $html, 'id="section-guest_details"' ) );
+        $fieldset = substr( $html, strpos( $html, 'id="section-f' . $this->form->id . '-guest_details"' ) );
         $fieldset = substr( $fieldset, 0, strpos( $fieldset, '</fieldset>' ) );
 
         expect( $html )->toContain( '<fieldset' )
-            ->and( $fieldset )->toContain( 'aria-describedby="section-guest_details-description"' )
+            ->and( $fieldset )->toContain( 'aria-describedby="section-f' . $this->form->id . '-guest_details-description"' )
             ->toContain( 'Guest details' )
             ->toContain( 'Tell us who is coming.<br />' )
             ->toContain( 'wire:model.live="formData.guest_name"' )
             ->toContain( 'wire:model.live="formData.diet"' )
             ->not->toContain( 'wire:model.live="formData.notes"' )
-            ->not->toContain( 'id="field-intro"' )
-            ->and( strpos( $html, 'id="field-intro"' ) )->toBeLessThan( strpos( $html, 'id="section-guest_details"' ) );
+            ->not->toContain( 'wire:model.live="formData.intro"' )
+            ->and( strpos( $html, 'wire:model.live="formData.intro"' ) )->toBeLessThan( strpos( $html, 'id="section-f' . $this->form->id . '-guest_details"' ) );
     } );
 
     it( 'renders a collapsible section as a disclosure', function (): void {

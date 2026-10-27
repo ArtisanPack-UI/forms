@@ -23,17 +23,17 @@
     $total = count($order);
     $readOnly = $field->isReadOnly();
     $descriptionPlacement = $field->getDescriptionPlacement();
-    $idPrefix = 'field-' . $field->name . '-';
+    $idPrefix = $field->domId() . '-';
     $describedBy = trim(implode(' ', array_filter([
         $readOnly ? null : $idPrefix . 'instructions',
-        filled($field->help_text) ? 'hint-' . $field->name : null,
-        filled($error) ? 'error-' . $field->name : null,
+        filled($field->help_text) ? $field->domId('hint') : null,
+        filled($error) ? $field->domId('error') : null,
     ])));
 @endphp
 
 <fieldset
     class="fieldset {{ $field->css_classes }}"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     data-forms-ranking="{{ $field->name }}"
     @if($describedBy) aria-describedby="{{ $describedBy }}" @endif
     x-data="{
@@ -88,7 +88,7 @@
     @endif
 
     @if(filled($field->help_text) && 'above' === $descriptionPlacement)
-        <p class="fieldset-label" id="hint-{{ $field->name }}">{{ $field->help_text }}</p>
+        <p class="fieldset-label" id="{{ $field->domId('hint') }}">{{ $field->help_text }}</p>
     @endif
 
     @unless($readOnly)
@@ -144,11 +144,11 @@
     </ol>
 
     @if(filled($field->help_text) && 'below' === $descriptionPlacement)
-        <p class="fieldset-label" id="hint-{{ $field->name }}">{{ $field->help_text }}</p>
+        <p class="fieldset-label" id="{{ $field->domId('hint') }}">{{ $field->help_text }}</p>
     @endif
 
     @if(filled($error))
-        <p class="fieldset-label text-error" id="error-{{ $field->name }}" role="alert">{{ $error }}</p>
+        <p class="fieldset-label text-error" id="{{ $field->domId('error') }}" role="alert">{{ $error }}</p>
     @endif
 
     <div wire:ignore class="sr-only" aria-live="polite" aria-atomic="true" x-text="announcement"></div>

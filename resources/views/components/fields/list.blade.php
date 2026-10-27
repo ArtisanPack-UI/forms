@@ -29,8 +29,8 @@
     $cellErrorCount = collect($errorBag->keys())->filter(fn ($key) => str_starts_with((string) $key, 'formData.' . $field->name . '.'))->count();
     $hasErrors = filled($error) || $cellErrorCount > 0;
     $describedBy = trim(implode(' ', array_filter([
-        filled($field->help_text) ? 'hint-' . $field->name : null,
-        $hasErrors ? 'error-' . $field->name : null,
+        filled($field->help_text) ? $field->domId('hint') : null,
+        $hasErrors ? $field->domId('error') : null,
     ])));
     $gridStyle = 'grid-template-columns: repeat(' . max(1, count($columns)) . ', minmax(0, 1fr)) auto';
     $firstColumn = $columns[0]['key'] ?? null;
@@ -38,7 +38,7 @@
 
 <fieldset
     class="fieldset {{ $field->css_classes }}"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     data-forms-list="{{ $field->name }}"
     @if($describedBy) aria-describedby="{{ $describedBy }}" @endif
     x-data="{
@@ -51,7 +51,7 @@
             this.announcement = message.replace(':row', @js($rowLabel)).replace(':number', number);
         },
     }"
-    x-on:forms-list-row-added.window="if ($event.detail.field === @js($field->name)) { say(messages.added, $event.detail.index + 1); $nextTick(() => document.getElementById(@js('field-' . $field->name . '-') + $event.detail.index + @js('-' . $firstColumn))?.focus()); }"
+    x-on:forms-list-row-added.window="if ($event.detail.field === @js($field->name)) { say(messages.added, $event.detail.index + 1); $nextTick(() => document.getElementById(@js($field->domId() . '-') + $event.detail.index + @js('-' . $firstColumn))?.focus()); }"
     x-on:forms-list-row-removed.window="if ($event.detail.field === @js($field->name)) { say(messages.removed, $event.detail.index + 1); $nextTick(() => $refs.add?.focus()); }"
 >
     @if(filled($field->label))
@@ -64,7 +64,7 @@
     @endif
 
     @if(filled($field->help_text) && 'above' === $descriptionPlacement)
-        <p class="fieldset-label" id="hint-{{ $field->name }}">{{ $field->help_text }}</p>
+        <p class="fieldset-label" id="{{ $field->domId('hint') }}">{{ $field->help_text }}</p>
     @endif
 
     <div class="hidden gap-2 sm:grid" style="{{ $gridStyle }}" aria-hidden="true">
@@ -77,7 +77,7 @@
     <div class="flex flex-col gap-3 sm:gap-2">
         @foreach($rows as $index => $row)
             @php
-                $rowId = 'field-' . $field->name . '-row-' . $index;
+                $rowId = $field->domId() . '-row-' . $index;
             @endphp
             <div
                 role="group"
@@ -90,7 +90,7 @@
 
                 @foreach($columns as $column)
                     @php
-                        $inputId = 'field-' . $field->name . '-' . $index . '-' . $column['key'];
+                        $inputId = $field->domId() . '-' . $index . '-' . $column['key'];
                         $cellError = $errorBag->first('formData.' . $field->name . '.' . $index . '.' . $column['key']);
                     @endphp
                     <div class="flex flex-col gap-1">
@@ -152,11 +152,11 @@
     </div>
 
     @if(filled($field->help_text) && 'below' === $descriptionPlacement)
-        <p class="fieldset-label" id="hint-{{ $field->name }}">{{ $field->help_text }}</p>
+        <p class="fieldset-label" id="{{ $field->domId('hint') }}">{{ $field->help_text }}</p>
     @endif
 
     @if($hasErrors)
-        <p class="fieldset-label text-error" id="error-{{ $field->name }}" role="alert">
+        <p class="fieldset-label text-error" id="{{ $field->domId('error') }}" role="alert">
             {{ filled($error) ? $error : trans_choice( 'Please fix :count highlighted entry in :field.|Please fix :count highlighted entries in :field.', $cellErrorCount, ['count' => $cellErrorCount, 'field' => $field->label] ) }}
         </p>
     @endif

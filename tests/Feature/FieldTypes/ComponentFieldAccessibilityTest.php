@@ -18,11 +18,11 @@ beforeEach( function (): void {
 } );
 
 /**
- * Gets the ID the renderer gives one of a field's elements.
+ * Gets the ID the renderer gives one of a field's elements (see FormField::domId()).
  */
-function componentFieldDomId( string $part, string $name ): string
+function componentFieldDomId( string $part, string $name, Form $form ): string
 {
-    return "{$part}-{$name}";
+    return "{$part}-f{$form->id}-{$name}";
 }
 
 /**
@@ -46,9 +46,9 @@ it( 'labels a :dataset control with the layout label in the default placement (L
     $html    = Livewire::test( FormRenderer::class, ['form' => $this->form] )->html();
     $control = boundControl( $html, 'pick' );
 
-    expect( $html )->toMatch( '/<label\s+id="' . componentFieldDomId( 'label', 'pick' ) . '"/' )
+    expect( $html )->toMatch( '/<label\s+id="' . componentFieldDomId( 'label', 'pick', $this->form ) . '"/' )
         ->and( $html )->not->toContain( 'fieldset-legend">Pick one' )
-        ->and( $control )->toContain( 'aria-labelledby="' . componentFieldDomId( 'label', 'pick' ) . '"' );
+        ->and( $control )->toContain( 'aria-labelledby="' . componentFieldDomId( 'label', 'pick', $this->form ) . '"' );
 } )->with( ['textarea', 'select', 'select_multiple'] );
 
 it( 'names a :dataset control without a label after the field name (LW-04)', function ( string $type ): void {
@@ -80,7 +80,7 @@ it( 'renders the referenced error and marks a :dataset control invalid (LW-05)',
         ->assertHasErrors( 'formData.answer' )
         ->html();
     $control = boundControl( $html, 'answer' );
-    $errorId = componentFieldDomId( 'error', 'answer' );
+    $errorId = componentFieldDomId( 'error', 'answer', $this->form );
 
     expect( $html )->toContain( 'id="' . $errorId . '"' )
         ->and( $control )->toContain( 'aria-invalid="true"' )

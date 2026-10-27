@@ -107,11 +107,11 @@
 
             {{-- Honeypot Field (spam protection) --}}
             <div class="hidden" aria-hidden="true" style="position: absolute; left: -9999px;">
-                <label for="website_url">{{ __( 'Leave this field empty' ) }}</label>
+                <label for="website_url_{{ $idPrefix }}">{{ __( 'Leave this field empty' ) }}</label>
                 <input
                     type="text"
                     name="website_url"
-                    id="website_url"
+                    id="website_url_{{ $idPrefix }}"
                     wire:model="honeypot"
                     tabindex="-1"
                     autocomplete="off"
