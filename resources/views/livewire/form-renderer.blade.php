@@ -138,6 +138,11 @@
 
                         <div class="space-y-4">
                             @include('forms::livewire.form-renderer.fields', ['fields' => $this->currentFields])
+
+                            {{-- Invisible CAPTCHAs of earlier steps fetch their token when the form is submitted --}}
+                            @foreach($this->deferredCaptchaFields as $field)
+                                @include('forms::livewire.form-renderer.field', ['field' => $field])
+                            @endforeach
                         </div>
                     </div>
 

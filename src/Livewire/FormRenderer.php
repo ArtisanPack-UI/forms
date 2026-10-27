@@ -350,6 +350,32 @@ class FormRenderer extends Component
         );
     }
 
+    /**
+     * Get the invisible CAPTCHAs of earlier steps, rendered again on the last step.
+     *
+     * An invisible CAPTCHA fetches its token when the form is submitted,
+     * which only happens on the last step, so a multi-step form renders the
+     * ones on other steps there too (their widget shows nothing).
+     *
+     * @since 1.6.0
+     *
+     * @return Collection<int, FormField>
+     */
+    #[Computed]
+    public function deferredCaptchaFields(): Collection
+    {
+        if ( ! $this->form->is_multi_step || ! $this->isLastStep ) {
+            return new Collection();
+        }
+
+        $stepId = $this->currentStep?->id;
+
+        return $this->form->fields
+            ->filter( fn ( FormField $field ): bool => $field->step_id !== $stepId && ! $field->isAdministrative() && $this->isInvisibleCaptcha( $field ) )
+            ->each( fn ( FormField $field ): FormField => $field->withSettingsForm( $this->form ) )
+            ->values();
+    }
+
     // =========================================
     // Navigation Methods
     // =========================================
@@ -681,12 +707,16 @@ class FormRenderer extends Component
     {
         $this->resetReadOnlyValues();
 
+        // An invisible CAPTCHA gets its token when the form is submitted, so
+        // it is checked with all fields on submit, not when leaving its step
+        $fields = $this->currentFields->reject( fn ( FormField $field ): bool => $this->isInvisibleCaptcha( $field ) );
+
         $rules = $this->submissionService->buildValidationRules(
-            $this->currentFields,
+            $fields,
             $this->hiddenFields,
         );
 
-        $messages = $this->submissionService->buildValidationMessages( $this->currentFields );
+        $messages = $this->submissionService->buildValidationMessages( $fields );
 
         if ( empty( $rules ) ) {
             return true;
@@ -746,14 +776,12 @@ class FormRenderer extends Component
             $this->addError( "formData.{$fieldName}", $message );
         }
 
-        if ( $this->form->is_multi_step ) {
-            $stepId = $this->form->fields->firstWhere( 'name', array_key_first( $errors ) )?->step_id;
-            $index  = $this->steps->search( fn ( FormStep $step ): bool => $step->id === $stepId );
+        // An invisible CAPTCHA is rendered on the last step too, so the
+        // visitor stays there and the next submit fetches a new token
+        $failed = $this->form->fields->firstWhere( 'name', array_key_first( $errors ) );
 
-            if ( false !== $index ) {
-                $this->currentStepIndex = (int) $index;
-                $this->clearComputedProperties();
-            }
+        if ( $failed instanceof FormField && ! $this->isInvisibleCaptcha( $failed ) ) {
+            $this->goToStepOfField( $failed->name );
         }
 
         $this->dispatch( 'forms-captcha-reset', formId: $this->form->id );
@@ -918,6 +946,47 @@ class FormRenderer extends Component
     }
 
     /**
+     * Moves a multi-step form to the step that holds a field.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $fieldName  The field's name.
+     */
+    protected function goToStepOfField( string $fieldName ): void
+    {
+        if ( ! $this->form->is_multi_step ) {
+            return;
+        }
+
+        $field = $this->form->fields->firstWhere( 'name', $fieldName );
+
+        if ( ! $field instanceof FormField || null === $field->step_id ) {
+            return;
+        }
+
+        $index = $this->steps->search( fn ( FormStep $step ): bool => $step->id === $field->step_id );
+
+        if ( false !== $index && (int) $index !== $this->currentStepIndex ) {
+            $this->currentStepIndex = (int) $index;
+            $this->clearComputedProperties();
+        }
+    }
+
+    /**
+     * Checks whether a field is a CAPTCHA that runs when the form is submitted.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     *
+     * @return bool True for a CAPTCHA whose widget is invisible.
+     */
+    protected function isInvisibleCaptcha( FormField $field ): bool
+    {
+        return CaptchaFieldType::TYPE === $field->type && 'invisible' === ( CaptchaFieldType::widget( $field )['size'] ?? null );
+    }
+
+    /**
      * Clear computed properties to force recalculation.
      */
     protected function clearComputedProperties(): void
@@ -933,6 +1002,7 @@ class FormRenderer extends Component
             $this->fieldMap,
             $this->conditionalLogicConfig,
             $this->sectionMembers,
+            $this->deferredCaptchaFields,
         );
     }
 }
