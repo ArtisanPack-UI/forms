@@ -361,8 +361,16 @@ export function FormRenderer( {
 	// Form-level errors
 	const formErrors = errors._form;
 
+	// Enter in a field submits the form; before the last step it moves on instead, as in Blade
 	const handleFormSubmit = ( e: React.FormEvent ) => {
 		e.preventDefault();
+
+		if ( form.is_multi_step && currentStep < totalSteps - 1 ) {
+			nextStep();
+
+			return;
+		}
+
 		submit();
 	};
 

@@ -168,8 +168,16 @@ function setConfirmValue( field: FormField, text: string ): void {
 /** Whether the single-step form renders its submit button in the field row. */
 const isInline = computed( () => props.layout === 'inline' );
 
+/** Enter in a field submits the form; before the last step it moves on instead, as in Blade. */
 function handleFormSubmit( e: Event ): void {
 	e.preventDefault();
+
+	if ( form.value?.is_multi_step && currentStep.value < totalSteps.value - 1 ) {
+		nextStep();
+
+		return;
+	}
+
 	submit();
 }
 </script>

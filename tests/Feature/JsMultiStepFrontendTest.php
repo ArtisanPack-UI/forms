@@ -54,3 +54,17 @@ describe( 'invisible CAPTCHAs on other steps (RX2)', function (): void {
             ->toContain( 'v-for="field in offStepCaptchas"' );
     } );
 } );
+
+describe( 'Enter on a step before the last (RX5)', function (): void {
+    it( 'moves to the next step instead of submitting', function ( string $path, string $guard ): void {
+        $source  = jsMultiStepSource( $path );
+        $handler = substr( $source, (int) strpos( $source, 'handleFormSubmit' ), 400 );
+
+        expect( $handler )->toContain( $guard )
+            ->toContain( 'nextStep();' )
+            ->and( strpos( $handler, 'nextStep();' ) )->toBeLessThan( (int) strpos( $handler, 'submit();' ) );
+    } )->with( [
+        ['react/components/FormRenderer.tsx', 'if ( form.is_multi_step && currentStep < totalSteps - 1 ) {'],
+        ['vue/components/FormRenderer.vue', 'if ( form.value?.is_multi_step && currentStep.value < totalSteps.value - 1 ) {'],
+    ] );
+} );
