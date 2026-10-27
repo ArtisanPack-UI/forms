@@ -150,7 +150,7 @@
         aria-multiline="true"
         @class([
             'prose prose-sm max-w-none min-h-24 rounded-b-box border bg-base-100 px-4 py-2 focus:outline-2 focus:outline-offset-2 focus:outline-primary',
-            'empty:before:text-base-content/50 empty:before:content-[attr(data-placeholder)]',
+            'empty:before:text-base-content/70 empty:before:content-[attr(data-placeholder)]',
             $field->css_classes,
         ])
         x-bind:class="invalid ? 'border-error' : 'border-base-300'"

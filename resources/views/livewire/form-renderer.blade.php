@@ -94,7 +94,7 @@
                                     </button>
                                 @else
                                     <span
-                                        class="text-sm {{ $index > $currentStepIndex ? 'text-base-content/50' : '' }}"
+                                        class="text-sm {{ $index > $currentStepIndex ? 'text-base-content/70' : '' }}"
                                         @if($index === $currentStepIndex) aria-current="step" @endif
                                     >
                                         {{ $step->title }}
@@ -203,7 +203,7 @@
                     </div>
 
                     {{-- Keyboard navigation hint --}}
-                    <div class="mt-4 text-center text-xs text-base-content/40">
+                    <div class="mt-4 text-center text-xs text-base-content/70">
                         {!! __( 'Press :enter to continue', ['enter' => '<kbd class="kbd kbd-xs">Enter</kbd>'] ) !!}
                         @if(!$this->isFirstStep)
                             {!! __( 'or :escape to go back', ['escape' => '<kbd class="kbd kbd-xs">Escape</kbd>'] ) !!}
