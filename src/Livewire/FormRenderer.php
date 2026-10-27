@@ -35,6 +35,7 @@ use Exception;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -492,7 +493,7 @@ class FormRenderer extends Component
             if ( ! $this->validateAllFields() ) {
                 return;
             }
-        } catch ( \Illuminate\Validation\ValidationException $e ) {
+        } catch ( ValidationException $e ) {
             // Validation errors are handled by Livewire
             throw $e;
         }
@@ -729,6 +730,12 @@ class FormRenderer extends Component
 
     /**
      * Validate all form fields.
+     *
+     * Since 1.6.0, when a field on another step fails (a rule that depends on
+     * the time or the database can fail after its step passed), a multi-step
+     * form moves to that field's step so the visitor sees the error.
+     *
+     * @throws ValidationException When a field fails.
      */
     protected function validateAllFields(): bool
     {
@@ -745,7 +752,18 @@ class FormRenderer extends Component
             return true;
         }
 
-        $this->withResolvedOtherChoices()->validate( $rules, $messages );
+        try {
+            $this->withResolvedOtherChoices()->validate( $rules, $messages );
+        } catch ( ValidationException $e ) {
+            $field = $this->fieldForErrorKey( (string) array_key_first( $e->errors() ) );
+
+            // An invisible CAPTCHA is rendered on the last step too
+            if ( null !== $field && ! $this->isInvisibleCaptcha( $field ) ) {
+                $this->goToStepOfField( $field->name );
+            }
+
+            throw $e;
+        }
 
         return true;
     }
@@ -943,6 +961,34 @@ class FormRenderer extends Component
     protected function structuredValueChanged( string $fieldName ): void
     {
         $this->evaluateConditionalLogic();
+    }
+
+    /**
+     * Gets the field a validation error key belongs to.
+     *
+     * Keys look like `formData.{name}`, `formData.{name}.{part}` or
+     * `files.{name}.{index}`; an email's confirmation input and a phone's
+     * country selector belong to their field.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $key  The error key.
+     *
+     * @return FormField|null The field, or null when no field matches.
+     */
+    protected function fieldForErrorKey( string $key ): ?FormField
+    {
+        $name = explode( '.', (string) preg_replace( '/^(formData|files)\./', '', $key ), 2 )[0];
+
+        foreach ( [$name, (string) preg_replace( '/_(confirmation|country)$/', '', $name )] as $candidate ) {
+            $field = $this->form->fields->firstWhere( 'name', $candidate );
+
+            if ( $field instanceof FormField ) {
+                return $field;
+            }
+        }
+
+        return null;
     }
 
     /**
