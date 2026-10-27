@@ -1199,15 +1199,15 @@ return  [
          [
           'optional' => 
            [
-            'formData.checkbox_group.*.string' => 'Please choose one of the available options for Checkbox_group.',
-            'formData.checkbox_group.*.in'     => 'Please choose one of the available options for Checkbox_group.',
+            'formData.checkbox_group.*.string'             => 'Please choose one of the available options for Checkbox_group.',
+            'formData.checkbox_group.*.in'                 => 'Please choose one of the available options for Checkbox_group.',
             'formData.checkbox_group.forms_min_selections' => 'Please choose at least 1 option for Checkbox_group.',
           ],
           'required' => 
            [
-            'formData.checkbox_group.required' => 'The Checkbox_group field is required.',
-            'formData.checkbox_group.*.string' => 'Please choose one of the available options for Checkbox_group.',
-            'formData.checkbox_group.*.in'     => 'Please choose one of the available options for Checkbox_group.',
+            'formData.checkbox_group.required'             => 'The Checkbox_group field is required.',
+            'formData.checkbox_group.*.string'             => 'Please choose one of the available options for Checkbox_group.',
+            'formData.checkbox_group.*.in'                 => 'Please choose one of the available options for Checkbox_group.',
             'formData.checkbox_group.forms_min_selections' => 'Please choose at least 1 option for Checkbox_group.',
           ],
         ],
