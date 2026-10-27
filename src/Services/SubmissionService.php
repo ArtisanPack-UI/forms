@@ -632,7 +632,7 @@ class SubmissionService
         }
 
         $formData = $this->applyCalculations( $fields, $formData, false, $normalized );
-        $hidden   = array_filter( app( ConditionalLogicService::class )->getHiddenFields( $fields, $formData ) );
+        $hidden   = array_filter( app( ConditionalLogicService::class )->getHiddenFields( $fields, $formData, $normalized ) );
 
         if ( [] === $hidden ) {
             return $formData;

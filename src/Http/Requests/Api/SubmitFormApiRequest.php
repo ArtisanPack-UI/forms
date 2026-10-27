@@ -81,9 +81,11 @@ class SubmitFormApiRequest extends FormRequest
 
         $conditionalLogicService = app( ConditionalLogicService::class );
 
+        // The data was normalized in prepareForValidation()
         $hiddenFields = $conditionalLogicService->getHiddenFields(
             $form->fields,
             $data,
+            true,
         );
 
         $rules = [
@@ -172,6 +174,7 @@ class SubmitFormApiRequest extends FormRequest
         $hiddenFields            = $conditionalLogicService->getHiddenFields(
             $form->fields,
             $data,
+            true,
         );
 
         // Strip hidden field values from the data
@@ -222,6 +225,7 @@ class SubmitFormApiRequest extends FormRequest
         $hiddenFields            = $conditionalLogicService->getHiddenFields(
             $form->fields,
             $data,
+            true,
         );
 
         // Strip hidden field files

@@ -19,13 +19,17 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Services;
 
 use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ColorFieldType;
 use ArtisanPackUI\Forms\FieldTypes\CompositeFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ConsentFieldType;
 use ArtisanPackUI\Forms\FieldTypes\DateTimeFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
+use ArtisanPackUI\Forms\Support\NumberFormat;
+use ArtisanPackUI\Forms\Support\RichText;
 use ArtisanPackUI\Forms\Support\Sections;
+use ArtisanPackUI\Forms\Support\UrlSchemes;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -75,18 +79,31 @@ class ConditionalLogicService
      * and rules read a list's filled rows (none counts as empty) and a date
      * and time as `Y-m-d H:i`, as they are stored.
      *
+     * Values are read the way they are validated and stored, so the server
+     * and the browser (`resources/js/shared/conditionalLogic.ts`) agree: a
+     * number typed in its field's format is a plain decimal, a URL typed
+     * without a scheme gets one, a color is `#rrggbb` and emptied rich text
+     * is blank (see SubmissionService::normalizeSubmittedValues()). Pass
+     * `$normalized` when the values already went through that, since a
+     * `decimal_comma` number is not read the same way twice.
+     *
      * @since 1.0.0
      *
-     * @param Collection<int, FormField> $fields   The form fields.
-     * @param array<string, mixed>        $formData The form data.
+     * @param Collection<int, FormField> $fields     The form fields.
+     * @param array<string, mixed>        $formData   The form data.
+     * @param bool                        $normalized Whether the values were already normalized (since 1.6.0).
      *
      * @return array<string, bool> Map of field names to visibility (true = visible).
      */
-    public function evaluateAllFields( Collection $fields, array $formData ): array
+    public function evaluateAllFields( Collection $fields, array $formData, bool $normalized = false ): array
     {
         $this->buildFieldMaps( $fields );
 
         $visibility = [];
+
+        if ( ! $normalized ) {
+            $formData = $this->normalizeForEvaluation( $fields, $formData );
+        }
 
         foreach ( $fields as $field ) {
             if ( ListFieldType::TYPE === $field->type ) {
@@ -108,14 +125,15 @@ class ConditionalLogicService
      *
      * @since 1.0.0
      *
-     * @param Collection<int, FormField> $fields   The form fields.
-     * @param array<string, mixed>        $formData The form data.
+     * @param Collection<int, FormField> $fields     The form fields.
+     * @param array<string, mixed>        $formData   The form data.
+     * @param bool                        $normalized Whether the values were already normalized (since 1.6.0; see evaluateAllFields()).
      *
      * @return array<string, bool> Map of field names to hidden state (true = hidden).
      */
-    public function getHiddenFields( Collection $fields, array $formData ): array
+    public function getHiddenFields( Collection $fields, array $formData, bool $normalized = false ): array
     {
-        $visibility = $this->evaluateAllFields( $fields, $formData );
+        $visibility = $this->evaluateAllFields( $fields, $formData, $normalized );
 
         return array_map( fn ( bool $visible ) => ! $visible, $visibility );
     }
@@ -384,6 +402,41 @@ class ConditionalLogicService
         $logic['rules'] = array_values( $logic['rules'] );
 
         return $logic;
+    }
+
+    /**
+     * Reads typed values the way they are validated and stored, for evaluating rules.
+     *
+     * Works on a copy: the caller's data is not changed.
+     *
+     * @since 1.6.0
+     *
+     * @param Collection<int, FormField> $fields   The form fields.
+     * @param array<string, mixed>        $formData The typed values keyed by field name.
+     *
+     * @return array<string, mixed> The values.
+     */
+    protected function normalizeForEvaluation( Collection $fields, array $formData ): array
+    {
+        foreach ( $fields as $field ) {
+            if ( ! array_key_exists( $field->name, $formData ) ) {
+                continue;
+            }
+
+            $value = $formData[ $field->name ];
+
+            if ( 'number' === $field->type && null !== ( $format = $field->getNumberFormat() ) ) {
+                $formData[ $field->name ] = NumberFormat::normalize( $value, $format );
+            } elseif ( 'url' === $field->type ) {
+                $formData[ $field->name ] = UrlSchemes::withScheme( $value, $field->getAllowedUrlSchemes() );
+            } elseif ( ColorFieldType::TYPE === $field->type ) {
+                $formData[ $field->name ] = ColorFieldType::normalizeValue( $value );
+            } elseif ( $field->usesRichText() ) {
+                $formData[ $field->name ] = RichText::blankIfEmpty( $value );
+            }
+        }
+
+        return $formData;
     }
 
     /**
