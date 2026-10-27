@@ -19,6 +19,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Services;
 
 use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
+use ArtisanPackUI\Forms\FieldTypes\CheckboxFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ColorFieldType;
 use ArtisanPackUI\Forms\FieldTypes\CompositeFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ConsentFieldType;
@@ -216,6 +217,9 @@ class ConditionalLogicService
         } elseif ( is_array( $fieldValue ) && 'consent' === $field?->type ) {
             // A stored consent value records the text agreed to; rules test whether it was given
             $fieldValue = ConsentFieldType::isConsented( $fieldValue );
+        } elseif ( $field?->fieldType() instanceof CheckboxFieldType || $field?->fieldType() instanceof ConsentFieldType ) {
+            // A checkbox, toggle or consent box is checked or not, whether sent as true, '1' or 'on' (since 1.6.0)
+            $fieldValue = $this->isChecked( $fieldValue );
         } elseif ( is_array( $fieldValue ) && [] !== $fieldValue && ! array_is_list( $fieldValue ) ) {
             // A rule on a whole composite field compares its formatted value, never the array
             $fieldValue = $this->formatCompositeValue( $field, $fieldValue );
@@ -650,6 +654,10 @@ class ConditionalLogicService
     /**
      * Checks if a value is empty.
      *
+     * Since 1.6.0, `false` (an unchecked box) is empty and a number, even
+     * `0`, is not, matching `isEmpty()` in
+     * `resources/js/shared/conditionalLogic.ts`.
+     *
      * @since 1.0.0
      *
      * @param mixed $value The value to check.
@@ -660,6 +668,15 @@ class ConditionalLogicService
     {
         if ( null === $value ) {
             return true;
+        }
+
+        // An unchecked box is empty; a number, even 0, is not (since 1.6.0)
+        if ( is_bool( $value ) ) {
+            return ! $value;
+        }
+
+        if ( is_int( $value ) || is_float( $value ) ) {
+            return false;
         }
 
         if ( is_string( $value ) ) {
