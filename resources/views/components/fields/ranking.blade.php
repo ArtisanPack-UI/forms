@@ -148,7 +148,7 @@
     @endif
 
     @if(filled($error))
-        <p class="fieldset-label text-error" id="{{ $field->domId('error') }}" role="alert">{{ $error }}</p>
+        <p class="fieldset-label text-error" id="{{ $field->domId('error') }}">{{ $error }}</p>
     @endif
 
     <div wire:ignore class="sr-only" aria-live="polite" aria-atomic="true" x-text="announcement"></div>

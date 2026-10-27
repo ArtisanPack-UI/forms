@@ -156,7 +156,7 @@
     @endif
 
     @if($hasErrors)
-        <p class="fieldset-label text-error" id="{{ $field->domId('error') }}" role="alert">
+        <p class="fieldset-label text-error" id="{{ $field->domId('error') }}">
             {{ filled($error) ? $error : trans_choice( 'Please fix :count highlighted entry in :field.|Please fix :count highlighted entries in :field.', $cellErrorCount, ['count' => $cellErrorCount, 'field' => $field->label] ) }}
         </p>
     @endif

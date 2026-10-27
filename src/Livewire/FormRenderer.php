@@ -425,8 +425,14 @@ class FormRenderer extends Component
         }
 
         // Validate current step fields before proceeding
-        if ( ! $this->validateCurrentStep() ) {
-            return;
+        try {
+            if ( ! $this->validateCurrentStep() ) {
+                return;
+            }
+        } catch ( ValidationException $e ) {
+            $this->dispatchValidationFailed( $e );
+
+            throw $e;
         }
 
         $this->currentStepIndex++;
@@ -478,7 +484,17 @@ class FormRenderer extends Component
                 $this->currentStepIndex = $i;
                 $this->clearComputedProperties();
 
-                if ( ! $this->validateCurrentStep() ) {
+                try {
+                    $passed = $this->validateCurrentStep();
+                } catch ( ValidationException $e ) {
+                    // Show the step whose fields failed
+                    $this->clearComputedProperties();
+                    $this->dispatchValidationFailed( $e );
+
+                    throw $e;
+                }
+
+                if ( ! $passed ) {
                     // Restore original index on validation failure
                     $this->currentStepIndex = $originalStepIndex;
                     $this->clearComputedProperties();
@@ -528,7 +544,9 @@ class FormRenderer extends Component
                 return;
             }
         } catch ( ValidationException $e ) {
-            // Validation errors are handled by Livewire
+            // Livewire shows the errors; the renderer announces them and focuses the first
+            $this->dispatchValidationFailed( $e );
+
             throw $e;
         }
 
@@ -998,6 +1016,22 @@ class FormRenderer extends Component
     protected function structuredValueChanged( string $fieldName ): void
     {
         $this->evaluateConditionalLogic();
+    }
+
+    /**
+     * Tells the renderer's script that validation failed.
+     *
+     * Dispatches `forms-validation-failed` with the form ID and the number
+     * of fields with errors, so the script announces them and moves focus to
+     * the first invalid control.
+     *
+     * @since 1.6.0
+     *
+     * @param  ValidationException  $exception  The validation failure.
+     */
+    protected function dispatchValidationFailed( ValidationException $exception ): void
+    {
+        $this->dispatch( 'forms-validation-failed', formId: $this->form->id, count: count( $exception->errors() ) );
     }
 
     /**

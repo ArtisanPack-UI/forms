@@ -3,6 +3,7 @@
     wire:ignore.self
     x-data="formRenderer()"
     x-on:keydown="handleKeydown($event)"
+    x-on:forms-validation-failed.window="onValidationFailed($event)"
 >
     {{-- ARIA live region for step announcements --}}
     <div
@@ -248,7 +249,9 @@
         totalSteps: @js($this->totalSteps),
         formId: @js($form->id),
         translations: {
-            stepAnnouncement: @js(__( 'Now on step :current of :total' ))
+            stepAnnouncement: @js(__( 'Now on step :current of :total' )),
+            validationFailedOne: @js(__( 'There is 1 error in the form. Please fix it and try again.' )),
+            validationFailedMany: @js(__( 'There are :count errors in the form. Please fix them and try again.' ))
         }
     };
 </script>
@@ -265,11 +268,14 @@
             currentStepIndex: 0,
             totalSteps: 1,
             translations: {},
+            formId: null,
 
             init() {
                 // Load config from window object using form ID from $wire
                 const formId = this.$wire.get('form.id');
                 const config = window.__formRendererConfig?.[formId] || {};
+
+                this.formId = formId;
 
                 this.fieldMap = config.fieldMap || {};
                 this.conditionalLogic = config.conditionalLogic || {};
@@ -371,19 +377,82 @@
             },
 
             /**
+             * Announce a failed submission or step and focus the first invalid control
+             */
+            onValidationFailed(event) {
+                const detail = Array.isArray(event.detail) ? event.detail[0] : event.detail;
+
+                if (!detail || String(detail.formId) !== String(this.formId)) return;
+
+                const count = Number(detail.count) || 1;
+                const template = count === 1
+                    ? (this.translations.validationFailedOne || 'There is 1 error in the form. Please fix it and try again.')
+                    : (this.translations.validationFailedMany || 'There are :count errors in the form. Please fix them and try again.');
+
+                const announcer = this.$refs.announcer;
+
+                if (announcer) {
+                    // Cleared first, so the same message is announced again
+                    announcer.textContent = '';
+                    this.$nextTick(() => { announcer.textContent = template.replaceAll(':count', count); });
+                }
+
+                this.$nextTick(() => this.focusFirstInvalid());
+            },
+
+            /**
+             * Whether an element can take focus: enabled and not hidden by conditional logic
+             */
+            isFocusable(el) {
+                return Boolean(el)
+                    && !el.disabled
+                    && !el.closest('[inert], [aria-hidden="true"]')
+                    && el.offsetParent !== null;
+            },
+
+            /**
+             * Focus the first invalid control; returns whether one was focused
+             */
+            focusFirstInvalid() {
+                const candidates = this.$root.querySelectorAll(
+                    '[aria-invalid="true"], ' +
+                    'fieldset[aria-describedby*="error-"] :is(input:not([type="hidden"]), select, textarea, [contenteditable="true"])'
+                );
+
+                for (const el of candidates) {
+                    if (this.isFocusable(el)) {
+                        el.focus();
+
+                        return true;
+                    }
+                }
+
+                return false;
+            },
+
+            /**
              * Focus the first visible field in the current step
              */
             focusFirstField() {
                 this.$nextTick(() => {
+                    // A step change after a failed submit goes to the error
+                    if (this.focusFirstInvalid()) return;
+
                     const stepContent = this.$refs.stepContent;
-                    if (stepContent) {
-                        const firstInput = stepContent.querySelector(
-                            'input:not([type="hidden"]):not([disabled]), ' +
-                            'select:not([disabled]), ' +
-                            'textarea:not([disabled])'
-                        );
-                        if (firstInput) {
-                            firstInput.focus();
+                    if (!stepContent) return;
+
+                    const inputs = stepContent.querySelectorAll(
+                        'input:not([type="hidden"]):not([disabled]), ' +
+                        'select:not([disabled]), ' +
+                        'textarea:not([disabled]), ' +
+                        '[contenteditable="true"]'
+                    );
+
+                    for (const input of inputs) {
+                        if (this.isFocusable(input)) {
+                            input.focus();
+
+                            return;
                         }
                     }
                 });
