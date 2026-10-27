@@ -337,7 +337,7 @@ class SubmissionService
 
         // Check submission time - if too fast, it's a bot
         if ( null !== $formLoadedAt ) {
-            $elapsed = time() - $formLoadedAt;
+            $elapsed = now()->getTimestamp() - $formLoadedAt;
             if ( $elapsed < self::MIN_SUBMISSION_TIME ) {
                 $this->logSecurityEvent( 'submission_too_fast', [
                     'form_id'         => $formId,
@@ -831,7 +831,9 @@ class SubmissionService
             foreach ( $formData as $fieldName => $value ) {
                 $field = $fields->get( $fieldName );
 
-                if ( ! $field ) {
+                // Layout fields (heading, paragraph, divider, html) collect
+                // nothing and have no rules, so a value sent for one is dropped
+                if ( ! $field || $field->isLayoutField() ) {
                     continue;
                 }
 

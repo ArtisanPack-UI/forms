@@ -89,7 +89,7 @@ describe( 'validation and storage', function (): void {
 
     it( 'stores a score from the Livewire renderer', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.recommend', '9' )
             ->call( 'submit' )
             ->assertHasNoErrors();

@@ -164,6 +164,10 @@ function formatFileSize( bytes: number ): string {
 	return bytes >= 1048576 ? `${( bytes / 1048576 ).toFixed( 1 )} MB` : `${Math.max( 1, Math.round( bytes / 1024 ) )} KB`;
 }
 
+/**
+ * Store a single-file field's file. Several files dropped at once keep only
+ * the first, since the field takes one file (since 1.6.0).
+ */
 function handleFilesSelected( fileList: FileList | null ): void {
 	if ( !fileList || fileList.length === 0 ) {
 		emit( 'fileChange', [] as File[] );
@@ -171,11 +175,7 @@ function handleFilesSelected( fileList: FileList | null ): void {
 		return;
 	}
 
-	if ( fileList.length === 1 ) {
-		emit( 'fileChange', fileList[0] );
-	} else {
-		emit( 'fileChange', Array.from( fileList ) );
-	}
+	emit( 'fileChange', fileList[0] );
 }
 </script>
 

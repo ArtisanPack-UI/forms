@@ -113,7 +113,7 @@ describe( 'validation', function (): void {
 
     it( 'normalizes and validates in the Livewire renderer', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.brand_color', '#F80' )
             ->call( 'submit' )
             ->assertHasNoErrors();

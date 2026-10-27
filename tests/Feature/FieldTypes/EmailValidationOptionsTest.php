@@ -106,7 +106,7 @@ describe( 'submission', function (): void {
         $this->email->update( ['validation_rules' => ['blocked_domains' => ['gmail.com']]] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.email', 'jo@Gmail.com' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.email' => SubmissionRules::EMAIL_DOMAIN] )

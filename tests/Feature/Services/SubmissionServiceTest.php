@@ -97,6 +97,34 @@ describe( 'SubmissionService', function (): void {
 
             expect( $submission->values )->toHaveCount( 1 );
         } );
+
+        it( 'does not store values sent for layout fields (issue #152)', function ( string $type ): void {
+            $form = Form::factory()->create();
+            FormField::factory()->for( $form )->create( ['name' => 'intro', 'type' => $type] );
+            FormField::factory()->for( $form )->create( ['name' => 'name', 'type' => 'text'] );
+
+            $submission = $this->service->create( $form, [
+                'intro' => [[1]],
+                'name'  => 'John Doe',
+            ] );
+
+            expect( $submission->values->pluck( 'field_name' )->all() )->toBe( ['name'] );
+        } )->with( ['heading', 'paragraph', 'divider', 'html', 'section'] );
+
+        it( 'drops layout field values sent to the submit API (issue #152)', function (): void {
+            $form = Form::factory()->create( ['is_active' => true] );
+            FormField::factory()->for( $form )->create( ['name' => 'intro', 'type' => 'heading'] );
+            FormField::factory()->for( $form )->create( ['name' => 'name', 'type' => 'text'] );
+
+            $this->postJson( route( 'api.forms.submit', $form ), [
+                'data'            => ['intro' => [[1]], 'name' => 'John Doe'],
+                '_form_loaded_at' => time() - 10,
+            ] )->assertCreated();
+
+            $submission = FormSubmission::firstOrFail();
+
+            expect( $submission->values->pluck( 'field_name' )->all() )->toBe( ['name'] );
+        } );
     } );
 
     describe( 'file uploads', function (): void {

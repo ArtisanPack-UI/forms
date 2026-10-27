@@ -94,7 +94,7 @@ describe( 'Livewire', function (): void {
 
     it( 'stores the order', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->call( 'moveRankingItem', 'priorities', 1, 0 )
             ->call( 'submit' )
             ->assertHasNoErrors();

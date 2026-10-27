@@ -117,7 +117,7 @@ describe( 'word limit', function (): void {
         FormField::factory()->for( $this->form )->create( ['type' => 'textarea', 'name' => 'essay', 'validation_rules' => ['max_words' => 3]] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.essay', 'one two three four' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.essay' => 'forms_max_words'] )

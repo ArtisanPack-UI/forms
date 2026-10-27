@@ -142,7 +142,7 @@ describe( 'rendering', function (): void {
 
     it( 'submits the chosen value from the Livewire renderer', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.shirt', 'blue' )
             ->call( 'submit' )
             ->assertHasNoErrors();

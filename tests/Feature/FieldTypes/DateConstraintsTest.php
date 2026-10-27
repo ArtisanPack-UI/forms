@@ -144,7 +144,7 @@ describe( 'submission', function (): void {
         $this->date->update( ['validation_rules' => ['date_range' => 'no_past']] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.when', '2026-06-14' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.when' => 'after_or_equal'] )
@@ -158,10 +158,13 @@ describe( 'submission', function (): void {
 
         $response = $this->postJson( route( 'api.forms.submit', $this->form ), [
             'data'            => ['when' => $date],
-            '_form_loaded_at' => time() - 10,
+            '_form_loaded_at' => now()->subSeconds( 10 )->getTimestamp(),
         ] );
 
         $passes ? $response->assertCreated() : $response->assertUnprocessable()->assertJsonValidationErrors( 'data.when' );
+
+        // A 201 alone could be the spam check's silent success, so check the save
+        expect( $this->form->submissions()->count() )->toBe( $passes ? 1 : 0 );
     } )->with( [
         'saturday'      => ['2026-06-13', false],
         'disabled date' => ['2026-06-17', false],
@@ -172,7 +175,7 @@ describe( 'submission', function (): void {
         $this->date->update( ['validation_rules' => ['min_age' => 18, 'max_age' => 65]] );
 
         $test = Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.when', $birthdate )
             ->call( 'submit' );
 
@@ -190,7 +193,7 @@ it( 'rejects a birthdate written another way, so it cannot skip the age check', 
 
     $this->postJson( route( 'api.forms.submit', $this->form ), [
         'data'            => ['when' => $birthdate],
-        '_form_loaded_at' => time() - 10,
+        '_form_loaded_at' => now()->subSeconds( 10 )->getTimestamp(),
     ] )->assertUnprocessable()->assertJsonValidationErrors( ['data.when' => 'Please enter a valid date for When.'] );
 } )->with( [
     'words'     => ['June 15 2015'],
@@ -203,7 +206,7 @@ it( 'requires YYYY-MM-DD dates even without disabled days or ages', function ():
 
     $this->postJson( route( 'api.forms.submit', $this->form ), [
         'data'            => ['when' => 'June 15 2015'],
-        '_form_loaded_at' => time() - 10,
+        '_form_loaded_at' => now()->subSeconds( 10 )->getTimestamp(),
     ] )->assertUnprocessable()->assertJsonValidationErrors( ['data.when' => 'Please enter a valid date for When.'] );
 } );
 

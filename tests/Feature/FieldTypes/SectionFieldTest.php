@@ -133,7 +133,7 @@ describe( 'conditional logic', function (): void {
 
     it( 'skips the validation of a hidden section\'s fields in Livewire and the API', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.attending', 'no' )
             ->call( 'submit' )
             ->assertHasNoErrors()
@@ -154,7 +154,7 @@ describe( 'conditional logic', function (): void {
 
     it( 'does not store the values of a hidden section\'s fields from Livewire', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.attending', 'no' )
             ->set( 'formData.guest_name', str_repeat( 'x', 5000 ) )
             ->set( 'formData.notes', 'Kept' )
@@ -215,7 +215,7 @@ describe( 'rendering', function (): void {
         $this->guests->update( ['field_config' => ['collapsible' => true, 'collapsed' => true]] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.attending', 'yes' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.guest_name'] )

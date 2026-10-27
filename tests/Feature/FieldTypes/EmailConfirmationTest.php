@@ -54,7 +54,7 @@ describe( 'settings', function (): void {
 describe( 'validation', function (): void {
     it( 'rejects a mismatched confirmation in Livewire', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.email', 'jane@example.com' )
             ->set( 'formData.email_confirmation', 'jane@example.org' )
             ->call( 'submit' )

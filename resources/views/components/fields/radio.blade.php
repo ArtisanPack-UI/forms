@@ -15,6 +15,7 @@
     @if($field->label) aria-labelledby="label-{{ $field->name }}" @endif
     @if($field->is_required) aria-required="true" @endif
     @if($field->isReadOnly()) aria-readonly="true" @endif
+    @if($error) aria-invalid="true" @endif
     @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
 >
     @foreach($options as $index => $option)

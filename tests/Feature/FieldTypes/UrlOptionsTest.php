@@ -88,7 +88,7 @@ describe( 'settings and rules', function (): void {
 describe( 'submission', function (): void {
     it( 'validates and stores an address typed without a scheme in the Livewire renderer', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.website', 'example.com/about' )
             ->call( 'submit' )
             ->assertHasNoErrors();
@@ -119,7 +119,7 @@ describe( 'submission', function (): void {
         $this->url->update( ['validation_rules' => ['allowed_schemes' => ['https']]] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.website', 'http://example.com' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.website' => 'url'] );

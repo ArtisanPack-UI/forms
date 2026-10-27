@@ -100,7 +100,7 @@ describe( 'validation rules', function (): void {
 describe( 'Livewire uploads', function (): void {
     it( 'stores one upload per file and one value listing them in order', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'files.docs.fa', UploadedFile::fake()->create( 'first.pdf', 50, 'application/pdf' ) )
             ->set( 'files.docs.fb', UploadedFile::fake()->create( 'second.pdf', 50, 'application/pdf' ) )
             ->call( 'submit' )
@@ -123,7 +123,7 @@ describe( 'Livewire uploads', function (): void {
 
     it( 'removes one file before submitting', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'files.docs.fa', UploadedFile::fake()->create( 'first.pdf', 50, 'application/pdf' ) )
             ->set( 'files.docs.fb', UploadedFile::fake()->create( 'second.pdf', 50, 'application/pdf' ) )
             ->call( 'removeFile', 'docs', 'fa' )
@@ -134,7 +134,7 @@ describe( 'Livewire uploads', function (): void {
     } );
 
     it( 'rejects too many files, too large a total and a disallowed file', function (): void {
-        $component = Livewire::test( FormRenderer::class, ['form' => $this->form] )->set( 'formLoadedAt', time() - 10 );
+        $component = Livewire::test( FormRenderer::class, ['form' => $this->form] )->afterSpamDelay();
 
         foreach ( ['a', 'b', 'c', 'd'] as $key ) {
             $component->set( "files.docs.{$key}", UploadedFile::fake()->create( "{$key}.pdf", 10, 'application/pdf' ) );
@@ -143,14 +143,14 @@ describe( 'Livewire uploads', function (): void {
         $component->call( 'submit' )->assertHasErrors( ['files.docs' => 'max'] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'files.docs.a', UploadedFile::fake()->create( 'a.pdf', 180, 'application/pdf' ) )
             ->set( 'files.docs.b', UploadedFile::fake()->create( 'b.pdf', 180, 'application/pdf' ) )
             ->call( 'submit' )
             ->assertHasErrors( ['files.docs' => 'forms_total_size'] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'files.docs.a', UploadedFile::fake()->create( 'a.exe', 10 ) )
             ->call( 'submit' )
             ->assertHasErrors( ['files.docs.a' => 'mimes'] )
@@ -163,7 +163,7 @@ describe( 'Livewire uploads', function (): void {
         $this->field->update( ['is_required' => true] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->call( 'submit' )
             ->assertHasErrors( ['files.docs' => 'required'] );
     } );
@@ -179,7 +179,7 @@ describe( 'hardening', function (): void {
         ]] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.show_docs', 'no' )
             ->set( 'files.docs.a', UploadedFile::fake()->create( 'too-big.pdf', 500, 'application/pdf' ) )
             ->call( 'submit' )
@@ -191,7 +191,7 @@ describe( 'hardening', function (): void {
 
     it( 'only returns uploads of the value\'s own submission', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'files.docs.a', UploadedFile::fake()->create( 'mine.pdf', 10, 'application/pdf' ) )
             ->call( 'submit' );
 
@@ -234,7 +234,7 @@ describe( 'single files', function (): void {
         $this->field->update( ['field_config' => ['allowed_types' => ['pdf']]] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'files.docs', UploadedFile::fake()->create( 'only.pdf', 10, 'application/pdf' ) )
             ->call( 'submit' )
             ->assertHasNoErrors();
@@ -244,6 +244,53 @@ describe( 'single files', function (): void {
         expect( $value->value_array )->toBeNull()
             ->and( $value->display_value )->toBe( 'only.pdf' )
             ->and( ( new FormSubmissionValueResource( $value ) )->toArray( Request::create( '/' ) )['upload_ids'] )->toBe( [$value->upload_id] );
+    } );
+} );
+
+describe( 'single-file fields given several files (issue #146)', function (): void {
+    beforeEach( function (): void {
+        $this->field->update( ['field_config' => ['allowed_types' => ['pdf']]] );
+    } );
+
+    it( 'rejects a list of files on a single-file field in Livewire instead of dropping them', function (): void {
+        Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
+            ->afterSpamDelay()
+            ->set( 'files.docs.fa', UploadedFile::fake()->create( 'first.pdf', 10, 'application/pdf' ) )
+            ->set( 'files.docs.fb', UploadedFile::fake()->create( 'second.pdf', 10, 'application/pdf' ) )
+            ->call( 'submit' )
+            ->assertHasErrors( ['files.docs' => 'file'] );
+
+        expect( FormSubmission::count() )->toBe( 0 )
+            ->and( FormUpload::count() )->toBe( 0 );
+    } );
+
+    it( 'rejects files[name][] on a single-file field through the API', function (): void {
+        $this->post( route( 'api.forms.submit', $this->form ), [
+            'data'            => [],
+            'files'           => ['docs' => [
+                UploadedFile::fake()->create( 'one.pdf', 20, 'application/pdf' ),
+                UploadedFile::fake()->create( 'two.pdf', 20, 'application/pdf' ),
+            ]],
+            '_form_loaded_at' => time() - 10,
+        ], ['Accept' => 'application/json'] )->assertUnprocessable()->assertJsonValidationErrors( 'files.docs' );
+
+        expect( FormSubmission::count() )->toBe( 0 );
+    } );
+
+    it( 'keeps only the first dropped file in the React and Vue single-file inputs', function (): void {
+        $react = file_get_contents( __DIR__ . '/../../../resources/js/react/components/fields/AdvancedField.tsx' );
+        $vue   = file_get_contents( __DIR__ . '/../../../resources/js/vue/components/fields/AdvancedField.vue' );
+
+        $single = substr( $react, strpos( $react, 'function SingleFileField(' ) );
+        $single = substr( $single, 0, strpos( $single, "\n}\n" ) );
+
+        $handler = substr( $vue, strpos( $vue, 'function handleFilesSelected(' ) );
+        $handler = substr( $handler, 0, strpos( $handler, "\n}\n" ) );
+
+        expect( $single )->toContain( 'onFileChange( fileList[0] );' )
+            ->not->toContain( 'Array.from( fileList )' )
+            ->and( $handler )->toContain( "emit( 'fileChange', fileList[0] );" )
+            ->not->toContain( 'Array.from( fileList )' );
     } );
 } );
 
@@ -266,7 +313,7 @@ describe( 'rendering', function (): void {
 
     it( 'shows the first error of any one file', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'files.docs.zz', UploadedFile::fake()->create( 'big.pdf', 250, 'application/pdf' ) )
             ->call( 'submit' )
             ->assertSee( 'The Documents must not exceed the maximum file size.' );

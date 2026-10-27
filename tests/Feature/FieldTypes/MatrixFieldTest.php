@@ -142,7 +142,7 @@ describe( 'validation and storage', function (): void {
 
     it( 'validates rows in the Livewire renderer', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.service.fast', '3' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.service.friendly' => 'required'] )

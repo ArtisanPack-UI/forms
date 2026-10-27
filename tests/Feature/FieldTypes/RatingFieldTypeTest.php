@@ -214,7 +214,7 @@ describe( 'rating Livewire renderer', function (): void {
         FormField::factory()->for( $form )->required()->create( ['type' => 'rating', 'name' => 'stars'] );
 
         Livewire::test( FormRenderer::class, ['form' => $form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.stars', '0' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.stars' => 'gt'] )

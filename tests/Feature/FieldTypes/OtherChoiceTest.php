@@ -88,7 +88,7 @@ describe( '"Other" choice on a radio field', function (): void {
 
     it( 'stores the typed text and shows it as "Other: …"', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.source', '__other__' )
             ->assertSee( 'Other, please specify' )
             ->set( 'otherValues.source', '  A podcast  ' )
@@ -104,7 +104,7 @@ describe( '"Other" choice on a radio field', function (): void {
 
     it( 'requires the text when the choice is selected', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.source', '__other__' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.source' => SubmissionRules::OTHER_CHOICE] )
@@ -114,7 +114,7 @@ describe( '"Other" choice on a radio field', function (): void {
 
     it( 'still stores a listed option', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.source', 'friend' )
             ->set( 'otherValues.source', 'ignored' )
             ->call( 'submit' )
@@ -164,7 +164,7 @@ describe( '"Other" choice on a checkbox group', function (): void {
 
     it( 'stores the text in the value array and labels it', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.topics', ['news', '__other__'] )
             ->set( 'otherValues.topics', 'Gardening' )
             ->call( 'submit' )
@@ -178,7 +178,7 @@ describe( '"Other" choice on a checkbox group', function (): void {
 
     it( 'requires the text when the choice is checked', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.topics', ['__other__'] )
             ->call( 'submit' )
             ->assertHasErrors( 'formData.topics' );

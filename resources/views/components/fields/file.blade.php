@@ -109,11 +109,12 @@
             @if($accept) accept="{{ $accept }}" @endif
             @if($field->is_required) aria-required="true" @endif
             @if($error) aria-invalid="true" @endif
+            @unless(filled($field->label)) aria-label="{{ \Illuminate\Support\Str::headline($field->name) }}" @endunless
             @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
         />
     </div>
 
-    <ul wire:ignore class="flex flex-col gap-2" x-show="items.length > 0" aria-label="{{ __( 'Files for :field', ['field' => $field->label] ) }}">
+    <ul wire:ignore class="flex flex-col gap-2" x-show="items.length > 0" aria-label="{{ __( 'Files for :field', ['field' => filled($field->label) ? $field->label : \Illuminate\Support\Str::headline($field->name)] ) }}">
         <template x-for="item in items" x-bind:key="item.key">
             <li class="flex items-center gap-3 rounded-box bg-base-200 p-2">
                 <div class="min-w-0 grow">
@@ -157,6 +158,8 @@
     class="file-input file-input-bordered w-full {{ $field->css_classes }} @error('files.' . $field->name) file-input-error @enderror"
     @if($accept) accept="{{ $accept }}" @endif
     @if($field->is_required) required aria-required="true" @endif
+    @if($error) aria-invalid="true" @endif
+    @unless(filled($field->label)) aria-label="{{ \Illuminate\Support\Str::headline($field->name) }}" @endunless
     @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
 />
 

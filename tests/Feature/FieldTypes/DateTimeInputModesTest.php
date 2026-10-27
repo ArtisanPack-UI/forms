@@ -140,7 +140,7 @@ describe( 'date dropdowns and fields', function (): void {
         $this->date->update( ['field_config' => ['date_input' => 'dropdowns']] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.born', '2026-02-30' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.born' => 'date'] )
@@ -197,7 +197,7 @@ describe( 'time dropdowns', function (): void {
 
         $this->postJson( route( 'api.forms.submit', $this->form ), [
             'data'            => ['at' => '18:30'],
-            '_form_loaded_at' => time() - 10,
+            '_form_loaded_at' => now()->subSeconds( 10 )->getTimestamp(),
         ] )->assertCreated();
 
         expect( $this->form->submissions()->first()->values->firstWhere( 'field_name', 'at' )->value )->toBe( '18:30' );

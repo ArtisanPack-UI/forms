@@ -137,7 +137,7 @@ describe( 'submission', function (): void {
         $this->message->update( ['is_required' => true] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.message', '<p><br></p>' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.message' => 'required'] );
@@ -147,7 +147,7 @@ describe( 'submission', function (): void {
         $this->message->update( ['validation_rules' => ['max' => 10]] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.message', '<p><strong>Hello</strong> <span style="x">world</span></p><script>bad()</script>' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.message' => SubmissionRules::MAX_TEXT] )

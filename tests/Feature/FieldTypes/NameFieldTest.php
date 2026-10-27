@@ -114,7 +114,7 @@ describe( 'prefix and suffix choices', function (): void {
         $this->name->update( ['field_config' => ['name_format' => 'extended']] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.full_name.prefix', 'Captain' )
             ->set( 'formData.full_name.first', 'Jane' )
             ->set( 'formData.full_name.last', 'Doe' )
@@ -127,7 +127,7 @@ describe( 'prefix and suffix choices', function (): void {
 describe( 'validation and storage', function (): void {
     it( 'requires first and last on a required field', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.full_name.first', 'Jane' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.full_name.last' => 'required'] );
@@ -137,7 +137,7 @@ describe( 'validation and storage', function (): void {
         $this->name->update( ['field_config' => ['name_format' => 'extended']] );
 
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.full_name.prefix', 'Dr.' )
             ->set( 'formData.full_name.first', ' Jane ' )
             ->set( 'formData.full_name.last', 'Doe' )

@@ -134,7 +134,7 @@ describe( 'resolved choices', function (): void {
 
     it( 'show their label for a stored value', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.store', 'south' )
             ->call( 'submit' )
             ->assertHasNoErrors();
@@ -159,7 +159,7 @@ describe( 'resolved choices', function (): void {
 describe( 'validation against resolved choices', function (): void {
     it( 'rejects a value the source did not resolve', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.store', 'manual' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.store' => 'in'] )

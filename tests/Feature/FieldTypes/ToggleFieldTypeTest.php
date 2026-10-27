@@ -157,7 +157,7 @@ describe( 'toggle Livewire renderer', function (): void {
         FormField::factory()->for( $form )->required()->create( ['type' => 'toggle', 'name' => 'terms'] );
 
         Livewire::test( FormRenderer::class, ['form' => $form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.terms', false )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.terms' => 'accepted'] )

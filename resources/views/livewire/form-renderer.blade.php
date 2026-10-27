@@ -377,9 +377,9 @@
                         members.forEach((member) => { newHiddenFields[member] = true; });
                     }
                 }
+                // Only shown here: the server works out its own hiddenFields
+                // (locked since 1.6.0) whenever formData changes
                 this.hiddenFields = newHiddenFields;
-                // Sync hidden fields back to Livewire
-                this.$wire.set('hiddenFields', newHiddenFields);
             },
 
             /**

@@ -123,7 +123,7 @@ describe( 'validation', function (): void {
 
     it( 'names the field and the input in its messages', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.address.contact', 'not-an-email' )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.address.street' => 'required', 'formData.address.city' => 'required', 'formData.address.contact' => 'email'] )
@@ -149,7 +149,7 @@ describe( 'validation', function (): void {
 describe( 'storage and display', function (): void {
     it( 'stores the enabled inputs as an associative value array', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.address.street', '  1 Main St ' )
             ->set( 'formData.address.city', 'Springfield' )
             ->set( 'formData.address.line2', 'Hidden input' )

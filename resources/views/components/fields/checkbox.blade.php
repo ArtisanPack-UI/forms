@@ -10,6 +10,7 @@
         class="checkbox checkbox-primary {{ $field->css_classes }}"
         @if($field->is_required) required aria-required="true" @endif
         @if($field->isReadOnly()) disabled aria-readonly="true" @endif
+        @if($error) aria-invalid="true" @endif
         @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
     />
     <span @class(['label-text', 'sr-only' => 'hidden' === $field->getLabelPlacement()])>

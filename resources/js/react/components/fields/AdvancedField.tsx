@@ -161,7 +161,8 @@ function formatFileSize( bytes: number ): string {
 }
 
 /**
- * Renders a single-file upload field.
+ * Renders a single-file upload field. Several files dropped at once keep
+ * only the first, since the field takes one file (since 1.6.0).
  */
 function SingleFileField( { field, error, onFileChange, displayConfig }: FieldComponentProps ) {
 	const allowedTypes = getFileAccept( field );
@@ -190,11 +191,7 @@ function SingleFileField( { field, error, onFileChange, displayConfig }: FieldCo
 						return;
 					}
 
-					if ( fileList.length === 1 ) {
-						onFileChange( fileList[0] );
-					} else {
-						onFileChange( Array.from( fileList ) );
-					}
+					onFileChange( fileList[0] );
 				}}
 			/>
 			{limits.note}

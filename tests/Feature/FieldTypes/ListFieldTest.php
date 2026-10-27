@@ -177,6 +177,21 @@ describe( 'conditional logic', function (): void {
         expect( $service->getHiddenFields( $fields, ['attendees' => [['name' => '', 'email' => ' ']]] )['why_none'] )->toBeFalse()
             ->and( $service->getHiddenFields( $fields, ['attendees' => [['name' => 'Ada']]] )['why_none'] )->toBeTrue();
     } );
+
+    it( 'works hidden fields out again when a row is removed in Livewire', function (): void {
+        FormField::factory()->for( $this->form )->create( [
+            'type'              => 'text',
+            'name'              => 'why_none',
+            'conditional_logic' => ['action' => 'show', 'logic' => 'all', 'rules' => [['field' => 'attendees', 'operator' => 'is_empty']]],
+        ] );
+
+        // hiddenFields is locked, so the server must recalculate it itself
+        Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
+            ->set( 'formData.attendees.0.name', 'Ada' )
+            ->assertSet( 'hiddenFields.why_none', true )
+            ->call( 'removeListRow', 'attendees', 0 )
+            ->assertSet( 'hiddenFields.why_none', false );
+    } );
 } );
 
 describe( 'Livewire', function (): void {
@@ -213,7 +228,7 @@ describe( 'Livewire', function (): void {
 
     it( 'validates and stores the rows', function (): void {
         Livewire::test( FormRenderer::class, ['form' => $this->form->fresh()] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->set( 'formData.attendees.0', ['name' => 'Ada', 'email' => 'bad', 'role' => '', 'age' => ''] )
             ->call( 'submit' )
             ->assertHasErrors( ['formData.attendees.0.email' => 'email'] )
