@@ -100,6 +100,11 @@ const TYPE_VALIDATORS: Record<string, ( field: FormField, value: unknown ) => st
 /** Field types where min/max rules apply to string length (not numeric value). */
 const TEXT_LENGTH_FIELDS = new Set( ['text', 'email', 'phone', 'url', 'textarea', 'hidden'] );
 
+/** The name a message uses for a field: its label, or its name without one. */
+function fieldLabel( field: FormField ): string {
+	return field.label ?? field.name;
+}
+
 /**
  * Checks whether a required field is missing its value.
  *
@@ -157,7 +162,7 @@ export function validateField(
 	}
 
 	if ( field.is_required && isMissing( field, value, files ) ) {
-		return [field.required_message ?? `${field.label ?? field.name} is required.`];
+		return [field.required_message ?? t( 'The :field field is required.', { field: fieldLabel( field ) } )];
 	}
 
 	const errors = validateValue( field, value, files );
@@ -198,7 +203,7 @@ function validateValue(
 		const items = Array.isArray( value ) ? value : [value];
 
 		if ( items.some( ( item ) => item === OTHER_CHOICE_VALUE || String( item ).length > OTHER_CHOICE_MAX_LENGTH ) ) {
-			errors.push( `Please specify ${getOtherChoiceLabel( field )} (up to ${OTHER_CHOICE_MAX_LENGTH} characters).` );
+			errors.push( t( 'Please specify :other for :field (up to :max characters).', { other: getOtherChoiceLabel( field ), field: fieldLabel( field ), max: OTHER_CHOICE_MAX_LENGTH } ) );
 
 			return errors;
 		}
@@ -269,7 +274,7 @@ function validateValue(
 		// Email and URL checks read their own settings, so they run without validation rules (since 1.6.0)
 		if ( field.type === 'email' ) {
 			if ( !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test( value ) ) {
-				errors.push( 'Please enter a valid email address.' );
+				errors.push( t( 'Please enter a valid email address for :field.', { field: fieldLabel( field ) } ) );
 			} else if ( !isAcceptedEmailDomain( field, value ) ) {
 				errors.push( t( 'Please use an email address from an accepted domain.' ) );
 			}
@@ -280,7 +285,7 @@ function validateValue(
 			const schemes = getAllowedUrlSchemes( field );
 
 			if ( !isAllowedUrl( withUrlScheme( value, schemes ), schemes ) ) {
-				errors.push( 'Please enter a valid URL.' );
+				errors.push( t( 'Please enter a valid URL for :field.', { field: fieldLabel( field ) } ) );
 			}
 		}
 
@@ -300,7 +305,7 @@ function validateValue(
 		const num = Number( plain );
 
 		if ( plain.trim() === '' || isNaN( num ) ) {
-			errors.push( 'Please enter a valid number.' );
+			errors.push( t( 'Please enter a valid number for :field.', { field: fieldLabel( field ) } ) );
 		} else {
 			if ( isIntegerOnly( field ) && !Number.isInteger( num ) ) {
 				errors.push( t( 'Please enter a whole number.' ) );
@@ -327,11 +332,11 @@ function validateValue(
 		const length = Array.from( text ).length;
 
 		if ( minLength !== undefined && length < minLength ) {
-			errors.push( `Must be at least ${minLength} characters.` );
+			errors.push( t( 'The :field must be at least :min characters.', { field: fieldLabel( field ), min: minLength } ) );
 		}
 
 		if ( maxLength !== undefined && length > maxLength ) {
-			errors.push( `Must be no more than ${maxLength} characters.` );
+			errors.push( t( 'The :field may not be greater than :max characters.', { field: fieldLabel( field ), max: maxLength } ) );
 		}
 	}
 
@@ -341,7 +346,7 @@ function validateValue(
 		const regex = toClientPattern( rules.pattern );
 
 		if ( regex && !regex.test( value ) ) {
-			errors.push( 'The value does not match the required format.' );
+			errors.push( t( 'The value does not match the required format.' ) );
 		}
 	}
 
@@ -354,7 +359,7 @@ function validateValue(
 
 	// Time validation
 	if ( field.type === 'time' && typeof value === 'string' ) {
-		validateTimeRules( value, rules, errors );
+		validateTimeRules( field, value, rules, errors );
 	}
 
 	return errors;
@@ -462,11 +467,11 @@ function validateNumericRules(
 	const step = numericLimit( rules.step );
 
 	if ( min !== undefined && num < min ) {
-		errors.push( `Must be at least ${min}.` );
+		errors.push( t( 'The :field must be at least :min.', { field: fieldLabel( field ), min } ) );
 	}
 
 	if ( max !== undefined && num > max ) {
-		errors.push( `Must be no more than ${max}.` );
+		errors.push( t( 'The :field may not be greater than :max.', { field: fieldLabel( field ), max } ) );
 	}
 
 	if ( step !== undefined && step > 0 && !isOnStep( num, min ?? 0, step ) ) {
@@ -486,7 +491,7 @@ function validateDateField(
 	errors: string[],
 ): void {
 	if ( !parseIsoDate( value ) ) {
-		errors.push( 'Please enter a valid date.' );
+		errors.push( t( 'Please enter a valid date for :field.', { field: fieldLabel( field ) } ) );
 
 		return;
 	}
@@ -495,11 +500,11 @@ function validateDateField(
 
 	// `YYYY-MM-DD` dates compare correctly as strings
 	if ( minDate !== undefined && value < minDate ) {
-		errors.push( `Date must be on or after ${minDate}.` );
+		errors.push( t( 'The :field must be on or after :date.', { field: fieldLabel( field ), date: minDate } ) );
 	}
 
 	if ( maxDate !== undefined && value > maxDate ) {
-		errors.push( `Date must be on or before ${maxDate}.` );
+		errors.push( t( 'The :field must be on or before :date.', { field: fieldLabel( field ), date: maxDate } ) );
 	}
 
 	if ( !isAllowedDay( field, value ) ) {
@@ -568,12 +573,13 @@ const TIME_FORMAT_REGEX = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
  * Validates time min/max constraints.
  */
 function validateTimeRules(
+	field: FormField,
 	value: string,
 	rules: ValidationRules,
 	errors: string[],
 ): void {
 	if ( !TIME_FORMAT_REGEX.test( value ) ) {
-		errors.push( 'Please enter a valid time.' );
+		errors.push( t( 'Please enter a valid time for :field.', { field: fieldLabel( field ) } ) );
 
 		return;
 	}
@@ -583,11 +589,11 @@ function validateTimeRules(
 	const maxTime = stringLimit( rules.max_time );
 
 	if ( minTime !== undefined && TIME_FORMAT_REGEX.test( minTime ) && normalized < normalizeTime( minTime ) ) {
-		errors.push( `Time must be on or after ${minTime}.` );
+		errors.push( t( 'The :field must be on or after :date.', { field: fieldLabel( field ), date: minTime } ) );
 	}
 
 	if ( maxTime !== undefined && TIME_FORMAT_REGEX.test( maxTime ) && normalized > normalizeTime( maxTime ) ) {
-		errors.push( `Time must be on or before ${maxTime}.` );
+		errors.push( t( 'The :field must be on or before :date.', { field: fieldLabel( field ), date: maxTime } ) );
 	}
 }
 
@@ -600,7 +606,7 @@ function validateRating( field: FormField, value: unknown, errors: string[] ): v
 	const max = getRatingMax( field );
 
 	if ( !Number.isFinite( rating ) || rating < 0 || rating > max ) {
-		errors.push( `Please choose a rating from 0 to ${max}.` );
+		errors.push( t( 'The :field rating must be between 0 and :max.', { field: fieldLabel( field ), max } ) );
 
 		return;
 	}
@@ -608,7 +614,9 @@ function validateRating( field: FormField, value: unknown, errors: string[] ): v
 	const step = ratingAllowsHalf( field ) ? 0.5 : 1;
 
 	if ( Math.abs( rating / step - Math.round( rating / step ) ) > 1e-9 ) {
-		errors.push( step === 1 ? 'Please choose a whole star.' : 'Please choose a whole or half star.' );
+		errors.push( step === 1
+			? t( 'The :field rating must be a whole star.', { field: fieldLabel( field ) } )
+			: t( 'The :field rating must be a whole or half star.', { field: fieldLabel( field ) } ) );
 	}
 }
 
@@ -648,7 +656,7 @@ function validateFileRules(
 	const maxSize = getFileMaxSize( field );
 
 	if ( maxSize !== undefined && file.size > maxSize * 1024 ) {
-		errors.push( `${field.label ?? field.name}: File must be no larger than ${maxSize} KB.` );
+		errors.push( t( ':field: File must be no larger than :size KB.', { field: fieldLabel( field ), size: maxSize } ) );
 	}
 
 	const allowedTypes = getFileAllowedTypes( field );
@@ -658,7 +666,7 @@ function validateFileRules(
 		const extension = dot >= 0 ? file.name.slice( dot + 1 ).toLowerCase() : '';
 
 		if ( !allowedTypes.includes( extension ) ) {
-			errors.push( `${field.label ?? field.name}: File type "${extension || file.type}" is not allowed.` );
+			errors.push( t( ':field: File type ":type" is not allowed.', { field: fieldLabel( field ), type: extension || file.type } ) );
 		}
 	}
 }

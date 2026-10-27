@@ -234,7 +234,7 @@ export function SelectField( props: FieldComponentProps ) {
 				{...getInputLabelProps( field, layout, displayConfig, error )}
 				name={field.name}
 				value={String( value ?? '' )}
-				placeholder={field.placeholder ?? 'Select an option...'}
+				placeholder={field.placeholder ?? t( 'Select an option...' )}
 				error={error}
 				required={field.is_required}
 				className={field.css_classes ?? undefined}

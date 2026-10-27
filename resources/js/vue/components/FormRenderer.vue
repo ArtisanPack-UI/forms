@@ -19,6 +19,7 @@ import { getOffStepSubmitCaptchas } from '../../shared/captcha';
 import { getSubInputErrors } from '../../shared/composite';
 import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
 import { focusFirstInvalid } from '../../shared/focus';
+import { t } from '../../shared/i18n';
 import { getFieldSegments } from '../../shared/sections';
 import type { FieldSegment } from '../../shared/sections';
 import type { FormField, FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
@@ -220,18 +221,18 @@ function handleFormSubmit( e: Event ): void {
 
 	<!-- No form -->
 	<div v-else-if="!form" class="alert alert-error" role="alert">
-		<span>Form not found.</span>
+		<span>{{ t( 'Form not found.' ) }}</span>
 	</div>
 
 	<!-- Success state -->
 	<div v-else-if="isSubmitted" class="space-y-4">
-		<slot name="success" :message="form.success_message ?? 'Form submitted successfully.'">
+		<slot name="success" :message="form.success_message ?? t( 'Form submitted successfully.' )">
 			<div class="alert alert-success" role="status">
-				<span>{{ form.success_message ?? 'Form submitted successfully.' }}</span>
+				<span>{{ form.success_message ?? t( 'Form submitted successfully.' ) }}</span>
 			</div>
 		</slot>
 		<Button type="button" @click="reset">
-			Submit another response
+			{{ t( 'Submit another response' ) }}
 		</Button>
 	</div>
 
@@ -351,12 +352,12 @@ function handleFormSubmit( e: Event ): void {
 					:disabled="isSubmitting"
 					:class="['shrink-0 self-end', submitClassName]"
 				>
-					{{ isSubmitting ? 'Submitting...' : form.submit_button_text }}
+					{{ isSubmitting ? t( 'Submitting...' ) : form.submit_button_text }}
 				</Button>
 			</div>
 			<div v-if="!isInline">
 				<Button type="submit" color="primary" :disabled="isSubmitting" :class="submitClassName">
-					{{ isSubmitting ? 'Submitting...' : form.submit_button_text }}
+					{{ isSubmitting ? t( 'Submitting...' ) : form.submit_button_text }}
 				</Button>
 			</div>
 		</div>

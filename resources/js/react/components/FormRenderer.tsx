@@ -21,6 +21,7 @@ import { getOffStepSubmitCaptchas } from '../../shared/captcha';
 import { getSubInputErrors } from '../../shared/composite';
 import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
 import { focusFirstInvalid } from '../../shared/focus';
+import { t } from '../../shared/i18n';
 import { getFieldSegments } from '../../shared/sections';
 import type { FormField, FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
 import { useForm } from '../hooks/useForm';
@@ -246,7 +247,7 @@ export function FormRenderer( {
 
 	// No form loaded
 	if ( !form ) {
-		return <ErrorComponent message="Form not found." />;
+		return <ErrorComponent message={t( 'Form not found.' )} />;
 	}
 
 	// Success state
@@ -254,10 +255,10 @@ export function FormRenderer( {
 		return (
 			<div className="space-y-4">
 				<SuccessComponent
-					message={form.success_message ?? 'Form submitted successfully.'}
+					message={form.success_message ?? t( 'Form submitted successfully.' )}
 				/>
 				<Button type="button" onClick={reset}>
-					Submit another response
+					{t( 'Submit another response' )}
 				</Button>
 			</div>
 		);
@@ -279,7 +280,7 @@ export function FormRenderer( {
 			disabled={isSubmitting}
 			className={submitClasses}
 		>
-			{isSubmitting ? 'Submitting...' : form.submit_button_text}
+			{isSubmitting ? t( 'Submitting...' ) : form.submit_button_text}
 		</Button>
 	);
 
@@ -347,7 +348,7 @@ export function FormRenderer( {
 							aria-hidden="true"
 						>
 							<label htmlFor={`ap-hp-${idPrefix}${form.slug}`}>
-								Leave this field empty
+								{t( 'Leave this field empty' )}
 							</label>
 							<input
 								type="text"

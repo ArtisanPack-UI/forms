@@ -49,7 +49,7 @@ describe( 'selection counts (FT-03)', function (): void {
             [],
             ['Please choose no more than 3 options.'],
             ['Please choose at least 2 options.'],
-            ['Answer is required.'],
+            ['The Answer field is required.'],
         ] );
     } );
 } );

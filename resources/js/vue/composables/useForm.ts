@@ -251,7 +251,7 @@ export function useForm( options: UseFormOptions ) {
 			const response = await fetch( url );
 
 			if ( !response.ok ) {
-				throw new Error( `Failed to load form: ${response.statusText}` );
+				throw new Error( t( 'Failed to load form: :status', { status: response.statusText } ) );
 			}
 
 			const data: { data: FormRenderData } = await response.json();
@@ -271,7 +271,7 @@ export function useForm( options: UseFormOptions ) {
 			currentStep.value = 0;
 		} catch ( err ) {
 			if ( load === latestLoad ) {
-				loadError.value = err instanceof Error ? err.message : 'Failed to load form.';
+				loadError.value = err instanceof Error ? err.message : t( 'Failed to load form.' );
 			}
 		} finally {
 			if ( load === latestLoad ) {
@@ -544,7 +544,7 @@ export function useForm( options: UseFormOptions ) {
 
 			if ( response.status === 429 ) {
 				errors.value = {
-					_form: ['Too many submissions. Please try again later.'],
+					_form: [t( 'Too many submissions. Please try again later.' )],
 				};
 				validationFailures.value++;
 
@@ -552,7 +552,7 @@ export function useForm( options: UseFormOptions ) {
 			}
 
 			if ( !response.ok ) {
-				throw new Error( 'Form submission failed.' );
+				throw new Error( t( 'Form submission failed.' ) );
 			}
 
 			const result: SubmitFormResponse = await response.json();
@@ -567,7 +567,7 @@ export function useForm( options: UseFormOptions ) {
 
 			onSuccess?.( result );
 		} catch ( err ) {
-			const error = err instanceof Error ? err : new Error( 'Form submission failed.' );
+			const error = err instanceof Error ? err : new Error( t( 'Form submission failed.' ) );
 			onError?.( error );
 		} finally {
 			isSubmitting.value = false;

@@ -213,7 +213,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				const response = await fetch( url );
 
 				if ( !response.ok ) {
-					throw new Error( `Failed to load form: ${response.statusText}` );
+					throw new Error( t( 'Failed to load form: :status', { status: response.statusText } ) );
 				}
 
 				const data: { data: FormRenderData } = await response.json();
@@ -245,7 +245,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				setValues( defaults );
 			} catch ( err ) {
 				if ( !cancelled ) {
-					const message = err instanceof Error ? err.message : 'Failed to load form.';
+					const message = err instanceof Error ? err.message : t( 'Failed to load form.' );
 					setLoadError( message );
 				}
 			} finally {
@@ -520,7 +520,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				setErrors( { [err.field]: [t( 'The verification check failed. Please try again.' )] } );
 				recordValidationFailure();
 			} else {
-				onError?.( err instanceof Error ? err : new Error( 'Form submission failed.' ) );
+				onError?.( err instanceof Error ? err : new Error( t( 'Form submission failed.' ) ) );
 			}
 
 			setIsSubmitting( false );
@@ -618,7 +618,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 			if ( response.status === 429 ) {
 				submitHooks.settle( { ok: false, errors: {} } );
 				setErrors( {
-					_form: ['Too many submissions. Please try again later.'],
+					_form: [t( 'Too many submissions. Please try again later.' )],
 				} );
 				recordValidationFailure();
 
@@ -626,7 +626,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 			}
 
 			if ( !response.ok ) {
-				throw new Error( 'Form submission failed.' );
+				throw new Error( t( 'Form submission failed.' ) );
 			}
 
 			const result: SubmitFormResponse = await response.json();
@@ -642,7 +642,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 			onSuccess?.( result );
 		} catch ( err ) {
 			const error =
-				err instanceof Error ? err : new Error( 'Form submission failed.' );
+				err instanceof Error ? err : new Error( t( 'Form submission failed.' ) );
 
 			submitHooks.settle( { ok: false, errors: {} } );
 			onError?.( error );

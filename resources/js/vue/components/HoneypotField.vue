@@ -8,6 +8,8 @@
   @since      1.1.0
 -->
 <script setup lang="ts">
+import { t } from '../../shared/i18n';
+
 withDefaults( defineProps<{
 	slug: string;
 	fieldName: string;
@@ -23,7 +25,7 @@ withDefaults( defineProps<{
 		style="position: absolute; left: -9999px; opacity: 0; height: 0; overflow: hidden"
 		aria-hidden="true"
 	>
-		<label :for="`ap-hp-${idPrefix}${slug}`">Leave this field empty</label>
+		<label :for="`ap-hp-${idPrefix}${slug}`">{{ t( 'Leave this field empty' ) }}</label>
 		<input
 			type="text"
 			:id="`ap-hp-${idPrefix}${slug}`"

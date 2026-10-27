@@ -259,7 +259,7 @@ function handleMultiSelectChange( event: Event ): void {
 			v-bind="selectLabelProps"
 			:name="field.name"
 			:model-value="stringValue"
-			:placeholder="field.placeholder ?? 'Select an option...'"
+			:placeholder="field.placeholder ?? t( 'Select an option...' )"
 			:error="error"
 			:required="field.is_required"
 			:class="field.css_classes ?? undefined"
