@@ -42,7 +42,7 @@ describe( 'shared helpers', function () use ( $resource, $between ): void {
         expect( $resource( 'shared/numberFormat.ts' ) )
             ->toContain( "export const NUMBER_FORMATS: readonly NumberFormat[] = ['decimal_dot', 'decimal_comma', 'currency'];" )
             ->toContain( "const [thousands, decimal] = format === 'decimal_comma' ? ['.', ','] : [',', '.'];" )
-            ->toContain( 'return Number( plain ).toFixed( 2 );' );
+            ->toContain( 'return roundDecimal( plain, 2 );' );
     } );
 
     it( 'counts words like the forms_max_words rule and throttles announcements', function () use ( $resource ): void {

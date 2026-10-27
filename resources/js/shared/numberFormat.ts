@@ -65,8 +65,48 @@ export function normalizeFormattedNumber( value: string, format: NumberFormat ):
 	}
 
 	if ( format === 'currency' ) {
-		return Number( plain ).toFixed( 2 );
+		return roundDecimal( plain, 2 );
 	}
 
 	return plain.replace( /\.$/, '' );
+}
+
+/**
+ * Round a plain decimal string to a number of places, half away from zero,
+ * on its digits rather than through a float, so `1.005` is `1.01` and
+ * `2.675` is `2.68` as with PHP's `number_format()` (`toFixed()` gives
+ * `1.00` and `2.67`). A result of zero has no minus sign, as in PHP.
+ *
+ * @since 1.6.0
+ *
+ * @param  plain  A plain decimal, such as `-12.345` or `.5`.
+ * @param  places  The decimal places to keep.
+ */
+export function roundDecimal( plain: string, places: number ): string {
+	const negative = plain.startsWith( '-' );
+	const [whole = '', fraction = ''] = ( negative ? plain.slice( 1 ) : plain ).split( '.' );
+	const digits = ( ( whole === '' ? '0' : whole ) + fraction.padEnd( places, '0' ).slice( 0, places ) )
+		.split( '' )
+		.map( Number );
+
+	if ( Number( fraction.charAt( places ) || '0' ) >= 5 ) {
+		let index = digits.length - 1;
+
+		while ( index >= 0 && digits[index] === 9 ) {
+			digits[index] = 0;
+			index--;
+		}
+
+		if ( index < 0 ) {
+			digits.unshift( 1 );
+		} else {
+			digits[index]++;
+		}
+	}
+
+	const integer = digits.slice( 0, digits.length - places ).join( '' ).replace( /^0+(?=\d)/, '' );
+	const decimals = digits.slice( digits.length - places ).join( '' );
+	const result = places > 0 ? `${integer}.${decimals}` : integer;
+
+	return negative && /[1-9]/.test( result ) ? `-${result}` : result;
 }
