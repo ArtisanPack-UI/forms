@@ -1,4 +1,10 @@
 <div>
+    @php
+        // Only web links are rendered as links: a stored value or request URL
+        // with any other scheme (javascript:, data:, …) is shown as text (SEC-06).
+        $isSafeLink = static fn (mixed $url): bool => is_string($url)
+            && in_array(strtolower((string) parse_url($url, PHP_URL_SCHEME)), ['http', 'https'], true);
+    @endphp
     @if ($this->submission)
         <!-- Header with Navigation and Actions -->
         <x-artisanpack-card class="mb-6">
@@ -152,6 +158,8 @@
                                             <div class="whitespace-pre-wrap">{{ $value->value }}</div>
                                         @elseif ($value->field_type === 'email')
                                             <a href="mailto:{{ $value->value }}" class="link link-primary">{{ $value->value }}</a>
+                                        @elseif ($value->field_type === 'url' && ! $isSafeLink($value->value))
+                                            <span class="break-all">{{ $value->value }}</span>
                                         @elseif ($value->field_type === 'url')
                                             <a href="{{ $value->value }}" target="_blank" rel="noopener" class="link link-primary">{{ $value->value }}</a>
                                         @elseif ($value->field_type === 'phone')
@@ -290,9 +298,13 @@
                             <div>
                                 <dt class="text-sm font-medium opacity-60">{{ __( 'Page URL' ) }}</dt>
                                 <dd class="mt-1 text-sm break-all">
-                                    <a href="{{ $this->submission->page_url }}" target="_blank" rel="noopener" class="link link-primary">
+                                    @if ($isSafeLink($this->submission->page_url))
+                                        <a href="{{ $this->submission->page_url }}" target="_blank" rel="noopener" class="link link-primary">
+                                            {{ \Illuminate\Support\Str::limit($this->submission->page_url, 50) }}
+                                        </a>
+                                    @else
                                         {{ \Illuminate\Support\Str::limit($this->submission->page_url, 50) }}
-                                    </a>
+                                    @endif
                                 </dd>
                             </div>
                         @endif
@@ -302,9 +314,13 @@
                             <div>
                                 <dt class="text-sm font-medium opacity-60">{{ __( 'Referrer' ) }}</dt>
                                 <dd class="mt-1 text-sm break-all">
-                                    <a href="{{ $this->submission->referrer_url }}" target="_blank" rel="noopener" class="link link-primary">
+                                    @if ($isSafeLink($this->submission->referrer_url))
+                                        <a href="{{ $this->submission->referrer_url }}" target="_blank" rel="noopener" class="link link-primary">
+                                            {{ \Illuminate\Support\Str::limit($this->submission->referrer_url, 50) }}
+                                        </a>
+                                    @else
                                         {{ \Illuminate\Support\Str::limit($this->submission->referrer_url, 50) }}
-                                    </a>
+                                    @endif
                                 </dd>
                             </div>
                         @endif
