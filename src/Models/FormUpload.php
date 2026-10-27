@@ -48,6 +48,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * @property string|null $mime_type
  * @property int $size
  * @property int|null $pending_deliveries
+ * @property bool|null $is_masked
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read FormSubmission $submission
@@ -82,6 +83,7 @@ class FormUpload extends Model
         'mime_type',
         'size',
         'pending_deliveries',
+        'is_masked',
     ];
 
     // =========================================
@@ -334,5 +336,19 @@ class FormUpload extends Model
     protected static function newFactory(): FormUploadFactory
     {
         return FormUploadFactory::new();
+    }
+
+    /**
+     * Gets the attributes that should be cast.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, string> The cast types keyed by attribute.
+     */
+    protected function casts(): array
+    {
+        return [
+            'is_masked' => 'boolean',
+        ];
     }
 }

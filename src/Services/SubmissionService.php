@@ -1258,6 +1258,8 @@ class SubmissionService
             'field_label'       => $field->label,
             'field_admin_label' => $field->getStoredAdminLabel(),
             'field_type'        => $field->type,
+            'is_masked'         => $field->isMaskedInAdmin(),
+            'redact_after_days' => $field->getRedactAfterDays(),
             'created_at'        => now(),
         ];
 
@@ -1397,6 +1399,8 @@ class SubmissionService
             'field_admin_label' => $field->getStoredAdminLabel(),
             'field_type'        => $field->type,
             'upload_id'         => $upload->id,
+            'is_masked'         => $field->isMaskedInAdmin(),
+            'redact_after_days' => $field->getRedactAfterDays(),
             'created_at'        => now(),
         ];
     }
@@ -1438,6 +1442,7 @@ class SubmissionService
                 'mime_type'          => $media['mime_type'],
                 'size'               => $media['size'],
                 'pending_deliveries' => $transient ? 1 : null,
+                'is_masked'          => $field->isMaskedInAdmin(),
             ] );
         }
 
@@ -1476,6 +1481,7 @@ class SubmissionService
             'mime_type'          => $file->getMimeType() ?? 'application/octet-stream',
             'size'               => $fileSize ?: 0,
             'pending_deliveries' => $transient ? 1 : null,
+            'is_masked'          => $field->isMaskedInAdmin(),
         ] );
     }
 
