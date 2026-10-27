@@ -65,8 +65,10 @@ export function appendSubmissionValue( body: FormData, name: string, value: unkn
  *
  * The `data.` and `files.` prefixes are stripped, so `data.email` becomes
  * `email` and `data.address.city` stays keyed by sub-input (`address.city`).
- * An error that belongs to no field on the form, such as the request-level
- * `data` error, goes to `_form` so the visitor still sees it.
+ * An error for one file of a multi-file field (`files.docs.0`) is shown on
+ * the field (`docs`). An error that belongs to no field on the form, such
+ * as the request-level `data` error, goes to `_form` so the visitor still
+ * sees it.
  *
  * @since 1.6.0
  *
@@ -81,9 +83,14 @@ export function mapServerErrors( raw: unknown, fields: FormField[] ): Record<str
 	}
 
 	const known = new Set<string>( ['_form'] );
+	const fileFields = new Set<string>();
 
 	for ( const field of fields ) {
 		known.add( field.name );
+
+		if ( field.type === 'file' ) {
+			fileFields.add( field.name );
+		}
 
 		if ( requiresEmailConfirmation( field ) ) {
 			known.add( getConfirmationKey( field ) );
@@ -105,8 +112,14 @@ export function mapServerErrors( raw: unknown, fields: FormField[] ): Record<str
 		}
 
 		const name = key.replace( /^(data|files)\./, '' );
+		const base = getErrorFieldName( name );
 
-		add( known.has( getErrorFieldName( name ) ) ? name : '_form', messages );
+		if ( fileFields.has( base ) ) {
+			// One file of a multi-file field (`docs.0`) is reported on the field.
+			add( base, messages );
+		} else {
+			add( known.has( base ) ? name : '_form', messages );
+		}
 	}
 
 	return mapped;

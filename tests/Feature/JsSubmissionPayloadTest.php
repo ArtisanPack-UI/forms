@@ -94,3 +94,24 @@ describe( 'server errors (VU-04)', function (): void {
         ['vue/composables/useForm.ts', 'const serverErrors = mapServerErrors( errorData.errors, allFields.value );'],
     ] );
 } );
+
+describe( 'multi-file errors (VU-05)', function (): void {
+    it( 'shows an error for one file on its field', function (): void {
+        $errors = SharedTypeScript::run( <<<'JS'
+            const { mapServerErrors } = await load( 'submission' );
+            return mapServerErrors( {
+                'files.docs.0': ['The first file must be a PDF.'],
+                'files.docs.2': ['The first file must be a PDF.', 'The third file is too big.'],
+                'files.docs': ['You may upload no more than 3 files.'],
+            }, [{ name: 'docs', type: 'file' }] );
+            JS );
+
+        if ( null === $errors ) {
+            $this->markTestSkipped( 'Node 22.7+ is needed to run the shared helpers.' );
+        }
+
+        expect( $errors )->toBe( [
+            'docs' => ['The first file must be a PDF.', 'The third file is too big.', 'You may upload no more than 3 files.'],
+        ] );
+    } );
+} );
