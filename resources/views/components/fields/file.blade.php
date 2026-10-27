@@ -109,7 +109,7 @@
             @if($accept) accept="{{ $accept }}" @endif
             @if($field->is_required) aria-required="true" @endif
             @if($error) aria-invalid="true" @endif
-            @unless($field->label) aria-label="{{ \Illuminate\Support\Str::headline($field->name) }}" @endunless
+            @unless(filled($field->label)) aria-label="{{ \Illuminate\Support\Str::headline($field->name) }}" @endunless
             @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
         />
     </div>
@@ -159,7 +159,7 @@
     @if($accept) accept="{{ $accept }}" @endif
     @if($field->is_required) required aria-required="true" @endif
     @if($error) aria-invalid="true" @endif
-    @unless($field->label) aria-label="{{ \Illuminate\Support\Str::headline($field->name) }}" @endunless
+    @unless(filled($field->label)) aria-label="{{ \Illuminate\Support\Str::headline($field->name) }}" @endunless
     @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
 />
 

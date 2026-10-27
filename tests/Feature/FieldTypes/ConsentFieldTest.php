@@ -77,7 +77,7 @@ describe( 'validation', function (): void {
     it( 'requires the box through the API', function (): void {
         $this->postJson( route( 'api.forms.submit', $this->form ), [
             'data'            => ['gdpr' => '0'],
-            '_form_loaded_at' => time() - 10,
+            '_form_loaded_at' => now()->subSeconds( 10 )->getTimestamp(),
         ] )->assertUnprocessable()->assertJsonValidationErrors( 'data.gdpr' );
     } );
 } );

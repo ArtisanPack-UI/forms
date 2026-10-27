@@ -563,6 +563,8 @@ class FormRenderer extends Component
         $rows[]                       = array_fill_keys( array_column( ListFieldType::columns( $field ), 'key' ), '' );
         $this->formData[ $fieldName ] = $rows;
 
+        $this->evaluateConditionalLogic();
+
         $this->dispatch( 'forms-list-row-added', field: $fieldName, index: count( $rows ) - 1 );
     }
 
@@ -592,6 +594,8 @@ class FormRenderer extends Component
         $this->formData[ $fieldName ] = [] === $rows
             ? [array_fill_keys( array_column( ListFieldType::columns( $field ), 'key' ), '' )]
             : array_values( $rows );
+
+        $this->evaluateConditionalLogic();
 
         foreach ( $this->getErrorBag()->keys() as $key ) {
             if ( "formData.{$fieldName}" === $key || str_starts_with( (string) $key, "formData.{$fieldName}." ) ) {
@@ -631,6 +635,8 @@ class FormRenderer extends Component
         }
 
         $this->formData[ $fieldName ] = $moved;
+
+        $this->evaluateConditionalLogic();
 
         $this->resetValidation( "formData.{$fieldName}" );
 
@@ -958,6 +964,10 @@ class FormRenderer extends Component
      * Calculation fields are worked out first, so conditions can use their
      * results, and again without the values of the fields conditional logic
      * hides, since those are not submitted (since 1.6.0).
+     *
+     * `hiddenFields` is locked (since 1.6.0) and updatedFormData() runs only
+     * for updates from the browser, so an action that changes `formData` on
+     * the server (list rows, ranking moves, a reset) calls this itself.
      */
     protected function evaluateConditionalLogic(): void
     {

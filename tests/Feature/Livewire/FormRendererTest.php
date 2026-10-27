@@ -843,13 +843,13 @@ describe( 'FormRenderer time field (issue #148)', function (): void {
             ->assertSeeHtml( 'aria-describedby="error-starts_at' );
     } );
 
-    it( 'gives an unlabelled time input an accessible name', function (): void {
+    it( 'gives an unlabelled time input an accessible name', function ( string $label ): void {
         $form = Form::factory()->create();
-        FormField::factory()->for( $form )->time()->create( ['name' => 'starts_at', 'label' => ''] );
+        FormField::factory()->for( $form )->time()->create( ['name' => 'starts_at', 'label' => $label] );
 
         Livewire::test( FormRenderer::class, ['form' => $form] )
             ->assertSeeHtml( 'aria-label="Starts At"' );
-    } );
+    } )->with( ['empty' => '', 'whitespace only' => '   '] );
 } );
 
 describe( 'FormRenderer custom-markup partials mark errors (issue #148)', function (): void {
@@ -874,9 +874,9 @@ describe( 'FormRenderer custom-markup partials mark errors (issue #148)', functi
         'file'           => ['file', [], '/<input[^>]*type="file"[^>]*aria-invalid="true"/s'],
     ] );
 
-    it( 'gives an unlabelled file input an accessible name', function ( bool $multiple ): void {
+    it( 'gives an unlabelled file input an accessible name', function ( bool $multiple, string $label ): void {
         $form = Form::factory()->create();
-        FormField::factory()->for( $form )->create( ['type' => 'file', 'name' => 'resume_file', 'label' => '', 'field_config' => ['multiple' => $multiple]] );
+        FormField::factory()->for( $form )->create( ['type' => 'file', 'name' => 'resume_file', 'label' => $label, 'field_config' => ['multiple' => $multiple]] );
 
         $component = Livewire::test( FormRenderer::class, ['form' => $form] )
             ->assertSeeHtml( 'aria-label="Resume File"' );
@@ -884,7 +884,7 @@ describe( 'FormRenderer custom-markup partials mark errors (issue #148)', functi
         if ( $multiple ) {
             $component->assertSeeHtml( 'aria-label="Files for Resume File"' );
         }
-    } )->with( ['single' => false, 'multiple' => true] );
+    } )->with( ['single' => false, 'multiple' => true] )->with( ['empty' => '', 'whitespace only' => '   '] );
 } );
 
 describe( 'FormRenderer locked state (issue #151)', function (): void {

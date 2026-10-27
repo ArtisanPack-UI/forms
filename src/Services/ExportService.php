@@ -38,13 +38,14 @@ class ExportService
 {
     /**
      * The characters that make a spreadsheet read a CSV cell as a formula
-     * when the cell starts with one.
+     * when the cell starts with one, including the full-width forms some
+     * locales (such as Japanese) also treat as formula characters.
      *
      * @since 1.6.0
      *
      * @var array<int, string>
      */
-    public const FORMULA_TRIGGERS = ['=', '+', '-', '@', "\t", "\r"];
+    public const FORMULA_TRIGGERS = ['=', '+', '-', '@', "\t", "\r", "\n", '＝', '＋', '－', '＠'];
 
     /**
      * Exports submissions to CSV format.
@@ -74,12 +75,15 @@ class ExportService
                 throw new RuntimeException( __( 'Failed to open output stream for CSV export.' ) );
             }
 
+            // No escape character (since 1.6.0): PHP's default `\` escape
+            // leaves a quote after a backslash undoubled, so a value such as
+            // `a\",=1+1` would split into a new cell that starts a formula.
             // Write headers
-            fputcsv( $handle, $headers );
+            fputcsv( $handle, $headers, escape: '' );
 
             // Write rows
             foreach ( $rows as $row ) {
-                fputcsv( $handle, $row );
+                fputcsv( $handle, $row, escape: '' );
             }
 
             fclose( $handle );
@@ -271,9 +275,10 @@ class ExportService
     /**
      * Neutralises a CSV cell a spreadsheet would read as a formula.
      *
-     * A string starting with `=`, `+`, `-`, `@`, a tab or a carriage return
-     * gets a leading `'`, so Excel, LibreOffice and Google Sheets show it as
-     * text (CSV injection, CWE-1236). A plain number such as `-12.5` or an
+     * A string starting with `=`, `+`, `-`, `@`, a tab, a carriage return, a
+     * line feed or a full-width `＝`, `＋`, `－` or `＠` gets a leading `'`, so
+     * Excel, LibreOffice and Google Sheets show it as text (CSV injection,
+     * CWE-1236). A plain number such as `-12.5` or an
      * E.164 phone number such as `+15551234567` can't run as a formula, so it
      * is left as it is. Only the CSV export calls this; the JSON export keeps
      * raw values.
@@ -286,7 +291,7 @@ class ExportService
      */
     public function neutraliseFormula( mixed $cell ): mixed
     {
-        if ( ! is_string( $cell ) || '' === $cell || ! in_array( $cell[0], self::FORMULA_TRIGGERS, true ) ) {
+        if ( ! is_string( $cell ) || '' === $cell || ! in_array( mb_substr( $cell, 0, 1 ), self::FORMULA_TRIGGERS, true ) ) {
             return $cell;
         }
 
