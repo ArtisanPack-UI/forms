@@ -19,8 +19,10 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Policies;
 
 use ArtisanPackUI\Forms\Models\Form;
+use ArtisanPackUI\Forms\Models\FormSubmission;
 use Illuminate\Auth\Access\HandlesAuthorization;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Form policy class.
@@ -260,6 +262,31 @@ class FormPolicy
     public function manageNotifications( ?Authenticatable $user, Form $form ): bool
     {
         return $this->update( $user, $form );
+    }
+
+    /**
+     * Determines whether the user can weaken a field's privacy settings.
+     *
+     * Turning "Mask in admin" off, changing a masked field to a type that
+     * cannot be masked, renaming it, or deleting it once it has stored
+     * values would show its values to users who may not reveal them. So by
+     * default only users who may reveal masked values (the
+     * `revealMaskedValues` submission ability) may do so.
+     *
+     * @since 1.6.0
+     *
+     * @param Authenticatable|null $user The authenticated user.
+     * @param Form                 $form The form the field belongs to.
+     *
+     * @return bool True if the user can change the field's privacy.
+     */
+    public function changeFieldPrivacy( ?Authenticatable $user, Form $form ): bool
+    {
+        if ( null === $user ) {
+            return false;
+        }
+
+        return Gate::forUser( $user )->allows( 'revealMaskedValues', FormSubmission::class );
     }
 
     /**
