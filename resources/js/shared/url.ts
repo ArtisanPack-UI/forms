@@ -17,7 +17,17 @@ import type { FormField } from '../types/artisanpack-forms';
 /** The schemes a URL field allows when it sets none. */
 export const DEFAULT_URL_SCHEMES: readonly string[] = ['http', 'https'];
 
-/** Normalize a stored scheme list, falling back to `http` and `https`. */
+/**
+ * Schemes a URL field never allows, whatever its setting says: they run
+ * script or read local data when the link is opened. Mirrors
+ * `UrlSchemes::BLOCKED` (since 1.6.0).
+ */
+export const BLOCKED_URL_SCHEMES: readonly string[] = ['javascript', 'data', 'vbscript', 'file', 'blob'];
+
+/**
+ * Normalize a stored scheme list, falling back to `http` and `https`.
+ * Blocked schemes such as `javascript` are dropped (since 1.6.0).
+ */
 export function normalizeSchemeList( schemes: unknown ): string[] {
 	const entries = typeof schemes === 'string' ? schemes.split( ',' ) : Array.isArray( schemes ) ? schemes : [];
 	const normalized: string[] = [];
@@ -29,7 +39,7 @@ export function normalizeSchemeList( schemes: unknown ): string[] {
 
 		const scheme = entry.trim().replace( /:(\/\/)?$/, '' ).toLowerCase();
 
-		if ( /^[a-z][a-z0-9+.-]*$/.test( scheme ) && !normalized.includes( scheme ) ) {
+		if ( /^[a-z][a-z0-9+.-]*$/.test( scheme ) && !BLOCKED_URL_SCHEMES.includes( scheme ) && !normalized.includes( scheme ) ) {
 			normalized.push( scheme );
 		}
 	}
