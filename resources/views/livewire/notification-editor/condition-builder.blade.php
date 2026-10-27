@@ -12,13 +12,7 @@
     x-data="notificationConditionBuilder({
         enabled: @js($hasConditions),
         logic: @js($conditionalLogic),
-        availableFields: @js($availableFields->map(fn($f) => [
-            'name' => $f->name,
-            'label' => $f->label,
-            'type' => $f->type,
-            'uuid' => $f->uuid,
-            'options' => $f->options,
-        ])->values()->all()),
+        availableFields: @js($availableFields->flatMap(fn($f) => $f->getConditionTargets())->values()->all()),
         operators: @js($this->conditionOperators),
         actions: @js($this->conditionActions),
         logicTypes: @js($this->conditionLogicTypes),

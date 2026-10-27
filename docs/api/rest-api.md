@@ -204,6 +204,8 @@ Updates an existing field.
 
 **Response:** `200 OK` with updated `FormFieldResource`
 
+Turning off **Mask in admin** (`field_config.mask_in_admin`), or changing a masked field's `type` to one without privacy settings also needs the `changeFieldPrivacy` form ability, and returns `403` without it. A calculation `formula` that references a masked field is rejected. See [Field Privacy & Visibility](Usage-Field-Privacy#who-may-change-privacy-settings).
+
 ### Delete Field
 
 ```
@@ -211,6 +213,34 @@ DELETE /{form}/fields/{field}
 ```
 
 **Response:** `204 No Content`
+
+Deleting a masked field that has stored values needs the `changeFieldPrivacy` form ability (`403` without it).
+
+### Predefined Choices
+
+```
+GET /{form}/fields/predefined-choices
+```
+
+Returns the predefined choice lists the builders' bulk editor can insert (since 1.6.0), including any added through the `ap.forms.predefinedChoices` filter. Requires the `update` ability on the form.
+
+```json
+{
+    "data": [
+        { "key": "months", "label": "Months", "choices": [ { "value": "january", "label": "January" } ] }
+    ]
+}
+```
+
+### Upload Choice Image
+
+```
+POST /{form}/fields/choice-images
+```
+
+Uploads an image for an image choice (since 1.6.0). Send `multipart/form-data` with an `image` file: JPEG, PNG, GIF or WebP, up to `uploads.choice_images.max_size` KB. Requires the `update` ability on the form.
+
+**Response:** `201 Created` with `{ "data": { "url": "https://…" } }`, the URL to store as the option's `image`.
 
 ### Reorder Fields
 
@@ -332,7 +362,7 @@ Returns a single submission with values and uploads.
 PUT /{form}/submissions/{submission}
 ```
 
-Updates submission metadata (not field values).
+Updates submission metadata and the form's administrative fields (not the public field values).
 
 **Request Body:**
 
@@ -341,9 +371,19 @@ Updates submission metadata (not field values).
     "is_read": true,
     "is_starred": false,
     "is_spam": false,
-    "admin_notes": "Followed up via email"
+    "admin_notes": "Followed up via email",
+    "admin_values": { "status": "contacted" },
+    "remove_admin_uploads": [17]
 }
 ```
+
+| Key | Description |
+|-----|-------------|
+| `admin_values` | Values for the administrative fields, keyed by field name and validated with each field's rules. File fields are left out; use `admin_files`. |
+| `admin_files` | Multipart only: files for administrative file fields, as `admin_files[{name}]` (`admin_files[{name}][]` for a multi-file field). Each replaces the field's stored files and is checked with the field's file rules. Send a `POST` with `_method=PUT`, since PHP only parses multipart bodies on `POST`. |
+| `remove_admin_uploads` | Upload IDs to delete from the submission's administrative file fields. |
+
+Fields masked in the admin can only be edited by users who may reveal masked values. A required administrative file field only needs a file while the submission has none for it. See [File Uploads](../usage/file-uploads.md#visibility-and-privacy).
 
 **Response:** `200 OK` with updated `FormSubmissionResource`
 
@@ -467,21 +507,34 @@ POST /{form}/submit
 
 Submits a form response. Includes honeypot detection and rate limiting.
 
-**Request Body:** `multipart/form-data` with field values and optional file uploads.
+**Request Body:** `multipart/form-data` (or JSON without files):
 
-**Response:**
+| Key | Description |
+|-----|-------------|
+| `data[{name}]` | Each field's value, keyed by field name. Arrays (checkbox groups, multi-selects) as `data[{name}][]`, and composite inputs as `data[{name}][{key}]`. |
+| `files[{name}]` | Files for file fields; `files[{name}][]` for a multi-file field. |
+| `_form_loaded_at` | When the form was shown, for the timing spam check. |
+| Honeypot field | The configured honeypot field name, left empty. |
+
+- Send single checkbox, toggle and consent values as `1` or `0`. The server also accepts `true`, `false`, `on` and `off`.
+- `data` may be left out when the form only has file fields.
+- A CAPTCHA field's token goes in `data[{name}]`. It is checked once all other fields pass, just before the submission is saved.
+- Values for administrative fields, layout fields and fields hidden by conditional logic are dropped, and a read-only field stores its read-only value whatever is sent.
+
+**Response:** `201 Created`
 
 ```json
 {
-    "success": true,
     "message": "Form submitted successfully.",
     "submission_id": 42,
-    "redirect_url": null
+    "redirect_url": "https://example.com/thanks"
 }
 ```
 
+`message` is the form's success message, and `redirect_url` is only present when the form has one.
+
 **Error Responses:**
-- `422`: Validation errors
+- `422`: Validation errors, keyed as `data.{name}` (or `data.{name}.{key}` for a composite input, `files.{name}` for a file field)
 - `429`: Rate limited
 
 ---

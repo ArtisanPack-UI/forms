@@ -17,6 +17,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Jobs;
 
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Forms\Support\TransientUploads;
 use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -25,6 +26,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
 
@@ -84,6 +86,34 @@ class SendWebhook implements ShouldQueue
     public ?string $secret;
 
     /**
+     * Attributes of the submission's "Do not store" values, which only reach
+     * the job through its payload (see FormSubmission::withTransientValues()).
+     *
+     * @since 1.6.0
+     *
+     * @var list<array<string, mixed>>
+     */
+    public array $transientValues = [];
+
+    /**
+     * Whether the queued payload is encrypted. It is when it carries values
+     * that are not stored.
+     *
+     * @since 1.6.0
+     */
+    public bool $shouldBeEncrypted = false;
+
+    /**
+     * The "Do not store" uploads this job holds until it has run (see
+     * TransientUploads).
+     *
+     * @since 1.6.0
+     *
+     * @var list<int>
+     */
+    public array $transientUploadIds = [];
+
+    /**
      * Creates a new job instance.
      *
      * @since 1.0.0
@@ -94,22 +124,89 @@ class SendWebhook implements ShouldQueue
      */
     public function __construct( FormSubmission $submission, string $url, ?string $secret = null )
     {
-        $this->submission = $submission;
-        $this->url        = $url;
-        $this->secret     = $secret;
+        $this->submission         = $submission;
+        $this->url                = $url;
+        $this->secret             = $secret;
+        $this->transientValues    = $submission->getTransientValues();
+        $this->shouldBeEncrypted  = [] !== $this->transientValues;
+        $this->transientUploadIds = TransientUploads::idsIn( $this->transientValues );
+
+        // Keeps "Do not store" files until this job has run
+        TransientUploads::hold( $this->transientUploadIds );
     }
 
     /**
      * Executes the job.
      *
-     * Builds the payload, sends the webhook request, and handles the response.
+     * Since 1.6.0, the "Do not store" files the job holds are released once
+     * it has run; a run that throws keeps them for the retry, and failed()
+     * releases them when there is none.
      *
      * @since 1.0.0
      */
     public function handle(): void
     {
+        $this->send();
+
+        TransientUploads::release( $this->transientUploadIds );
+    }
+
+    /**
+     * Handles a job failure.
+     *
+     * Logs an error when the job fails permanently after all retry attempts.
+     * Since 1.6.0, releases the "Do not store" files the job holds.
+     *
+     * @since 1.0.0
+     *
+     * @param  Throwable  $exception  The exception that caused the failure.
+     */
+    public function failed( Throwable $exception ): void
+    {
+        Log::error( 'Webhook job failed permanently', [
+            'submission_id' => $this->submission->id,
+            'form_id'       => $this->submission->form_id,
+            'url'           => $this->url,
+            'error'         => $exception->getMessage(),
+        ] );
+
+        TransientUploads::release( $this->transientUploadIds );
+    }
+
+    /**
+     * Gets the tags that should be assigned to the job.
+     *
+     * Tags are used for monitoring and filtering jobs in queue dashboards.
+     *
+     * @since 1.0.0
+     *
+     * @return array<int, string> The job tags.
+     */
+    public function tags(): array
+    {
+        return [
+            'webhook',
+            'submission:' . $this->submission->id,
+            'form:' . $this->submission->form_id,
+        ];
+    }
+
+    /**
+     * Sends the webhook.
+     *
+     * Builds the payload, sends the webhook request, and handles the response.
+     *
+     * @since 1.6.0
+     */
+    protected function send(): void
+    {
         // Ensure relationships are loaded
         $this->submission->loadMissing( ['form', 'values.field'] );
+
+        // Values of "Do not store" fields travel with the job, not the database
+        if ( [] !== $this->transientValues ) {
+            $this->submission->withTransientValues( $this->transientValues );
+        }
 
         // Build the webhook payload
         $payload = $this->buildPayload();
@@ -156,47 +253,12 @@ class SendWebhook implements ShouldQueue
     }
 
     /**
-     * Handles a job failure.
-     *
-     * Logs an error when the job fails permanently after all retry attempts.
-     *
-     * @since 1.0.0
-     *
-     * @param  Throwable  $exception  The exception that caused the failure.
-     */
-    public function failed( Throwable $exception ): void
-    {
-        Log::error( 'Webhook job failed permanently', [
-            'submission_id' => $this->submission->id,
-            'form_id'       => $this->submission->form_id,
-            'url'           => $this->url,
-            'error'         => $exception->getMessage(),
-        ] );
-    }
-
-    /**
-     * Gets the tags that should be assigned to the job.
-     *
-     * Tags are used for monitoring and filtering jobs in queue dashboards.
-     *
-     * @since 1.0.0
-     *
-     * @return array<int, string> The job tags.
-     */
-    public function tags(): array
-    {
-        return [
-            'webhook',
-            'submission:' . $this->submission->id,
-            'form:' . $this->submission->form_id,
-        ];
-    }
-
-    /**
      * Builds the webhook payload.
      *
      * Creates the JSON payload including form data, submission data, and metadata.
-     * Respects privacy settings for IP address and user agent.
+     * Respects privacy settings for IP address and user agent. Since 1.6.0,
+     * `submission.files` holds the files uploaded to "Do not store" file
+     * fields, base64-encoded, when there are any.
      *
      * @since 1.0.0
      *
@@ -237,10 +299,47 @@ class SendWebhook implements ShouldQueue
             ],
         ];
 
+        // "Do not store" files are deleted once delivered, so they travel in the payload (since 1.6.0)
+        $files = $this->transientFiles();
+
+        if ( [] !== $files ) {
+            $payload['submission']['files'] = $files;
+        }
+
         // Apply filter hook to allow modifying the webhook payload
         $payload = applyFilters( 'ap.forms.webhookPayload', $payload, $this->submission );
 
         return $payload;
+    }
+
+    /**
+     * Gets the files uploaded to the submission's "Do not store" file fields.
+     *
+     * @since 1.6.0
+     *
+     * @return list<array{field: string, name: string, mime_type: string, size: int, content: string}> The files, with base64 contents.
+     */
+    protected function transientFiles(): array
+    {
+        $files = [];
+
+        foreach ( TransientUploads::uploadsOf( $this->submission ) as $upload ) {
+            $contents = Storage::disk( $upload->disk )->get( $upload->path );
+
+            if ( null === $contents ) {
+                continue;
+            }
+
+            $files[] = [
+                'field'     => (string) $upload->field?->name,
+                'name'      => $upload->original_name,
+                'mime_type' => $upload->mime_type ?? 'application/octet-stream',
+                'size'      => (int) $upload->size,
+                'content'   => base64_encode( $contents ),
+            ];
+        }
+
+        return $files;
     }
 
     /**

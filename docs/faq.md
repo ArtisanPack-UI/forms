@@ -61,9 +61,17 @@ By default, the admin routes use `['web', 'auth']` middleware. Customize in conf
 
 ### How do I display a form?
 
-```blade
-<livewire:forms::form-renderer slug="contact" />
+Load the form and pass the model to the component:
+
+```php
+$form = app(\ArtisanPackUI\Forms\Services\FormService::class)->getBySlug('contact');
 ```
+
+```blade
+<livewire:form-renderer :form="$form" />
+```
+
+See [Form Renderer](Usage-Form-Renderer) for the props and events.
 
 ### Can I create forms programmatically?
 

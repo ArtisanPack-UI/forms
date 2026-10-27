@@ -9,7 +9,7 @@ The SubmissionDetail component displays a single submission's complete details.
 ## Basic Usage
 
 ```blade
-<livewire:forms::submission-detail :submission="$submission" />
+<livewire:submission-detail :submission="$submission" />
 ```
 
 ## Properties
@@ -182,10 +182,7 @@ Format different value types:
 
 ## Events Emitted
 
-| Event | Payload | Description |
-|-------|---------|-------------|
-| `submission-deleted` | `{ id }` | Submission deleted |
-| `notifications-resent` | `{ count }` | Notifications sent |
+The component does not dispatch Livewire events. For server-side hooks, listen for the `SubmissionUpdated` and `SubmissionDeleted` Laravel events.
 
 ## Customizing the View
 

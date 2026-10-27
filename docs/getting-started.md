@@ -83,17 +83,27 @@ FormField::create([
 
 ## Display Your Form
 
-Add the form to any Blade view:
+Load the form in your route or controller and pass it to the view:
 
-```blade
-<livewire:forms::form-renderer slug="contact" />
+```php
+use ArtisanPackUI\Forms\Services\FormService;
+
+Route::get('/contact', function (FormService $forms) {
+    $form = $forms->getBySlug('contact'); // or $forms->getById(1)
+
+    abort_unless($form?->is_active, 404);
+
+    return view('contact', ['form' => $form]);
+});
 ```
 
-Or by form ID:
+Then render it in the Blade view:
 
 ```blade
-<livewire:forms::form-renderer :form-id="1" />
+<livewire:form-renderer :form="$form" />
 ```
+
+The success message, redirect URL and submit button text are form settings. Set them in the form's **Settings** tab in the admin, or on the model (`success_message`, `redirect_url`, `submit_button_text`).
 
 ## Handle Submissions
 

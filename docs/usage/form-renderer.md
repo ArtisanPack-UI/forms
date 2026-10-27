@@ -8,68 +8,97 @@ The Form Renderer component displays forms to your users and handles submission 
 
 ## Basic Usage
 
+The component takes a `Form` model, so load the form first and pass it in.
+
 ### By Slug (Recommended)
 
+```php
+use ArtisanPackUI\Forms\Services\FormService;
+
+$form = app(FormService::class)->getBySlug('contact-us');
+```
+
 ```blade
-<livewire:forms::form-renderer slug="contact-us" />
+<livewire:form-renderer :form="$form" />
 ```
 
 ### By Form ID
 
-```blade
-<livewire:forms::form-renderer :form-id="1" />
+```php
+$form = app(FormService::class)->getById(1);
 ```
+
+```blade
+<livewire:form-renderer :form="$form" />
+```
+
+Both lookups return `null` when no form matches, so check the result before rendering (see [Embedding in Controllers](#embedding-in-controllers)).
 
 ## Component Properties
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `slug` | string | null | Form slug to display |
-| `form-id` | int | null | Form ID to display |
-| `success-message` | string | null | Override default success message |
-| `redirect-url` | string | null | URL to redirect after submission |
-| `show-title` | bool | true | Show form title |
-| `show-description` | bool | true | Show form description |
-| `css-class` | string | '' | Additional CSS classes |
+| `form` | Form | required | The form to display |
+| `prefill` | array | `[]` | Starting values for fields with dynamic population on (since 1.6.0; see [Dynamic Population](Usage-Dynamic-Population)) |
+
+The success message, redirect URL, description and submit button text are not component properties. They are form settings, edited in the **Settings** tab of the form's edit page (see [Form Settings](Usage-Form-Builder#form-settings)) or set on the model.
 
 ## Examples
 
 ### Custom Success Message
 
-```blade
-<livewire:forms::form-renderer
-    slug="contact"
-    success-message="We'll be in touch within 24 hours!"
-/>
+Set the form's success message:
+
+```php
+$form->update(['success_message' => "We'll be in touch within 24 hours!"]);
 ```
+
+```blade
+<livewire:form-renderer :form="$form" />
+```
+
+Without one, the renderer shows "Thank you! Your submission has been received."
 
 ### Redirect After Submission
 
-```blade
-<livewire:forms::form-renderer
-    slug="signup"
-    redirect-url="/welcome"
-/>
+Set the form's redirect URL:
+
+```php
+$form->update(['redirect_url' => '/welcome']);
 ```
 
-### Hide Title and Description
+After a saved submission the renderer redirects the visitor to that URL (since 1.6.0) and also dispatches a `redirect-to` event with it. Only `http`/`https` URLs and site paths such as `/welcome` are followed.
+
+### Title and Description
+
+The renderer shows the form's description above the fields when one is set, and never prints the form's name. Clear the description to hide it, and add your own heading if you want one:
 
 ```blade
-<livewire:forms::form-renderer
-    slug="newsletter"
-    :show-title="false"
-    :show-description="false"
+<h2>{{ $form->name }}</h2>
+
+<livewire:form-renderer :form="$form" />
+```
+
+### Prefilled Values
+
+```blade
+<livewire:form-renderer
+    :form="$form"
+    :prefill="['plan' => 'pro', 'email' => auth()->user()?->email]"
 />
 ```
 
 ### Custom Styling
 
+Wrap the component in your own markup:
+
 ```blade
-<livewire:forms::form-renderer
-    slug="contact"
-    css-class="bg-white p-6 rounded-lg shadow"
-/>
+<div class="bg-white p-6 rounded-lg shadow">
+    <livewire:form-renderer :form="$form" />
+</div>
 ```
+
+The component's root element has the `artisanpack-form-renderer` class for targeting from CSS.
 
 ## Form States
 
@@ -77,21 +106,15 @@ The renderer handles several form states:
 
 ### Loading State
 
-While the form is loading:
-
-```blade
-<div wire:loading>
-    Loading form...
-</div>
-```
+The submit and step buttons show a loading state while a request is running. To add your own indicator, use `wire:loading` inside a published view.
 
 ### Success State
 
-After successful submission, displays the success message or redirects.
+After a successful submission, displays the form's success message and dispatches `form-submitted` (and `redirect-to` when the form has a redirect URL).
 
 ### Error State
 
-Validation errors are displayed inline next to each field.
+Validation errors are displayed inline next to each field. Form-level errors, such as too many submissions or a failed save, show in an alert above the fields.
 
 ## Customizing the Form View
 
@@ -105,66 +128,20 @@ Edit `resources/views/vendor/forms/livewire/form-renderer.blade.php`.
 
 ### View Structure
 
-```blade
-{{-- resources/views/vendor/forms/livewire/form-renderer.blade.php --}}
-<div class="form-wrapper {{ $cssClass }}">
-    @if ($showTitle && $form->name)
-        <h2 class="form-title">{{ $form->name }}</h2>
-    @endif
+The renderer is split across these views:
 
-    @if ($showDescription && $form->description)
-        <p class="form-description">{{ $form->description }}</p>
-    @endif
+| View | Contents |
+|------|----------|
+| `livewire/form-renderer.blade.php` | Wrapper, success state, description, error alert, step progress and navigation, submit button |
+| `livewire/form-renderer/fields.blade.php` | The loop over the current fields, including sections |
+| `livewire/form-renderer/field.blade.php` | Each field's wrapper, shown or hidden by conditional logic |
+| `components/fields/{type}.blade.php` | One view per field type |
 
-    @if ($submitted)
-        <div class="form-success">
-            {{ $successMessage ?? $form->success_message }}
-        </div>
-    @else
-        <form wire:submit="submit">
-            @foreach ($form->fields as $field)
-                @include("forms::partials.fields.{$field->type}", ['field' => $field])
-            @endforeach
-
-            <button type="submit">
-                {{ $form->submit_button_text ?? 'Submit' }}
-            </button>
-        </form>
-    @endif
-</div>
-```
+Republish after upgrading. The package logs a warning when a published renderer view is too old to work with conditional logic.
 
 ## Custom Field Templates
 
-Create custom field templates in `resources/views/vendor/forms/partials/fields/`:
-
-```blade
-{{-- resources/views/vendor/forms/partials/fields/text.blade.php --}}
-<div class="form-group">
-    <label for="{{ $field->name }}">
-        {{ $field->label }}
-        @if ($field->required)
-            <span class="required">*</span>
-        @endif
-    </label>
-
-    <input
-        type="text"
-        id="{{ $field->name }}"
-        wire:model="formData.{{ $field->name }}"
-        placeholder="{{ $field->placeholder }}"
-        class="@error($field->name) is-invalid @enderror"
-    >
-
-    @if ($field->help_text)
-        <small class="help-text">{{ $field->help_text }}</small>
-    @endif
-
-    @error($field->name)
-        <span class="error">{{ $message }}</span>
-    @enderror
-</div>
-```
+Each field type renders `forms::components.fields.{type}`. To change how a type looks, publish the views and edit its file, for example `resources/views/vendor/forms/components/fields/text.blade.php`. Keep the `wire:model="formData.{name}"` binding and the error output, since the renderer reads values from `formData` and validates `formData.{name}`.
 
 ## Embedding in Controllers
 
@@ -190,20 +167,25 @@ Then in your view:
 
 ```blade
 @if ($form && $form->is_active)
-    <livewire:forms::form-renderer :form-id="$form->id" />
+    <livewire:form-renderer :form="$form" />
 @else
     <p>This form is currently unavailable.</p>
 @endif
 ```
+
+Since 1.6.0 the renderer itself shows "This form is not accepting submissions." for an inactive form and refuses its submissions, so this check is only needed if you want your own message.
 
 ## Handling Submission Events
 
 Listen for form submission in your JavaScript:
 
 ```javascript
-document.addEventListener('livewire:initialized', () => {
-    Livewire.on('form-submitted', (event) => {
-        const { formId, submissionId } = event;
+document.addEventListener('livewire:init', () => {
+    Livewire.on('form-submitted', ({ formId, submissionId, isSpam }) => {
+        // isSpam is true when the spam check caught a bot; nothing was saved
+        if (isSpam) {
+            return;
+        }
 
         // Track conversion
         gtag('event', 'form_submission', {
@@ -213,16 +195,21 @@ document.addEventListener('livewire:initialized', () => {
 });
 ```
 
+The renderer dispatches these events:
+
+| Event | Payload | When |
+|-------|---------|------|
+| `form-submitted` | `{ formId, submissionId }` or `{ formId, isSpam: true }` | After a submission is saved, or when a bot is caught |
+| `redirect-to` | `{ url }` | After a saved submission, when the form has a redirect URL |
+| `step-changed` | `{ step }` | Moving between steps (1-based) |
+| `forms-validation-failed` | `{ formId, count }` | Validation failed on submit or a step change |
+| `form-reset` | `{ formId }` | The form was reset for another response |
+
+For server-side handling, listen for the `ArtisanPackUI\Forms\Events\FormSubmitted` Laravel event.
+
 ## AJAX Submission
 
-Forms submit via Livewire by default (AJAX). For traditional form submission:
-
-```blade
-<livewire:forms::form-renderer
-    slug="contact"
-    :ajax="false"
-/>
-```
+Forms always submit through Livewire (AJAX). There is no full-page submission mode. For a classic POST, or a headless frontend, use the [REST API](Api-Rest-Api) instead.
 
 ## Accessibility
 

@@ -19,6 +19,8 @@ namespace ArtisanPackUI\Forms\Services;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Forms\Models\FormSubmissionValue;
+use ArtisanPackUI\Forms\Support\FieldPrivacy;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Response;
 use RuntimeException;
@@ -35,6 +37,17 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class ExportService
 {
+    /**
+     * The characters that make a spreadsheet read a CSV cell as a formula
+     * when the cell starts with one, including the full-width forms some
+     * locales (such as Japanese) also treat as formula characters.
+     *
+     * @since 1.6.0
+     *
+     * @var array<int, string>
+     */
+    public const FORMULA_TRIGGERS = ['=', '+', '-', '@', "\t", "\r", "\n", '＝', '＋', '－', '＠'];
+
     /**
      * Exports submissions to CSV format.
      *
@@ -63,12 +76,15 @@ class ExportService
                 throw new RuntimeException( __( 'Failed to open output stream for CSV export.' ) );
             }
 
+            // No escape character (since 1.6.0): PHP's default `\` escape
+            // leaves a quote after a backslash undoubled, so a value such as
+            // `a\",=1+1` would split into a new cell that starts a formula.
             // Write headers
-            fputcsv( $handle, $headers );
+            fputcsv( $handle, $headers, escape: '' );
 
             // Write rows
             foreach ( $rows as $row ) {
-                fputcsv( $handle, $row );
+                fputcsv( $handle, $row, escape: '' );
             }
 
             fclose( $handle );
@@ -82,7 +98,10 @@ class ExportService
      * Builds CSV headers from form fields.
      *
      * Applies the 'ap.forms.exportHeaders' filter hook to allow
-     * third-party packages to modify export headers.
+     * third-party packages to modify export headers. Fields masked in the
+     * admin are left out unless the user may reveal them. Since 1.6.0 each
+     * header is neutralised after the filter runs, since field labels come
+     * from the builder (see neutraliseFormula()).
      *
      * @since 1.0.0
      *
@@ -100,14 +119,9 @@ class ExportService
             $localizeHeaders ? __( 'Submitted At' ) : 'Submitted At',
         ];
 
-        // Add field headers
-        foreach ( $form->fields()->orderBy( 'sort_order' )->get() as $field ) {
-            // Skip layout fields
-            if ( $field->isLayoutField() ) {
-                continue;
-            }
-
-            $headers[] = $field->label;
+        // Add field headers; each field type decides its own columns
+        foreach ( $this->exportableFields( $form ) as $field ) {
+            array_push( $headers, ...$field->fieldType()->exportColumns( $field ) );
         }
 
         // Add metadata headers
@@ -125,7 +139,7 @@ class ExportService
         // Apply filter hook for extensibility
         $headers = applyFilters( 'ap.forms.exportHeaders', $headers, $form );
 
-        return $headers;
+        return array_map( [$this, 'neutraliseFormula'], $headers );
     }
 
     /**
@@ -140,7 +154,7 @@ class ExportService
      */
     public function buildRows( Form $form, Collection $submissions ): array
     {
-        $fields = $form->fields()->orderBy( 'sort_order' )->get();
+        $fields = $this->exportableFields( $form );
         $rows   = [];
 
         foreach ( $submissions as $submission ) {
@@ -155,7 +169,9 @@ class ExportService
      * Builds a single CSV row from a submission.
      *
      * Applies the 'ap.forms.exportData' filter hook to allow
-     * third-party packages to modify export row data.
+     * third-party packages to modify export row data. Since 1.6.0 each cell
+     * is neutralised after the filter runs, so a submitted value can't run as
+     * a spreadsheet formula (see neutraliseFormula()).
      *
      * @since 1.0.0
      *
@@ -173,15 +189,11 @@ class ExportService
             $submission->created_at->format( 'Y-m-d H:i:s' ),
         ];
 
-        // Add field values
+        // Add field values, one cell per column the field type exports
         foreach ( $fields as $field ) {
-            // Skip layout fields
-            if ( $field->isLayoutField() ) {
-                continue;
-            }
+            $value = $submission->values->firstWhere( 'field_name', $field->name );
 
-            $value = $submission->getValue( $field->name );
-            $row[] = $value ?? '';
+            array_push( $row, ...$field->fieldType()->exportValues( $field, $value ) );
         }
 
         // Add metadata
@@ -209,7 +221,7 @@ class ExportService
         // Apply filter hook for extensibility
         $row = applyFilters( 'ap.forms.exportData', $row, $submission );
 
-        return $row;
+        return array_map( [$this, 'neutraliseFormula'], $row );
     }
 
     /**
@@ -224,7 +236,8 @@ class ExportService
      */
     public function exportToJson( Form $form, Collection $submissions ): array
     {
-        $data = [];
+        $data      = [];
+        $canReveal = FieldPrivacy::canReveal();
 
         foreach ( $submissions as $submission ) {
             // Build metadata, respecting privacy settings
@@ -244,7 +257,7 @@ class ExportService
                 'id'                => $submission->id,
                 'submission_number' => $submission->submission_number,
                 'submitted_at'      => $submission->created_at->toIso8601String(),
-                'data'              => $submission->data_array,
+                'data'              => $this->exportableData( $submission, $canReveal ),
                 'metadata'          => $metadata,
             ];
 
@@ -255,5 +268,81 @@ class ExportService
         }
 
         return $data;
+    }
+
+    /**
+     * Neutralises a CSV cell a spreadsheet would read as a formula.
+     *
+     * A string starting with `=`, `+`, `-`, `@`, a tab, a carriage return, a
+     * line feed or a full-width `＝`, `＋`, `－` or `＠` gets a leading `'`, so
+     * Excel, LibreOffice and Google Sheets show it as text (CSV injection,
+     * CWE-1236). A plain number such as `-12.5` or an
+     * E.164 phone number such as `+15551234567` can't run as a formula, so it
+     * is left as it is. Only the CSV export calls this; the JSON export keeps
+     * raw values.
+     *
+     * @since 1.6.0
+     *
+     * @param  mixed  $cell  The cell value.
+     *
+     * @return mixed The cell, prefixed with `'` when it could run as a formula.
+     */
+    public function neutraliseFormula( mixed $cell ): mixed
+    {
+        if ( ! is_string( $cell ) || '' === $cell || ! in_array( mb_substr( $cell, 0, 1 ), self::FORMULA_TRIGGERS, true ) ) {
+            return $cell;
+        }
+
+        if ( 1 === preg_match( '/^[+-](?:\d+(?:\.\d+)?|\.\d+)$/D', $cell ) ) {
+            return $cell;
+        }
+
+        return "'" . $cell;
+    }
+
+    /**
+     * Gets a submission's values for the JSON export, keyed by stored field name.
+     *
+     * Masked values are left out unless the user may reveal them. Masking is
+     * decided per value (by its field, or the setting copied onto it once the
+     * field is deleted), so a renamed or deleted masked field's values are
+     * not exported under their stored name.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormSubmission  $submission  The submission.
+     * @param  bool  $canReveal  Whether the user may reveal masked values.
+     *
+     * @return array<string, mixed> The values.
+     */
+    protected function exportableData( FormSubmission $submission, bool $canReveal ): array
+    {
+        return $submission->values
+            ->reject( fn ( FormSubmissionValue $value ): bool => ! $canReveal && $value->isMasked() )
+            ->mapWithKeys( fn ( FormSubmissionValue $value ): array => [$value->field_name => $value->getStructuredValue()] )
+            ->all();
+    }
+
+    /**
+     * Gets the fields whose values are exported, in form order.
+     *
+     * Fields masked in the admin are left out unless the current user may
+     * reveal masked values (see FieldPrivacy::canReveal()).
+     *
+     * @since 1.6.0
+     *
+     * @param  Form  $form  The form.
+     *
+     * @return Collection<int, FormField> The fields.
+     */
+    protected function exportableFields( Form $form ): Collection
+    {
+        $fields = $form->fields()->orderBy( 'sort_order' )->get();
+
+        if ( FieldPrivacy::canReveal() ) {
+            return $fields;
+        }
+
+        return $fields->reject( fn ( FormField $field ): bool => $field->isMaskedInAdmin() )->values();
     }
 }

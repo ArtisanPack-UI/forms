@@ -22,6 +22,7 @@ use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Policies\SubmissionPolicy;
 use ArtisanPackUI\Forms\Services\ExportService;
+use ArtisanPackUI\Forms\Support\FieldPrivacy;
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -298,7 +299,13 @@ class SubmissionsList extends Component
      */
     public function bulkDelete(): void
     {
-        $count = $this->getOwnedSelectedQuery()->delete();
+        // Deleted one by one so each submission's files are removed too (see FormSubmission::boot())
+        $count = 0;
+
+        foreach ( $this->getOwnedSelectedQuery()->lazyById() as $submission ) {
+            $submission->delete();
+            $count++;
+        }
 
         $this->resetSelection();
         session()->flash( 'success', trans_choice( ':count submission deleted.|:count submissions deleted.', $count, ['count' => $count] ) );
@@ -343,11 +350,11 @@ class SubmissionsList extends Component
         // Both paths apply ownership scope via getFilteredQuery or getOwnedSelectedQuery
         if ( ! empty( $this->selected ) ) {
             $submissions = $this->getOwnedSelectedQuery()
-                ->with( 'values' )
+                ->with( 'values.field' )
                 ->get();
         } else {
             $submissions = $this->getFilteredQuery()
-                ->with( 'values' )
+                ->with( 'values.field' )
                 ->get();
         }
 
@@ -367,8 +374,19 @@ class SubmissionsList extends Component
     public function submissions(): LengthAwarePaginator
     {
         return $this->getFilteredQuery()
-            ->with( ['form', 'values'] )
+            ->with( ['form', 'values.field'] )
             ->paginate( config( 'artisanpack.forms.admin.per_page', 15 ) );
+    }
+
+    /**
+     * Whether the current user may see values of fields masked in the admin.
+     *
+     * @since 1.6.0
+     */
+    #[Computed]
+    public function canRevealMaskedValues(): bool
+    {
+        return FieldPrivacy::canReveal();
     }
 
     /**
@@ -539,13 +557,23 @@ class SubmissionsList extends Component
             $query->where( 'form_id', (int) $this->formFilter );
         }
 
-        // Apply search filter (escape special LIKE characters)
+        // Apply search filter (escape special LIKE characters). Masked values
+        // are not searched unless the user may reveal them, so a search can't
+        // be used to guess them. A deleted field's values use the masking
+        // copied onto them when they were stored.
         if ( '' !== $this->search ) {
-            $search = str_replace( ['%', '_'], ['\%', '\_'], $this->search );
-            $query->where( function ( $q ) use ( $search ): void {
+            $search         = str_replace( ['%', '_'], ['\%', '\_'], $this->search );
+            $canReveal      = FieldPrivacy::canReveal();
+            $maskedFieldIds = $canReveal ? [] : FieldPrivacy::maskedFieldIds();
+
+            $query->where( function ( $q ) use ( $search, $canReveal, $maskedFieldIds ): void {
                 $q->where( 'submission_number', 'like', "%{$search}%" )
-                    ->orWhereHas( 'values', function ( $vq ) use ( $search ): void {
-                        $vq->where( 'value', 'like', "%{$search}%" );
+                    ->orWhereHas( 'values', function ( $vq ) use ( $search, $canReveal, $maskedFieldIds ): void {
+                        $vq->where( 'value', 'like', "%{$search}%" )
+                            ->when( ! $canReveal, fn ( $masked ) => $masked->where( function ( $visible ) use ( $maskedFieldIds ): void {
+                                $visible->where( fn ( $live ) => $live->whereNotNull( 'field_id' )->when( [] !== $maskedFieldIds, fn ( $live ) => $live->whereNotIn( 'field_id', $maskedFieldIds ) ) )
+                                    ->orWhere( fn ( $orphan ) => $orphan->whereNull( 'field_id' )->where( fn ( $unmasked ) => $unmasked->whereNull( 'is_masked' )->orWhere( 'is_masked', false ) ) );
+                            } ) );
                     } );
             } );
         }

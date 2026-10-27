@@ -2,6 +2,9 @@
  * Layout field components.
  *
  * Renders non-data layout elements: heading, paragraph, divider, and HTML.
+ * Since 1.6.0 a heading has an alignment, a paragraph keeps its basic
+ * formatting (sanitized by the server as `content_html`) and an HTML block's
+ * `{field_name}` merge tags show what the visitor entered, as they type.
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -9,35 +12,42 @@
  * @since      1.1.0
  */
 
-import type { JSX } from 'react';
+import { getDividerClasses, getHeadingAlignClass, getHeadingLevel, getLayoutContent } from '../../../shared/fieldSettings';
+import { applyLiveMergeTags } from '../../../shared/liveMergeTags';
+
+import { useFormValues } from './FormValuesContext';
 import type { FieldComponentProps } from './types';
 
-type HeadingTag = 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
-
 /**
- * Renders a heading element (h1-h6).
+ * Renders a heading element (h2-h6).
  */
 export function HeadingField( { field }: FieldComponentProps ) {
-	const rawLevel = field.field_config && 'level' in field.field_config
-		? Number( field.field_config.level )
-		: 2;
-	const level = Number.isFinite( rawLevel ) ? Math.min( Math.max( Math.trunc( rawLevel ), 1 ), 6 ) : 2;
-	const Tag = ( `h${level}` as HeadingTag ) satisfies keyof JSX.IntrinsicElements;
+	const Tag = getHeadingLevel( field );
 
 	return (
-		<Tag className={`font-bold ${field.css_classes ?? ''}`}>
-			{field.label ?? ''}
+		<Tag className={`font-bold ${getHeadingAlignClass( field )} ${field.css_classes ?? ''}`}>
+			{getLayoutContent( field )}
 		</Tag>
 	);
 }
 
 /**
- * Renders a paragraph of text.
+ * Renders a paragraph of text. The server's sanitized `content_html` keeps
+ * bold, italic, underline and links; without it the text is shown as is.
  */
 export function ParagraphField( { field }: FieldComponentProps ) {
+	if ( field.content_html !== undefined ) {
+		return (
+			<p
+				className={field.css_classes ?? undefined}
+				dangerouslySetInnerHTML={{ __html: field.content_html }}
+			/>
+		);
+	}
+
 	return (
 		<p className={field.css_classes ?? undefined}>
-			{field.default_value ?? field.label ?? ''}
+			{getLayoutContent( field )}
 		</p>
 	);
 }
@@ -46,19 +56,21 @@ export function ParagraphField( { field }: FieldComponentProps ) {
  * Renders a horizontal divider.
  */
 export function DividerField( { field }: FieldComponentProps ) {
-	return <hr className={`divider ${field.css_classes ?? ''}`} />;
+	return <hr className={`divider ${getDividerClasses( field )} ${field.css_classes ?? ''}`} />;
 }
 
 /**
- * Renders custom HTML content.
+ * Renders custom HTML content, sanitized by the server, with its merge tags
+ * filled in from the form's values (escaped).
  */
 export function HtmlField( { field }: FieldComponentProps ) {
-	const content = field.default_value ?? '';
+	const form = useFormValues();
+	const content = getLayoutContent( field );
 
 	return (
 		<div
 			className={field.css_classes ?? undefined}
-			dangerouslySetInnerHTML={{ __html: content }}
+			dangerouslySetInnerHTML={{ __html: form ? applyLiveMergeTags( content, form.fields, form ) : content }}
 		/>
 	);
 }

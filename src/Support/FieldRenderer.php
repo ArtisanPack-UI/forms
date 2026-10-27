@@ -18,6 +18,8 @@ namespace ArtisanPackUI\Forms\Support;
 use ArtisanPackUI\Forms\Models\FormField;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\MessageBag;
+use Illuminate\Support\ViewErrorBag;
 
 /**
  * Renders a form field and pipes the resulting HTML through the
@@ -36,12 +38,14 @@ class FieldRenderer
      * @param  FormField  $field  The field being rendered.
      * @param  mixed  $value  The current field value.
      * @param  string|null  $error  The current validation error, if any.
+     * @param  array<string, string>  $subErrors  A composite field's errors by sub-input key (since 1.6.0; see subInputErrors()).
+     * @param  mixed  $files  A file field's current uploads: one file, or a multi-file field's files by key (since 1.6.0).
      *
      * @return string The (possibly filtered) HTML.
      */
-    public static function render( FormField $field, mixed $value = null, ?string $error = null ): string
+    public static function render( FormField $field, mixed $value = null, ?string $error = null, array $subErrors = [], mixed $files = null ): string
     {
-        $view = 'forms::components.fields.' . $field->type;
+        $view = $field->fieldType()->view();
 
         if ( ! View::exists( $view ) ) {
             // A custom field type registered via `ap.forms.fieldTypes` may not ship a blade
@@ -57,11 +61,88 @@ class FieldRenderer
         }
 
         $html = View::make( $view, [
-            'field' => $field,
-            'value' => $value,
-            'error' => $error,
+            'field'     => $field,
+            'value'     => $value,
+            'error'     => $error,
+            'subErrors' => $subErrors,
+            'files'     => $files,
         ] )->render();
 
         return applyFilters( 'ap.forms.fieldRender', $html, $field );
+    }
+
+    /**
+     * Gets the first error of a field's own value in the Livewire renderer.
+     *
+     * File inputs bind to `files.{name}`, other inputs to `formData.{name}`.
+     * A multi-file field also shows the first error of any one file
+     * (`files.{name}.*`), since each file is checked on its own.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     * @param  MessageBag|ViewErrorBag  $errors  The validation errors.
+     *
+     * @return string The error, or `''` for none.
+     */
+    public static function fieldError( FormField $field, MessageBag|ViewErrorBag $errors ): string
+    {
+        $key   = ( $field->is_file_field ? 'files.' : 'formData.' ) . $field->name;
+        $error = $errors->first( $key );
+
+        if ( '' === $error && $field->is_file_field && $field->allowsMultipleFiles() ) {
+            $error = $errors->first( "{$key}.*" );
+        }
+
+        return $error;
+    }
+
+    /**
+     * Checks whether a field's value, or any input nested under it, has an error.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     * @param  MessageBag|ViewErrorBag  $errors  The validation errors.
+     *
+     * @return bool True when there is an error.
+     */
+    public static function hasErrors( FormField $field, MessageBag|ViewErrorBag $errors ): bool
+    {
+        $key = ( $field->is_file_field ? 'files.' : 'formData.' ) . $field->name;
+
+        foreach ( $errors->keys() as $errorKey ) {
+            if ( $key === $errorKey || str_starts_with( (string) $errorKey, "{$key}." ) ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Gets the first error for each of a composite field's sub-inputs.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     * @param  MessageBag|ViewErrorBag  $errors  The validation errors.
+     * @param  string  $prefix  The key the field's value is nested under.
+     *
+     * @return array<string, string> The errors by sub-input key; empty for other fields.
+     */
+    public static function subInputErrors( FormField $field, MessageBag|ViewErrorBag $errors, string $prefix = 'formData' ): array
+    {
+        $subErrors = [];
+
+        foreach ( array_keys( $field->getEnabledSubInputs() ) as $key ) {
+            $error = $errors->first( "{$prefix}.{$field->name}.{$key}" );
+
+            if ( '' !== $error ) {
+                $subErrors[ $key ] = $error;
+            }
+        }
+
+        return $subErrors;
     }
 }

@@ -19,6 +19,9 @@ import type {
 	ConditionalOperator,
 	FormField,
 } from '../../../types/artisanpack-forms';
+import { getConditionTargets } from '../../../shared/composite';
+import { getConditionOptions } from '../../../shared/fieldSettings';
+import { t } from '../../../shared/i18n';
 
 /** Generic conditional logic shape that accepts any action string. */
 export interface GenericConditionalLogic {
@@ -27,34 +30,34 @@ export interface GenericConditionalLogic {
 	rules: ConditionalLogicRule[];
 }
 
-/** Operator definitions with metadata. */
-const OPERATOR_DEFINITIONS: Array<{
+/** Operator definitions with metadata, translated at render. */
+const OPERATOR_DEFINITIONS = computed( (): Array<{
 	value: ConditionalOperator;
 	label: string;
 	needsValue: boolean;
-}> = [
-	{ value: 'equals', label: 'Equals', needsValue: true },
-	{ value: 'not_equals', label: 'Does not equal', needsValue: true },
-	{ value: 'contains', label: 'Contains', needsValue: true },
-	{ value: 'not_contains', label: 'Does not contain', needsValue: true },
-	{ value: 'starts_with', label: 'Starts with', needsValue: true },
-	{ value: 'ends_with', label: 'Ends with', needsValue: true },
-	{ value: 'is_empty', label: 'Is empty', needsValue: false },
-	{ value: 'is_not_empty', label: 'Is not empty', needsValue: false },
-	{ value: 'greater_than', label: 'Greater than', needsValue: true },
-	{ value: 'less_than', label: 'Less than', needsValue: true },
-	{ value: 'greater_or_equal', label: 'Greater or equal', needsValue: true },
-	{ value: 'less_or_equal', label: 'Less or equal', needsValue: true },
-	{ value: 'in', label: 'Is one of', needsValue: true },
-	{ value: 'not_in', label: 'Is not one of', needsValue: true },
-	{ value: 'checked', label: 'Is checked', needsValue: false },
-	{ value: 'unchecked', label: 'Is unchecked', needsValue: false },
-	{ value: 'includes', label: 'Includes', needsValue: true },
-	{ value: 'not_includes', label: 'Does not include', needsValue: true },
-];
+}> => [
+	{ value: 'equals', label: t( 'Equals' ), needsValue: true },
+	{ value: 'not_equals', label: t( 'Does not equal' ), needsValue: true },
+	{ value: 'contains', label: t( 'Contains' ), needsValue: true },
+	{ value: 'not_contains', label: t( 'Does not contain' ), needsValue: true },
+	{ value: 'starts_with', label: t( 'Starts with' ), needsValue: true },
+	{ value: 'ends_with', label: t( 'Ends with' ), needsValue: true },
+	{ value: 'is_empty', label: t( 'Is empty' ), needsValue: false },
+	{ value: 'is_not_empty', label: t( 'Is not empty' ), needsValue: false },
+	{ value: 'greater_than', label: t( 'Greater than' ), needsValue: true },
+	{ value: 'less_than', label: t( 'Less than' ), needsValue: true },
+	{ value: 'greater_or_equal', label: t( 'Greater or equal' ), needsValue: true },
+	{ value: 'less_or_equal', label: t( 'Less or equal' ), needsValue: true },
+	{ value: 'in', label: t( 'Is one of' ), needsValue: true },
+	{ value: 'not_in', label: t( 'Is not one of' ), needsValue: true },
+	{ value: 'checked', label: t( 'Is checked' ), needsValue: false },
+	{ value: 'unchecked', label: t( 'Is unchecked' ), needsValue: false },
+	{ value: 'includes', label: t( 'Includes' ), needsValue: true },
+	{ value: 'not_includes', label: t( 'Does not include' ), needsValue: true },
+] );
 
 /** Layout field types excluded from condition targets. */
-const LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'divider', 'html'] );
+const LAYOUT_TYPES = new Set( ['section', 'heading', 'paragraph', 'divider', 'html'] );
 
 const props = withDefaults( defineProps<{
 	/** Current conditional logic configuration, or null. */
@@ -65,12 +68,12 @@ const props = withDefaults( defineProps<{
 	excludeFieldId?: number;
 	/** Available actions. Defaults to [{ value: 'show', label: 'Show' }, { value: 'hide', label: 'Hide' }]. */
 	actions?: Array<{ value: string; label: string }>;
-	/** Label for the action dropdown. Defaults to 'this field'. */
+	/** Label for the action dropdown. Defaults to 'this field' (translated). */
 	actionLabel?: string;
 }>(), {
 	excludeFieldId: undefined,
 	actions: undefined,
-	actionLabel: 'this field',
+	actionLabel: undefined,
 } );
 
 const emit = defineEmits<{
@@ -79,16 +82,30 @@ const emit = defineEmits<{
 
 const availableActions = computed( () =>
 	props.actions ?? [
-		{ value: 'show', label: 'Show' },
-		{ value: 'hide', label: 'Hide' },
+		{ value: 'show', label: t( 'Show' ) },
+		{ value: 'hide', label: t( 'Hide' ) },
 	],
 );
+
+const resolvedActionLabel = computed( () => props.actionLabel ?? t( 'this field' ) );
+
+const logicTypeOptions = computed( () => [
+	{ value: 'all', label: t( 'all' ) },
+	{ value: 'any', label: t( 'any' ) },
+] );
 
 const availableFields = computed( () =>
 	props.fields.filter( ( f ) =>
 		( props.excludeFieldId === undefined || f.id !== props.excludeFieldId ) &&
 		!LAYOUT_TYPES.has( f.type ),
 	),
+);
+
+/** A composite field offers each of its enabled sub-inputs instead of itself. */
+const availableTargets = computed( () => availableFields.value.flatMap( getConditionTargets ) );
+
+const targetOptions = computed( () =>
+	availableTargets.value.map( ( target ) => ( { value: target.ref, label: target.label } ) ),
 );
 
 const defaultLogic = computed( (): GenericConditionalLogic => ( {
@@ -110,14 +127,14 @@ function handleLogicTypeChange( logicType: string ): void {
 }
 
 function handleAddRule(): void {
-	const firstField = availableFields.value[0];
+	const firstTarget = availableTargets.value[0];
 
-	if ( !firstField ) {
+	if ( !firstTarget ) {
 		return;
 	}
 
 	const newRule: ConditionalLogicRule = {
-		field: firstField.uuid,
+		field: firstTarget.ref,
 		operator: 'equals',
 		value: '',
 	};
@@ -147,22 +164,22 @@ function handleClearAll(): void {
 }
 
 function needsValue( operator: ConditionalOperator ): boolean {
-	const def = OPERATOR_DEFINITIONS.find( ( d ) => d.value === operator );
+	const def = OPERATOR_DEFINITIONS.value.find( ( d ) => d.value === operator );
 
 	return def?.needsValue ?? true;
 }
 
-function getFieldOptions( fieldUuid: string ): Array<{ label: string; value: string }> | null {
-	const field = props.fields.find( ( f ) => f.uuid === fieldUuid );
+function getFieldOptions( fieldRef: string ): Array<{ label: string; value: string }> | null {
+	const target = availableTargets.value.find( ( entry ) => entry.ref === fieldRef );
 
-	if ( !field ) {
+	// A sub-input takes free text.
+	if ( target?.subKey ) {
 		return null;
 	}
 
-	const options = field.options ??
-		( field.field_config as { options?: Array<{ label: string; value: string }> } )?.options;
+	const field = target?.field ?? props.fields.find( ( f ) => f.uuid === fieldRef );
 
-	return options && options.length > 0 ? options : null;
+	return field ? getConditionOptions( field ) : null;
 }
 </script>
 
@@ -179,19 +196,16 @@ function getFieldOptions( fieldUuid: string ): Array<{ label: string; value: str
 					option-label="label"
 					@update:model-value="handleActionChange( $event as string )"
 				/>
-				<span class="text-base-content">{{ actionLabel }} when</span>
+				<span class="text-base-content">{{ t( ':subject when', { subject: resolvedActionLabel } ) }}</span>
 				<Select
 					:model-value="logic.logic"
 					size="sm"
-					:options="[
-						{ value: 'all', label: 'all' },
-						{ value: 'any', label: 'any' },
-					]"
+					:options="logicTypeOptions"
 					option-value="value"
 					option-label="label"
 					@update:model-value="handleLogicTypeChange( $event as string )"
 				/>
-				<span class="text-base-content">of the following rules match:</span>
+				<span class="text-base-content">{{ t( 'of the following rules match:' ) }}</span>
 			</div>
 
 			<!-- Rules -->
@@ -205,10 +219,7 @@ function getFieldOptions( fieldUuid: string ): Array<{ label: string; value: str
 					<Select
 						:model-value="rule.field"
 						size="sm"
-						:options="availableFields.map( ( f ) => ( {
-							value: f.uuid,
-							label: f.label || f.name,
-						} ) )"
+						:options="targetOptions"
 						option-value="value"
 						option-label="label"
 						@update:model-value="handleUpdateRule( index, { field: $event as string } )"
@@ -236,7 +247,7 @@ function getFieldOptions( fieldUuid: string ): Array<{ label: string; value: str
 							:model-value="String( rule.value ?? '' )"
 							size="sm"
 							:options="[
-								{ value: '', label: 'Select...' },
+								{ value: '', label: t( 'Select...' ) },
 								...( getFieldOptions( rule.field ) ?? [] ).map( ( opt ) => ( {
 									value: opt.value,
 									label: opt.label,
@@ -250,7 +261,7 @@ function getFieldOptions( fieldUuid: string ): Array<{ label: string; value: str
 							v-else
 							type="text"
 							:model-value="String( rule.value ?? '' )"
-							placeholder="Value"
+							:placeholder="t( 'Value' )"
 							size="sm"
 							@update:model-value="handleUpdateRule( index, { value: $event } )"
 						/>
@@ -261,8 +272,8 @@ function getFieldOptions( fieldUuid: string ): Array<{ label: string; value: str
 						color="ghost"
 						size="sm"
 						class="btn-circle"
-						title="Remove rule"
-						aria-label="Remove rule"
+						:title="t( 'Remove rule' )"
+						:aria-label="t( 'Remove rule' )"
 						@click="handleRemoveRule( index )"
 					>
 						&times;
@@ -279,7 +290,7 @@ function getFieldOptions( fieldUuid: string ): Array<{ label: string; value: str
 				:disabled="availableFields.length === 0"
 				@click="handleAddRule"
 			>
-				+ Add Rule
+				{{ t( '+ Add Rule' ) }}
 			</Button>
 			<Button
 				v-if="logic.rules.length > 0"
@@ -287,7 +298,7 @@ function getFieldOptions( fieldUuid: string ): Array<{ label: string; value: str
 				size="sm"
 				@click="handleClearAll"
 			>
-				Clear All Rules
+				{{ t( 'Clear All Rules' ) }}
 			</Button>
 		</div>
 
@@ -295,7 +306,7 @@ function getFieldOptions( fieldUuid: string ): Array<{ label: string; value: str
 			v-if="availableFields.length === 0"
 			class="text-sm text-base-content/50"
 		>
-			Add more non-layout fields to the form to create conditional rules.
+			{{ t( 'Add more non-layout fields to the form to create conditional rules.' ) }}
 		</p>
 	</div>
 </template>

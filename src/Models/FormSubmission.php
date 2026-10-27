@@ -83,6 +83,19 @@ class FormSubmission extends Model
         'admin_notes',
     ];
 
+    /**
+     * Attributes of the values submitted for "Do not store" fields.
+     *
+     * Kept in memory only, so notifications and webhooks for the request can
+     * read them (see withTransientValues()). Jobs carry them in an encrypted
+     * payload; they are never written to the database.
+     *
+     * @since 1.6.0
+     *
+     * @var list<array<string, mixed>>
+     */
+    protected array $transientValues = [];
+
     // =========================================
     // Relationships
     // =========================================
@@ -248,14 +261,19 @@ class FormSubmission extends Model
     /**
      * Gets submission data as a collection keyed by field name.
      *
+     * Holds the submitted values rather than their display labels, since it
+     * feeds notification conditions, webhooks and the JSON export. Since
+     * 1.6.0 a composite field's value is a map of its sub-inputs (see
+     * FormSubmissionValue::getStructuredValue()).
+     *
      * @since 1.0.0
      *
-     * @return Collection<string, string> The submission data collection.
+     * @return Collection<string, array<string, mixed>|string> The submission data collection.
      */
     public function getDataAttribute(): Collection
     {
         return $this->values->mapWithKeys( function ( FormSubmissionValue $value ) {
-            return [$value->field_name => $value->display_value];
+            return [$value->field_name => $value->getStructuredValue()];
         } );
     }
 
@@ -264,7 +282,7 @@ class FormSubmission extends Model
      *
      * @since 1.0.0
      *
-     * @return array<string, string> The submission data array.
+     * @return array<string, array<string, mixed>|string> The submission data array.
      */
     public function getDataArrayAttribute(): array
     {
@@ -356,7 +374,9 @@ class FormSubmission extends Model
     }
 
     /**
-     * Gets a submitted value by field name.
+     * Gets a submitted value's display value by field name.
+     *
+     * Choice fields return option labels; see FormSubmissionValue::$display_value.
      *
      * @since 1.0.0
      *
@@ -385,6 +405,57 @@ class FormSubmission extends Model
         } );
 
         return $emailValue?->value;
+    }
+
+    /**
+     * Adds values that are not stored to the loaded `values` relation.
+     *
+     * Each entry holds FormSubmissionValue attributes. Unsaved values already
+     * in the relation are replaced, so calling this again does not duplicate
+     * them. Their `field` relation is set from `$fields`, or looked up.
+     *
+     * @since 1.6.0
+     *
+     * @param  list<array<string, mixed>>  $values  The value attributes.
+     * @param  iterable<FormField>|null  $fields  The fields the values belong to, when already loaded.
+     *
+     * @return static The submission.
+     */
+    public function withTransientValues( array $values, ?iterable $fields = null ): static
+    {
+        $this->transientValues = array_values( $values );
+
+        $fieldsById = [];
+
+        foreach ( $fields ?? FormField::query()->whereKey( array_filter( array_column( $values, 'field_id' ) ) )->get() as $field ) {
+            $fieldsById[ $field->getKey() ] = $field;
+        }
+
+        $transient = array_map( function ( array $attributes ) use ( $fieldsById ): FormSubmissionValue {
+            $value = ( new FormSubmissionValue() )->forceFill( $attributes );
+
+            if ( isset( $fieldsById[ $attributes['field_id'] ?? null ] ) ) {
+                $value->setRelation( 'field', $fieldsById[ $attributes['field_id'] ] );
+            }
+
+            return $value;
+        }, $this->transientValues );
+
+        $stored = $this->values->filter( fn ( FormSubmissionValue $value ): bool => $value->exists );
+
+        return $this->setRelation( 'values', $stored->concat( $transient )->values() );
+    }
+
+    /**
+     * Gets the attributes of the values that are not stored.
+     *
+     * @since 1.6.0
+     *
+     * @return list<array<string, mixed>> The value attributes.
+     */
+    public function getTransientValues(): array
+    {
+        return $this->transientValues;
     }
 
     /**
@@ -426,6 +497,10 @@ class FormSubmission extends Model
      *
      * Sets up model event listeners for creating, created, updated, and deleted events.
      *
+     * Since 1.6.0, deleting a submission deletes its uploads as models first,
+     * so their stored files and media library items are removed too; the
+     * database cascade alone would leave them behind.
+     *
      * @since 1.0.0
      */
     protected static function boot(): void
@@ -452,6 +527,10 @@ class FormSubmission extends Model
 
             // Dispatch Laravel event
             SubmissionUpdated::dispatch( $submission );
+        } );
+
+        static::deleting( function ( FormSubmission $submission ): void {
+            $submission->uploads()->lazyById()->each( fn ( FormUpload $upload ) => $upload->delete() );
         } );
 
         static::deleted( function ( FormSubmission $submission ): void {

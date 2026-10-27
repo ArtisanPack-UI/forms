@@ -11,15 +11,28 @@
  */
 
 import type { BuiltInFieldType, DisplayConfig, FormField, FormLayout } from '../../../types/artisanpack-forms';
-import { DateField, FileField } from './AdvancedField';
+import { isCompositeField } from '../../../shared/composite';
+import { getWidthClass, WIDTH_CLASSES } from '../../../shared/fieldSettings';
+import { DateField, DateTimeField, FileField, RatingField } from './AdvancedField';
 import {
 	CheckboxField,
 	CheckboxGroupField,
 	RadioField,
 	SelectField,
 	SelectMultipleField,
+	ToggleField,
 } from './ChoiceField';
+import { CalculationField } from './CalculationField';
+import { CaptchaField } from './CaptchaField';
+import { ColorField } from './ColorField';
+import { CompositeField } from './CompositeField';
+import { ConsentField } from './ConsentField';
 import { DividerField, HeadingField, HtmlField, ParagraphField } from './LayoutField';
+import { ListField } from './ListField';
+import { RankingField } from './RankingField';
+import { SectionField } from './SectionField';
+import { SignatureField } from './SignatureField';
+import { MatrixField, NpsField, SliderField } from './SurveyField';
 import {
 	EmailField,
 	HiddenField,
@@ -45,8 +58,26 @@ export interface FieldRendererProps {
 	onChange: ( value: unknown ) => void;
 	/** Callback to set a file for file fields. */
 	onFileChange?: ( file: File | File[] ) => void;
+	/** The files the form holds for a file field (since 1.6.0). */
+	files?: File | File[];
 	/** Display configuration from the form. */
 	displayConfig: DisplayConfig;
+	/** Text typed into the field's "Other" choice (since 1.6.0). */
+	otherValue?: string;
+	/** Callback to update the "Other" choice's text (since 1.6.0). */
+	onOtherChange?: ( text: string ) => void;
+	/**
+	 * A composite field's first error per sub-input, keyed by sub-input
+	 * (since 1.6.0; see `getSubInputErrors()`).
+	 */
+	subErrors?: Record<string, string>;
+	/**
+	 * The text typed into an email field's confirmation input, submitted as
+	 * `{name}_confirmation` (since 1.6.0).
+	 */
+	confirmValue?: string;
+	/** Callback to update an email field's confirmation text (since 1.6.0). */
+	onConfirmChange?: ( text: string ) => void;
 	/**
 	 * Host-supplied field components that overlay the built-ins. Takes
 	 * precedence over the module-level registry (see `registerFieldComponent`)
@@ -75,23 +106,32 @@ const FIELD_COMPONENTS: Record<BuiltInFieldType, FieldComponent> = {
 	select: SelectField,
 	radio: RadioField,
 	checkbox: CheckboxField,
+	toggle: ToggleField,
 	checkbox_group: CheckboxGroupField,
 	select_multiple: SelectMultipleField,
 	file: FileField,
 	date: DateField,
 	time: TimeField,
+	datetime: DateTimeField,
+	date_range: CompositeField,
+	rating: RatingField,
+	slider: SliderField,
+	nps: NpsField,
+	matrix: MatrixField,
+	ranking: RankingField,
+	name: CompositeField,
+	address: CompositeField,
+	list: ListField,
+	calculation: CalculationField,
+	signature: SignatureField,
+	color: ColorField,
+	consent: ConsentField,
+	captcha: CaptchaField,
+	section: SectionField,
 	heading: HeadingField,
 	paragraph: ParagraphField,
 	divider: DividerField,
 	html: HtmlField,
-};
-
-/** CSS class map for field width. */
-const WIDTH_CLASSES: Record<string, string> = {
-	full: 'w-full',
-	half: 'w-full md:w-1/2',
-	third: 'w-full md:w-1/3',
-	'two-thirds': 'w-full md:w-2/3',
 };
 
 /**
@@ -110,9 +150,9 @@ function getInlineWidthClass( field: FormField ): string {
 		return 'hidden';
 	}
 
-	const width = WIDTH_CLASSES[field.width] ? field.width : 'full';
+	const widthClass = getWidthClass( field.width );
 
-	return width === 'full' ? 'flex-1 min-w-[min(12rem,100%)]' : WIDTH_CLASSES[width];
+	return widthClass === WIDTH_CLASSES.full ? 'flex-1 min-w-[min(12rem,100%)]' : widthClass;
 }
 
 /**
@@ -135,27 +175,38 @@ export function FieldRenderer( {
 	error,
 	onChange,
 	onFileChange,
+	files,
 	displayConfig,
+	otherValue,
+	onOtherChange,
+	subErrors,
+	confirmValue,
+	onConfirmChange,
 	fieldComponents,
 	layout = 'stacked',
 }: FieldRendererProps ) {
 	// Resolution order: host prop overlay, then the module-level registry,
-	// then the built-in components. This keeps built-ins working while letting
-	// a host add or override a type without patching the vendored source.
+	// then the built-in components, then the generic composite component for
+	// a type with sub-inputs. This keeps built-ins working while letting a
+	// host add or override a type without patching the vendored source.
 	// `ownEntry` guards the plain-object maps so an arbitrary type such as
 	// `constructor` cannot resolve an inherited `Object.prototype` member.
 	const Component =
 		ownEntry( fieldComponents, field.type ) ??
 		getRegisteredFieldComponent( field.type ) ??
-		ownEntry( FIELD_COMPONENTS as Record<string, FieldComponent>, field.type );
+		ownEntry( FIELD_COMPONENTS as Record<string, FieldComponent>, field.type ) ??
+		( isCompositeField( field ) ? CompositeField : undefined );
 
 	if ( !Component ) {
 		return null;
 	}
 
-	const widthClass = layout === 'inline'
-		? getInlineWidthClass( field )
-		: ( WIDTH_CLASSES[field.width] ?? WIDTH_CLASSES.full );
+	// A section spans the row, like the fields it groups
+	const widthClass = field.type === 'section'
+		? WIDTH_CLASSES.full
+		: layout === 'inline'
+			? getInlineWidthClass( field )
+			: getWidthClass( field.width );
 
 	return (
 		<div className={widthClass}>
@@ -165,7 +216,13 @@ export function FieldRenderer( {
 				error={error}
 				onChange={onChange}
 				onFileChange={onFileChange}
+				files={files}
 				displayConfig={displayConfig}
+				otherValue={otherValue}
+				onOtherChange={onOtherChange}
+				subErrors={subErrors}
+				confirmValue={confirmValue}
+				onConfirmChange={onConfirmChange}
 			/>
 		</div>
 	);

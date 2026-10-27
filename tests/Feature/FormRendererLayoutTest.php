@@ -56,7 +56,7 @@ describe( 'FormRenderer layout and submit class (issue #141)', function () use (
             expect( $fieldRow )->toContain( '{isInline && submitButton}' )
                 ->and( strpos( $fieldRow, '{isInline && submitButton}' ) )
                 ->toBeGreaterThan( strpos( $fieldRow, 'Honeypot field' ) )
-                ->and( $fieldRow )->toContain( "layout={isInline ? 'inline' : 'stacked'}" );
+                ->and( $between( $this->renderer, 'const renderField = ', 'const hasFieldErrors' ) )->toContain( "layout={isInline ? 'inline' : 'stacked'}" );
         } );
 
         it( 'aligns the inline button to the bottom of the row without growing', function (): void {
@@ -88,14 +88,14 @@ describe( 'FormRenderer layout and submit class (issue #141)', function () use (
         it( 'lets a full-width field shrink and hides hidden inputs in an inline row', function (): void {
             expect( $this->fieldRenderer )
                 ->toContain( "layout = 'stacked'," )
-                ->toContain( "width === 'full' ? 'flex-1 min-w-[min(12rem,100%)]' : WIDTH_CLASSES[width]" )
+                ->toContain( "widthClass === WIDTH_CLASSES.full ? 'flex-1 min-w-[min(12rem,100%)]' : widthClass" )
                 ->toContain( "if ( field.type === 'hidden' ) {\n\t\treturn 'hidden';" );
         } );
 
         it( 'keeps the stacked width classes unchanged', function (): void {
             expect( $this->fieldRenderer )
-                ->toContain( "full: 'w-full'," )
-                ->toContain( ': ( WIDTH_CLASSES[field.width] ?? WIDTH_CLASSES.full );' );
+                ->toContain( "import { getWidthClass, WIDTH_CLASSES } from '../../../shared/fieldSettings';" )
+                ->toContain( ': getWidthClass( field.width );' );
         } );
     } );
 
@@ -155,7 +155,7 @@ describe( 'FormRenderer layout and submit class (issue #141)', function () use (
 
         it( 'keeps the stacked width classes unchanged', function (): void {
             expect( $this->fieldRenderer )
-                ->toContain( "full: 'w-full'," )
+                ->toContain( "import { WIDTH_CLASSES } from '../../../shared/fieldSettings';" )
                 ->toContain( ': ( WIDTH_CLASSES[props.field.width] ?? WIDTH_CLASSES.full )' );
         } );
     } );

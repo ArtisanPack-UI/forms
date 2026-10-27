@@ -19,25 +19,33 @@ php artisan migrate
 
 ### Basic Usage
 
-```blade
-<!-- Display a form by slug -->
-<livewire:forms::form-renderer slug="contact" />
-
-<!-- Or by form ID -->
-<livewire:forms::form-renderer :form-id="1" />
+```php
+// Load the form, e.g. in a controller
+$form = app( \ArtisanPackUI\Forms\Services\FormService::class )->getBySlug( 'contact' );
 ```
+
+```blade
+<!-- Display it -->
+<livewire:form-renderer :form="$form" />
+
+<!-- Optionally start fields with values -->
+<livewire:form-renderer :form="$form" :prefill="['plan' => 'pro']" />
+```
+
+The success message, redirect URL and other display options are form settings, edited in the admin (`/admin/forms/{form}/edit`, **Settings** tab).
 
 ## ✨ Key Features
 
 - **🎨 Visual Form Builder**: Drag-and-drop interface for creating forms without code
-- **📝 20+ Field Types**: Text, email, textarea, select, checkbox, radio, file upload, date, time, and more
+- **📝 35+ Field Types**: Text, choices, toggles, file uploads, dates, ratings, sliders, name and address, lists, calculations, signatures, consent, CAPTCHA, and more
 - **📊 Submission Management**: View, export, and manage form submissions with ease
 - **📧 Email Notifications**: Admin notifications and autoresponders with template support
 - **📁 Secure File Uploads**: Private file storage with MIME validation and size limits
 - **📑 Multi-Step Forms**: Create wizard-style forms with step navigation
 - **🔀 Conditional Logic**: Show/hide fields and steps based on user input
 - **🔗 Webhook Integration**: Send form data to external services with HMAC signatures
-- **🛡️ Spam Protection**: Built-in honeypot fields and rate limiting
+- **🛡️ Spam Protection**: Built-in honeypot fields, rate limiting, and a CAPTCHA field (Turnstile, hCaptcha, reCAPTCHA)
+- **🔐 Field Privacy**: Administrative fields, "Do not store", masking in the admin, and timed redaction
 - **🔒 Authorization**: Policy-based access control with ownership support
 - **📤 Export Options**: Export submissions to CSV format
 
@@ -56,17 +64,15 @@ php artisan migrate
 
 ### Available Field Types
 
-**Basic Fields**: Text, Email, URL, Phone, Number, Password, Hidden
+**Basic Fields**: Text, Email (with optional confirmation), Phone, Number, URL, Text Area (with optional rich text editor), Hidden
 
-**Text Fields**: Textarea, Rich Text Editor
+**Choice Fields**: Dropdown Select (optionally searchable), Radio Buttons, Single Checkbox, Toggle, Checkbox Group, Multi-Select, with image choices, an "Other" choice, predefined lists and dynamic choices
 
-**Selection Fields**: Select, Multi-Select, Checkbox, Radio, Toggle
+**Advanced Fields**: File Upload (single or multiple), Date, Time, Date & Time, Date Range, Rating, Slider, Color, Net Promoter Score, Likert / Matrix, Ranking, Name, Address, List, Calculation, Signature, Consent, CAPTCHA
 
-**Date/Time Fields**: Date, Time, DateTime
+**Layout Elements**: Section, Heading, Paragraph, Divider, Custom HTML
 
-**File Fields**: File Upload, Multiple Files
-
-**Layout Fields**: Heading, Paragraph, Divider
+Every input field can be read-only, populated dynamically, given an admin label, made administrative (filled in by admins on the submission), or kept private with "Do not store", "Mask in admin" and "Redact after (days)". See the [Form Builder](https://github.com/ArtisanPack-UI/forms/wiki/Usage-Form-Builder) and [Field Privacy & Visibility](https://github.com/ArtisanPack-UI/forms/wiki/Usage-Field-Privacy) docs.
 
 ## 📖 Documentation
 
@@ -96,12 +102,13 @@ The package supports the following environment variables:
 | `FORMS_UPLOADS_DISK` | Storage disk for file uploads | `form-uploads` |
 | `FORMS_UPLOADS_MAX_SIZE` | Maximum file size in KB | `10240` (10MB) |
 | `FORMS_RETENTION_DAYS` | Days to keep submissions (null = forever) | `null` |
-| `FORMS_HONEYPOT_ENABLED` | Enable honeypot spam protection | `true` |
-| `FORMS_RATE_LIMIT_ENABLED` | Enable rate limiting | `true` |
-| `FORMS_RATE_LIMIT_MAX` | Maximum submissions per minute | `5` |
-| `FORMS_WEBHOOKS_ENABLED` | Enable webhook integrations | `true` |
+| `FORMS_CAPTCHA_DRIVER` | Default CAPTCHA provider (`turnstile`, `hcaptcha`, `recaptcha_v2`, `recaptcha_v3`) | `turnstile` |
+| `FORMS_MEDIA_FOLDER_ID` / `FORMS_MEDIA_UPLOADED_BY` | Media library folder and uploader for file fields stored in the media library | `null` |
+| `FORMS_CHOICE_IMAGES_DISK` | Disk for image-choice uploads without the media library | `public` |
+| `FORMS_CONSENT_STORE_TEXT` | Store the consent text with each consent | `true` |
+| `FORMS_WEBHOOKS_ENABLED` | Enable the global webhook | `false` |
 | `FORMS_RESTRICT_BY_OWNER` | Restrict forms to their owners | `false` |
-| `FORMS_ADMIN_BYPASS` | Allow admins to bypass ownership | `true` |
+| `FORMS_ALLOW_ADMIN_BYPASS` | Allow admins to bypass ownership | `true` |
 | `FORMS_USER_MODEL` | User model class | `App\Models\User` |
 
 ### Configuration Options
@@ -132,7 +139,8 @@ return [
     // Spam protection
     'spam_protection' => [
         'honeypot' => ['enabled' => true],
-        'rate_limit' => ['enabled' => true, 'max_attempts' => 5],
+        'rate_limit' => ['enabled' => true, 'attempts' => 5],
+        'captcha' => ['driver' => 'turnstile'], // plus each provider's keys
     ],
 ];
 ```
@@ -244,20 +252,43 @@ packages.
 
 ## 🔌 Extensibility
 
-Add custom field types using filter hooks:
+Add custom field types with a field type handler (since 1.6.0). The handler holds the type's definition, builder settings, validation, display, export and merge tags:
 
 ```php
+use ArtisanPackUI\Forms\FieldTypes\AbstractFieldType;
+use ArtisanPackUI\Forms\Models\FormField;
 use function addFilter;
 
-addFilter('ap.forms.fieldTypes', function (array $types) {
-    $types['my-custom-field'] = [
-        'label' => 'My Custom Field',
-        'view' => 'my-package::fields.custom',
-        'settings' => ['option1', 'option2'],
-    ];
+class IbanFieldType extends AbstractFieldType
+{
+    protected function defineType(): array
+    {
+        return [
+            'label'                  => __( 'IBAN' ),
+            'icon'                   => 'o-banknotes',
+            'category'               => 'advanced',
+            'has_options'            => false,
+            'supports_placeholder'   => true,
+            'supports_default_value' => false,
+            'validation_options'     => [],
+            'settings'               => [], // builder settings schema
+        ];
+    }
+
+    protected function typeRules( FormField $field ): array
+    {
+        return ['string', 'regex:/^[A-Z]{2}\d{2}[A-Z0-9 ]{11,40}$/i'];
+    }
+}
+
+addFilter( 'ap.forms.fieldTypes', function ( array $types ): array {
+    $types['iban'] = IbanFieldType::class;
+
     return $types;
-});
+} );
 ```
+
+Array definitions registered through `ap.forms.fieldTypes` still work. See [Field Type Handlers](https://github.com/ArtisanPack-UI/forms/wiki/Advanced-Field-Type-Handlers).
 
 ### Hook naming
 
@@ -305,6 +336,14 @@ canonical `ap.forms.*` convention.
 | `ap.forms.integrationRegistered`  | action | `(string $slug, array $config)`                    |
 | `ap.forms.notificationSubject`    | filter | `(string $subject, FormNotification $notification, FormSubmission $submission)` |
 | `ap.forms.notificationBody`       | filter | `(string $body, FormNotification $notification, FormSubmission $submission)` |
+| `ap.forms.readOnlyValue`          | filter | `(mixed $value, FormField $field)` — the value a read-only field is stored with (1.6.0) |
+| `ap.forms.fieldValue.{parameter}` | filter | `(mixed $default, FormField $field, PopulationContext $context[, string $subInputKey])` — a dynamically populated field's starting value (1.6.0) |
+| `ap.forms.choiceSources`          | filter | `(array $sources)` — register dynamic choice sources (1.6.0) |
+| `ap.forms.predefinedChoices`      | filter | `(array $lists)` — add predefined choice lists (1.6.0) |
+| `ap.forms.countries`              | filter | `(array $countries)` — the country list for address and phone fields (1.6.0) |
+| `ap.forms.captchaDrivers`         | filter | `(array $drivers)` — register CAPTCHA drivers (1.6.0) |
+| `ap.forms.canRevealMaskedValues`  | filter | `(bool $allowed, ?Authenticatable $user)` — who may see masked values (1.6.0) |
+| `ap.forms.addressAutocomplete`    | filter | `(string $html, FormField $field)` — HTML printed after an address field (1.6.0) |
 
 Examples:
 
@@ -344,4 +383,4 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduc
 
 ## 📄 License
 
-ArtisanPack UI Forms is open-sourced software licensed under the [GPL-3.0-or-later license](LICENSE).
+ArtisanPack UI Forms is open-sourced software licensed under the [MIT license](LICENSE).

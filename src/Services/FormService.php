@@ -45,7 +45,7 @@ class FormService
      */
     public function create( array $data ): Form
     {
-        return Form::create( $data );
+        return Form::create( $this->withDisplaySettings( $data ) );
     }
 
     /**
@@ -60,7 +60,7 @@ class FormService
      */
     public function update( Form $form, array $data ): Form
     {
-        $form->update( $data );
+        $form->update( $this->withDisplaySettings( $data, $form ) );
 
         return $form->fresh();
     }
@@ -171,6 +171,46 @@ class FormService
      */
     public function getById( int $id ): ?Form
     {
-        return Form::find( $id);
+        return Form::find( $id );
+    }
+
+    /**
+     * Moves the form-level display defaults into the form's `settings`.
+     *
+     * `label_placement` and `description_placement` are accepted as top-level
+     * keys and stored in `settings`, keeping the settings already there. A
+     * blank value removes the default.
+     *
+     * @since 1.6.0
+     *
+     * @param array<string, mixed> $data The form data.
+     * @param Form|null            $form The form being updated, or null when creating.
+     *
+     * @return array<string, mixed> The form data.
+     */
+    protected function withDisplaySettings( array $data, ?Form $form = null ): array
+    {
+        $keys = array_intersect( ['label_placement', 'description_placement'], array_keys( $data ) );
+
+        if ( [] === $keys ) {
+            return $data;
+        }
+
+        $settings = $data['settings'] ?? $form?->settings ?? [];
+        $settings = is_array( $settings ) ? $settings : [];
+
+        foreach ( $keys as $key ) {
+            if ( null === $data[ $key ] || '' === $data[ $key ] ) {
+                unset( $settings[ $key ] );
+            } else {
+                $settings[ $key ] = $data[ $key ];
+            }
+
+            unset( $data[ $key ] );
+        }
+
+        $data['settings'] = [] === $settings ? null : $settings;
+
+        return $data;
     }
 }

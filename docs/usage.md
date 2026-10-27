@@ -16,17 +16,21 @@ Learn how to use ArtisanPack UI Forms to create, display, and manage forms in yo
 - [File Uploads](Usage-File-Uploads) - Handle file attachments
 - [Multi-Step Forms](Usage-Multi-Step-Forms) - Create multi-step forms
 - [Conditional Logic](Usage-Conditional-Logic) - Show/hide fields dynamically
+- [Field Privacy & Visibility](Usage-Field-Privacy) - Administrative fields, masking and redaction
+- [Dynamic Population](Usage-Dynamic-Population) - Start fields with values from the page
 
 ## Quick Reference
 
 ### Display a Form
 
-```blade
-{{-- By slug --}}
-<livewire:forms::form-renderer slug="contact" />
+```php
+use ArtisanPackUI\Forms\Services\FormService;
 
-{{-- By ID --}}
-<livewire:forms::form-renderer :form-id="1" />
+$form = app(FormService::class)->getBySlug('contact'); // or ->getById(1)
+```
+
+```blade
+<livewire:form-renderer :form="$form" />
 ```
 
 ### Access Admin Interface

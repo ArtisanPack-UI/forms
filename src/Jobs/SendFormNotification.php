@@ -20,6 +20,7 @@ use ArtisanPackUI\Forms\Mail\FormSubmissionNotification;
 use ArtisanPackUI\Forms\Models\FormNotification;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Services\NotificationService;
+use ArtisanPackUI\Forms\Support\TransientUploads;
 use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -75,6 +76,34 @@ class SendFormNotification implements ShouldQueue
     public FormSubmission $submission;
 
     /**
+     * Attributes of the submission's "Do not store" values, which only reach
+     * the job through its payload (see FormSubmission::withTransientValues()).
+     *
+     * @since 1.6.0
+     *
+     * @var list<array<string, mixed>>
+     */
+    public array $transientValues = [];
+
+    /**
+     * Whether the queued payload is encrypted. It is when it carries values
+     * that are not stored.
+     *
+     * @since 1.6.0
+     */
+    public bool $shouldBeEncrypted = false;
+
+    /**
+     * The "Do not store" uploads this job holds until it has run (see
+     * TransientUploads).
+     *
+     * @since 1.6.0
+     *
+     * @var list<int>
+     */
+    public array $transientUploadIds = [];
+
+    /**
      * Creates a new job instance.
      *
      * @since 1.0.0
@@ -84,22 +113,90 @@ class SendFormNotification implements ShouldQueue
      */
     public function __construct( FormNotification $notification, FormSubmission $submission )
     {
-        $this->notification = $notification;
-        $this->submission   = $submission;
+        $this->notification       = $notification;
+        $this->submission         = $submission;
+        $this->transientValues    = $submission->getTransientValues();
+        $this->shouldBeEncrypted  = [] !== $this->transientValues;
+        $this->transientUploadIds = TransientUploads::idsIn( $this->transientValues );
+
+        // Keeps "Do not store" files until this job has run
+        TransientUploads::hold( $this->transientUploadIds );
     }
 
     /**
      * Executes the job.
      *
-     * Loads required relationships, resolves recipients, and sends the notification email.
+     * Since 1.6.0, the "Do not store" files the job holds are released once
+     * it has run; a run that throws keeps them for the retry, and failed()
+     * releases them when there is none.
      *
      * @since 1.0.0
      */
     public function handle(): void
     {
+        $this->send();
+
+        TransientUploads::release( $this->transientUploadIds );
+    }
+
+    /**
+     * Handles a job failure.
+     *
+     * Logs an error when the job fails permanently after all retry attempts.
+     * Since 1.6.0, releases the "Do not store" files the job holds.
+     *
+     * @since 1.0.0
+     *
+     * @param  Throwable  $exception  The exception that caused the failure.
+     */
+    public function failed( Throwable $exception ): void
+    {
+        Log::error( 'Form notification job failed permanently', [
+            'notification_id'   => $this->notification->id,
+            'notification_name' => $this->notification->name,
+            'submission_id'     => $this->submission->id,
+            'error'             => $exception->getMessage(),
+        ] );
+
+        TransientUploads::release( $this->transientUploadIds );
+    }
+
+    /**
+     * Gets the tags that should be assigned to the job.
+     *
+     * Tags are used for monitoring and filtering jobs in queue dashboards.
+     *
+     * @since 1.0.0
+     *
+     * @return array<int, string> The job tags.
+     */
+    public function tags(): array
+    {
+        return [
+            'form-notification',
+            'notification:' . $this->notification->id,
+            'submission:' . $this->submission->id,
+            'form:' . $this->submission->form_id,
+        ];
+    }
+
+    /**
+     * Sends the notification.
+     *
+     * Loads required relationships, resolves recipients, and sends the notification email.
+     *
+     * @since 1.6.0
+     */
+    protected function send(): void
+    {
         // Ensure relationships are loaded
         $this->submission->loadMissing( ['form', 'values.field'] );
         $this->notification->loadMissing( 'form' );
+
+        // Values of "Do not store" fields travel with the job, not the database
+        if ( [] !== $this->transientValues ) {
+            $this->submission->withTransientValues( $this->transientValues );
+        }
 
         // Re-evaluate the quarantine policy at execution time. The submission
         // may have been quarantined after this job was dispatched, and the
@@ -172,43 +269,5 @@ class SendFormNotification implements ShouldQueue
 
             throw $e; // Re-throw to trigger retry
         }
-    }
-
-    /**
-     * Handles a job failure.
-     *
-     * Logs an error when the job fails permanently after all retry attempts.
-     *
-     * @since 1.0.0
-     *
-     * @param  Throwable  $exception  The exception that caused the failure.
-     */
-    public function failed( Throwable $exception ): void
-    {
-        Log::error( 'Form notification job failed permanently', [
-            'notification_id'   => $this->notification->id,
-            'notification_name' => $this->notification->name,
-            'submission_id'     => $this->submission->id,
-            'error'             => $exception->getMessage(),
-        ] );
-    }
-
-    /**
-     * Gets the tags that should be assigned to the job.
-     *
-     * Tags are used for monitoring and filtering jobs in queue dashboards.
-     *
-     * @since 1.0.0
-     *
-     * @return array<int, string> The job tags.
-     */
-    public function tags(): array
-    {
-        return [
-            'form-notification',
-            'notification:' . $this->notification->id,
-            'submission:' . $this->submission->id,
-            'form:' . $this->submission->form_id,
-        ];
     }
 }

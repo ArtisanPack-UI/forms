@@ -19,10 +19,12 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Services;
 
+use ArtisanPackUI\Forms\FieldTypes\SignatureFieldType;
 use ArtisanPackUI\Forms\Jobs\SendFormNotification;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormNotification;
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -234,7 +236,7 @@ class NotificationService
      */
     public function sendNotifications( FormSubmission $submission ): int
     {
-        $submission->loadMissing( ['form', 'values'] );
+        $submission->loadMissing( ['form', 'values.field'] );
 
         if ( ! $this->shouldSendNotifications( $submission ) ) {
             return 0;
@@ -307,10 +309,20 @@ class NotificationService
             return true;
         }
 
-        $formData  = $submission->data_array;
+        $submission->loadMissing( 'form.fields' );
+
+        // Read from the stored values, so a checkbox group is still a list (data_array joins it for exports)
+        $formData = $submission->values
+            ->mapWithKeys( fn ( FormSubmissionValue $value ): array => [$value->field_name => $value->getConditionValue()] )
+            ->all();
+
         $action    = $logic['action'] ?? 'send'; // Default action for notifications
         $logicType = $logic['logic'] ?? 'all';
         $rules     = $logic['rules'];
+
+        if ( null !== $submission->form ) {
+            $this->conditionalLogicService->withFields( $submission->form->fields );
+        }
 
         // Evaluate all rules
         $results = [];
@@ -372,9 +384,9 @@ class NotificationService
             '{ip_address}'        => __( "Submitter's IP address" ),
         ];
 
-        // Add field-specific placeholders
+        // Add field-specific placeholders; each field type decides its own tags
         foreach ( $form->fields()->orderBy( 'sort_order' )->get() as $field ) {
-            $placeholders[ '{' . $field->name . '}' ] = $field->label;
+            $placeholders = array_merge( $placeholders, $field->fieldType()->mergeTags( $field ) );
         }
 
         return $placeholders;
@@ -385,12 +397,13 @@ class NotificationService
      *
      * @since 1.0.0
      *
-     * @param string         $template   The template string with placeholders.
-     * @param FormSubmission $submission The form submission data.
+     * @param string         $template         The template string with placeholders.
+     * @param FormSubmission $submission       The form submission data.
+     * @param bool           $useAdminLabels   Whether `{all_fields}` labels fields by their admin label (since 1.6.0).
      *
      * @return string The parsed template with placeholders replaced.
      */
-    public function parseTemplate( string $template, FormSubmission $submission ): string
+    public function parseTemplate( string $template, FormSubmission $submission, bool $useAdminLabels = true ): string
     {
         $parsed = $template;
 
@@ -398,6 +411,7 @@ class NotificationService
         foreach ( $submission->values as $value ) {
             $placeholder = '{' . $value->field_name . '}';
             $parsed      = str_replace( $placeholder, $value->display_value ?? '', $parsed );
+            $parsed      = $this->replaceSubInputTags( $parsed, $value );
         }
 
         // Replace system placeholders
@@ -408,7 +422,7 @@ class NotificationService
             '{submission_time}'   => $submission->created_at->format( 'g:i A' ),
             '{page_url}'          => $submission->page_url ?? '',
             '{ip_address}'        => $submission->ip_address ?? '',
-            '{all_fields}'        => $this->formatAllFieldsPlainText( $submission ),
+            '{all_fields}'        => $this->formatAllFieldsPlainText( $submission, $useAdminLabels ),
         ];
 
         foreach ( $replacements as $placeholder => $value ) {
@@ -427,16 +441,20 @@ class NotificationService
      *
      * @since 1.0.0
      *
-     * @param FormSubmission $submission The form submission.
+     * Fields are labelled by their admin label when one is set, unless
+     * `$useAdminLabels` is false (as for an autoresponder, which the visitor reads).
+     *
+     * @param FormSubmission $submission     The form submission.
+     * @param bool           $useAdminLabels Whether to label fields by their admin label (since 1.6.0).
      *
      * @return string The formatted plain-text field list.
      */
-    public function formatAllFieldsPlainText( FormSubmission $submission ): string
+    public function formatAllFieldsPlainText( FormSubmission $submission, bool $useAdminLabels = true ): string
     {
         $lines = [];
 
         foreach ( $submission->values as $value ) {
-            $label        = $value->field?->label ?? $value->field_name;
+            $label        = $value->getNotificationLabel( $useAdminLabels );
             $displayValue = $value->display_value ?? '';
 
             $lines[] = "{$label}: {$displayValue}";
@@ -450,17 +468,30 @@ class NotificationService
      *
      * @since 1.0.0
      *
-     * @param FormSubmission $submission The form submission.
+     * Fields are labelled by their admin label when one is set, unless
+     * `$useAdminLabels` is false (as for an autoresponder, which the visitor reads).
+     *
+     * A drawn signature is shown as an image. Pass `$embedImage` to embed it
+     * in an email (it gets the signature's upload and returns the image's
+     * `cid:` source); without it the PNG is inlined as a data URL, which some
+     * email clients block (since 1.6.0).
+     *
+     * @param FormSubmission $submission     The form submission.
+     * @param bool           $useAdminLabels Whether to label fields by their admin label (since 1.6.0).
+     * @param callable|null  $embedImage     Gets a signature's FormUpload and returns its image source (since 1.6.0).
      *
      * @return string The HTML table string.
      */
-    public function formatAllFieldsAsTable( FormSubmission $submission ): string
+    public function formatAllFieldsAsTable( FormSubmission $submission, bool $useAdminLabels = true, ?callable $embedImage = null ): string
     {
         $rows = [];
 
         foreach ( $submission->values as $value ) {
-            $label        = e( $value->field?->label ?? $value->field_name );
-            $displayValue = e( $value->display_value ?? '' );
+            $label        = e( $value->getNotificationLabel( $useAdminLabels ) );
+            $upload       = null === $embedImage ? null : SignatureFieldType::upload( $value );
+            $displayValue = null !== $upload
+                ? SignatureFieldType::imageHtml( $embedImage( $upload ), $value->getNotificationLabel( $useAdminLabels ) )
+                : $value->display_html ?? nl2br( e( $value->display_value ?? '' ), false );
 
             $rows[] = "<tr><td style=\"padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: 500;\">{$label}</td><td style=\"padding: 8px; border-bottom: 1px solid #e5e7eb;\">{$displayValue}</td></tr>";
         }
@@ -515,6 +546,37 @@ class NotificationService
     // =========================================
     // Helpers
     // =========================================
+
+    /**
+     * Replaces a composite value's `{field:key}` merge tags with its sub-input values.
+     *
+     * A redacted value leaves every sub-input blank.
+     *
+     * @since 1.6.0
+     *
+     * @param string              $template The template.
+     * @param FormSubmissionValue $value    The stored value.
+     *
+     * @return string The template with the tags replaced.
+     */
+    protected function replaceSubInputTags( string $template, FormSubmissionValue $value ): string
+    {
+        $parts = $value->getStructuredValue();
+
+        if ( ! is_array( $parts ) || ! str_contains( $template, '{' . $value->field_name . ':' ) ) {
+            return $template;
+        }
+
+        foreach ( $parts as $key => $part ) {
+            $template = str_replace(
+                '{' . $value->field_name . ':' . $key . '}',
+                $value->isRedacted() || ! is_scalar( $part ) ? '' : (string) $part,
+                $template,
+            );
+        }
+
+        return $template;
+    }
 
     /**
      * Gets default values for a notification type.

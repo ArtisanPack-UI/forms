@@ -1,12 +1,13 @@
+{{--
+    A paragraph of descriptive text. Since 1.6.0 it keeps basic formatting
+    (bold, italic, underline and links), sanitized with kses(); see
+    FormField::getParagraphHtml().
+--}}
 @props(['field'])
-
-@php
-    $text = $field->help_text ?? $field->label;
-@endphp
 
 <div
     class="prose prose-sm max-w-none {{ $field->css_classes }}"
-    id="paragraph-{{ $field->name }}"
+    id="{{ $field->domId('paragraph') }}"
 >
-    {!! nl2br(e($text)) !!}
+    {!! $field->getParagraphHtml() !!}
 </div>

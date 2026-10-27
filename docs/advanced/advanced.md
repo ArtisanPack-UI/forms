@@ -11,6 +11,7 @@ This section covers advanced features, integrations, and customization options.
 - [Webhooks](Webhooks) - Send form data to external services
 - [Spam Protection](Spam-Protection) - Protect forms from spam and abuse
 - [Customization](Customization) - Extend and customize the package
+- [Field Type Handlers](Advanced-Field-Type-Handlers) - Add or change field types
 - [Artisan Commands](Artisan-Commands) - Command-line tools
 
 ## Advanced Features
@@ -50,21 +51,20 @@ addFilter('ap.forms.webhookPayload', function ($payload, $form, $submission) {
 
 ### Custom Field Types
 
-Register custom field types:
+Register a field type handler (since 1.6.0) or an array definition:
 
 ```php
+use App\Forms\IbanFieldType;
 use function addFilter;
 
-addFilter('ap.forms.fieldTypes', function ($types) {
-    $types['color-picker'] = [
-        'label' => 'Color Picker',
-        'icon' => 'palette',
-        'category' => 'advanced',
-        'view' => 'my-package::fields.color-picker',
-    ];
+addFilter('ap.forms.fieldTypes', function (array $types): array {
+    $types['iban'] = IbanFieldType::class; // extends AbstractFieldType
+
     return $types;
 });
 ```
+
+See [Field Type Handlers](Advanced-Field-Type-Handlers).
 
 ### Event-Driven Processing
 
@@ -111,6 +111,8 @@ Configure for GDPR/privacy requirements:
     ],
 ],
 ```
+
+Per field, use **Do not store**, **Mask in admin** and **Redact after (days)** for sensitive values, and keep the consent text with each consent record. See [Field Privacy & Visibility](Usage-Field-Privacy).
 
 ### Performance Optimization
 

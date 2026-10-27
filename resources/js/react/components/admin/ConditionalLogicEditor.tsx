@@ -14,6 +14,10 @@
 import React, { useCallback, useMemo } from 'react';
 import { Button, Input, Select } from '@artisanpack-ui/react';
 
+import { getConditionTargets } from '../../../shared/composite';
+import { getConditionOptions } from '../../../shared/fieldSettings';
+import { t } from '../../../shared/i18n';
+
 import type {
 	ConditionalLogicRule,
 	ConditionalLogicType,
@@ -28,34 +32,35 @@ export interface GenericConditionalLogic {
 	rules: ConditionalLogicRule[];
 }
 
-/** Operator definitions with metadata. */
-const OPERATOR_DEFINITIONS: Array<{
-	value: ConditionalOperator;
-	label: string;
-	needsValue: boolean;
-}> = [
-	{ value: 'equals', label: 'Equals', needsValue: true },
-	{ value: 'not_equals', label: 'Does not equal', needsValue: true },
-	{ value: 'contains', label: 'Contains', needsValue: true },
-	{ value: 'not_contains', label: 'Does not contain', needsValue: true },
-	{ value: 'starts_with', label: 'Starts with', needsValue: true },
-	{ value: 'ends_with', label: 'Ends with', needsValue: true },
-	{ value: 'is_empty', label: 'Is empty', needsValue: false },
-	{ value: 'is_not_empty', label: 'Is not empty', needsValue: false },
-	{ value: 'greater_than', label: 'Greater than', needsValue: true },
-	{ value: 'less_than', label: 'Less than', needsValue: true },
-	{ value: 'greater_or_equal', label: 'Greater or equal', needsValue: true },
-	{ value: 'less_or_equal', label: 'Less or equal', needsValue: true },
-	{ value: 'in', label: 'Is one of', needsValue: true },
-	{ value: 'not_in', label: 'Is not one of', needsValue: true },
-	{ value: 'checked', label: 'Is checked', needsValue: false },
-	{ value: 'unchecked', label: 'Is unchecked', needsValue: false },
-	{ value: 'includes', label: 'Includes', needsValue: true },
-	{ value: 'not_includes', label: 'Does not include', needsValue: true },
-];
+/** Operators that compare against no value. */
+const VALUELESS_OPERATORS: Set<ConditionalOperator> = new Set( ['is_empty', 'is_not_empty', 'checked', 'unchecked'] );
+
+/** Get the operator options, translated at render. */
+function getOperatorOptions(): Array<{ value: ConditionalOperator; label: string }> {
+	return [
+		{ value: 'equals', label: t( 'Equals' ) },
+		{ value: 'not_equals', label: t( 'Does not equal' ) },
+		{ value: 'contains', label: t( 'Contains' ) },
+		{ value: 'not_contains', label: t( 'Does not contain' ) },
+		{ value: 'starts_with', label: t( 'Starts with' ) },
+		{ value: 'ends_with', label: t( 'Ends with' ) },
+		{ value: 'is_empty', label: t( 'Is empty' ) },
+		{ value: 'is_not_empty', label: t( 'Is not empty' ) },
+		{ value: 'greater_than', label: t( 'Greater than' ) },
+		{ value: 'less_than', label: t( 'Less than' ) },
+		{ value: 'greater_or_equal', label: t( 'Greater or equal' ) },
+		{ value: 'less_or_equal', label: t( 'Less or equal' ) },
+		{ value: 'in', label: t( 'Is one of' ) },
+		{ value: 'not_in', label: t( 'Is not one of' ) },
+		{ value: 'checked', label: t( 'Is checked' ) },
+		{ value: 'unchecked', label: t( 'Is unchecked' ) },
+		{ value: 'includes', label: t( 'Includes' ) },
+		{ value: 'not_includes', label: t( 'Does not include' ) },
+	];
+}
 
 /** Layout field types excluded from condition targets. */
-const LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'divider', 'html'] );
+const LAYOUT_TYPES = new Set( ['section', 'heading', 'paragraph', 'divider', 'html'] );
 
 /** Props for the ConditionalLogicEditor component. */
 export interface ConditionalLogicEditorProps {
@@ -69,7 +74,7 @@ export interface ConditionalLogicEditorProps {
 	excludeFieldId?: number;
 	/** Available actions. Defaults to ['show', 'hide']. */
 	actions?: Array<{ value: string; label: string }>;
-	/** Label for the action dropdown. Defaults to 'this field'. */
+	/** Label for the action dropdown. Defaults to "this field", translated. */
 	actionLabel?: string;
 	/** Optional CSS class name. */
 	className?: string;
@@ -94,13 +99,14 @@ export function ConditionalLogicEditor( {
 	fields,
 	excludeFieldId,
 	actions,
-	actionLabel = 'this field',
+	actionLabel,
 	className,
 }: ConditionalLogicEditorProps ): React.ReactElement {
 	const availableActions = actions ?? [
-		{ value: 'show', label: 'Show' },
-		{ value: 'hide', label: 'Hide' },
+		{ value: 'show', label: t( 'Show' ) },
+		{ value: 'hide', label: t( 'Hide' ) },
 	];
+	const subject = actionLabel ?? t( 'this field' );
 
 	const availableFields = useMemo(
 		() => fields.filter( ( f ) =>
@@ -109,6 +115,9 @@ export function ConditionalLogicEditor( {
 		),
 		[fields, excludeFieldId],
 	);
+
+	// A composite field offers each of its enabled sub-inputs instead of itself.
+	const availableTargets = useMemo( () => availableFields.flatMap( getConditionTargets ), [availableFields] );
 
 	const defaultLogic = useMemo( () => ( {
 		action: availableActions[0].value,
@@ -133,20 +142,20 @@ export function ConditionalLogicEditor( {
 	);
 
 	const handleAddRule = useCallback( () => {
-		const firstField = availableFields[0];
+		const firstTarget = availableTargets[0];
 
-		if ( !firstField ) {
+		if ( !firstTarget ) {
 			return;
 		}
 
 		const newRule: ConditionalLogicRule = {
-			field: firstField.uuid,
+			field: firstTarget.ref,
 			operator: 'equals',
 			value: '',
 		};
 
 		onChange( { ...logic, rules: [...logic.rules, newRule] } );
-	}, [availableFields, logic, onChange] );
+	}, [availableTargets, logic, onChange] );
 
 	const handleUpdateRule = useCallback(
 		( index: number, updates: Partial<ConditionalLogicRule> ) => {
@@ -175,27 +184,25 @@ export function ConditionalLogicEditor( {
 		onChange( null );
 	}, [onChange] );
 
-	const needsValue = useCallback( ( operator: ConditionalOperator ): boolean => {
-		const def = OPERATOR_DEFINITIONS.find( ( d ) => d.value === operator );
+	const needsValue = useCallback(
+		( operator: ConditionalOperator ): boolean => !VALUELESS_OPERATORS.has( operator ),
+		[],
+	);
 
-		return def?.needsValue ?? true;
-	}, [] );
-
-	// Get options for a referenced field (for value dropdown)
+	// Get options for a referenced field (for value dropdown); a sub-input takes free text
 	const getFieldOptions = useCallback(
-		( fieldUuid: string ) => {
-			const field = fields.find( ( f ) => f.uuid === fieldUuid );
+		( fieldRef: string ) => {
+			const target = availableTargets.find( ( entry ) => entry.ref === fieldRef );
 
-			if ( !field ) {
+			if ( target?.subKey ) {
 				return null;
 			}
 
-			const options = field.options ??
-				( field.field_config as { options?: Array<{ label: string; value: string }> } )?.options;
+			const field = target?.field ?? fields.find( ( f ) => f.uuid === fieldRef );
 
-			return options && options.length > 0 ? options : null;
+			return field ? getConditionOptions( field ) : null;
 		},
-		[fields],
+		[availableTargets, fields],
 	);
 
 	return (
@@ -212,19 +219,19 @@ export function ConditionalLogicEditor( {
 							optionValue="value"
 							optionLabel="label"
 						/>
-						<span className="text-base-content">{actionLabel} when</span>
+						<span className="text-base-content">{t( ':subject when', { subject } )}</span>
 						<Select
 							value={logic.logic}
 							onChange={( e ) => handleLogicTypeChange( e.target.value )}
 							className="select-sm"
 							options={[
-								{ value: 'all', label: 'all' },
-								{ value: 'any', label: 'any' },
+								{ value: 'all', label: t( 'all' ) },
+								{ value: 'any', label: t( 'any' ) },
 							]}
 							optionValue="value"
 							optionLabel="label"
 						/>
-						<span className="text-base-content">of the following rules match:</span>
+						<span className="text-base-content">{t( 'of the following rules match:' )}</span>
 					</div>
 
 					{/* Rules */}
@@ -239,9 +246,9 @@ export function ConditionalLogicEditor( {
 										value={rule.field}
 										onChange={( e ) => handleUpdateRule( index, { field: e.target.value } )}
 										className="select-sm"
-										options={availableFields.map( ( f ) => ( {
-											value: f.uuid,
-											label: f.label || f.name,
+										options={availableTargets.map( ( target ) => ( {
+											value: target.ref,
+											label: target.label,
 										} ) )}
 										optionValue="value"
 										optionLabel="label"
@@ -254,10 +261,7 @@ export function ConditionalLogicEditor( {
 											operator: e.target.value as ConditionalOperator,
 										} )}
 										className="select-sm"
-										options={OPERATOR_DEFINITIONS.map( ( op ) => ( {
-											value: op.value,
-											label: op.label,
-										} ) )}
+										options={getOperatorOptions()}
 										optionValue="value"
 										optionLabel="label"
 									/>
@@ -270,7 +274,7 @@ export function ConditionalLogicEditor( {
 												onChange={( e ) => handleUpdateRule( index, { value: e.target.value } )}
 												className="select-sm"
 												options={[
-													{ value: '', label: 'Select...' },
+													{ value: '', label: t( 'Select...' ) },
 													...fieldOptions.map( ( opt ) => ( {
 														value: opt.value,
 														label: opt.label,
@@ -284,7 +288,7 @@ export function ConditionalLogicEditor( {
 												type="text"
 												value={String( rule.value ?? '' )}
 												onChange={( e ) => handleUpdateRule( index, { value: e.target.value } )}
-												placeholder="Value"
+												placeholder={t( 'Value' )}
 												className="input-sm"
 											/>
 										)
@@ -296,8 +300,8 @@ export function ConditionalLogicEditor( {
 										size="sm"
 										className="btn-circle"
 										onClick={() => handleRemoveRule( index )}
-										title="Remove rule"
-										aria-label="Remove rule"
+										title={t( 'Remove rule' )}
+										aria-label={t( 'Remove rule' )}
 									>
 										&times;
 									</Button>
@@ -316,7 +320,7 @@ export function ConditionalLogicEditor( {
 					onClick={handleAddRule}
 					disabled={availableFields.length === 0}
 				>
-					+ Add Rule
+					{t( '+ Add Rule' )}
 				</Button>
 				{logic.rules.length > 0 && (
 					<Button
@@ -324,14 +328,14 @@ export function ConditionalLogicEditor( {
 						size="sm"
 						onClick={handleClearAll}
 					>
-						Clear All Rules
+						{t( 'Clear All Rules' )}
 					</Button>
 				)}
 			</div>
 
 			{availableFields.length === 0 && (
 				<p className="text-sm text-base-content/50">
-					Add more non-layout fields to the form to create conditional rules.
+					{t( 'Add more non-layout fields to the form to create conditional rules.' )}
 				</p>
 			)}
 		</div>

@@ -2,7 +2,16 @@
   Field renderer component.
 
   Maps a form field definition to the appropriate Vue component
-  based on its field type.
+  based on its field type. An email field that asks for the address twice
+  renders `EmailConfirmationField`. Name and address fields, and any type with
+  sub-inputs that has no component of its own, render as a composite field;
+  consent and CAPTCHA fields have components of their own (since 1.6.0). A
+  rich text textarea renders `RichTextField`, and a date or time field filled
+  in with separate inputs `DateTimePartsField` (since 1.6.0). A list renders
+  `ListField`, a date range the composite field, a date and time field
+  `AdvancedField`, and a section on its own `SectionField` (since 1.6.0).
+  Sliders, NPS scales, matrices, rankings, signatures, colors and
+  calculations have components of their own (since 1.6.0).
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -16,6 +25,27 @@ import TextField from './TextField.vue';
 import ChoiceField from './ChoiceField.vue';
 import AdvancedField from './AdvancedField.vue';
 import LayoutField from './LayoutField.vue';
+import RatingField from './RatingField.vue';
+import CompositeField from './CompositeField.vue';
+import EmailConfirmationField from './EmailConfirmationField.vue';
+import ConsentField from './ConsentField.vue';
+import CaptchaField from './CaptchaField.vue';
+import DateTimePartsField from './DateTimePartsField.vue';
+import RichTextField from './RichTextField.vue';
+import ListField from './ListField.vue';
+import SectionField from './SectionField.vue';
+import SliderField from './SliderField.vue';
+import NpsField from './NpsField.vue';
+import MatrixField from './MatrixField.vue';
+import RankingField from './RankingField.vue';
+import SignatureField from './SignatureField.vue';
+import ColorField from './ColorField.vue';
+import CalculationField from './CalculationField.vue';
+import { isCompositeField } from '../../../shared/composite';
+import { getDateInputMode, getTimeInputMode } from '../../../shared/dateTime';
+import { usesRichText } from '../../../shared/richText';
+import { WIDTH_CLASSES } from '../../../shared/fieldSettings';
+import { requiresEmailConfirmation } from '../../../shared/fieldSettings';
 
 const props = defineProps<{
 	field: FormField;
@@ -30,26 +60,33 @@ const props = defineProps<{
 	 * @since 1.5.2
 	 */
 	layout?: FormLayout;
+	/** Text typed into the field's "Other" choice (since 1.6.0). */
+	otherValue?: string;
+	/** An email field's confirmation, when it asks for the address twice (since 1.6.0). */
+	confirmValue?: string;
+	/** A composite field's first error per sub-input, keyed by sub-input (since 1.6.0). */
+	subErrors?: Record<string, string>;
+	/** The files the form holds for a file field (since 1.6.0). */
+	files?: File | File[];
 }>();
 
 const emit = defineEmits<{
 	'update:modelValue': [value: unknown];
+	'update:otherValue': [text: string];
+	'update:confirmValue': [text: string];
 	'fileChange': [file: File | File[]];
 }>();
 
 /** Field types handled by each component group. */
 const TEXT_TYPES = new Set( ['text', 'email', 'phone', 'number', 'url', 'textarea', 'hidden', 'time'] );
-const CHOICE_TYPES = new Set( ['select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple'] );
-const ADVANCED_TYPES = new Set( ['file', 'date'] );
+const CHOICE_TYPES = new Set( ['select', 'radio', 'checkbox', 'toggle', 'checkbox_group', 'select_multiple'] );
+const ADVANCED_TYPES = new Set( ['file', 'date', 'datetime'] );
+const RATING_TYPES = new Set( ['rating'] );
 const LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'divider', 'html'] );
-
-/** CSS class map for field width. */
-const WIDTH_CLASSES: Record<string, string> = {
-	full: 'w-full',
-	half: 'w-full md:w-1/2',
-	third: 'w-full md:w-1/3',
-	'two-thirds': 'w-full md:w-2/3',
-};
+const COMPOSITE_TYPES = new Set( ['name', 'address', 'date_range'] );
+const CONSENT_TYPES = new Set( ['consent'] );
+const CAPTCHA_TYPES = new Set( ['captcha'] );
+const SURVEY_TYPES = new Set( ['slider', 'nps', 'matrix', 'ranking', 'signature'] );
 
 /**
  * Returns the wrapper class for a field in an inline row.
@@ -72,13 +109,30 @@ function getInlineWidthClass( field: FormField ): string {
 	return width === 'full' ? 'flex-1 min-w-[min(12rem,100%)]' : WIDTH_CLASSES[width];
 }
 
-const widthClass = computed( () => (
-	props.layout === 'inline'
+// A section spans the row, like the fields it groups.
+const widthClass = computed( () => {
+	if ( props.field.type === 'section' ) {
+		return WIDTH_CLASSES.full;
+	}
+
+	return props.layout === 'inline'
 		? getInlineWidthClass( props.field )
-		: ( WIDTH_CLASSES[props.field.width] ?? WIDTH_CLASSES.full )
-) );
+		: ( WIDTH_CLASSES[props.field.width] ?? WIDTH_CLASSES.full );
+} );
 
 const componentGroup = computed( () => {
+	if ( requiresEmailConfirmation( props.field ) ) {
+		return 'email_confirmation';
+	}
+
+	if ( usesRichText( props.field ) ) {
+		return 'rich_text';
+	}
+
+	if ( ( props.field.type === 'date' && getDateInputMode( props.field ) !== 'picker' ) || getTimeInputMode( props.field ) === 'dropdowns' ) {
+		return 'date_time_parts';
+	}
+
 	if ( TEXT_TYPES.has( props.field.type ) ) {
 		return 'text';
 	}
@@ -91,8 +145,44 @@ const componentGroup = computed( () => {
 		return 'advanced';
 	}
 
+	if ( RATING_TYPES.has( props.field.type ) ) {
+		return 'rating';
+	}
+
 	if ( LAYOUT_TYPES.has( props.field.type ) ) {
 		return 'layout';
+	}
+
+	if ( props.field.type === 'section' ) {
+		return 'section';
+	}
+
+	if ( props.field.type === 'list' ) {
+		return 'list';
+	}
+
+	if ( SURVEY_TYPES.has( props.field.type ) ) {
+		return props.field.type;
+	}
+
+	if ( props.field.type === 'color' || props.field.type === 'calculation' ) {
+		return props.field.type;
+	}
+
+	if ( CONSENT_TYPES.has( props.field.type ) ) {
+		return 'consent';
+	}
+
+	if ( CAPTCHA_TYPES.has( props.field.type ) ) {
+		return 'captcha';
+	}
+
+	if ( COMPOSITE_TYPES.has( props.field.type ) ) {
+		return 'composite';
+	}
+
+	if ( isCompositeField( props.field ) ) {
+		return 'composite';
 	}
 
 	return null;
@@ -109,13 +199,41 @@ const componentGroup = computed( () => {
 			:display-config="displayConfig"
 			@update:model-value="emit( 'update:modelValue', $event )"
 		/>
+		<EmailConfirmationField
+			v-else-if="componentGroup === 'email_confirmation'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			:confirm-value="confirmValue"
+			@update:model-value="emit( 'update:modelValue', $event )"
+			@update:confirm-value="emit( 'update:confirmValue', $event )"
+		/>
+		<RichTextField
+			v-else-if="componentGroup === 'rich_text'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<DateTimePartsField
+			v-else-if="componentGroup === 'date_time_parts'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
 		<ChoiceField
 			v-else-if="componentGroup === 'choice'"
 			:field="field"
 			:model-value="modelValue"
 			:error="error"
 			:display-config="displayConfig"
+			:other-value="otherValue"
 			@update:model-value="emit( 'update:modelValue', $event )"
+			@update:other-value="emit( 'update:otherValue', $event )"
 		/>
 		<AdvancedField
 			v-else-if="componentGroup === 'advanced'"
@@ -123,12 +241,115 @@ const componentGroup = computed( () => {
 			:model-value="modelValue"
 			:error="error"
 			:display-config="displayConfig"
+			:files="files"
 			@update:model-value="emit( 'update:modelValue', $event )"
 			@file-change="emit( 'fileChange', $event )"
+		/>
+		<RatingField
+			v-else-if="componentGroup === 'rating'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
 		/>
 		<LayoutField
 			v-else-if="componentGroup === 'layout'"
 			:field="field"
+		/>
+		<SectionField
+			v-else-if="componentGroup === 'section'"
+			:field="field"
+		/>
+		<ListField
+			v-else-if="componentGroup === 'list'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:sub-errors="subErrors"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<SliderField
+			v-else-if="componentGroup === 'slider'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<NpsField
+			v-else-if="componentGroup === 'nps'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<MatrixField
+			v-else-if="componentGroup === 'matrix'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:sub-errors="subErrors"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<RankingField
+			v-else-if="componentGroup === 'ranking'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<SignatureField
+			v-else-if="componentGroup === 'signature'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<ColorField
+			v-else-if="componentGroup === 'color'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<CalculationField
+			v-else-if="componentGroup === 'calculation'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+		/>
+		<CompositeField
+			v-else-if="componentGroup === 'composite'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:sub-errors="subErrors"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<ConsentField
+			v-else-if="componentGroup === 'consent'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
+		/>
+		<CaptchaField
+			v-else-if="componentGroup === 'captcha'"
+			:field="field"
+			:model-value="modelValue"
+			:error="error"
+			:display-config="displayConfig"
+			@update:model-value="emit( 'update:modelValue', $event )"
 		/>
 	</div>
 </template>

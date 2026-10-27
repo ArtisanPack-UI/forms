@@ -53,6 +53,8 @@ class FormResource extends JsonResource
             'show_progress_bar'        => $this->show_progress_bar,
             'allow_step_navigation'    => $this->allow_step_navigation,
             'is_active'                => $this->is_active,
+            'label_placement'          => $this->resource->getSetting( 'label_placement' ),
+            'description_placement'    => $this->resource->getSetting( 'description_placement' ),
             'created_at'               => $this->created_at?->toIso8601String(),
             'updated_at'               => $this->updated_at?->toIso8601String(),
             'fields'                   => FormFieldResource::collection( $this->whenLoaded( 'fields' ) ),

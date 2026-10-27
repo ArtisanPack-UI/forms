@@ -123,6 +123,25 @@ After installation, verify everything is working:
 2. Create a test form using the form builder
 3. Submit the form and check submissions
 
+## Upgrading to 1.6
+
+1. Run the migrations. 1.6.0 adds `form_submission_values.field_admin_label`, `redacted_at`, `is_masked` and `redact_after_days`, and `form_uploads.pending_deliveries`, `media_id` and `is_masked` (the privacy flags are backfilled from the current field settings). Submissions fail until these columns exist:
+
+   ```bash
+   php artisan migrate
+   ```
+
+2. If you published the package views (`forms-views`), republish them and apply your changes again. 1.5 copies of `livewire/form-renderer.blade.php` write to `hiddenFields`, which is now locked, so a form with conditional logic throws `CannotUpdateLockedPropertyException`. 1.5 copies of `components/fields/file.blade.php` bind files to the wrong property, so a required file field never passes.
+
+   ```bash
+   php artisan vendor:publish --tag=forms-views --force
+   php artisan view:clear
+   ```
+
+3. If you use **Redact after (days)**, schedule `forms:prune-submissions` (see [Field Privacy & Visibility](Usage-Field-Privacy#redact-after-n-days)).
+
+4. Check the stricter validation: URL fields accept only `http` and `https` unless **Allowed Schemes** lists others, date fields accept only `YYYY-MM-DD`, and paragraph text is now read as HTML with basic formatting.
+
 ## Troubleshooting
 
 ### Views Not Publishing

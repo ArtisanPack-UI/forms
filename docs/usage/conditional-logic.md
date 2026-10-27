@@ -212,6 +212,26 @@ FormField::create([
 // Shows when user is a member AND order total > 100
 ```
 
+## Conditional Sections
+
+A section groups the fields after it, up to the next section or the end of its step (since 1.6.0). Conditional logic on the section shows or hides every field in it, so one rule hides a whole group; hidden fields are skipped when the form is validated and are not stored. A field in a shown section can still be hidden by its own rules. A CAPTCHA inside a hidden section stays shown.
+
+```php
+FormField::create([
+    'form_id' => $form->id,
+    'type' => 'section',
+    'name' => 'company_details',
+    'label' => 'Company details',
+    'conditional_logic' => [
+        'action' => 'show',
+        'logic' => 'all',
+        'rules' => [
+            ['field' => 'account_type', 'operator' => 'equals', 'value' => 'business'],
+        ],
+    ],
+]);
+```
+
 ## Conditional Steps
 
 Apply conditions to entire steps in multi-step forms:

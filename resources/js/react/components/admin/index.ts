@@ -22,7 +22,7 @@ export type { FormBuilderProps } from './FormBuilder';
 export { FieldEditor } from './FieldEditor';
 export type { FieldEditorProps } from './FieldEditor';
 
-export { FieldPalette, FIELD_PALETTE } from './FieldPalette';
+export { FieldPalette, FIELD_PALETTE, getFieldPalette } from './FieldPalette';
 export type { FieldPaletteProps } from './FieldPalette';
 
 export { ConditionalLogicEditor } from './ConditionalLogicEditor';
@@ -36,3 +36,9 @@ export type { SubmissionsListProps } from './SubmissionsList';
 
 export { SubmissionDetail } from './SubmissionDetail';
 export type { SubmissionDetailProps } from './SubmissionDetail';
+
+export { OptionsEditor } from './OptionsEditor';
+export type { OptionsEditorProps } from './OptionsEditor';
+
+export { SubInputsEditor } from './SubInputsEditor';
+export type { SubInputsEditorProps } from './SubInputsEditor';

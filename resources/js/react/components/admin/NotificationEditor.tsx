@@ -24,29 +24,32 @@ import type {
 	StoreNotificationRequest,
 	UpdateNotificationRequest,
 } from '../../../types/artisanpack-forms';
+import { t } from '../../../shared/i18n';
 import { useApi } from '../../hooks/useApi';
 import type { UseApiOptions } from '../../hooks/useApi';
 import { ApiValidationError } from '../../hooks/useApi';
 import { ConditionalLogicEditor } from './ConditionalLogicEditor';
 
-/** Notification type metadata. */
-const NOTIFICATION_TYPES: NotificationTypeInfo[] = [
-	{
-		type: 'admin',
-		label: 'Admin Notification',
-		description: 'Send a notification to site administrators when a form is submitted.',
-	},
-	{
-		type: 'autoresponder',
-		label: 'Auto-Responder',
-		description: 'Send an automatic reply to the person who submitted the form.',
-	},
-	{
-		type: 'custom',
-		label: 'Custom Notification',
-		description: 'Send a notification to custom recipients with custom logic.',
-	},
-];
+/** Get the notification type metadata, translated at render. */
+function getNotificationTypes(): NotificationTypeInfo[] {
+	return [
+		{
+			type: 'admin',
+			label: t( 'Admin Notification' ),
+			description: t( 'Send a notification to site administrators when a form is submitted.' ),
+		},
+		{
+			type: 'autoresponder',
+			label: t( 'Auto-Responder' ),
+			description: t( 'Send an automatic reply to the person who submitted the form.' ),
+		},
+		{
+			type: 'custom',
+			label: t( 'Custom Notification' ),
+			description: t( 'Send a notification to custom recipients with custom logic.' ),
+		},
+	];
+}
 
 /** Props for the NotificationEditor component. */
 export interface NotificationEditorProps extends UseApiOptions {
@@ -100,7 +103,7 @@ export function NotificationEditor( {
 			setNotifications( response.data );
 		} catch ( err ) {
 			setNotifications( [] );
-			setError( err instanceof Error ? err.message : 'Failed to load notifications.' );
+			setError( err instanceof Error ? err.message : t( 'Failed to load notifications.' ) );
 		} finally {
 			setIsLoading( false );
 		}
@@ -133,7 +136,7 @@ export function NotificationEditor( {
 	// Available placeholders for message templates
 	const placeholders = useMemo(
 		() => fields
-			.filter( ( f ) => !new Set( ['heading', 'paragraph', 'divider', 'html'] ).has( f.type ) )
+			.filter( ( f ) => !new Set( ['section', 'heading', 'paragraph', 'divider', 'html'] ).has( f.type ) )
 			.map( ( f ) => ( { name: f.name, label: f.label || f.name } ) ),
 		[fields],
 	);
@@ -144,12 +147,12 @@ export function NotificationEditor( {
 
 	const addNotification = useCallback( async ( type: NotificationType ) => {
 		try {
-			const typeInfo = NOTIFICATION_TYPES.find( ( t ) => t.type === type );
+			const typeInfo = getNotificationTypes().find( ( info ) => info.type === type );
 			const request: StoreNotificationRequest = {
 				type,
-				name: typeInfo?.label ?? 'New Notification',
-				subject: `New submission: ${form.name}`,
-				message: 'A new form submission has been received.',
+				name: typeInfo?.label ?? t( 'New Notification' ),
+				subject: t( 'New submission: :form', { form: form.name } ),
+				message: t( 'A new form submission has been received.' ),
 				is_active: true,
 			};
 
@@ -165,7 +168,7 @@ export function NotificationEditor( {
 				const messages = Object.values( err.errors ).flat();
 				setError( messages.join( ' ' ) );
 			} else {
-				setError( err instanceof Error ? err.message : 'Failed to add notification.' );
+				setError( err instanceof Error ? err.message : t( 'Failed to add notification.' ) );
 			}
 		}
 	}, [post, form] );
@@ -205,7 +208,7 @@ export function NotificationEditor( {
 					} else {
 						// Revert to server state on non-validation errors
 						await loadNotifications();
-						setError( err instanceof Error ? err.message : 'Failed to update notification.' );
+						setError( err instanceof Error ? err.message : t( 'Failed to update notification.' ) );
 					}
 				}
 			}
@@ -214,7 +217,7 @@ export function NotificationEditor( {
 	);
 
 	const deleteNotification = useCallback( async ( id: number ) => {
-		if ( !window.confirm( 'Are you sure you want to delete this notification?' ) ) {
+		if ( !window.confirm( t( 'Are you sure you want to delete this notification?' ) ) ) {
 			return;
 		}
 
@@ -226,7 +229,7 @@ export function NotificationEditor( {
 				setSelectedId( null );
 			}
 		} catch ( err ) {
-			setError( err instanceof Error ? err.message : 'Failed to delete notification.' );
+			setError( err instanceof Error ? err.message : t( 'Failed to delete notification.' ) );
 		}
 	}, [del, form.slug, selectedId] );
 
@@ -251,7 +254,7 @@ export function NotificationEditor( {
 		return (
 			<div className={`flex items-center justify-center p-8 ${className ?? ''}`} role="status">
 				<Loading size="md" />
-				<span className="ml-2">Loading notifications...</span>
+				<span className="ml-2">{t( 'Loading notifications...' )}</span>
 			</div>
 		);
 	}
@@ -260,9 +263,9 @@ export function NotificationEditor( {
 		<div className={`space-y-4 ${className ?? ''}`}>
 			{/* Header */}
 			<div className="flex flex-wrap items-center justify-between gap-4">
-				<h2 className="text-xl font-bold">Email Notifications</h2>
+				<h2 className="text-xl font-bold">{t( 'Email Notifications' )}</h2>
 				<div className="flex flex-wrap gap-2">
-					{NOTIFICATION_TYPES.map( ( typeInfo ) => (
+					{getNotificationTypes().map( ( typeInfo ) => (
 						<Button
 							key={typeInfo.type}
 							color="outline"
@@ -270,7 +273,7 @@ export function NotificationEditor( {
 							onClick={() => addNotification( typeInfo.type )}
 							title={typeInfo.description}
 						>
-							+ {typeInfo.label}
+							{t( '+ :type', { type: typeInfo.label } )}
 						</Button>
 					) )}
 				</div>
@@ -289,7 +292,7 @@ export function NotificationEditor( {
 				<div className="w-64 shrink-0 space-y-2">
 					{notifications.length === 0 && (
 						<p className="text-sm text-base-content/50 p-4">
-							No notifications configured. Add one to get started.
+							{t( 'No notifications configured. Add one to get started.' )}
 						</p>
 					)}
 
@@ -336,10 +339,12 @@ export function NotificationEditor( {
 											e.stopPropagation();
 											toggleActive( notification.id );
 										}}
-										title={notification.is_active ? 'Disable' : 'Enable'}
-										aria-label={`${notification.is_active ? 'Disable' : 'Enable'} notification ${notification.name}`}
+										title={notification.is_active ? t( 'Disable' ) : t( 'Enable' )}
+										aria-label={notification.is_active
+											? t( 'Disable notification :name', { name: notification.name } )
+											: t( 'Enable notification :name', { name: notification.name } )}
 									>
-										{notification.is_active ? 'On' : 'Off'}
+										{notification.is_active ? t( 'On' ) : t( 'Off' )}
 									</Button>
 									<Button
 										color="ghost"
@@ -349,8 +354,8 @@ export function NotificationEditor( {
 											e.stopPropagation();
 											deleteNotification( notification.id );
 										}}
-										title="Delete"
-										aria-label={`Delete notification ${notification.name}`}
+										title={t( 'Delete' )}
+										aria-label={t( 'Delete notification :name', { name: notification.name } )}
 									>
 										&times;
 									</Button>
@@ -376,19 +381,19 @@ export function NotificationEditor( {
 
 						{/* Basic settings */}
 						<div className="space-y-4">
-							<h3 className="text-lg font-semibold">Basic Settings</h3>
+							<h3 className="text-lg font-semibold">{t( 'Basic Settings' )}</h3>
 
 							<Input
 								id="notif-name"
-								label="Name"
-								size="sm"
+								label={t( 'Name' )}
+								className="input-sm"
 								value={selectedNotification.name}
 								onChange={( e ) => updateNotification( selectedNotification.id, { name: e.target.value } )}
 							/>
 
 							<Checkbox
-								label="Active"
-								size="sm"
+								label={t( 'Active' )}
+								className="checkbox-sm"
 								checked={selectedNotification.is_active}
 								onChange={( e ) => updateNotification( selectedNotification.id, { is_active: e.target.checked } )}
 							/>
@@ -396,19 +401,19 @@ export function NotificationEditor( {
 
 						{/* Recipients */}
 						<div className="space-y-4">
-							<h3 className="text-lg font-semibold">Recipients</h3>
+							<h3 className="text-lg font-semibold">{t( 'Recipients' )}</h3>
 
 							{selectedNotification.type === 'autoresponder' ? (
 								<Select
 									id="notif-to-field"
-									label="Send To (Email Field)"
-									size="sm"
+									label={t( 'Send To (Email Field)' )}
+									className="select-sm"
 									value={selectedNotification.to_field ?? ''}
 									onChange={( e ) => updateNotification( selectedNotification.id, {
 										to_field: e.target.value || null,
 									} )}
 									options={[
-										{ value: '', label: 'Select an email field...' },
+										{ value: '', label: t( 'Select an email field...' ) },
 										...emailFields.map( ( f ) => ( {
 											value: f.name,
 											label: f.label || f.name,
@@ -420,21 +425,21 @@ export function NotificationEditor( {
 							) : (
 								<Input
 									id="notif-to-email"
-									label="To Email(s)"
-									size="sm"
+									label={t( 'To Email(s)' )}
+									className="input-sm"
 									value={selectedNotification.to_email ?? ''}
 									onChange={( e ) => updateNotification( selectedNotification.id, {
 										to_email: e.target.value || null,
 									} )}
 									placeholder="email@example.com, admin@example.com"
-									hint="Comma-separated email addresses"
+									hint={t( 'Comma-separated email addresses' )}
 								/>
 							)}
 
 							<Input
 								id="notif-cc"
-								label="CC Emails"
-								size="sm"
+								label={t( 'CC Emails' )}
+								className="input-sm"
 								value={selectedNotification.cc_emails ?? ''}
 								onChange={( e ) => updateNotification( selectedNotification.id, {
 									cc_emails: e.target.value || null,
@@ -444,8 +449,8 @@ export function NotificationEditor( {
 
 							<Input
 								id="notif-bcc"
-								label="BCC Emails"
-								size="sm"
+								label={t( 'BCC Emails' )}
+								className="input-sm"
 								value={selectedNotification.bcc_emails ?? ''}
 								onChange={( e ) => updateNotification( selectedNotification.id, {
 									bcc_emails: e.target.value || null,
@@ -456,12 +461,12 @@ export function NotificationEditor( {
 
 						{/* Sender */}
 						<div className="space-y-4">
-							<h3 className="text-lg font-semibold">Sender</h3>
+							<h3 className="text-lg font-semibold">{t( 'Sender' )}</h3>
 
 							<Input
 								id="notif-from-name"
-								label="From Name"
-								size="sm"
+								label={t( 'From Name' )}
+								className="input-sm"
 								value={selectedNotification.from_name ?? ''}
 								onChange={( e ) => updateNotification( selectedNotification.id, {
 									from_name: e.target.value || null,
@@ -470,9 +475,9 @@ export function NotificationEditor( {
 
 							<Input
 								id="notif-from-email"
-								label="From Email"
+								label={t( 'From Email' )}
 								type="email"
-								size="sm"
+								className="input-sm"
 								value={selectedNotification.from_email ?? ''}
 								onChange={( e ) => updateNotification( selectedNotification.id, {
 									from_email: e.target.value || null,
@@ -481,8 +486,8 @@ export function NotificationEditor( {
 
 							<Input
 								id="notif-reply-to"
-								label="Reply-To Email"
-								size="sm"
+								label={t( 'Reply-To Email' )}
+								className="input-sm"
 								value={selectedNotification.reply_to_email ?? ''}
 								onChange={( e ) => updateNotification( selectedNotification.id, {
 									reply_to_email: e.target.value || null,
@@ -492,14 +497,14 @@ export function NotificationEditor( {
 							{emailFields.length > 0 && (
 								<Select
 									id="notif-reply-to-field"
-									label="Reply-To Field"
-									size="sm"
+									label={t( 'Reply-To Field' )}
+									className="select-sm"
 									value={selectedNotification.reply_to_field ?? ''}
 									onChange={( e ) => updateNotification( selectedNotification.id, {
 										reply_to_field: e.target.value || null,
 									} )}
 									options={[
-										{ value: '', label: 'None' },
+										{ value: '', label: t( 'None' ) },
 										...emailFields.map( ( f ) => ( {
 											value: f.name,
 											label: f.label || f.name,
@@ -513,12 +518,12 @@ export function NotificationEditor( {
 
 						{/* Message */}
 						<div className="space-y-4">
-							<h3 className="text-lg font-semibold">Message</h3>
+							<h3 className="text-lg font-semibold">{t( 'Message' )}</h3>
 
 							<Input
 								id="notif-subject"
-								label="Subject"
-								size="sm"
+								label={t( 'Subject' )}
+								className="input-sm"
 								value={selectedNotification.subject}
 								onChange={( e ) => updateNotification( selectedNotification.id, {
 									subject: e.target.value,
@@ -528,7 +533,7 @@ export function NotificationEditor( {
 							<Textarea
 								id="notif-message"
 								ref={messageRef}
-								label="Message Body"
+								label={t( 'Message Body' )}
 								rows={8}
 								value={selectedNotification.message}
 								onChange={( e ) => updateNotification( selectedNotification.id, {
@@ -540,7 +545,7 @@ export function NotificationEditor( {
 							{placeholders.length > 0 && (
 								<div className="space-y-2">
 									<label className="label">
-										<span className="label-text font-medium">Available Placeholders:</span>
+										<span className="label-text font-medium">{t( 'Available Placeholders:' )}</span>
 									</label>
 									<div className="flex flex-wrap gap-1">
 										{placeholders.map( ( p ) => (
@@ -560,7 +565,7 @@ export function NotificationEditor( {
 														updateNotification( selectedNotification.id, { message: newMessage } );
 													}
 												}}
-												title={`Insert {${p.name}}`}
+												title={t( 'Insert :placeholder', { placeholder: `{${p.name}}` } )}
 											>
 												{`{${p.name}}`} - {p.label}
 											</Button>
@@ -570,8 +575,8 @@ export function NotificationEditor( {
 							)}
 
 							<Checkbox
-								label="Include all submission data in email"
-								size="sm"
+								label={t( 'Include all submission data in email' )}
+								className="checkbox-sm"
 								checked={selectedNotification.include_submission_data}
 								onChange={( e ) => updateNotification( selectedNotification.id, {
 									include_submission_data: e.target.checked,
@@ -581,9 +586,9 @@ export function NotificationEditor( {
 
 						{/* Conditional sending */}
 						<div className="space-y-4">
-							<h3 className="text-lg font-semibold">Conditional Sending</h3>
+							<h3 className="text-lg font-semibold">{t( 'Conditional Sending' )}</h3>
 							<p className="text-sm text-base-content/60">
-								Only send this notification when certain conditions are met.
+								{t( 'Only send this notification when certain conditions are met.' )}
 							</p>
 							<ConditionalLogicEditor
 								value={selectedNotification.conditional_logic}
@@ -592,10 +597,10 @@ export function NotificationEditor( {
 								} )}
 								fields={fields}
 								actions={[
-									{ value: 'send', label: 'Send' },
-									{ value: 'skip', label: 'Skip' },
+									{ value: 'send', label: t( 'Send' ) },
+									{ value: 'skip', label: t( 'Skip' ) },
 								]}
-								actionLabel="this notification"
+								actionLabel={t( 'this notification' )}
 							/>
 						</div>
 
@@ -606,7 +611,7 @@ export function NotificationEditor( {
 								size="sm"
 								onClick={() => deleteNotification( selectedNotification.id )}
 							>
-								Delete Notification
+								{t( 'Delete Notification' )}
 							</Button>
 						</div>
 					</div>

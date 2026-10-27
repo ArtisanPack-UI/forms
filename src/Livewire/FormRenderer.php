@@ -19,16 +19,26 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Livewire;
 
+use ArtisanPackUI\Forms\Captcha\CaptchaVerifier;
+use ArtisanPackUI\Forms\FieldTypes\CalculationFieldType;
+use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
+use ArtisanPackUI\Forms\Livewire\Concerns\ManagesStructuredFieldValues;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormStep;
 use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\SubmissionService;
+use ArtisanPackUI\Forms\Support\DynamicPopulation;
+use ArtisanPackUI\Forms\Support\PopulationContext;
+use ArtisanPackUI\Forms\Support\Sections;
 use Exception;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Validator;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -46,6 +56,7 @@ use Livewire\WithFileUploads;
  */
 class FormRenderer extends Component
 {
+    use ManagesStructuredFieldValues;
     use WithFileUploads;
 
     /**
@@ -59,6 +70,39 @@ class FormRenderer extends Component
      * @var array<string, mixed>
      */
     public array $formData = [];
+
+    /**
+     * The values the form starts with, kept so resetForm() restores them.
+     *
+     * Worked out once on mount, from the page request's query string and the
+     * `prefill` passed to the component (see DynamicPopulation).
+     *
+     * @since 1.6.0
+     *
+     * @var array<string, mixed>
+     */
+    #[Locked]
+    public array $initialFormData = [];
+
+    /**
+     * Text typed into each field's "Other" choice, keyed by field name.
+     *
+     * The choice itself stays selected in $formData as FormField::OTHER_CHOICE_VALUE
+     * and is replaced with this text when the form is validated and saved.
+     *
+     * @since 1.6.0
+     *
+     * @var array<string, string>
+     */
+    public array $otherValues = [];
+
+    /**
+     * The seed randomized choices are shuffled with, so re-renders keep their order.
+     *
+     * @since 1.6.0
+     */
+    #[Locked]
+    public int $choiceSeed = 0;
 
     /**
      * Uploaded files keyed by field name.
@@ -79,12 +123,20 @@ class FormRenderer extends Component
 
     /**
      * Current step index for multi-step forms (0-based).
+     *
+     * Locked since 1.6.0: steps change only through nextStep(),
+     * previousStep() and goToStep(), which validate the steps passed.
      */
+    #[Locked]
     public int $currentStepIndex = 0;
 
     /**
      * Timestamp when the form was loaded (for bot detection).
+     *
+     * Locked since 1.6.0, so the browser can't backdate it to pass the
+     * minimum-time spam check.
      */
+    #[Locked]
     public int $formLoadedAt;
 
     /**
@@ -95,9 +147,45 @@ class FormRenderer extends Component
     /**
      * Fields hidden by conditional logic.
      *
+     * Locked since 1.6.0: the server works it out from the form data
+     * (evaluateConditionalLogic()), so the browser can't hide a required
+     * field to skip its validation.
+     *
      * @var array<string, bool>
      */
+    #[Locked]
     public array $hiddenFields = [];
+
+    /**
+     * The prefix of the field element IDs, unique to this form on the page.
+     *
+     * `f{form id}`, with `-2`, `-3`… for further renderers of the same form
+     * in one request. Set on mount and locked, so the IDs stay the same
+     * across re-renders (see FormField::domId()).
+     *
+     * @since 1.6.0
+     */
+    #[Locked]
+    public string $idPrefix = '';
+
+    /**
+     * The URL of the page the form was loaded on, recorded with the submission.
+     *
+     * Captured on mount, since submit() runs during a Livewire update
+     * request whose URL is the Livewire endpoint.
+     *
+     * @since 1.6.0
+     */
+    #[Locked]
+    public ?string $pageUrl = null;
+
+    /**
+     * The referrer of the page the form was loaded on, recorded with the submission.
+     *
+     * @since 1.6.0
+     */
+    #[Locked]
+    public ?string $referrerUrl = null;
 
     /**
      * The submission service instance.
@@ -120,11 +208,20 @@ class FormRenderer extends Component
 
     /**
      * Mount the component.
+     *
+     * @param  Form  $form  The form to render.
+     * @param  array<string, mixed>  $prefill  Values for fields with dynamic population on, keyed by
+     *                                          parameter name (since 1.6.0).
      */
-    public function mount( Form $form ): void
+    public function mount( Form $form, array $prefill = [] ): void
     {
-        $this->form         = $form->load( ['fields', 'steps.fields'] );
-        $this->formLoadedAt = time();
+        $this->form            = $form->load( ['fields', 'steps.fields'] );
+        $this->formLoadedAt    = now()->getTimestamp();
+        $this->choiceSeed      = random_int( 1, 2147483647 );
+        $this->idPrefix        = $this->claimIdPrefix( $form );
+        $this->pageUrl         = request()->fullUrl();
+        $this->referrerUrl     = request()->header( 'referer' );
+        $this->initialFormData = $this->buildInitialFormData( PopulationContext::fromPageRequest( request() ), $prefill );
         $this->initializeFormData();
         $this->evaluateConditionalLogic();
     }
@@ -136,6 +233,10 @@ class FormRenderer extends Component
     /**
      * Get fields for the current view (current step or all fields).
      *
+     * Administrative fields are left out, since admins fill them in on the
+     * submission. Each field gets the visitor's choice seed, so randomized
+     * choices keep their order across re-renders.
+     *
      * @return Collection<int, FormField>
      */
     #[Computed]
@@ -144,12 +245,17 @@ class FormRenderer extends Component
         if ( $this->form->is_multi_step ) {
             $currentStep = $this->currentStep;
 
-            return $currentStep
+            $fields = $currentStep
                 ? $currentStep->fields()->orderBy( 'sort_order' )->get()
                 : collect();
+        } else {
+            $fields = $this->form->fields()->whereNull( 'step_id' )->orderBy( 'sort_order' )->get();
         }
 
-        return $this->form->fields()->whereNull( 'step_id' )->orderBy( 'sort_order' )->get();
+        return $fields
+            ->reject( fn ( FormField $field ): bool => $field->isAdministrative() )
+            ->each( fn ( FormField $field ): FormField => $field->withSettingsForm( $this->form )->withChoiceSeed( $this->choiceSeed )->withDomIdPrefix( $this->idPrefix ) )
+            ->values();
     }
 
     /**
@@ -256,6 +362,55 @@ class FormRenderer extends Component
         return $config;
     }
 
+    /**
+     * Get the fields each section groups, for Alpine to hide with a hidden section.
+     *
+     * CAPTCHAs are left out, since conditional logic never hides one.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, list<string>> Member field names keyed by section name.
+     */
+    #[Computed]
+    public function sectionMembers(): array
+    {
+        $captchas = $this->form->fields
+            ->filter( fn ( FormField $field ): bool => CaptchaFieldType::TYPE === $field->type )
+            ->pluck( 'name' )
+            ->all();
+
+        return array_map(
+            fn ( array $members ): array => array_values( array_diff( $members, $captchas ) ),
+            Sections::members( $this->form->fields ),
+        );
+    }
+
+    /**
+     * Get the invisible CAPTCHAs of earlier steps, rendered again on the last step.
+     *
+     * An invisible CAPTCHA fetches its token when the form is submitted,
+     * which only happens on the last step, so a multi-step form renders the
+     * ones on other steps there too (their widget shows nothing).
+     *
+     * @since 1.6.0
+     *
+     * @return Collection<int, FormField>
+     */
+    #[Computed]
+    public function deferredCaptchaFields(): Collection
+    {
+        if ( ! $this->form->is_multi_step || ! $this->isLastStep ) {
+            return new Collection();
+        }
+
+        $stepId = $this->currentStep?->id;
+
+        return $this->form->fields
+            ->filter( fn ( FormField $field ): bool => $field->step_id !== $stepId && ! $field->isAdministrative() && $this->isInvisibleCaptcha( $field ) )
+            ->each( fn ( FormField $field ): FormField => $field->withSettingsForm( $this->form )->withDomIdPrefix( $this->idPrefix ) )
+            ->values();
+    }
+
     // =========================================
     // Navigation Methods
     // =========================================
@@ -270,8 +425,14 @@ class FormRenderer extends Component
         }
 
         // Validate current step fields before proceeding
-        if ( ! $this->validateCurrentStep() ) {
-            return;
+        try {
+            if ( ! $this->validateCurrentStep() ) {
+                return;
+            }
+        } catch ( ValidationException $e ) {
+            $this->dispatchValidationFailed( $e );
+
+            throw $e;
         }
 
         $this->currentStepIndex++;
@@ -323,7 +484,17 @@ class FormRenderer extends Component
                 $this->currentStepIndex = $i;
                 $this->clearComputedProperties();
 
-                if ( ! $this->validateCurrentStep() ) {
+                try {
+                    $passed = $this->validateCurrentStep();
+                } catch ( ValidationException $e ) {
+                    // Show the step whose fields failed
+                    $this->clearComputedProperties();
+                    $this->dispatchValidationFailed( $e );
+
+                    throw $e;
+                }
+
+                if ( ! $passed ) {
                     // Restore original index on validation failure
                     $this->currentStepIndex = $originalStepIndex;
                     $this->clearComputedProperties();
@@ -350,6 +521,12 @@ class FormRenderer extends Component
     {
         $this->errorMessage = null;
 
+        if ( ! $this->form->is_active ) {
+            $this->errorMessage = __( 'This form is not accepting submissions.' );
+
+            return;
+        }
+
         // Check for spam
         if ( $this->submissionService->isSpam( $this->honeypot, $this->formLoadedAt ) ) {
             // Silent success for bots - don't save but pretend it worked
@@ -362,7 +539,7 @@ class FormRenderer extends Component
         // Check rate limiting
         $ipAddress = request()->ip() ?? 'unknown';
         if ( $this->submissionService->isRateLimited( $ipAddress, $this->form->id ) ) {
-            $this->errorMessage = 'Too many submissions. Please try again later.';
+            $this->errorMessage = __( 'Too many submissions. Please try again later.' );
 
             return;
         }
@@ -372,23 +549,33 @@ class FormRenderer extends Component
             if ( ! $this->validateAllFields() ) {
                 return;
             }
-        } catch ( \Illuminate\Validation\ValidationException $e ) {
-            // Validation errors are handled by Livewire
+        } catch ( ValidationException $e ) {
+            // Livewire shows the errors; the renderer announces them and focuses the first
+            $this->dispatchValidationFailed( $e );
+
             throw $e;
         }
 
         // Record the attempt for rate limiting
         $this->submissionService->recordAttempt( $ipAddress, $this->form->id );
 
+        // Check CAPTCHA tokens last, since a provider accepts each token once
+        if ( ! $this->passesCaptcha( request()->ip() ) ) {
+            return;
+        }
+
         try {
             // Get metadata
-            $metadata = $this->submissionService->getRequestMetadata( request() );
+            $metadata = array_replace( $this->submissionService->getRequestMetadata( request() ), [
+                'page_url'     => $this->pageUrl,
+                'referrer_url' => $this->referrerUrl,
+            ] );
 
             // Create the submission
             $submission = $this->submissionService->create(
                 $this->form,
-                $this->formData,
-                $this->files,
+                $this->visibleFormData(),
+                $this->visibleFiles(),
                 $metadata,
             );
 
@@ -397,9 +584,11 @@ class FormRenderer extends Component
             // Dispatch success event
             $this->dispatch( 'form-submitted', formId: $this->form->id, submissionId: $submission->id );
 
-            // Handle redirect if configured
-            if ( $this->form->redirect_url ) {
-                $this->dispatch( 'redirect-to', url: $this->form->redirect_url );
+            $redirectUrl = $this->safeRedirectUrl();
+
+            if ( null !== $redirectUrl ) {
+                $this->dispatch( 'redirect-to', url: $redirectUrl );
+                $this->redirect( $redirectUrl );
             }
 
         } catch ( Exception $e ) {
@@ -408,12 +597,40 @@ class FormRenderer extends Component
                 'error'   => $e->getMessage(),
             ] );
 
-            $this->errorMessage = 'An error occurred while submitting the form. Please try again.';
+            $this->errorMessage = __( 'An error occurred while submitting the form. Please try again.' );
+
+            // The challenge token was spent, so a retry needs a new one
+            $this->dispatch( 'forms-captcha-reset', formId: $this->form->id );
         }
     }
 
     /**
+     * Removes one file from a multi-file field before the form is submitted.
+     *
+     * The drop zone uploads each file under its own key in
+     * `$files[$fieldName]`, so removing one leaves the others in place.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $fieldName  The file field's name.
+     * @param  string  $key  The key the file was uploaded under.
+     */
+    public function removeFile( string $fieldName, string $key ): void
+    {
+        if ( ! isset( $this->files[ $fieldName ] ) || ! is_array( $this->files[ $fieldName ] ) ) {
+            return;
+        }
+
+        unset( $this->files[ $fieldName ][ $key ] );
+
+        $this->resetValidation( "files.{$fieldName}" );
+    }
+
+    /**
      * Reset the form to allow another submission.
+     *
+     * Conditional logic is worked out again for the starting values, since
+     * the browser no longer sends hidden fields back (since 1.6.0).
      */
     public function resetForm(): void
     {
@@ -421,8 +638,10 @@ class FormRenderer extends Component
         $this->currentStepIndex = 0;
         $this->errorMessage     = null;
         $this->files            = [];
-        $this->formLoadedAt     = time();
+        $this->otherValues      = [];
+        $this->formLoadedAt     = now()->getTimestamp();
         $this->initializeFormData();
+        $this->evaluateConditionalLogic();
         $this->clearComputedProperties();
 
         $this->dispatch( 'form-reset', formId: $this->form->id );
@@ -493,19 +712,52 @@ class FormRenderer extends Component
     }
 
     /**
-     * Initialize form data with default values.
+     * Initialize form data with the values the form starts with.
      */
     protected function initializeFormData(): void
     {
+        $this->formData = $this->initialFormData;
+    }
+
+    /**
+     * Works out the value each field starts with.
+     *
+     * Read-only fields start with their read-only value; other fields with
+     * their default value (merge tags replaced) or, when dynamic population
+     * is on, the prefill, query string or filter value.
+     *
+     * @since 1.6.0
+     *
+     * @param  PopulationContext  $context  The visitor and page.
+     * @param  array<string, mixed>  $prefill  Values passed to the component, keyed by parameter name.
+     *
+     * @return array<string, mixed> The values keyed by field name.
+     */
+    protected function buildInitialFormData( PopulationContext $context, array $prefill ): array
+    {
+        $data = [];
+
         foreach ( $this->form->fields as $field ) {
-            if ( null !== $field->default_value ) {
-                $this->formData[ $field->name ] = $field->default_value;
-            } elseif ( in_array( $field->type, ['checkbox_group', 'select_multiple'] ) ) {
-                $this->formData[ $field->name ] = [];
-            } else {
-                $this->formData[ $field->name ] = '';
+            // File inputs bind to $files, so seeding formData would only shadow them;
+            // administrative fields are not on the public form.
+            if ( $field->is_file_field || $field->isAdministrative() ) {
+                continue;
+            }
+
+            $data[ $field->name ] = DynamicPopulation::initialValue( $field, $context, $prefill );
+
+            // A populated email is confirmed with the same value
+            if ( $field->requiresEmailConfirmation() && ! array_key_exists( $field->getConfirmationKey(), $data ) ) {
+                $data[ $field->getConfirmationKey() ] = is_string( $data[ $field->name ] ) ? $data[ $field->name ] : '';
+            }
+
+            // The country selector starts at the field's default country
+            if ( $field->usesPhoneCountrySelector() && ! array_key_exists( $field->getPhoneCountryKey(), $data ) ) {
+                $data[ $field->getPhoneCountryKey() ] = $field->getPhoneDefaultCountry();
             }
         }
+
+        return $data;
     }
 
     // =========================================
@@ -517,27 +769,41 @@ class FormRenderer extends Component
      */
     protected function validateCurrentStep(): bool
     {
+        $this->resetReadOnlyValues();
+
+        // An invisible CAPTCHA gets its token when the form is submitted, so
+        // it is checked with all fields on submit, not when leaving its step
+        $fields = $this->currentFields->reject( fn ( FormField $field ): bool => $this->isInvisibleCaptcha( $field ) );
+
         $rules = $this->submissionService->buildValidationRules(
-            $this->currentFields,
+            $fields,
             $this->hiddenFields,
         );
 
-        $messages = $this->submissionService->buildValidationMessages( $this->currentFields );
+        $messages = $this->submissionService->buildValidationMessages( $fields );
 
         if ( empty( $rules ) ) {
             return true;
         }
 
-        $this->validate( $rules, $messages );
+        $this->withResolvedOtherChoices()->validate( $rules, $messages );
 
         return true;
     }
 
     /**
      * Validate all form fields.
+     *
+     * Since 1.6.0, when a field on another step fails (a rule that depends on
+     * the time or the database can fail after its step passed), a multi-step
+     * form moves to that field's step so the visitor sees the error.
+     *
+     * @throws ValidationException When a field fails.
      */
     protected function validateAllFields(): bool
     {
+        $this->resetReadOnlyValues();
+
         $allFields = $this->form->is_multi_step
             ? $this->form->fields_ordered
             : $this->form->fields()->whereNull( 'step_id' )->orderBy( 'sort_order' )->get();
@@ -549,25 +815,322 @@ class FormRenderer extends Component
             return true;
         }
 
-        $this->validate( $rules, $messages );
+        try {
+            $this->withResolvedOtherChoices()->validate( $rules, $messages );
+        } catch ( ValidationException $e ) {
+            $field = $this->fieldForErrorKey( (string) array_key_first( $e->errors() ) );
+
+            // An invisible CAPTCHA is rendered on the last step too
+            if ( null !== $field && ! $this->isInvisibleCaptcha( $field ) ) {
+                $this->goToStepOfField( $field->name );
+            }
+
+            throw $e;
+        }
 
         return true;
     }
 
     /**
+     * Checks the form's CAPTCHA tokens with their providers.
+     *
+     * On a failure the field gets the error, a multi-step form moves to the
+     * field's step, and `forms-captcha-reset` is dispatched so the widget
+     * asks for a new token.
+     *
+     * @since 1.6.0
+     *
+     * @param  string|null  $ipAddress  The visitor's IP address.
+     *
+     * @return bool True when every token passed.
+     */
+    protected function passesCaptcha( ?string $ipAddress ): bool
+    {
+        $errors = app( CaptchaVerifier::class )->verify( $this->form->fields, $this->formData, $this->hiddenFields, $ipAddress );
+
+        if ( [] === $errors ) {
+            return true;
+        }
+
+        foreach ( $errors as $fieldName => $message ) {
+            $this->formData[ $fieldName ] = '';
+            $this->addError( "formData.{$fieldName}", $message );
+        }
+
+        // An invisible CAPTCHA is rendered on the last step too, so the
+        // visitor stays there and the next submit fetches a new token
+        $failed = $this->form->fields->firstWhere( 'name', array_key_first( $errors ) );
+
+        if ( $failed instanceof FormField && ! $this->isInvisibleCaptcha( $failed ) ) {
+            $this->goToStepOfField( $failed->name );
+        }
+
+        $this->dispatch( 'forms-captcha-reset', formId: $this->form->id );
+
+        return false;
+    }
+
+    /**
+     * Validates the form data with each selected "Other" choice replaced by its text.
+     *
+     * The choice stays selected in $formData, so the radio or checkbox keeps
+     * its state; only the data the validator sees is resolved.
+     *
+     * @since 1.6.0
+     *
+     * @return static The component.
+     */
+    protected function withResolvedOtherChoices(): static
+    {
+        return $this->withValidator( function ( Validator $validator ): void {
+            $validator->setData( array_replace( $validator->getData(), ['formData' => $this->resolvedFormData()] ) );
+        } );
+    }
+
+    /**
+     * Gets the form data with each selected "Other" choice replaced by its text.
+     *
+     * Numbers typed in a number field's format are converted to plain
+     * decimals, URLs typed without a scheme get one and emptied rich text is
+     * blanked as well (see SubmissionService::normalizeSubmittedValues()),
+     * while $formData keeps what the visitor typed.
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> The form data.
+     */
+    protected function resolvedFormData(): array
+    {
+        $formData = $this->submissionService->resolveOtherChoices( $this->form->fields, $this->formData, $this->otherValues );
+
+        return $this->submissionService->normalizeSubmittedValues( $this->form->fields, $formData );
+    }
+
+    /**
+     * Gets the resolved values of the fields conditional logic shows.
+     *
+     * Hidden fields (including every field in a hidden section) are not
+     * validated, so their values are not stored either, as the submit API
+     * drops them (SubmitFormApiRequest::sanitizedData()).
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> The values keyed by field name.
+     */
+    protected function visibleFormData(): array
+    {
+        return array_filter(
+            $this->resolvedFormData(),
+            fn ( string|int $fieldName ): bool => $this->isFieldVisible( (string) $fieldName ),
+            ARRAY_FILTER_USE_KEY,
+        );
+    }
+
+    /**
+     * Gets the uploaded files of the fields conditional logic shows.
+     *
+     * Hidden fields are not validated, so their files are not stored either,
+     * as the submit API drops them (SubmitFormApiRequest::sanitizedFiles()).
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, mixed> The files keyed by field name.
+     */
+    protected function visibleFiles(): array
+    {
+        return array_filter(
+            $this->files,
+            fn ( string $fieldName ): bool => $this->isFieldVisible( $fieldName ),
+            ARRAY_FILTER_USE_KEY,
+        );
+    }
+
+    /**
+     * Put read-only fields back to their own values, discarding client edits.
+     *
+     * Conditional logic is re-evaluated so field visibility follows the
+     * real values rather than the discarded ones.
+     *
+     * @since 1.6.0
+     */
+    protected function resetReadOnlyValues(): void
+    {
+        $this->formData = $this->submissionService->applyReadOnlyValues( $this->form->fields, $this->formData );
+
+        $this->evaluateConditionalLogic();
+    }
+
+    /**
      * Evaluate conditional logic for all fields.
+     *
+     * Calculation fields are worked out first, so conditions can use their
+     * results, and again without the values of the fields conditional logic
+     * hides, since those are not submitted (since 1.6.0).
+     *
+     * `hiddenFields` is locked (since 1.6.0) and updatedFormData() runs only
+     * for updates from the browser, so an action that changes `formData` on
+     * the server (list rows, ranking moves, a reset) calls this itself.
      */
     protected function evaluateConditionalLogic(): void
     {
-        $this->hiddenFields = $this->conditionalLogicService->getHiddenFields(
-            $this->form->fields,
-            $this->formData,
-        );
+        $fields = $this->form->fields;
+
+        $this->formData     = $this->submissionService->applyCalculations( $fields, $this->formData );
+        $this->hiddenFields = $this->conditionalLogicService->getHiddenFields( $fields, $this->formData );
+
+        if ( ! in_array( true, $this->hiddenFields, true ) || ! $fields->contains( 'type', CalculationFieldType::TYPE ) ) {
+            return;
+        }
+
+        $visible = $this->submissionService->applyCalculations( $fields, $this->visibleFormData(), false, true );
+
+        foreach ( $fields->where( 'type', CalculationFieldType::TYPE ) as $field ) {
+            $this->formData[ $field->name ] = $visible[ $field->name ];
+        }
+
+        $this->hiddenFields = $this->conditionalLogicService->getHiddenFields( $fields, $this->formData );
     }
 
     // =========================================
     // Helper Methods
     // =========================================
+
+    /**
+     * Gets a list or ranking field of the public form by name.
+     *
+     * Administrative fields are filled in on the submission, not here.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $fieldName  The field's name.
+     * @param  string  $type  The field type the action expects.
+     *
+     * @return FormField|null The field, or null when the form has no such public field.
+     */
+    protected function structuredValueField( string $fieldName, string $type ): ?FormField
+    {
+        $field = $this->form->fields->firstWhere( 'name', $fieldName );
+
+        return $field instanceof FormField && $type === $field->type && ! $field->isAdministrative() ? $field : null;
+    }
+
+    /**
+     * Works out conditional logic again after a list or ranking action.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $fieldName  The field's name.
+     */
+    protected function structuredValueChanged( string $fieldName ): void
+    {
+        $this->evaluateConditionalLogic();
+    }
+
+    /**
+     * Tells the renderer's script that validation failed.
+     *
+     * Dispatches `forms-validation-failed` with the form ID and the number
+     * of fields with errors, so the script announces them and moves focus to
+     * the first invalid control.
+     *
+     * @since 1.6.0
+     *
+     * @param  ValidationException  $exception  The validation failure.
+     */
+    protected function dispatchValidationFailed( ValidationException $exception ): void
+    {
+        $this->dispatch( 'forms-validation-failed', formId: $this->form->id, count: count( $exception->errors() ) );
+    }
+
+    /**
+     * Works out a field ID prefix no other renderer in this request uses.
+     *
+     * @since 1.6.0
+     *
+     * @param  Form  $form  The form being mounted.
+     *
+     * @return string The prefix: `f{id}`, then `f{id}-2`, `f{id}-3`…
+     */
+    protected function claimIdPrefix( Form $form ): string
+    {
+        $attributes = request()->attributes;
+        $mounted    = (array) $attributes->get( 'artisanpack.forms.renderers', [] );
+        $count      = (int) ( $mounted[ $form->id ] ?? 0 ) + 1;
+
+        $mounted[ $form->id ] = $count;
+        $attributes->set( 'artisanpack.forms.renderers', $mounted );
+
+        return 'f' . $form->id . ( $count > 1 ? '-' . $count : '' );
+    }
+
+    /**
+     * Gets the field a validation error key belongs to.
+     *
+     * Keys look like `formData.{name}`, `formData.{name}.{part}` or
+     * `files.{name}.{index}`; an email's confirmation input and a phone's
+     * country selector belong to their field.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $key  The error key.
+     *
+     * @return FormField|null The field, or null when no field matches.
+     */
+    protected function fieldForErrorKey( string $key ): ?FormField
+    {
+        $name = explode( '.', (string) preg_replace( '/^(formData|files)\./', '', $key ), 2 )[0];
+
+        foreach ( [$name, (string) preg_replace( '/_(confirmation|country)$/', '', $name )] as $candidate ) {
+            $field = $this->form->fields->firstWhere( 'name', $candidate );
+
+            if ( $field instanceof FormField ) {
+                return $field;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Moves a multi-step form to the step that holds a field.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $fieldName  The field's name.
+     */
+    protected function goToStepOfField( string $fieldName ): void
+    {
+        if ( ! $this->form->is_multi_step ) {
+            return;
+        }
+
+        $field = $this->form->fields->firstWhere( 'name', $fieldName );
+
+        if ( ! $field instanceof FormField || null === $field->step_id ) {
+            return;
+        }
+
+        $index = $this->steps->search( fn ( FormStep $step ): bool => $step->id === $field->step_id );
+
+        if ( false !== $index && (int) $index !== $this->currentStepIndex ) {
+            $this->currentStepIndex = (int) $index;
+            $this->clearComputedProperties();
+        }
+    }
+
+    /**
+     * Checks whether a field is a CAPTCHA that runs when the form is submitted.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The field.
+     *
+     * @return bool True for a CAPTCHA whose widget is invisible.
+     */
+    protected function isInvisibleCaptcha( FormField $field ): bool
+    {
+        return CaptchaFieldType::TYPE === $field->type && 'invisible' === ( CaptchaFieldType::widget( $field )['size'] ?? null );
+    }
 
     /**
      * Clear computed properties to force recalculation.
@@ -584,6 +1147,35 @@ class FormRenderer extends Component
             $this->steps,
             $this->fieldMap,
             $this->conditionalLogicConfig,
+            $this->sectionMembers,
+            $this->deferredCaptchaFields,
         );
+    }
+
+    /**
+     * Returns the form's redirect URL when it is safe to send the visitor to.
+     *
+     * Only `http`/`https` URLs and site paths are followed, so a stored
+     * `javascript:` or other scheme can never run in the visitor's browser.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null The URL to redirect to, or null for none.
+     */
+    protected function safeRedirectUrl(): ?string
+    {
+        $url = trim( (string) $this->form->redirect_url );
+
+        if ( '' === $url ) {
+            return null;
+        }
+
+        if ( str_starts_with( $url, '/' ) && ! str_starts_with( $url, '//' ) ) {
+            return $url;
+        }
+
+        $scheme = strtolower( (string) parse_url( $url, PHP_URL_SCHEME ) );
+
+        return in_array( $scheme, ['http', 'https'], true ) ? $url : null;
     }
 }

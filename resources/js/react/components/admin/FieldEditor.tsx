@@ -1,9 +1,11 @@
 /**
  * FieldEditor component for per-field settings.
  *
- * Adapts its UI based on the selected field type, showing relevant
- * configuration options like validation rules, options editor for
- * choice fields, file upload settings, and conditional logic.
+ * The settings every field shares (label, name, placeholder, help text,
+ * default value, required, width, CSS classes, options, conditional logic)
+ * are built in. Type-specific settings are rendered from the field's
+ * `settings_schema`, which the server builds from the field type's handler,
+ * so a new type's settings need no editor changes.
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -18,27 +20,33 @@ import { Button, Checkbox, Input, Select, Tabs, Textarea } from '@artisanpack-ui
 import type {
 	ConditionalLogic,
 	FieldOption,
+	FieldSettingDefinition,
 	FieldType,
 	FieldWidth,
 	FormField,
+	PredefinedChoiceList,
 	UpdateFieldRequest,
-	ValidationRules,
 } from '../../../types/artisanpack-forms';
 
-import { getRegisteredFieldSettings, ownEntry } from '../fields/registry';
-import type { CustomFieldSettingsComponent } from '../fields/registry';
+import {
+	buildLayoutContentUpdate,
+	buildSettingUpdate,
+	getLayoutContent,
+	getSettingInput,
+	getSettingsForTab,
+	isDraftStored,
+	supportsConditionalLogic,
+} from '../../../shared/fieldSettings';
+import { checkFormula, getFormulaFields, insertFormulaTag } from '../../../shared/calculation';
+import { applySubInputUpdate, isCompositeField } from '../../../shared/composite';
+import { MERGE_TAGS } from '../../../shared/dynamicPopulation';
+import { getFieldTypeLabel } from '../../../shared/fieldTypeLabels';
+import { t } from '../../../shared/i18n';
+import { resolveFieldSettings } from '../fields/registry';
+import type { CustomFieldSettingsEntry, FieldSettingsRegistration } from '../fields/registry';
 import { ConditionalLogicEditor } from './ConditionalLogicEditor';
-
-/** Safely parse a numeric input value, returning undefined for empty or NaN. */
-function parseNumericInput( value: string ): number | undefined {
-	if ( !value ) {
-		return undefined;
-	}
-
-	const num = Number( value );
-
-	return Number.isNaN( num ) ? undefined : num;
-}
+import { OptionsEditor } from './OptionsEditor';
+import { SubInputsEditor } from './SubInputsEditor';
 
 /** Field types that support an options list. */
 const OPTION_FIELD_TYPES: Set<FieldType> = new Set( [
@@ -46,23 +54,38 @@ const OPTION_FIELD_TYPES: Set<FieldType> = new Set( [
 	'radio',
 	'checkbox_group',
 	'select_multiple',
+	'ranking',
 ] );
 
 /** Field types that don't collect user data. */
 const LAYOUT_FIELD_TYPES: Set<FieldType> = new Set( [
+	'section',
 	'heading',
 	'paragraph',
 	'divider',
 	'html',
 ] );
 
-/** Available width options. */
-const WIDTH_OPTIONS: Array<{ value: FieldWidth; label: string }> = [
-	{ value: 'full', label: 'Full Width' },
-	{ value: 'half', label: 'Half (1/2)' },
-	{ value: 'third', label: 'Third (1/3)' },
-	{ value: 'two-thirds', label: 'Two-Thirds (2/3)' },
-];
+/** Field types without a placeholder. */
+const NO_PLACEHOLDER_TYPES: Set<FieldType> = new Set( ['checkbox', 'toggle', 'radio', 'rating', 'consent', 'captcha', 'datetime', 'list', 'slider', 'nps', 'matrix', 'ranking', 'signature', 'calculation'] );
+
+/**
+ * Field types without a default value: a consent box is never pre-checked,
+ * a CAPTCHA token comes from the provider, a list starts with empty rows, a
+ * matrix unanswered, a ranking in its options' order, a signature blank and
+ * a calculation with its result (since 1.6.0).
+ */
+const NO_DEFAULT_VALUE_TYPES: Set<FieldType> = new Set( ['consent', 'captcha', 'list', 'matrix', 'ranking', 'signature', 'calculation'] );
+
+/** Get the width options, translated at render. */
+function getWidthOptions(): Array<{ value: FieldWidth; label: string }> {
+	return [
+		{ value: 'full', label: t( 'Full Width' ) },
+		{ value: 'half', label: t( 'Half (1/2)' ) },
+		{ value: 'third', label: t( 'Third (1/3)' ) },
+		{ value: 'two-thirds', label: t( 'Two-Thirds (2/3)' ) },
+	];
+}
 
 /** Props for the FieldEditor component. */
 export interface FieldEditorProps {
@@ -81,11 +104,23 @@ export interface FieldEditorProps {
 	/** Optional CSS class name. */
 	className?: string;
 	/**
-	 * Host-supplied settings panels keyed by field type. Rendered in the
-	 * General tab below the shared settings. Takes precedence over the
-	 * module-level registry (see `registerFieldSettings`) for the same type.
+	 * Host-supplied settings panels keyed by field type. An entry is either a
+	 * component (rendered last in the General tab) or `{ component, position }`
+	 * where `position: 'before-basics'` renders it above Width/CSS Classes.
+	 * Takes precedence over the module-level registry (see
+	 * `registerFieldSettings`) for the same type.
 	 */
-	customSettings?: Record<string, CustomFieldSettingsComponent>;
+	customSettings?: Record<string, CustomFieldSettingsEntry>;
+	/**
+	 * The lists the options editor's bulk editor can insert (since 1.6.0;
+	 * from the `fields/predefined-choices` endpoint).
+	 */
+	predefinedChoices?: PredefinedChoiceList[];
+	/**
+	 * Stores an image choice's image and resolves to its URL (since 1.6.0;
+	 * the `fields/choice-images` endpoint). Without it, images are set by URL.
+	 */
+	uploadChoiceImage?: ( file: File ) => Promise<string>;
 }
 
 /**
@@ -112,6 +147,8 @@ export function FieldEditor( {
 	onClose,
 	className,
 	customSettings,
+	predefinedChoices,
+	uploadChoiceImage,
 }: FieldEditorProps ): React.ReactElement {
 	const [activeTab, setActiveTab] = useState<string>( 'general' );
 
@@ -122,23 +159,33 @@ export function FieldEditor( {
 	// selects a different field.
 	const [field, setField] = useState<FormField>( serverField );
 
+	// The latest mirror, so an update built after an await (an image upload)
+	// starts from the settings saved since, not a stale snapshot (since 1.6.0).
+	const fieldRef = useRef( field );
+	fieldRef.current = field;
+
 	useEffect( () => {
 		setField( serverField );
+		fieldRef.current = serverField;
 	}, [serverField.id] );
 
 	const isLayoutField = LAYOUT_FIELD_TYPES.has( field.type );
 	const hasOptions = OPTION_FIELD_TYPES.has( field.type );
 
 	// Host-supplied settings panel for this field type, if any. The per-instance
-	// prop wins over a module-level registration. `ownEntry` guards the plain
+	// prop wins over a module-level registration; the resolver guards the plain
 	// object so a type such as `constructor` cannot resolve a prototype member.
-	const CustomSettings = ownEntry( customSettings, field.type ) ?? getRegisteredFieldSettings( field.type );
+	const customSettingsPanel = useMemo(
+		() => resolveFieldSettings( customSettings, field.type ),
+		[customSettings, field.type],
+	);
 
 	const updateTimerRef = useRef<ReturnType<typeof setTimeout> | null>( null );
 	const pendingUpdatesRef = useRef<UpdateFieldRequest>( {} );
 
 	const updateField = useCallback(
 		( data: UpdateFieldRequest ) => {
+			fieldRef.current = { ...fieldRef.current, ...data } as FormField;
 			setField( ( prev ) => ( { ...prev, ...data } as FormField ) );
 			pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...data };
 
@@ -176,85 +223,65 @@ export function FieldEditor( {
 		return ( field.field_config as { options?: FieldOption[] } )?.options ?? field.options ?? [];
 	}, [field, hasOptions] );
 
-	const handleAddOption = useCallback( () => {
-		const newOptions = [
-			...options,
-			{ label: `Option ${options.length + 1}`, value: `option_${options.length + 1}` },
-		];
-		updateField( { field_config: { options: newOptions } } );
-	}, [options, updateField] );
-
-	const handleUpdateOption = useCallback(
-		( index: number, key: 'label' | 'value', value: string ) => {
-			const newOptions = options.map( ( opt, i ) =>
-				i === index ? { ...opt, [key]: value } : opt,
-			);
-			updateField( { field_config: { options: newOptions } } );
+	// `field_config` is saved whole, so the options join the latest settings, never an older copy
+	const handleSetOptions = useCallback(
+		( newOptions: FieldOption[] ) => {
+			updateField( { field_config: { ...( fieldRef.current.field_config ?? {} ), options: newOptions } } );
 		},
-		[options, updateField],
+		[updateField],
 	);
 
-	const handleRemoveOption = useCallback(
-		( index: number ) => {
-			const newOptions = options.filter( ( _, i ) => i !== index );
-			updateField( { field_config: { options: newOptions } } );
-		},
-		[options, updateField],
-	);
+	// Show a sub-input change at once; the server rebuilds `sub_inputs` on save.
+	const patchField = useCallback( ( patch: Partial<FormField> ) => {
+		setField( ( prev ) => ( { ...prev, ...patch } ) );
+	}, [] );
 
-	// Validation rules
-	const validationRules = useMemo(
-		(): ValidationRules => field.validation_rules ?? {},
-		[field.validation_rules],
-	);
-
-	const updateValidation = useCallback(
-		( rules: Partial<ValidationRules> ) => {
-			updateField( { validation_rules: { ...validationRules, ...rules } } );
-		},
-		[validationRules, updateField],
-	);
+	const validationSettings = useMemo( () => getSettingsForTab( field, 'validation' ), [field] );
+	const advancedSettings = useMemo( () => getSettingsForTab( field, 'advanced' ), [field] );
 
 	// Build tabs array — Tabs component uses `name` (not `id`) as the key
 	const tabs = useMemo( () => {
 		const tabItems = [
 			{
 				name: 'general',
-				label: 'General',
+				label: t( 'General' ),
 				content: (
 					<GeneralTabContent
 						field={field}
 						isLayoutField={isLayoutField}
 						hasOptions={hasOptions}
 						options={options}
-						validationRules={validationRules}
 						updateField={updateField}
-						updateValidation={updateValidation}
-						handleAddOption={handleAddOption}
-						handleUpdateOption={handleUpdateOption}
-						handleRemoveOption={handleRemoveOption}
-						customSettings={CustomSettings}
+						patchField={patchField}
+						setOptions={handleSetOptions}
+						predefinedChoices={predefinedChoices}
+						customSettings={customSettingsPanel}
 						allFields={allFields}
+						uploadChoiceImage={uploadChoiceImage}
 					/>
 				),
 			},
 		];
 
-		if ( !isLayoutField ) {
+		if ( validationSettings.length > 0 ) {
 			tabItems.push( {
 				name: 'validation',
-				label: 'Validation',
+				label: t( 'Validation' ),
 				content: (
-					<ValidationTabContent
+					<SettingsTabContent
 						field={field}
-						validationRules={validationRules}
-						updateValidation={updateValidation}
+						settings={validationSettings}
+						updateField={updateField}
 					/>
 				),
 			} );
+		}
+
+		// A section's logic shows and hides the fields it groups (since 1.6.0)
+		if ( supportsConditionalLogic( field.type ) ) {
 			tabItems.push( {
 				name: 'conditional',
-				label: 'Conditional',
+				label: t( 'Conditional' ),
 				content: (
 					<ConditionalLogicEditor
 						value={field.conditional_logic}
@@ -268,27 +295,43 @@ export function FieldEditor( {
 			} );
 		}
 
+		if ( advancedSettings.length > 0 ) {
+			tabItems.push( {
+				name: 'advanced',
+				label: t( 'Advanced' ),
+				content: (
+					<SettingsTabContent
+						field={field}
+						settings={advancedSettings}
+						updateField={updateField}
+					/>
+				),
+			} );
+		}
+
 		return tabItems;
 	}, [
-		field, isLayoutField, hasOptions, options, validationRules,
-		allFields, updateField, updateValidation,
-		handleAddOption, handleUpdateOption, handleRemoveOption,
-		CustomSettings,
+		field, isLayoutField, hasOptions, options, validationSettings, advancedSettings,
+		allFields, updateField, patchField, handleSetOptions, predefinedChoices,
+		customSettingsPanel, uploadChoiceImage,
 	] );
+
+	// Fall back to the General tab when the active tab does not apply to the field.
+	const resolvedTab = tabs.some( ( tab ) => tab.name === activeTab ) ? activeTab : 'general';
 
 	return (
 		<div className={`flex flex-col gap-0 ${className ?? ''}`}>
 			{/* Header */}
 			<div className="flex items-center justify-between p-3 border-b border-base-300">
 				<h3 className="text-sm font-semibold">
-					Edit {field.type.replace( '_', ' ' )} Field
+					{t( 'Edit :type Field', { type: getFieldTypeLabel( field.type ) } )}
 				</h3>
 				<Button
 					color="ghost"
 					size="sm"
 					className="btn-circle"
 					onClick={onClose}
-					aria-label="Close field editor"
+					aria-label={t( 'Close field editor' )}
 				>
 					&times;
 				</Button>
@@ -298,7 +341,7 @@ export function FieldEditor( {
 			<Tabs
 				variant="bordered"
 				tabs={tabs}
-				activeTab={activeTab}
+				activeTab={resolvedTab}
 				onChange={setActiveTab}
 			/>
 
@@ -309,18 +352,18 @@ export function FieldEditor( {
 					size="sm"
 					onClick={() => onDuplicate( field.id )}
 				>
-					Duplicate
+					{t( 'Duplicate' )}
 				</Button>
 				<Button
 					color="error"
 					size="sm"
 					onClick={() => {
-						if ( window.confirm( 'Are you sure you want to delete this field?' ) ) {
+						if ( window.confirm( t( 'Are you sure you want to delete this field?' ) ) ) {
 							onDelete( field.id );
 						}
 					}}
 				>
-					Delete
+					{t( 'Delete' )}
 				</Button>
 			</div>
 		</div>
@@ -336,14 +379,13 @@ interface GeneralTabContentProps {
 	isLayoutField: boolean;
 	hasOptions: boolean;
 	options: FieldOption[];
-	validationRules: ValidationRules;
 	updateField: ( data: UpdateFieldRequest ) => void;
-	updateValidation: ( rules: Partial<ValidationRules> ) => void;
-	handleAddOption: () => void;
-	handleUpdateOption: ( index: number, key: 'label' | 'value', value: string ) => void;
-	handleRemoveOption: ( index: number ) => void;
-	customSettings?: CustomFieldSettingsComponent;
+	patchField: ( patch: Partial<FormField> ) => void;
+	setOptions: ( options: FieldOption[] ) => void;
+	predefinedChoices?: PredefinedChoiceList[];
+	customSettings?: FieldSettingsRegistration;
 	allFields: FormField[];
+	uploadChoiceImage?: ( file: File ) => Promise<string>;
 }
 
 function GeneralTabContent( {
@@ -351,73 +393,107 @@ function GeneralTabContent( {
 	isLayoutField,
 	hasOptions,
 	options,
-	validationRules,
 	updateField,
-	updateValidation,
-	handleAddOption,
-	handleUpdateOption,
-	handleRemoveOption,
-	customSettings: CustomSettings,
+	patchField,
+	setOptions,
+	predefinedChoices,
+	customSettings,
 	allFields,
+	uploadChoiceImage,
 }: GeneralTabContentProps ): React.ReactElement {
+	const isComposite = isCompositeField( field );
+	const CustomSettings = customSettings?.component;
+	const customSettingsPanel = CustomSettings ? (
+		<CustomSettings field={field} allFields={allFields} updateField={updateField} />
+	) : null;
+	const rendersBeforeBasics = 'before-basics' === customSettings?.position;
+
 	return (
 		<div className="space-y-4 p-4">
-			{/* Label */}
-			<Input
-				label="Label"
-				value={field.label ?? ''}
-				onChange={( e ) => updateField( { label: e.target.value } )}
-			/>
+			{/* Label (a heading's label is its text, a section's its title) */}
+			{field.type === 'heading' ? (
+				<Input
+					label={t( 'Heading Text' )}
+					value={getLayoutContent( field )}
+					onChange={( e ) => updateField( buildLayoutContentUpdate( field, e.target.value ) )}
+				/>
+			) : (
+				<Input
+					label={field.type === 'section' ? t( 'Section Title' ) : t( 'Label' )}
+					value={field.label ?? ''}
+					onChange={( e ) => updateField( { label: e.target.value } )}
+				/>
+			)}
 
 			{/* Name (machine name) */}
 			<Input
-				label="Name"
+				label={t( 'Name' )}
 				value={field.name}
 				onChange={( e ) => updateField( { name: e.target.value } )}
-				hint="Machine-readable name. Used as the form data key."
+				hint={t( 'Machine-readable name. Used as the form data key.' )}
 			/>
 
-			{/* Placeholder (non-layout only) */}
-			{!isLayoutField && field.type !== 'checkbox' && field.type !== 'radio' && (
+			{/* Placeholder (non-layout only; a composite field's inputs have their own) */}
+			{!isLayoutField && !isComposite && !NO_PLACEHOLDER_TYPES.has( field.type ) && (
 				<Input
-					label="Placeholder"
+					label={t( 'Placeholder' )}
 					value={field.placeholder ?? ''}
 					onChange={( e ) => updateField( { placeholder: e.target.value || null } )}
+				/>
+			)}
+
+			{/* A composite field's sub-inputs */}
+			{isComposite && (
+				<SubInputsEditor
+					field={field}
+					onChange={( data, key, setting, value ) => {
+						updateField( data );
+						patchField( { sub_inputs: applySubInputUpdate( field, key, setting, value ).sub_inputs } );
+					}}
 				/>
 			)}
 
 			{/* Help text */}
 			{!isLayoutField && (
 				<Input
-					label="Help Text"
+					label={t( 'Help Text' )}
 					value={field.help_text ?? ''}
 					onChange={( e ) => updateField( { help_text: e.target.value || null } )}
 				/>
 			)}
 
 			{/* Default value */}
-			{!isLayoutField && field.type !== 'file' && (
+			{!isLayoutField && !isComposite && field.type !== 'file' && ( !NO_DEFAULT_VALUE_TYPES.has( field.type ) && (
 				<Input
-					label="Default Value"
+					label={t( 'Default Value' )}
 					value={field.default_value ?? ''}
 					onChange={( e ) => updateField( { default_value: e.target.value || null } )}
+					hint={t( 'Merge tags: :tags', { tags: MERGE_TAGS.join( ', ' ) } )}
 				/>
-			)}
+			) )}
 
 			{/* Required toggle */}
 			{!isLayoutField && (
 				<Checkbox
-					label="Required"
+					label={t( 'Required' )}
 					checked={field.is_required}
 					onChange={( e ) => updateField( { is_required: e.target.checked } )}
 				/>
 			)}
 
+			{/* Host-supplied settings panel placed above the generic basics */}
+			{rendersBeforeBasics && customSettingsPanel && (
+				<>
+					{customSettingsPanel}
+					<div className="divider text-xs text-base-content/50">{t( 'Field Basics' )}</div>
+				</>
+			)}
+
 			{/* Width */}
 			<Select
-				label="Width"
+				label={t( 'Width' )}
 				value={field.width}
-				options={WIDTH_OPTIONS}
+				options={getWidthOptions()}
 				optionValue="value"
 				optionLabel="label"
 				onChange={( e ) => updateField( { width: e.target.value as FieldWidth } )}
@@ -425,7 +501,7 @@ function GeneralTabContent( {
 
 			{/* CSS Classes */}
 			<Input
-				label="CSS Classes"
+				label={t( 'CSS Classes' )}
 				value={field.css_classes ?? ''}
 				onChange={( e ) => updateField( { css_classes: e.target.value || null } )}
 			/>
@@ -433,226 +509,283 @@ function GeneralTabContent( {
 			{/* HTML Content (for html field type) */}
 			{field.type === 'html' && (
 				<Textarea
-					label="HTML Content"
+					label={t( 'HTML Content' )}
 					rows={6}
-					value={field.default_value ?? ''}
-					onChange={( e ) => updateField( { default_value: e.target.value } )}
+					value={getLayoutContent( field )}
+					onChange={( e ) => updateField( buildLayoutContentUpdate( field, e.target.value ) )}
+					hint={t( 'Write {field_name} to show what a visitor entered, as they type.' )}
 				/>
 			)}
 
-			{/* Heading/Paragraph content */}
-			{( field.type === 'heading' || field.type === 'paragraph' ) && (
-				<>
-					{field.type === 'heading' ? (
-						<Input
-							label="Content"
-							value={field.default_value ?? ''}
-							onChange={( e ) => updateField( { default_value: e.target.value } )}
-						/>
-					) : (
-						<Textarea
-							label="Content"
-							rows={4}
-							value={field.default_value ?? ''}
-							onChange={( e ) => updateField( { default_value: e.target.value } )}
-						/>
-					)}
-				</>
+			{/* Paragraph content */}
+			{field.type === 'paragraph' && (
+				<Textarea
+					label={t( 'Content' )}
+					rows={4}
+					value={getLayoutContent( field )}
+					onChange={( e ) => updateField( buildLayoutContentUpdate( field, e.target.value ) )}
+					hint={t( 'Basic formatting is kept: <strong>, <em>, <u> and <a href>.' )}
+				/>
 			)}
+
+			{/* Type-specific settings from the field type's settings schema */}
+			{getSettingsForTab( field, 'general' ).map( ( setting ) => (
+				<SettingControl
+					key={setting.key}
+					field={field}
+					setting={setting}
+					updateField={updateField}
+					allFields={allFields}
+				/>
+			) )}
 
 			{/* Options editor for choice fields */}
 			{hasOptions && (
-				<div className="space-y-2">
-					<label className="label">
-						<span className="label-text font-medium">Options</span>
-					</label>
-					{options.map( ( option, index ) => (
-						<div key={index} className="flex items-center gap-2">
-							<Input
-								placeholder="Label"
-								value={option.label}
-								onChange={( e ) => handleUpdateOption( index, 'label', e.target.value )}
-								className="flex-1"
-							/>
-							<Input
-								placeholder="Value"
-								value={option.value}
-								onChange={( e ) => handleUpdateOption( index, 'value', e.target.value )}
-								className="flex-1"
-							/>
-							<Button
-								color="ghost"
-								size="sm"
-								className="btn-circle"
-								onClick={() => handleRemoveOption( index )}
-								title="Remove option"
-							>
-								&times;
-							</Button>
-						</div>
-					) )}
-					<Button
-						color="ghost"
-						size="sm"
-						onClick={handleAddOption}
-					>
-						Add Option
-					</Button>
-				</div>
-			)}
-
-			{/* File field config */}
-			{field.type === 'file' && (
-				<div className="space-y-4">
-					<Input
-						label="Max File Size (KB)"
-						type="number"
-						min={0}
-						value={validationRules.max_size ?? ''}
-						onChange={( e ) => updateValidation( {
-							max_size: parseNumericInput( e.target.value ),
-						} )}
-					/>
-					<Input
-						label="Allowed File Types (comma-separated MIME types)"
-						value={validationRules.allowed_types?.join( ', ' ) ?? ''}
-						onChange={( e ) => updateValidation( {
-							allowed_types: e.target.value
-								? e.target.value.split( ',' ).map( ( s ) => s.trim() )
-								: undefined,
-						} )}
-					/>
-				</div>
+				<OptionsEditor
+					key={field.id}
+					field={field}
+					options={options}
+					onChange={setOptions}
+					predefinedChoices={predefinedChoices}
+					uploadImage={uploadChoiceImage}
+				/>
 			)}
 
 			{/* Host-supplied settings panel for a custom field type */}
-			{CustomSettings && (
-				<CustomSettings field={field} allFields={allFields} updateField={updateField} />
-			)}
+			{!rendersBeforeBasics && customSettingsPanel}
 		</div>
 	);
 }
 
 // ---------------------------------------------------------------------------
-// ValidationTabContent (inline sub-component)
+// SettingsTabContent (inline sub-component)
 // ---------------------------------------------------------------------------
 
-interface ValidationTabContentProps {
+interface SettingsTabContentProps {
 	field: FormField;
-	validationRules: ValidationRules;
-	updateValidation: ( rules: Partial<ValidationRules> ) => void;
+	settings: FieldSettingDefinition[];
+	updateField: ( data: UpdateFieldRequest ) => void;
 }
 
-function ValidationTabContent( {
+/** Renders a tab made only of schema settings (Validation, Advanced). */
+function SettingsTabContent( {
 	field,
-	validationRules,
-	updateValidation,
-}: ValidationTabContentProps ): React.ReactElement {
+	settings,
+	updateField,
+}: SettingsTabContentProps ): React.ReactElement {
 	return (
 		<div className="space-y-4 p-4">
-			{/* Min/Max for text fields */}
-			{( field.type === 'text' || field.type === 'email' || field.type === 'url' ||
-				field.type === 'textarea' || field.type === 'phone' ) && (
-				<>
-					<Input
-						label="Min Length"
-						type="number"
-						min={0}
-						value={validationRules.min ?? ''}
-						onChange={( e ) => updateValidation( {
-							min: parseNumericInput( e.target.value ),
-						} )}
-					/>
-					<Input
-						label="Max Length"
-						type="number"
-						min={0}
-						value={validationRules.max ?? ''}
-						onChange={( e ) => updateValidation( {
-							max: parseNumericInput( e.target.value ),
-						} )}
-					/>
-				</>
-			)}
-
-			{/* Min/Max/Step for number */}
-			{field.type === 'number' && (
-				<>
-					<Input
-						label="Minimum"
-						type="number"
-						value={validationRules.min ?? ''}
-						onChange={( e ) => updateValidation( {
-							min: parseNumericInput( e.target.value ),
-						} )}
-					/>
-					<Input
-						label="Maximum"
-						type="number"
-						value={validationRules.max ?? ''}
-						onChange={( e ) => updateValidation( {
-							max: parseNumericInput( e.target.value ),
-						} )}
-					/>
-					<Input
-						label="Step"
-						type="number"
-						min={0}
-						value={validationRules.step ?? ''}
-						onChange={( e ) => updateValidation( {
-							step: parseNumericInput( e.target.value ),
-						} )}
-					/>
-				</>
-			)}
-
-			{/* Date range */}
-			{field.type === 'date' && (
-				<>
-					<Input
-						label="Min Date"
-						type="date"
-						value={validationRules.min_date ?? ''}
-						onChange={( e ) => updateValidation( { min_date: e.target.value || undefined } )}
-					/>
-					<Input
-						label="Max Date"
-						type="date"
-						value={validationRules.max_date ?? ''}
-						onChange={( e ) => updateValidation( { max_date: e.target.value || undefined } )}
-					/>
-				</>
-			)}
-
-			{/* Time range */}
-			{field.type === 'time' && (
-				<>
-					<Input
-						label="Min Time"
-						type="time"
-						value={validationRules.min_time ?? ''}
-						onChange={( e ) => updateValidation( { min_time: e.target.value || undefined } )}
-					/>
-					<Input
-						label="Max Time"
-						type="time"
-						value={validationRules.max_time ?? ''}
-						onChange={( e ) => updateValidation( { max_time: e.target.value || undefined } )}
-					/>
-				</>
-			)}
-
-			{/* Pattern */}
-			{( field.type === 'text' || field.type === 'phone' ) && (
-				<Input
-					label="Pattern (RegExp)"
-					value={validationRules.pattern ?? ''}
-					onChange={( e ) => updateValidation( { pattern: e.target.value || undefined } )}
-					placeholder="e.g. ^[A-Z]{2}[0-9]{4}$"
-					hint="Regular expression pattern for input validation."
+			{settings.map( ( setting ) => (
+				<SettingControl
+					key={setting.key}
+					field={field}
+					setting={setting}
+					updateField={updateField}
 				/>
-			)}
+			) )}
 		</div>
 	);
 }
 
+// ---------------------------------------------------------------------------
+// SettingControl (inline sub-component)
+// ---------------------------------------------------------------------------
+
+interface SettingControlProps {
+	field: FormField;
+	setting: FieldSettingDefinition;
+	updateField: ( data: UpdateFieldRequest ) => void;
+	/** The form's fields, for a formula's field picker (since 1.6.0). */
+	allFields?: FormField[];
+}
+
+/** Map a schema input to the HTML input type that edits it. */
+function htmlInputType( input: FieldSettingDefinition['input'] ): string {
+	switch ( input ) {
+		case 'integer':
+		case 'number':
+			return 'number';
+		case 'date':
+			return 'date';
+		case 'time':
+			return 'time';
+		default:
+			return 'text';
+	}
+}
+
+/**
+ * Renders one setting from a field type's settings schema.
+ *
+ * Toggles and selects save as they change. Typed inputs and textareas
+ * (since 1.6.0) keep a local draft
+ * of exactly what was typed — a trailing comma in a list, a space between
+ * words, `0.` in a number — and save the parsed value, so parsing never
+ * rewrites the text under the cursor. The draft resets when another field
+ * or setting is shown.
+ */
+function SettingControl( { field, setting, updateField, allFields = [] }: SettingControlProps ): React.ReactElement {
+	const stored = getSettingInput( field, setting );
+	const [draft, setDraft] = useState<string>( typeof stored === 'string' ? stored : '' );
+
+	useEffect( () => {
+		const current = getSettingInput( field, setting );
+
+		setDraft( typeof current === 'string' ? current : '' );
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [field.id, setting.key] );
+
+	// Follow the stored value when it moves away from the draft (a rejected
+	// update was reverted, or the server stored something else).
+	const storedText = typeof stored === 'string' ? stored : '';
+
+	useEffect( () => {
+		setDraft( ( current ) => ( isDraftStored( field, setting, current ) ? current : storedText ) );
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [storedText] );
+
+	if ( setting.input === 'toggle' ) {
+		return (
+			<Checkbox
+				label={setting.label}
+				hint={setting.hint}
+				checked={stored === true}
+				onChange={( e ) => updateField( buildSettingUpdate( field, setting, e.target.checked ) )}
+			/>
+		);
+	}
+
+	if ( setting.input === 'select' ) {
+		return (
+			<Select
+				label={setting.label}
+				hint={setting.hint}
+				value={typeof stored === 'string' ? stored : ''}
+				options={setting.options ?? []}
+				optionValue="value"
+				optionLabel="label"
+				onChange={( e ) => updateField( buildSettingUpdate( field, setting, e.target.value ) )}
+			/>
+		);
+	}
+
+	if ( setting.input === 'formula' ) {
+		return (
+			<FormulaSettingControl
+				field={field}
+				setting={setting}
+				draft={draft}
+				allFields={allFields}
+				onChange={( formula ) => {
+					setDraft( formula );
+					updateField( buildSettingUpdate( field, setting, formula ) );
+				}}
+			/>
+		);
+	}
+
+	if ( setting.input === 'textarea' ) {
+		return (
+			<Textarea
+				label={setting.label}
+				hint={setting.hint}
+				value={draft}
+				placeholder={setting.placeholder}
+				rows={4}
+				maxLength={setting.max_length}
+				className="textarea textarea-sm textarea-bordered w-full"
+				onChange={( e ) => {
+					setDraft( e.target.value );
+					updateField( buildSettingUpdate( field, setting, e.target.value ) );
+				}}
+			/>
+		);
+	}
+
+	const isNumeric = setting.input === 'integer' || setting.input === 'number';
+
+	return (
+		<Input
+			label={setting.label}
+			hint={setting.hint}
+			type={htmlInputType( setting.input )}
+			value={draft}
+			placeholder={setting.placeholder}
+			min={isNumeric ? setting.min : undefined}
+			max={isNumeric ? setting.max : undefined}
+			step={isNumeric ? ( setting.input === 'integer' ? 1 : ( setting.step ?? 'any' ) ) : undefined}
+			className={setting.monospace ? 'font-mono' : undefined}
+			onChange={( e ) => {
+				setDraft( e.target.value );
+				updateField( buildSettingUpdate( field, setting, e.target.value ) );
+			}}
+		/>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// FormulaSettingControl (inline sub-component)
+// ---------------------------------------------------------------------------
+
+interface FormulaSettingControlProps {
+	field: FormField;
+	setting: FieldSettingDefinition;
+	draft: string;
+	allFields: FormField[];
+	onChange: ( formula: string ) => void;
+}
+
+/**
+ * Renders a calculation formula (since 1.6.0): a monospace textarea, a
+ * picker that inserts a field's merge tag at the cursor, and the first
+ * problem with the formula, if any. Mirrors the Livewire builder's
+ * `formula` setting.
+ */
+function FormulaSettingControl( { field, setting, draft, allFields, onChange }: FormulaSettingControlProps ): React.ReactElement {
+	const input = useRef<HTMLTextAreaElement>( null );
+	const id = `field-setting-${setting.key}`;
+	const formulaFields = getFormulaFields( field, allFields );
+	const problem = draft.trim() !== '' ? checkFormula( draft, formulaFields.map( ( entry ) => entry.name ) ) : undefined;
+	const describedBy = [setting.hint ? `${id}-hint` : undefined, problem ? `${id}-problem` : undefined].filter( Boolean ).join( ' ' ) || undefined;
+
+	return (
+		<div className="fieldset">
+			<label htmlFor={id} className="fieldset-legend">{setting.label}</label>
+			<textarea
+				ref={input}
+				id={id}
+				className={`textarea textarea-sm textarea-bordered w-full font-mono text-xs ${problem ? 'textarea-error' : ''}`}
+				rows={3}
+				spellCheck={false}
+				value={draft}
+				placeholder={setting.placeholder}
+				maxLength={setting.max_length}
+				aria-invalid={problem ? true : undefined}
+				aria-describedby={describedBy}
+				onChange={( e ) => onChange( e.target.value )}
+			/>
+			{formulaFields.length > 0 && (
+				<>
+					<label htmlFor={`${id}-insert`} className="sr-only">{t( 'Insert a field' )}</label>
+					<select
+						id={`${id}-insert`}
+						className="select select-sm select-bordered mt-2 w-full"
+						value=""
+						onChange={( e ) => {
+							if ( e.target.value !== '' && input.current ) {
+								onChange( insertFormulaTag( input.current, e.target.value ) );
+							}
+						}}
+					>
+						<option value="">{t( 'Insert a field…' )}</option>
+						{formulaFields.map( ( entry ) => (
+							<option key={entry.name} value={`{${entry.name}}`}>{`${entry.label} ({${entry.name}})`}</option>
+						) )}
+					</select>
+				</>
+			)}
+			{setting.hint && <p id={`${id}-hint`} className="fieldset-label">{setting.hint}</p>}
+			{problem && <p id={`${id}-problem`} className="fieldset-label text-error">{problem}</p>}
+		</div>
+	);
+}

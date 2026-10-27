@@ -20,6 +20,7 @@ namespace ArtisanPackUI\Forms\Http\Requests\Api;
 
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Services\ConditionalLogicService;
+use ArtisanPackUI\Forms\Services\SubmissionService;
 use ArtisanPackUI\Forms\Support\FiresValidationHooks;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -55,7 +56,8 @@ class SubmitFormApiRequest extends FormRequest
      * Gets the validation rules that apply to the request.
      *
      * Dynamically builds rules from the form's field definitions,
-     * respecting conditional logic for hidden fields.
+     * respecting conditional logic for hidden fields. Administrative fields
+     * are not validated, since the public form does not show them.
      *
      * @since 1.1.0
      *
@@ -79,9 +81,11 @@ class SubmitFormApiRequest extends FormRequest
 
         $conditionalLogicService = app( ConditionalLogicService::class );
 
+        // The data was normalized in prepareForValidation()
         $hiddenFields = $conditionalLogicService->getHiddenFields(
             $form->fields,
             $data,
+            true,
         );
 
         $rules = [
@@ -94,15 +98,16 @@ class SubmitFormApiRequest extends FormRequest
                 continue;
             }
 
-            if ( $field->isLayoutField() ) {
+            // Layout fields collect nothing; administrative fields are not on the public form
+            if ( $field->isLayoutField() || $field->isAdministrative() ) {
                 continue;
             }
 
-            $fieldRules = $field->buildValidationRules();
+            $prefix = $field->is_file_field ? 'files' : 'data';
 
-            if ( ! empty( $fieldRules ) ) {
-                $prefix                              = 'file' === $field->type ? 'files' : 'data';
-                $rules[ "{$prefix}.{$field->name}" ] = $fieldRules;
+            foreach ( $field->buildKeyedValidationRules() as $inputKey => $fieldRules ) {
+                $key           = '' === $inputKey ? "{$prefix}.{$field->name}" : "{$prefix}.{$field->name}.{$inputKey}";
+                $rules[ $key ] = $fieldRules;
             }
         }
 
@@ -110,7 +115,40 @@ class SubmitFormApiRequest extends FormRequest
     }
 
     /**
-     * Gets the sanitized form data with hidden fields removed.
+     * Gets the validation messages for the form's fields.
+     *
+     * The field types' messages, with each field's custom error and required
+     * messages applied (see FormField::buildValidationMessages()).
+     *
+     * @since 1.6.0
+     *
+     * @return array<string, string> The messages.
+     */
+    public function messages(): array
+    {
+        $form = $this->route( 'form' );
+
+        if ( ! $form instanceof Form ) {
+            return [];
+        }
+
+        $form->loadMissing( 'fields' );
+
+        $messages = [];
+
+        foreach ( $form->fields as $field ) {
+            $prefix = ( $field->is_file_field ? 'files.' : 'data.' ) . $field->name;
+
+            foreach ( $field->buildValidationMessages() as $key => $message ) {
+                $messages[ "{$prefix}.{$key}" ] = $message;
+            }
+        }
+
+        return $messages;
+    }
+
+    /**
+     * Gets the sanitized form data with hidden, administrative and layout fields removed.
      *
      * @since 1.1.0
      *
@@ -136,12 +174,21 @@ class SubmitFormApiRequest extends FormRequest
         $hiddenFields            = $conditionalLogicService->getHiddenFields(
             $form->fields,
             $data,
+            true,
         );
 
         // Strip hidden field values from the data
         foreach ( $hiddenFields as $fieldName => $isHidden ) {
             if ( $isHidden ) {
                 unset( $data[ $fieldName ] );
+            }
+        }
+
+        // Administrative fields are filled in by admins on the submission,
+        // and layout fields collect nothing (since 1.6.0)
+        foreach ( $form->fields as $field ) {
+            if ( $field->isAdministrative() || $field->isLayoutField() ) {
+                unset( $data[ $field->name ] );
             }
         }
 
@@ -178,6 +225,7 @@ class SubmitFormApiRequest extends FormRequest
         $hiddenFields            = $conditionalLogicService->getHiddenFields(
             $form->fields,
             $data,
+            true,
         );
 
         // Strip hidden field files
@@ -188,5 +236,52 @@ class SubmitFormApiRequest extends FormRequest
         }
 
         return $files;
+    }
+
+    /**
+     * Fires the before-validate hook and replaces submitted read-only field values.
+     *
+     * A read-only field keeps its own value whatever the client sent, so that
+     * value is what gets validated and stored. Numbers typed in a number
+     * field's format are converted to plain decimals, URLs typed without a
+     * scheme get one and emptied rich text is blanked (since 1.6.0; see
+     * SubmissionService::normalizeSubmittedValues()). Calculations are
+     * worked out on the server, so conditional logic reads their real results
+     * (see SubmissionService::applyVisibleCalculations()).
+     *
+     * A request without `data` (a multipart body from a form whose only
+     * inputs are files cannot encode an empty `data`) is read as empty data.
+     *
+     * @since 1.6.0
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->fireBeforeValidate();
+
+        $form = $this->route( 'form' );
+        $data = $this->input( 'data' );
+
+        if ( null === $data ) {
+            $data = [];
+
+            $this->merge( ['data' => $data] );
+        }
+
+        if ( ! $form instanceof Form || ! is_array( $data ) ) {
+            return;
+        }
+
+        $form->loadMissing( 'fields' );
+
+        $submissionService = app( SubmissionService::class );
+
+        $data = $submissionService->normalizeSubmittedValues(
+            $form->fields,
+            $submissionService->applyReadOnlyValues( $form->fields, $data ),
+        );
+
+        $this->merge( [
+            'data' => $submissionService->applyVisibleCalculations( $form->fields, $data, true ),
+        ] );
     }
 }

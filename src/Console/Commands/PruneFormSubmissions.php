@@ -19,8 +19,14 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Console\Commands;
 
+use ArtisanPackUI\Forms\Models\FormField;
+use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Forms\Models\FormSubmissionValue;
+use ArtisanPackUI\Forms\Support\MediaLibraryStorage;
+use ArtisanPackUI\Forms\Support\TransientUploads;
 use DateTimeInterface;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -59,7 +65,7 @@ class PruneFormSubmissions extends Command
      *
      * @var string
      */
-    protected $description = 'Delete form submissions and associated files older than the retention period';
+    protected $description = 'Redact field values past their field\'s redaction period, then delete form submissions and associated files older than the retention period';
 
     /**
      * Tracks the number of files deleted.
@@ -86,20 +92,27 @@ class PruneFormSubmissions extends Command
     {
         $retentionDays = $this->getRetentionDays();
 
+        if ( null !== $retentionDays && $retentionDays <= 0 ) {
+            $this->error( 'Retention days must be a positive integer.' );
+
+            return self::FAILURE;
+        }
+
+        $isDryRun = (bool) $this->option( 'dry-run' );
+
+        // Fields with "Redact after N days" are handled whatever the retention period
+        $this->redactExpiredValues( $isDryRun );
+
+        // "Do not store" files whose deliveries never reported back (since 1.6.0)
+        $this->pruneStaleTransientUploads( $isDryRun );
+
         if ( null === $retentionDays ) {
             $this->info( 'Retention days is not configured. Submissions will be kept forever.' );
 
             return self::SUCCESS;
         }
 
-        if ( ! is_int( $retentionDays ) || $retentionDays <= 0 ) {
-            $this->error( 'Retention days must be a positive integer.' );
-
-            return self::FAILURE;
-        }
-
         $cutoffDate = now()->subDays( $retentionDays );
-        $isDryRun   = $this->option( 'dry-run' );
 
         // Get submission IDs to delete
         $submissionIds = $this->getExpiredSubmissionIds( $cutoffDate );
@@ -118,6 +131,167 @@ class PruneFormSubmissions extends Command
         }
 
         return $this->handlePrune( $submissionIds, $uploads, $retentionDays );
+    }
+
+    /**
+     * Clears stored values of fields whose "Redact after N days" period has passed.
+     *
+     * The value is emptied and `redacted_at` set, so the admin shows it as
+     * redacted and later runs skip it. Age is measured from the submission.
+     * Since 1.6.0, a file value's stored files and upload records are deleted
+     * too.
+     *
+     * @since 1.6.0
+     *
+     * @param bool $isDryRun Whether to only count the values.
+     *
+     * @return int The number of values redacted, or that would be.
+     */
+    protected function redactExpiredValues( bool $isDryRun ): int
+    {
+        $total = 0;
+
+        // field_config is JSON, so the setting is read in PHP to stay portable across databases
+        foreach ( FormField::query()->whereNotNull( 'field_config' )->lazyById() as $field ) {
+            $days = $field->getRedactAfterDays();
+
+            if ( null === $days ) {
+                continue;
+            }
+
+            $query = FormSubmissionValue::query()
+                ->where( 'field_id', $field->getKey() )
+                ->whereNull( 'redacted_at' )
+                ->whereIn( 'submission_id', FormSubmission::query()->select( 'id' )->where( 'created_at', '<', now()->subDays( $days ) ) );
+
+            if ( $isDryRun ) {
+                $total += $query->count();
+            } elseif ( $field->is_file_field ) {
+                $total += $this->redactFileValues( $query );
+            } else {
+                $total += $query->update( ['value' => null, 'value_array' => null, 'redacted_at' => now()] );
+            }
+        }
+
+        $total += $this->redactOrphanedValues( $isDryRun );
+
+        if ( $total > 0 ) {
+            $this->info( $isDryRun
+                ? "[Dry Run] Would redact {$total} field value(s) past their field's redaction period."
+                : "Redacted {$total} field value(s) past their field's redaction period." );
+        }
+
+        return $total;
+    }
+
+    /**
+     * Clears stored values of deleted fields whose redaction period has passed.
+     *
+     * A deleted field's values keep the "Redact after N days" setting copied
+     * onto them when they were stored (`redact_after_days`), so they are
+     * still redacted on time.
+     *
+     * @since 1.6.0
+     *
+     * @param bool $isDryRun Whether to only count the values.
+     *
+     * @return int The number of values redacted, or that would be.
+     */
+    protected function redactOrphanedValues( bool $isDryRun ): int
+    {
+        $total = 0;
+
+        $periods = FormSubmissionValue::query()
+            ->whereNull( 'field_id' )
+            ->whereNull( 'redacted_at' )
+            ->whereNotNull( 'redact_after_days' )
+            ->distinct()
+            ->pluck( 'redact_after_days' );
+
+        foreach ( $periods as $days ) {
+            $query = fn (): Builder => FormSubmissionValue::query()
+                ->whereNull( 'field_id' )
+                ->whereNull( 'redacted_at' )
+                ->where( 'redact_after_days', $days )
+                ->whereIn( 'submission_id', FormSubmission::query()->select( 'id' )->where( 'created_at', '<', now()->subDays( (int) $days ) ) );
+
+            if ( $isDryRun ) {
+                $total += $query()->count();
+
+                continue;
+            }
+
+            $total += $this->redactFileValues( $query()->where( 'field_type', 'file' ) );
+            $total += $query()->where( 'field_type', '!=', 'file' )->update( ['value' => null, 'value_array' => null, 'redacted_at' => now()] );
+        }
+
+        return $total;
+    }
+
+    /**
+     * Redacts file values, deleting their stored files and upload records.
+     *
+     * The value is cleared and marked redacted before its uploads are
+     * deleted, so a file that cannot be removed is still never shown.
+     *
+     * @since 1.6.0
+     *
+     * @param Builder<FormSubmissionValue> $query The values to redact.
+     *
+     * @return int The number of values redacted.
+     */
+    protected function redactFileValues( Builder $query ): int
+    {
+        $total = 0;
+
+        foreach ( $query->lazyById() as $value ) {
+            $uploads = $value->getUploads();
+
+            $value->forceFill( ['value' => null, 'value_array' => null, 'upload_id' => null, 'redacted_at' => now()] )->save();
+
+            foreach ( $uploads as $upload ) {
+                try {
+                    $upload->delete();
+                    $this->filesDeleted++;
+                } catch ( Throwable $exception ) {
+                    $this->filesFailed++;
+
+                    Log::warning( 'ArtisanPackUI Forms: redacted file not removed', [
+                        'upload_id' => $upload->id,
+                        'error'     => $exception::class,
+                    ] );
+                }
+            }
+
+            $total++;
+        }
+
+        return $total;
+    }
+
+    /**
+     * Deletes "Do not store" files still waiting for deliveries a day after they were uploaded.
+     *
+     * Their notification and webhook jobs release them once they have run,
+     * so one still held a day later belongs to a job that was lost.
+     *
+     * @since 1.6.0
+     *
+     * @param bool $isDryRun Whether to only count the files.
+     *
+     * @return int The number of files deleted, or that would be.
+     */
+    protected function pruneStaleTransientUploads( bool $isDryRun ): int
+    {
+        $total = TransientUploads::prune( now()->subDay(), $isDryRun );
+
+        if ( $total > 0 ) {
+            $this->info( $isDryRun
+                ? "[Dry Run] Would delete {$total} \"Do not store\" file(s) whose deliveries did not finish."
+                : "Deleted {$total} \"Do not store\" file(s) whose deliveries did not finish." );
+        }
+
+        return $total;
     }
 
     /**
@@ -149,7 +323,7 @@ class PruneFormSubmissions extends Command
     {
         return DB::table( 'form_uploads' )
             ->whereIn( 'submission_id', $submissionIds )
-            ->select( ['id', 'submission_id', 'disk', 'path', 'original_name'] )
+            ->select( ['id', 'submission_id', 'media_id', 'disk', 'path', 'original_name'] )
             ->get();
     }
 
@@ -252,6 +426,10 @@ class PruneFormSubmissions extends Command
     /**
      * Deletes a single file from storage.
      *
+     * Since 1.6.0 a file saved in the media library is removed by deleting
+     * its media item; when that fails, its original file is removed and a
+     * warning naming the media item is logged.
+     *
      * @since 1.0.0
      *
      * @param object $upload The upload record to delete.
@@ -259,6 +437,24 @@ class PruneFormSubmissions extends Command
     protected function deleteFile( object $upload ): void
     {
         try {
+            if ( null !== ( $upload->media_id ?? null ) ) {
+                if ( app( MediaLibraryStorage::class )->delete( (int) $upload->media_id ) ) {
+                    $this->filesDeleted++;
+
+                    Log::info( 'Pruned form upload media item', [
+                        'upload_id' => $upload->id,
+                        'media_id'  => $upload->media_id,
+                    ] );
+
+                    return;
+                }
+
+                Log::warning( 'Form upload media item not deleted during prune, removing only its original file', [
+                    'upload_id' => $upload->id,
+                    'media_id'  => $upload->media_id,
+                ] );
+            }
+
             $disk = Storage::disk( $upload->disk );
 
             if ( $disk->exists( $upload->path ) ) {

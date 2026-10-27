@@ -97,6 +97,34 @@ describe( 'SubmissionService', function (): void {
 
             expect( $submission->values )->toHaveCount( 1 );
         } );
+
+        it( 'does not store values sent for layout fields (issue #152)', function ( string $type ): void {
+            $form = Form::factory()->create();
+            FormField::factory()->for( $form )->create( ['name' => 'intro', 'type' => $type] );
+            FormField::factory()->for( $form )->create( ['name' => 'name', 'type' => 'text'] );
+
+            $submission = $this->service->create( $form, [
+                'intro' => [[1]],
+                'name'  => 'John Doe',
+            ] );
+
+            expect( $submission->values->pluck( 'field_name' )->all() )->toBe( ['name'] );
+        } )->with( ['heading', 'paragraph', 'divider', 'html', 'section'] );
+
+        it( 'drops layout field values sent to the submit API (issue #152)', function (): void {
+            $form = Form::factory()->create( ['is_active' => true] );
+            FormField::factory()->for( $form )->create( ['name' => 'intro', 'type' => 'heading'] );
+            FormField::factory()->for( $form )->create( ['name' => 'name', 'type' => 'text'] );
+
+            $this->postJson( route( 'api.forms.submit', $form ), [
+                'data'            => ['intro' => [[1]], 'name' => 'John Doe'],
+                '_form_loaded_at' => time() - 10,
+            ] )->assertCreated();
+
+            $submission = FormSubmission::firstOrFail();
+
+            expect( $submission->values->pluck( 'field_name' )->all() )->toBe( ['name'] );
+        } );
     } );
 
     describe( 'file uploads', function (): void {
@@ -322,6 +350,41 @@ describe( 'SubmissionService', function (): void {
 
             expect( $rules['formData.email'] )->toContain( 'email' );
         } );
+
+        it( 'keys file fields under files.* to match the renderer binding', function (): void {
+            $form  = Form::factory()->create();
+            $field = FormField::factory()->for( $form )->file()->required()->create( ['name' => 'resume'] );
+
+            $rules = $this->service->buildValidationRules( $form->fields );
+
+            expect( $rules )->toHaveKey( 'files.resume' )
+                ->and( $rules )->not->toHaveKey( 'formData.resume' )
+                ->and( $this->service->validationKey( $field ) )->toBe( 'files.resume' );
+        } );
+    } );
+
+    describe( 'time values (issue #87)', function (): void {
+        it( 'stores a time without its zero seconds part', function ( string $submitted, string $stored ): void {
+            $form = Form::factory()->create();
+            FormField::factory()->for( $form )->time()->create( ['name' => 'at', 'field_config' => ['step' => 1]] );
+
+            $submission = $this->service->create( $form, ['at' => $submitted] );
+
+            expect( $submission->values->first()->value )->toBe( $stored );
+        } )->with( [
+            'zero seconds'     => ['09:30:00', '09:30'],
+            'non-zero seconds' => ['09:30:15', '09:30:15'],
+            'minutes only'     => ['09:30', '09:30'],
+        ] );
+
+        it( 'gives time fields a readable format message', function (): void {
+            $form = Form::factory()->create();
+            FormField::factory()->for( $form )->time()->create( ['name' => 'at', 'label' => 'Start'] );
+
+            $messages = $this->service->buildValidationMessages( $form->fields );
+
+            expect( $messages['formData.at.regex'] )->toBe( 'Please enter a valid time for Start.' );
+        } );
     } );
 
     describe( 'validation messages', function (): void {
@@ -354,9 +417,23 @@ describe( 'SubmissionService', function (): void {
 
             $messages = $this->service->buildValidationMessages( $form->fields );
 
-            expect( $messages )->toHaveKey( 'formData.resume.file' )
-                ->and( $messages )->toHaveKey( 'formData.resume.mimes' )
-                ->and( $messages )->toHaveKey( 'formData.resume.max' );
+            expect( $messages )->toHaveKey( 'files.resume.file' )
+                ->and( $messages )->toHaveKey( 'files.resume.mimes' )
+                ->and( $messages )->toHaveKey( 'files.resume.max' );
+        } );
+
+        it( 'keys the required message on accepted for a required checkbox', function (): void {
+            $form = Form::factory()->create();
+            FormField::factory()->for( $form )->required()->create( [
+                'name'  => 'terms',
+                'label' => 'Terms',
+                'type'  => 'checkbox',
+            ] );
+
+            $messages = $this->service->buildValidationMessages( $form->fields );
+
+            expect( $messages )->toHaveKey( 'formData.terms.accepted' )
+                ->and( $messages )->not->toHaveKey( 'formData.terms.required' );
         } );
 
         it( 'excludes layout fields from messages', function (): void {

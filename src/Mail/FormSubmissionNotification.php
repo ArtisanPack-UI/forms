@@ -17,9 +17,12 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Mail;
 
+use ArtisanPackUI\Forms\FieldTypes\SignatureFieldType;
 use ArtisanPackUI\Forms\Models\FormNotification;
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Forms\Models\FormUpload;
 use ArtisanPackUI\Forms\Services\NotificationService;
+use ArtisanPackUI\Forms\Support\TransientUploads;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
@@ -27,6 +30,7 @@ use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Symfony\Component\Mime\Email;
 
 /**
  * Form submission notification mailable class.
@@ -79,6 +83,15 @@ class FormSubmissionNotification extends Mailable
     public string $submissionDataTable;
 
     /**
+     * Whether fields are labelled by their admin label.
+     *
+     * Off for autoresponders, which the visitor reads.
+     *
+     * @since 1.6.0
+     */
+    public bool $useAdminLabels;
+
+    /**
      * Whether to show IP address in the email.
      *
      * @since 1.0.0
@@ -104,6 +117,22 @@ class FormSubmissionNotification extends Mailable
     protected array $bccEmails = [];
 
     /**
+     * The IDs of the signature uploads the submission data table shows, embedded when the message is built.
+     *
+     * @since 1.6.0
+     *
+     * @var list<int>
+     */
+    protected array $inlineImageIds = [];
+
+    /**
+     * Whether build() has embedded the inline images, so a render before sending doesn't embed them twice.
+     *
+     * @since 1.6.0
+     */
+    protected bool $inlineImagesEmbedded = false;
+
+    /**
      * Creates a new message instance.
      *
      * @since 1.0.0
@@ -117,9 +146,10 @@ class FormSubmissionNotification extends Mailable
         $this->submission   = $submission;
 
         // Pre-parse templates
-        $notificationService = app( NotificationService::class );
-        $this->parsedSubject = $notificationService->parseTemplate( $notification->subject, $submission );
-        $this->parsedMessage = $notificationService->parseTemplate( $notification->message, $submission );
+        $notificationService  = app( NotificationService::class );
+        $this->useAdminLabels = FormNotification::TYPE_AUTORESPONDER !== $notification->type;
+        $this->parsedSubject  = $notificationService->parseTemplate( $notification->subject, $submission, $this->useAdminLabels );
+        $this->parsedMessage  = $notificationService->parseTemplate( $notification->message, $submission, $this->useAdminLabels );
 
         // Apply filter hooks to allow modifying the message
         $this->parsedMessage = applyFilters(
@@ -143,7 +173,12 @@ class FormSubmissionNotification extends Mailable
             $submission,
         );
 
-        $this->submissionDataTable = $notificationService->formatAllFieldsAsTable( $submission );
+        // Drawn signatures are embedded as inline images, which email clients show where they block data URLs
+        $this->submissionDataTable = $notificationService->formatAllFieldsAsTable(
+            $submission,
+            $this->useAdminLabels,
+            $notification->include_submission_data ? fn ( FormUpload $upload ): string => $this->inlineImageSource( $upload ) : null,
+        );
 
         // Get CC/BCC recipients upfront
         $this->ccEmails  = $notificationService->getCcEmails( $notification );
@@ -154,6 +189,34 @@ class FormSubmissionNotification extends Mailable
         // - Hide for autoresponder emails (privacy: don't show submitter their own IP)
         $this->showIpAddress = config( 'artisanpack.forms.notifications.show_ip_in_emails', true )
             && FormNotification::TYPE_AUTORESPONDER !== $notification->type;
+    }
+
+    /**
+     * Embeds the drawn signatures the submission data table shows.
+     *
+     * Runs when the message is built for sending, so the PNGs are read then
+     * rather than kept on a queued mailable. A file that can no longer be read
+     * is left out, and the image shows its alternative text.
+     *
+     * @since 1.6.0
+     */
+    public function build(): void
+    {
+        if ( $this->inlineImagesEmbedded || [] === $this->inlineImageIds ) {
+            return;
+        }
+
+        $this->inlineImagesEmbedded = true;
+
+        foreach ( FormUpload::query()->whereIn( 'id', $this->inlineImageIds )->get() as $upload ) {
+            $png = SignatureFieldType::contents( $upload );
+
+            if ( null !== $png ) {
+                $name = self::inlineImageName( $upload );
+
+                $this->withSymfonyMessage( fn ( Email $email ): Email => $email->embed( $png, $name, 'image/png' ) );
+            }
+        }
     }
 
     /**
@@ -208,13 +271,78 @@ class FormSubmissionNotification extends Mailable
     /**
      * Gets the attachments for the message.
      *
+     * Since 1.6.0, the files uploaded to "Do not store" file fields are
+     * attached when the notification includes the submission data, since
+     * they are deleted once the submission's deliveries are sent (see
+     * TransientUploads).
+     *
+     * A notification whose recipient comes from the submission (an
+     * autoresponder, or any notification with a recipient field) never
+     * carries the files: the visitor chooses that address, so attaching
+     * would let anyone have the site mail a file of their choosing to
+     * someone else.
+     *
      * @since 1.0.0
      *
      * @return array<int, Attachment> The message attachments.
      */
     public function attachments(): array
     {
-        // Future enhancement: attach uploaded files
-        return [];
+        if ( ! $this->notification->include_submission_data || $this->sendsToSubmittedAddress() ) {
+            return [];
+        }
+
+        return array_map(
+            fn ( FormUpload $upload ): Attachment => Attachment::fromStorageDisk( $upload->disk, $upload->path )
+                ->as( $upload->original_name )
+                ->withMime( $upload->mime_type ?? 'application/octet-stream' ),
+            TransientUploads::uploadsOf( $this->submission ),
+        );
+    }
+
+    /**
+     * Checks whether the notification goes to an address taken from the submission.
+     *
+     * @since 1.6.0
+     *
+     * @return bool True for an autoresponder or a notification with a recipient field.
+     */
+    protected function sendsToSubmittedAddress(): bool
+    {
+        return FormNotification::TYPE_AUTORESPONDER === $this->notification->type
+            || ( is_string( $this->notification->to_field ) && '' !== $this->notification->to_field );
+    }
+
+    /**
+     * Gets the name a signature's image is embedded under.
+     *
+     * The HTML references it as `cid:{name}`; Symfony swaps in the part's
+     * content ID when the message is sent.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormUpload  $upload  The signature's upload.
+     *
+     * @return string The name.
+     */
+    protected static function inlineImageName( FormUpload $upload ): string
+    {
+        return 'signature-' . $upload->id . '.png';
+    }
+
+    /**
+     * Registers a signature's upload to embed, and gets its image source.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormUpload  $upload  The signature's upload.
+     *
+     * @return string The `cid:` source.
+     */
+    protected function inlineImageSource( FormUpload $upload ): string
+    {
+        $this->inlineImageIds[] = (int) $upload->id;
+
+        return 'cid:' . self::inlineImageName( $upload );
     }
 }

@@ -9,16 +9,21 @@ The FormsList component displays a paginated list of forms with search, filterin
 ## Basic Usage
 
 ```blade
-<livewire:forms::forms-list />
+<livewire:forms-list />
 ```
 
 ## Properties
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `perPage` | int | 15 | Items per page |
-| `sortBy` | string | 'created_at' | Sort column |
-| `sortDirection` | string | 'desc' | Sort direction |
+The component has no `mount()` parameters. These public properties can be passed as starting values, and are kept in the query string:
+
+| Property | Type | Default | Query string | Description |
+|----------|------|---------|--------------|-------------|
+| `search` | string | `''` | `q` | Search by name or slug |
+| `statusFilter` | string | `'all'` | `status` | `all`, `active` or `inactive` |
+| `sortBy` | string | `'created_at'` | `sort` | `created_at`, `name` or `submissions` |
+| `sortDirection` | string | `'desc'` | `dir` | `asc` or `desc` |
+
+Items per page come from the `artisanpack.forms.admin.per_page` config option (default 15).
 
 ## Features
 
@@ -145,11 +150,7 @@ public function toggleStatus(int $id): void
 
 ## Events Emitted
 
-| Event | Payload | Description |
-|-------|---------|-------------|
-| `form-deleted` | `{ formId }` | Form was deleted |
-| `form-duplicated` | `{ formId, newFormId }` | Form was duplicated |
-| `form-status-changed` | `{ formId, status }` | Status toggled |
+The component does not dispatch Livewire events. Its actions (`duplicate`, `delete`, `togglePublish`) flash a success message to the session instead. For server-side hooks, listen for the `FormCreated`, `FormUpdated` and `FormDeleted` Laravel events.
 
 ## Customizing the View
 

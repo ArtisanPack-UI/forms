@@ -1,65 +1,96 @@
 @props(['field', 'value' => [], 'error' => null])
 
 @php
-    $options = $field->getConfig('options', []);
-
-    // Build aria-describedby with both hint and error IDs when applicable
-    $describedBy = [];
-    if ($error) {
-        $describedBy[] = 'error-' . $field->name;
-    }
-    if ($field->help_text) {
-        $describedBy[] = 'hint-' . $field->name;
-    }
-    $ariaDescribedBy = !empty($describedBy) ? implode(' ', $describedBy) : null;
+    $options = $field->getRenderOptions();
+    $allowsOther = $field->allowsOtherChoice();
+    $otherSelected = $allowsOther && is_array($value) && in_array(\ArtisanPackUI\Forms\Models\FormField::OTHER_CHOICE_VALUE, $value, true);
+    $optionValues = collect($options)->map(fn ($option) => (string) ($option['value'] ?? $option))->values()->all();
+    $showSelectAll = $field->offersSelectAll() && count($optionValues) > 1;
+    // Image choices show each option as a card with its image (since 1.6.0)
+    $showImages = $field->showsImageChoices();
 @endphp
 
-<div class="form-control">
-    @if($field->label)
-        <label class="label" id="label-{{ $field->name }}">
-            <span class="label-text">
-                {{ $field->label }}
-                @if($field->is_required)
-                    <span class="text-error">*</span>
-                @endif
-            </span>
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'requiredText' => true])
+{{-- `aria-invalid` goes on each checkbox: the `group` role does not take it, nor
+     `aria-required`, so the label says "(required)" to screen readers instead. --}}
+<div
+    class="{{ $field->css_classes }}"
+    role="group"
+    @if($field->label) aria-labelledby="{{ $field->domId('label') }}" @endif
+    @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
+>
+    @if($showSelectAll)
+        {{-- Checked when every choice is, mixed when some are; the "Other" choice is left alone. --}}
+        <label class="label cursor-pointer justify-start gap-3 mb-2">
+            <input
+                type="checkbox"
+                class="checkbox checkbox-primary"
+                id="{{ $field->domId() }}-select-all"
+                aria-controls="{{ collect($options)->keys()->map(fn ($index) => $field->domId() . '-' . $index)->implode(' ') }}"
+                x-data="{ choices: @js($optionValues), selected() { const value = $wire.formData?.[@js($field->name)]; return Array.isArray(value) ? value.map(String) : []; } }"
+                x-effect="const count = choices.filter(choice => selected().includes(choice)).length; $el.checked = count === choices.length; $el.indeterminate = count > 0 && count < choices.length"
+                x-on:change="const others = selected().filter(choice => ! choices.includes(choice)); $wire.set(@js('formData.' . $field->name), $event.target.checked ? [...choices, ...others] : others)"
+            />
+            <span class="label-text font-medium">{{ __( 'Select All' ) }}</span>
         </label>
     @endif
 
-    <div
-        class="flex flex-col gap-2 {{ $field->css_classes }}"
-        role="group"
-        @if($field->label) aria-labelledby="label-{{ $field->name }}" @endif
-        @if($field->is_required) aria-required="true" @endif
-        @if($ariaDescribedBy) aria-describedby="{{ $ariaDescribedBy }}" @endif
-    >
+    <div class="{{ $field->getChoiceLayoutClasses() }}">
         @foreach($options as $index => $option)
             @php
                 $optionValue = $option['value'] ?? $option;
                 $optionLabel = $option['label'] ?? $option;
             @endphp
+            @if($showImages)
+                @component('forms::components.image-choice', [
+                    'image' => \ArtisanPackUI\Forms\Support\ChoiceImages::url($option),
+                    'alt' => \ArtisanPackUI\Forms\Support\ChoiceImages::alt($option),
+                    'label' => $optionLabel,
+                    'labelId' => $field->domId() . '-' . $index . '-label',
+                ])
+                    <input
+                        type="checkbox"
+                        wire:model.live="formData.{{ $field->name }}"
+                        value="{{ $optionValue }}"
+                        class="checkbox checkbox-primary checkbox-sm"
+                        id="{{ $field->domId() }}-{{ $index }}"
+                        aria-labelledby="{{ $field->domId() }}-{{ $index }}-label"
+                        @if($error) aria-invalid="true" @endif
+                    />
+                @endcomponent
+            @else
             <label class="label cursor-pointer justify-start gap-3">
                 <input
                     type="checkbox"
                     wire:model.live="formData.{{ $field->name }}"
                     value="{{ $optionValue }}"
                     class="checkbox checkbox-primary"
-                    id="field-{{ $field->name }}-{{ $index }}"
+                    id="{{ $field->domId() }}-{{ $index }}"
+                    @if($error) aria-invalid="true" @endif
                 />
                 <span class="label-text">{{ $optionLabel }}</span>
             </label>
+            @endif
         @endforeach
+
+        @if($allowsOther)
+            <label class="label cursor-pointer justify-start gap-3">
+                <input
+                    type="checkbox"
+                    wire:model.live="formData.{{ $field->name }}"
+                    value="{{ \ArtisanPackUI\Forms\Models\FormField::OTHER_CHOICE_VALUE }}"
+                    class="checkbox checkbox-primary"
+                    id="{{ $field->domId() }}-other"
+                    @if($otherSelected) aria-controls="{{ $field->domId() }}-other-text" @endif
+                    @if($error) aria-invalid="true" @endif
+                />
+                <span class="label-text">{{ $field->getOtherChoiceLabel() }}</span>
+            </label>
+        @endif
     </div>
-
-    @if($field->help_text)
-        <label class="label" id="hint-{{ $field->name }}">
-            <span class="label-text-alt">{{ $field->help_text }}</span>
-        </label>
-    @endif
-
-    @if($error)
-        <label class="label" id="error-{{ $field->name }}">
-            <span class="label-text-alt text-error">{{ $error }}</span>
-        </label>
-    @endif
 </div>
+
+@if($otherSelected)
+    @include('forms::components.other-choice-input', ['field' => $field, 'error' => $error])
+@endif
+@endcomponent

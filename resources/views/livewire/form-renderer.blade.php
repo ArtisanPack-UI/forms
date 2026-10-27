@@ -2,7 +2,8 @@
     class="artisanpack-form-renderer"
     wire:ignore.self
     x-data="formRenderer()"
-    @keydown.window="handleKeydown($event)"
+    x-on:keydown="handleKeydown($event)"
+    x-on:forms-validation-failed.window="onValidationFailed($event)"
 >
     {{-- ARIA live region for step announcements --}}
     <div
@@ -33,8 +34,12 @@
                 </x-artisanpack-button>
             </div>
         @endif
+    @elseif(! $form->is_active)
+        <div class="alert alert-info" role="status">
+            <span>{{ __( 'This form is not accepting submissions.' ) }}</span>
+        </div>
     @else
-        <form wire:submit="submit" class="space-y-6" x-ref="form">
+        <form wire:submit="submit" class="space-y-6" x-ref="form" novalidate>
             {{-- Form Title & Description --}}
             @if($form->show_title && $form->title)
                 <h2 class="text-2xl font-bold">{{ $form->title }}</h2>
@@ -93,7 +98,7 @@
                                     </button>
                                 @else
                                     <span
-                                        class="text-sm {{ $index > $currentStepIndex ? 'text-base-content/50' : '' }}"
+                                        class="text-sm {{ $index > $currentStepIndex ? 'text-base-content/70' : '' }}"
                                         @if($index === $currentStepIndex) aria-current="step" @endif
                                     >
                                         {{ $step->title }}
@@ -107,11 +112,11 @@
 
             {{-- Honeypot Field (spam protection) --}}
             <div class="hidden" aria-hidden="true" style="position: absolute; left: -9999px;">
-                <label for="website_url">{{ __( 'Leave this field empty' ) }}</label>
+                <label for="website_url_{{ $idPrefix }}">{{ __( 'Leave this field empty' ) }}</label>
                 <input
                     type="text"
                     name="website_url"
-                    id="website_url"
+                    id="website_url_{{ $idPrefix }}"
                     wire:model="honeypot"
                     tabindex="-1"
                     autocomplete="off"
@@ -137,31 +142,11 @@
                         @endif
 
                         <div class="space-y-4">
-                            @foreach($this->currentFields as $field)
-                                @php
-                                    $isHidden = $hiddenFields[$field->name] ?? false;
-                                @endphp
-                                <div
-                                    wire:key="field-{{ $field->uuid }}-{{ $isHidden ? 'hidden' : 'visible' }}"
-                                    x-data="{ get visible() { return !($wire.hiddenFields?.['{{ $field->name }}'] ?? false); } }"
-                                    x-show="visible"
-                                    x-transition:enter="transition ease-out duration-200"
-                                    x-transition:enter-start="opacity-0 transform -translate-y-2"
-                                    x-transition:enter-end="opacity-100 transform translate-y-0"
-                                    x-transition:leave="transition ease-in duration-150"
-                                    x-transition:leave-start="opacity-100 transform translate-y-0"
-                                    x-transition:leave-end="opacity-0 transform -translate-y-2"
-                                    x-cloak
-                                    :class="{ 'hidden': !visible }"
-                                    :aria-hidden="!visible"
-                                    :inert="!visible"
-                                >
-                                    {!! \ArtisanPackUI\Forms\Support\FieldRenderer::render(
-                                        $field,
-                                        $formData[$field->name] ?? null,
-                                        $errors->first('formData.' . $field->name),
-                                    ) !!}
-                                </div>
+                            @include('forms::livewire.form-renderer.fields', ['fields' => $this->currentFields])
+
+                            {{-- Invisible CAPTCHAs of earlier steps fetch their token when the form is submitted --}}
+                            @foreach($this->deferredCaptchaFields as $field)
+                                @include('forms::livewire.form-renderer.field', ['field' => $field])
                             @endforeach
                         </div>
                     </div>
@@ -222,7 +207,7 @@
                     </div>
 
                     {{-- Keyboard navigation hint --}}
-                    <div class="mt-4 text-center text-xs text-base-content/40">
+                    <div class="mt-4 text-center text-xs text-base-content/70">
                         {!! __( 'Press :enter to continue', ['enter' => '<kbd class="kbd kbd-xs">Enter</kbd>'] ) !!}
                         @if(!$this->isFirstStep)
                             {!! __( 'or :escape to go back', ['escape' => '<kbd class="kbd kbd-xs">Escape</kbd>'] ) !!}
@@ -232,32 +217,7 @@
             @else
                 {{-- Single-step: Show all fields --}}
                 <div class="space-y-4">
-                    @foreach($this->currentFields as $field)
-                        @php
-                            $isHidden = $hiddenFields[$field->name] ?? false;
-                        @endphp
-                        <div
-                            wire:key="field-{{ $field->uuid }}-{{ $isHidden ? 'hidden' : 'visible' }}"
-                            x-data="{ get visible() { return !($wire.hiddenFields?.['{{ $field->name }}'] ?? false); } }"
-                            x-show="visible"
-                            x-transition:enter="transition ease-out duration-200"
-                            x-transition:enter-start="opacity-0 transform -translate-y-2"
-                            x-transition:enter-end="opacity-100 transform translate-y-0"
-                            x-transition:leave="transition ease-in duration-150"
-                            x-transition:leave-start="opacity-100 transform translate-y-0"
-                            x-transition:leave-end="opacity-0 transform -translate-y-2"
-                            x-cloak
-                            :class="{ 'hidden': !visible }"
-                            :aria-hidden="!visible"
-                            :inert="!visible"
-                        >
-                            {!! \ArtisanPackUI\Forms\Support\FieldRenderer::render(
-                                $field,
-                                $formData[$field->name] ?? null,
-                                $errors->first('formData.' . $field->name),
-                            ) !!}
-                        </div>
-                    @endforeach
+                    @include('forms::livewire.form-renderer.fields', ['fields' => $this->currentFields])
                 </div>
 
                 {{-- Submit Button --}}
@@ -287,12 +247,15 @@
     window.__formRendererConfig[@js($form->id)] = {
         fieldMap: @js($this->fieldMap),
         conditionalLogic: @js($this->conditionalLogicConfig),
+        sections: @js($this->sectionMembers),
         isMultiStep: @js($form->is_multi_step),
         currentStepIndex: @js($currentStepIndex),
         totalSteps: @js($this->totalSteps),
         formId: @js($form->id),
         translations: {
-            stepAnnouncement: @js(__( 'Now on step :current of :total' ))
+            stepAnnouncement: @js(__( 'Now on step :current of :total' )),
+            validationFailedOne: @js(__( 'There is 1 error in the form. Please fix it and try again.' )),
+            validationFailedMany: @js(__( 'There are :count errors in the form. Please fix them and try again.' ))
         }
     };
 </script>
@@ -303,19 +266,24 @@
         Alpine.data('formRenderer', () => ({
             fieldMap: {},
             conditionalLogic: {},
+            sections: {},
             hiddenFields: {},
             isMultiStep: false,
             currentStepIndex: 0,
             totalSteps: 1,
             translations: {},
+            formId: null,
 
             init() {
                 // Load config from window object using form ID from $wire
                 const formId = this.$wire.get('form.id');
                 const config = window.__formRendererConfig?.[formId] || {};
 
+                this.formId = formId;
+
                 this.fieldMap = config.fieldMap || {};
                 this.conditionalLogic = config.conditionalLogic || {};
+                this.sections = config.sections || {};
                 this.isMultiStep = config.isMultiStep || false;
                 this.currentStepIndex = config.currentStepIndex || 0;
                 this.totalSteps = config.totalSteps || 1;
@@ -341,41 +309,63 @@
             },
 
             /**
-             * Handle keyboard navigation
+             * Handle keyboard navigation of a multi-step form.
+             *
+             * Only keys pressed inside this form count. Enter in a text-like
+             * input (or on a radio or checkbox) of a step before the last
+             * moves to the next step; Enter anywhere else keeps its own
+             * action (buttons, links, rich text, textareas, selects), and on
+             * the last step it submits the form as usual. Escape goes back a
+             * step unless a control inside the form handled it.
              */
             handleKeydown(event) {
-                if (!this.isMultiStep) return;
+                if (!this.isMultiStep || event.defaultPrevented) return;
 
-                // Don't interfere if event was already handled
-                if (event.defaultPrevented) return;
+                const target = event.target;
+
+                if (!(target instanceof Element) || !this.$root.contains(target)) return;
 
                 // Don't interfere with modals, dialogs, or components that capture their own keys
-                if (event.target.closest('[aria-modal="true"], [role="dialog"], .modal, [data-ignore-global-keys]')) {
+                if (target.closest('[aria-modal="true"], [role="dialog"], .modal, [data-ignore-global-keys]')) {
                     return;
                 }
 
-                // Don't interfere with form elements that need these keys
-                const tagName = event.target.tagName.toLowerCase();
-                const isTextarea = tagName === 'textarea';
-                const isSelect = tagName === 'select';
+                if (event.key === 'Enter') {
+                    if (event.isComposing || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
 
-                // Enter to advance (except in textarea or multi-line inputs)
-                if (event.key === 'Enter' && !isTextarea && !isSelect) {
-                    // Allow enter on submit buttons
-                    if (event.target.type === 'submit') return;
+                    if (!this.advancesOnEnter(target)) return;
 
-                    // Don't advance if we're on the last step (let form submit naturally)
+                    // On the last step, let the form submit naturally
                     if (this.currentStepIndex >= this.totalSteps - 1) return;
 
                     event.preventDefault();
                     this.$wire.nextStep();
+
+                    return;
                 }
 
-                // Escape to go back
                 if (event.key === 'Escape' && this.currentStepIndex > 0) {
+                    if (target.isContentEditable || target.closest('[role="combobox"], [role="listbox"]')) return;
+
                     event.preventDefault();
                     this.$wire.previousStep();
                 }
+            },
+
+            /**
+             * Whether Enter on an element moves to the next step.
+             */
+            advancesOnEnter(target) {
+                if (target.tagName !== 'INPUT' || target.isContentEditable) return false;
+
+                if (target.closest('button, a, [role="button"], [role="combobox"], [role="listbox"], [contenteditable="true"], [contenteditable=""]')) {
+                    return false;
+                }
+
+                return [
+                    'text', 'email', 'tel', 'url', 'number', 'date', 'time', 'datetime-local',
+                    'month', 'week', 'search', 'password', 'radio', 'checkbox',
+                ].includes(target.type);
             },
 
             /**
@@ -391,19 +381,82 @@
             },
 
             /**
+             * Announce a failed submission or step and focus the first invalid control
+             */
+            onValidationFailed(event) {
+                const detail = Array.isArray(event.detail) ? event.detail[0] : event.detail;
+
+                if (!detail || String(detail.formId) !== String(this.formId)) return;
+
+                const count = Number(detail.count) || 1;
+                const template = count === 1
+                    ? (this.translations.validationFailedOne || 'There is 1 error in the form. Please fix it and try again.')
+                    : (this.translations.validationFailedMany || 'There are :count errors in the form. Please fix them and try again.');
+
+                const announcer = this.$refs.announcer;
+
+                if (announcer) {
+                    // Cleared first, so the same message is announced again
+                    announcer.textContent = '';
+                    this.$nextTick(() => { announcer.textContent = template.replaceAll(':count', count); });
+                }
+
+                this.$nextTick(() => this.focusFirstInvalid());
+            },
+
+            /**
+             * Whether an element can take focus: enabled and not hidden by conditional logic
+             */
+            isFocusable(el) {
+                return Boolean(el)
+                    && !el.disabled
+                    && !el.closest('[inert], [aria-hidden="true"]')
+                    && el.offsetParent !== null;
+            },
+
+            /**
+             * Focus the first invalid control; returns whether one was focused
+             */
+            focusFirstInvalid() {
+                const candidates = this.$root.querySelectorAll(
+                    '[aria-invalid="true"], ' +
+                    'fieldset[aria-describedby*="error-"] :is(input:not([type="hidden"]), select, textarea, [contenteditable="true"])'
+                );
+
+                for (const el of candidates) {
+                    if (this.isFocusable(el)) {
+                        el.focus();
+
+                        return true;
+                    }
+                }
+
+                return false;
+            },
+
+            /**
              * Focus the first visible field in the current step
              */
             focusFirstField() {
                 this.$nextTick(() => {
+                    // A step change after a failed submit goes to the error
+                    if (this.focusFirstInvalid()) return;
+
                     const stepContent = this.$refs.stepContent;
-                    if (stepContent) {
-                        const firstInput = stepContent.querySelector(
-                            'input:not([type="hidden"]):not([disabled]), ' +
-                            'select:not([disabled]), ' +
-                            'textarea:not([disabled])'
-                        );
-                        if (firstInput) {
-                            firstInput.focus();
+                    if (!stepContent) return;
+
+                    const inputs = stepContent.querySelectorAll(
+                        'input:not([type="hidden"]):not([disabled]), ' +
+                        'select:not([disabled]), ' +
+                        'textarea:not([disabled]), ' +
+                        '[contenteditable="true"]'
+                    );
+
+                    for (const input of inputs) {
+                        if (this.isFocusable(input)) {
+                            input.focus();
+
+                            return;
                         }
                     }
                 });
@@ -418,9 +471,15 @@
                     const visible = this.evaluateCondition(fieldName, formData);
                     newHiddenFields[fieldName] = !visible;
                 }
+                // A hidden section hides the fields it groups (CAPTCHAs are left out of the list)
+                for (const [section, members] of Object.entries(this.sections)) {
+                    if (newHiddenFields[section]) {
+                        members.forEach((member) => { newHiddenFields[member] = true; });
+                    }
+                }
+                // Only shown here: the server works out its own hiddenFields
+                // (locked since 1.6.0) whenever formData changes
                 this.hiddenFields = newHiddenFields;
-                // Sync hidden fields back to Livewire
-                this.$wire.set('hiddenFields', newHiddenFields);
             },
 
             /**
@@ -473,13 +532,29 @@
                 if (!fieldRef) return true;
 
                 // Get field value (fieldRef could be field name or UUID)
-                const fieldValue = this.getFieldValue(fieldRef, formData);
+                let fieldValue = this.getFieldValue(fieldRef, formData);
+
+                // A rule on a whole composite field compares its filled parts, joined
+                // A list counts its filled rows, and a date and time is compared as stored
+                if (Array.isArray(fieldValue) && fieldValue.some(row => row && typeof row === 'object')) {
+                    fieldValue = fieldValue.filter(row => row && typeof row === 'object' && Object.values(row).some(cell => String(cell ?? '').trim() !== ''));
+                } else if (typeof fieldValue === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(fieldValue)) {
+                    fieldValue = fieldValue.replace('T', ' ');
+                }
+
+                if (fieldValue && typeof fieldValue === 'object' && !Array.isArray(fieldValue)) {
+                    fieldValue = Object.values(fieldValue)
+                        .filter(part => part !== null && part !== undefined && String(part).trim() !== '')
+                        .map(part => String(part).trim())
+                        .join(', ');
+                }
 
                 return this.compareValues(fieldValue, operator, ruleValue);
             },
 
             /**
-             * Get field value by name or UUID
+             * Get field value by name or UUID, or a composite field's
+             * sub-input value by `{name or UUID}.{key}`
              */
             getFieldValue(fieldRef, formData) {
                 // Check if it's a direct field name
@@ -492,6 +567,15 @@
                     if (uuid === fieldRef) {
                         return formData[name];
                     }
+                }
+
+                // Check if it's a composite field's sub-input
+                const dot = fieldRef.indexOf('.');
+
+                if (dot > 0) {
+                    const value = this.getFieldValue(fieldRef.slice(0, dot), formData);
+
+                    return value && typeof value === 'object' ? (value[fieldRef.slice(dot + 1)] ?? null) : null;
                 }
 
                 return null;
@@ -592,6 +676,176 @@
                 }
                 return Boolean(value);
             }
+        }));
+    });
+</script>
+@endpush
+
+@push('scripts')
+<script>
+    document.addEventListener('alpine:init', () => {
+        /**
+         * Loads a CAPTCHA provider's script once per page and resolves when
+         * its global API is ready.
+         */
+        const loadCaptchaScript = (provider, src) => {
+            window.__formsCaptchaScripts = window.__formsCaptchaScripts || {};
+
+            if (window.__formsCaptchaScripts[src]) {
+                return window.__formsCaptchaScripts[src];
+            }
+
+            const ready = () => {
+                if (provider === 'turnstile') return Boolean(window.turnstile?.render);
+                if (provider === 'hcaptcha') return Boolean(window.hcaptcha?.render);
+                if (provider === 'recaptcha_v3') return Boolean(window.grecaptcha?.ready);
+
+                return Boolean(window.grecaptcha?.render);
+            };
+
+            const promise = new Promise((resolve, reject) => {
+                if (!document.querySelector(`script[src="${src}"]`)) {
+                    const script = document.createElement('script');
+                    script.src = src;
+                    script.async = true;
+                    script.defer = true;
+                    // A failed tag is removed, so a later load adds a fresh one and retries.
+                    script.addEventListener('error', (error) => {
+                        script.remove();
+                        reject(error);
+                    }, { once: true });
+                    document.head.appendChild(script);
+                }
+
+                const started = Date.now();
+                const poll = () => {
+                    if (ready()) {
+                        resolve();
+                    } else if (Date.now() - started > 15000) {
+                        reject(new Error('CAPTCHA script timed out'));
+                    } else {
+                        setTimeout(poll, 50);
+                    }
+                };
+
+                poll();
+            });
+
+            window.__formsCaptchaScripts[src] = promise;
+            promise.catch(() => { delete window.__formsCaptchaScripts[src]; });
+
+            return promise;
+        };
+
+        Alpine.data('formsCaptcha', (config) => ({
+            widgetId: null,
+            token: '',
+            failed: false,
+            pendingSubmit: false,
+
+            init() {
+                this.form = this.$el.closest('form');
+
+                loadCaptchaScript(config.provider, config.script)
+                    .then(() => this.render())
+                    .catch(() => { this.failed = true; });
+
+                this.onReset = (event) => {
+                    const detail = Array.isArray(event.detail) ? event.detail[0] : event.detail;
+
+                    if (!detail?.formId || String(detail.formId) === String(config.formId)) {
+                        this.reset();
+                    }
+                };
+                window.addEventListener('forms-captcha-reset', this.onReset);
+
+                // Invisible modes fetch a token when the form is submitted; the
+                // listener runs in the capture phase, before Livewire's.
+                this.onSubmit = (event) => {
+                    if (event.target !== this.form || this.token || !this.runsOnSubmit()) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    this.pendingSubmit = true;
+                    this.execute();
+                };
+                document.addEventListener('submit', this.onSubmit, true);
+            },
+
+            destroy() {
+                window.removeEventListener('forms-captcha-reset', this.onReset);
+                document.removeEventListener('submit', this.onSubmit, true);
+            },
+
+            runsOnSubmit() {
+                return config.size === 'invisible';
+            },
+
+            render() {
+                const options = {
+                    sitekey: config.site_key,
+                    size: config.size,
+                    callback: (token) => this.setToken(token),
+                    'expired-callback': () => this.setToken(''),
+                    'error-callback': () => this.setToken(''),
+                };
+
+                if (config.provider === 'turnstile') {
+                    this.widgetId = window.turnstile.render(this.$refs.widget, { ...options, theme: config.theme });
+                } else if (config.provider === 'hcaptcha') {
+                    this.widgetId = window.hcaptcha.render(this.$refs.widget, {
+                        ...options,
+                        'close-callback': () => { this.pendingSubmit = false; },
+                        theme: config.theme === 'dark' ? 'dark' : 'light',
+                    });
+                } else if (config.provider === 'recaptcha_v2') {
+                    this.widgetId = window.grecaptcha.render(this.$refs.widget, { ...options, theme: config.theme === 'dark' ? 'dark' : 'light' });
+                }
+            },
+
+            execute() {
+                if (config.provider === 'recaptcha_v3') {
+                    window.grecaptcha.ready(() => {
+                        window.grecaptcha.execute(config.site_key, { action: config.action })
+                            .then((token) => this.setToken(token))
+                            .catch(() => { this.pendingSubmit = false; this.failed = true; });
+                    });
+                } else if (config.provider === 'hcaptcha') {
+                    window.hcaptcha.execute(this.widgetId);
+                } else if (config.provider === 'recaptcha_v2') {
+                    window.grecaptcha.execute(this.widgetId);
+                }
+            },
+
+            setToken(token) {
+                this.token = token || '';
+                this.$wire.set(config.model, this.token, false);
+
+                if (this.token && this.pendingSubmit) {
+                    this.pendingSubmit = false;
+                    this.form?.requestSubmit();
+                }
+            },
+
+            reset() {
+                this.token = '';
+                this.pendingSubmit = false;
+                this.$wire.set(config.model, '', false);
+
+                if (this.widgetId === null) {
+                    return;
+                }
+
+                if (config.provider === 'turnstile') {
+                    window.turnstile?.reset(this.widgetId);
+                } else if (config.provider === 'hcaptcha') {
+                    window.hcaptcha?.reset(this.widgetId);
+                } else if (config.provider === 'recaptcha_v2') {
+                    window.grecaptcha?.reset(this.widgetId);
+                }
+            },
         }));
     });
 </script>

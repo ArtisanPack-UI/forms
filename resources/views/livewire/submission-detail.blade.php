@@ -1,4 +1,10 @@
 <div>
+    @php
+        // Only web links are rendered as links: a stored value or request URL
+        // with any other scheme (javascript:, data:, …) is shown as text (SEC-06).
+        $isSafeLink = static fn (mixed $url): bool => is_string($url)
+            && in_array(strtolower((string) parse_url($url, PHP_URL_SCHEME)), ['http', 'https'], true);
+    @endphp
     @if ($this->submission)
         <!-- Header with Navigation and Actions -->
         <x-artisanpack-card class="mb-6">
@@ -81,38 +87,85 @@
                     <div class="divide-y divide-base-300">
                         @forelse ($this->submission->values as $value)
                             <div class="py-4 first:pt-0 last:pb-0">
-                                <dt class="text-sm font-medium opacity-60">{{ $value->field_label }}</dt>
+                                <dt class="text-sm font-medium opacity-60">{{ $value->display_label }}</dt>
                                 <dd class="mt-1 text-sm">
-                                    @if ($value->upload_id && $value->upload)
-                                        <!-- File Upload -->
-                                        <div class="flex items-center gap-2">
-                                            <x-artisanpack-icon name="o-paper-clip" class="w-5 h-5 opacity-40" />
-                                            <a href="{{ route('forms.uploads.download', $value->upload) }}"
-                                               class="link link-primary"
-                                               target="_blank">
-                                                {{ $value->upload->original_name }}
-                                            </a>
-                                            <span class="opacity-40 text-xs">({{ $value->upload->humanFileSize() }})</span>
-                                        </div>
+                                    @if ($value->isMasked() && !$this->canRevealMaskedValues)
+                                        <!-- Masked Value -->
+                                        <span class="inline-flex items-center gap-2">
+                                            <span class="font-mono">{{ $value->masked_display_value }}</span>
+                                            <x-artisanpack-badge :value="__( 'Masked' )" color="neutral" class="badge-sm" />
+                                        </span>
+                                    @elseif ($value->isRedacted())
+                                        <span class="italic opacity-60">{{ $value->display_value }}</span>
+                                    @elseif ('' !== ($displayHtml = (string) $value->display_html))
+                                        <!-- HTML from the field type, escaped or sanitized: rich text, a list's table, a ranking or a drawn signature -->
+                                        <div class="prose prose-sm max-w-none">{!! $displayHtml !!}</div>
+                                    @elseif ($value->upload_id && [] !== ($valueUploads = $value->getUploads()))
+                                        <!-- File Upload(s) -->
+                                        <ul class="flex flex-col gap-1">
+                                            @foreach ($valueUploads as $valueUpload)
+                                                <li class="flex items-center gap-2" wire:key="value-upload-{{ $valueUpload->id }}">
+                                                    <x-artisanpack-icon name="o-paper-clip" class="w-5 h-5 opacity-40" />
+                                                    <a href="{{ route('forms.uploads.download', [$this->form, $this->submission, $valueUpload]) }}"
+                                                       class="link link-primary"
+                                                       target="_blank">
+                                                        {{ $valueUpload->original_name }}
+                                                    </a>
+                                                    <span class="opacity-40 text-xs">({{ $valueUpload->humanFileSize() }})</span>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    @elseif ($value->field_type === 'consent')
+                                        <!-- Consent, with the text agreed to -->
+                                        @php($consent = is_array($value->value_array) ? $value->value_array : [])
+                                        <span>{{ $value->display_value }}</span>
+                                        @if (\ArtisanPackUI\Forms\FieldTypes\ConsentFieldType::isConsented($consent))
+                                            <details class="mt-2">
+                                                <summary class="link link-primary cursor-pointer">{{ __( 'View consent text' ) }}</summary>
+                                                <div class="mt-2 space-y-2 rounded-box bg-base-200 p-3">
+                                                    @if (filled($consent['text'] ?? null))
+                                                        <p>{{ $consent['text'] }}</p>
+                                                    @endif
+                                                    @if (filled($consent['description'] ?? null))
+                                                        <div class="prose prose-sm max-w-none">{!! \ArtisanPackUI\Forms\Models\FormField::sanitizeHtml($consent['description']) !!}</div>
+                                                    @endif
+                                                    @if (! filled($consent['text'] ?? null))
+                                                        <p class="italic opacity-60">{{ __( 'The consent text was not stored.' ) }}</p>
+                                                    @endif
+                                                    <p class="text-xs opacity-60">
+                                                        {{ __( 'Consented at :time', ['time' => $consent['consented_at'] ?? '—'] ) }}
+                                                        · {{ __( 'Revision :revision', ['revision' => \Illuminate\Support\Str::limit( (string) ( $consent['revision'] ?? '' ), 12, '' )] ) }}
+                                                    </p>
+                                                </div>
+                                            </details>
+                                        @endif
+                                    @elseif ($value->value_array && ! array_is_list($value->value_array))
+                                        <!-- Composite Value (name, address), formatted -->
+                                        <div class="whitespace-pre-line">{{ $value->display_value }}</div>
                                     @elseif ($value->value_array)
                                         <!-- Array Value (checkbox groups, multi-select) -->
                                         <ul class="list-disc list-inside space-y-1">
-                                            @foreach ($value->value_array as $item)
+                                            @foreach ($value->display_values as $item)
                                                 <li>{{ $item }}</li>
                                             @endforeach
                                         </ul>
-                                    @elseif ($value->value !== null && $value->value !== '')
+                                    @elseif (in_array($value->field_type, \ArtisanPackUI\Forms\Models\FormField::ACCEPTANCE_TYPES, true) || ($value->value !== null && $value->value !== ''))
                                         <!-- Regular Value -->
-                                        @if ($value->field_type === 'textarea')
+                                        @if (null !== ($displayHtml = $value->display_html))
+                                            <!-- Rich text, sanitized with kses() -->
+                                            <div class="prose prose-sm max-w-none">{!! $displayHtml !!}</div>
+                                        @elseif ($value->field_type === 'textarea')
                                             <div class="whitespace-pre-wrap">{{ $value->value }}</div>
                                         @elseif ($value->field_type === 'email')
                                             <a href="mailto:{{ $value->value }}" class="link link-primary">{{ $value->value }}</a>
+                                        @elseif ($value->field_type === 'url' && ! $isSafeLink($value->value))
+                                            <span class="break-all">{{ $value->value }}</span>
                                         @elseif ($value->field_type === 'url')
                                             <a href="{{ $value->value }}" target="_blank" rel="noopener" class="link link-primary">{{ $value->value }}</a>
                                         @elseif ($value->field_type === 'phone')
                                             <a href="tel:{{ $value->value }}" class="link link-primary">{{ $value->value }}</a>
                                         @else
-                                            {{ $value->value }}
+                                            {{ $value->display_value }}
                                         @endif
                                     @else
                                         <span class="italic opacity-40">{{ __( 'No response' ) }}</span>
@@ -124,6 +177,52 @@
                         @endforelse
                     </div>
                 </x-artisanpack-card>
+
+                <!-- Administrative Fields -->
+                @if ($this->administrativeFields->isNotEmpty())
+                    <x-artisanpack-card :title="__( 'Administrative Fields' )" separator>
+                        <x-slot:subtitle>{{ __( 'Internal fields that are not shown on the public form' ) }}</x-slot:subtitle>
+                        <form wire:submit="saveAdministrativeFields" class="space-y-4" novalidate>
+                            @foreach ($this->administrativeFields as $field)
+                                <div wire:key="admin-field-{{ $field->uuid }}">
+                                    @if ($field->is_file_field)
+                                        @include('forms::livewire.submission-detail.administrative-file', [
+                                            'field' => $field,
+                                            'uploads' => $this->administrativeFileUploads[$field->id] ?? [],
+                                        ])
+                                    @else
+                                        {!! \ArtisanPackUI\Forms\Support\FieldRenderer::render(
+                                            $field,
+                                            $formData[$field->name] ?? null,
+                                            $errors->first('formData.' . $field->name),
+                                            \ArtisanPackUI\Forms\Support\FieldRenderer::subInputErrors($field, $errors),
+                                        ) !!}
+                                    @endif
+                                </div>
+                            @endforeach
+
+                            <div class="sr-only" role="status" aria-live="polite">
+                                @if ($removedFileName)
+                                    {{ __( ':name removed.', ['name' => $removedFileName] ) }}
+                                @endif
+                            </div>
+
+                            <div class="flex items-center gap-3">
+                                <x-artisanpack-button
+                                    type="submit"
+                                    :label="__( 'Save Administrative Fields' )"
+                                    color="primary"
+                                    class="btn-sm"
+                                    wire:loading.attr="disabled"
+                                    wire:target="saveAdministrativeFields"
+                                />
+                                @if ($administrativeFieldsSaved)
+                                    <span class="text-sm text-success" role="status">{{ __( 'Saved.' ) }}</span>
+                                @endif
+                            </div>
+                        </form>
+                    </x-artisanpack-card>
+                @endif
 
                 <!-- Admin Notes -->
                 <x-artisanpack-card :title="__( 'Admin Notes' )" separator>
@@ -140,10 +239,10 @@
                 </x-artisanpack-card>
 
                 <!-- Attachments -->
-                @if ($this->submission->uploads->isNotEmpty())
+                @if ($this->attachments->isNotEmpty())
                     <x-artisanpack-card :title="__( 'Attachments' )" separator>
                         <div class="space-y-3">
-                            @foreach ($this->submission->uploads as $upload)
+                            @foreach ($this->attachments as $upload)
                                 <div class="flex items-center justify-between p-3 bg-base-200 rounded-lg">
                                     <div class="flex items-center gap-3">
                                         <x-artisanpack-icon name="o-document" class="w-8 h-8 opacity-40" />
@@ -152,7 +251,7 @@
                                             <p class="text-xs opacity-60">{{ $upload->mime_type }} &bull; {{ $upload->humanFileSize() }}</p>
                                         </div>
                                     </div>
-                                    <a href="{{ route('forms.uploads.download', $upload) }}"
+                                    <a href="{{ route('forms.uploads.download', [$this->form, $this->submission, $upload]) }}"
                                        class="btn btn-ghost btn-sm"
                                        target="_blank">
                                         <x-artisanpack-icon name="o-arrow-down-tray" class="w-4 h-4" />
@@ -199,9 +298,13 @@
                             <div>
                                 <dt class="text-sm font-medium opacity-60">{{ __( 'Page URL' ) }}</dt>
                                 <dd class="mt-1 text-sm break-all">
-                                    <a href="{{ $this->submission->page_url }}" target="_blank" rel="noopener" class="link link-primary">
+                                    @if ($isSafeLink($this->submission->page_url))
+                                        <a href="{{ $this->submission->page_url }}" target="_blank" rel="noopener" class="link link-primary">
+                                            {{ \Illuminate\Support\Str::limit($this->submission->page_url, 50) }}
+                                        </a>
+                                    @else
                                         {{ \Illuminate\Support\Str::limit($this->submission->page_url, 50) }}
-                                    </a>
+                                    @endif
                                 </dd>
                             </div>
                         @endif
@@ -211,9 +314,13 @@
                             <div>
                                 <dt class="text-sm font-medium opacity-60">{{ __( 'Referrer' ) }}</dt>
                                 <dd class="mt-1 text-sm break-all">
-                                    <a href="{{ $this->submission->referrer_url }}" target="_blank" rel="noopener" class="link link-primary">
+                                    @if ($isSafeLink($this->submission->referrer_url))
+                                        <a href="{{ $this->submission->referrer_url }}" target="_blank" rel="noopener" class="link link-primary">
+                                            {{ \Illuminate\Support\Str::limit($this->submission->referrer_url, 50) }}
+                                        </a>
+                                    @else
                                         {{ \Illuminate\Support\Str::limit($this->submission->referrer_url, 50) }}
-                                    </a>
+                                    @endif
                                 </dd>
                             </div>
                         @endif

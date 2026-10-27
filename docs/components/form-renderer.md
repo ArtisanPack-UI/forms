@@ -8,189 +8,166 @@ The FormRenderer component displays forms to end users and handles submission pr
 
 ## Basic Usage
 
-```blade
-{{-- By slug (recommended) --}}
-<livewire:forms::form-renderer slug="contact" />
+The component takes a `Form` model. Load the form in your controller or route, then pass it in:
 
-{{-- By form ID --}}
-<livewire:forms::form-renderer :form-id="1" />
+```php
+use ArtisanPackUI\Forms\Services\FormService;
 
-{{-- With form model --}}
-<livewire:forms::form-renderer :form="$form" />
+Route::get('/contact', function (FormService $forms) {
+    $form = $forms->getBySlug('contact');
+
+    abort_unless($form?->is_active, 404);
+
+    return view('contact', ['form' => $form]);
+});
 ```
+
+```blade
+<livewire:form-renderer :form="$form" />
+```
+
+`FormService` also has `getById()`. Both return `null` when no form matches. You can query the model directly too:
+
+```php
+$form = \ArtisanPackUI\Forms\Models\Form::where('slug', 'contact')->firstOrFail();
+```
+
+> For an inactive form the renderer shows "This form is not accepting submissions." instead of the fields and refuses submissions (since 1.6.0). Check `is_active` yourself only if you want to hide the component or show your own message.
 
 ## Properties
 
+The component's `mount()` signature is `mount(Form $form, array $prefill = [])`:
+
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `slug` | string\|null | null | Form slug |
-| `formId` | int\|null | null | Form ID |
-| `form` | Form\|null | null | Form model |
-| `successMessage` | string\|null | null | Override success message |
-| `redirectUrl` | string\|null | null | Redirect after submit |
-| `showTitle` | bool | true | Show form title |
-| `showDescription` | bool | true | Show form description |
-| `cssClass` | string | '' | Additional CSS classes |
+| `form` | Form | required | The form to render |
+| `prefill` | array | `[]` | Starting values for fields with dynamic population on, keyed by parameter name (since 1.6.0; see [Dynamic Population](Usage-Dynamic-Population)) |
+
+There are no props for the success message, redirect, title, description or CSS classes. Those come from the form itself (see below) or from your own markup around the component.
+
+## Display Settings Come From the Form
+
+These are set on the form, in the **Settings** tab of the form's edit page (`/admin/forms/{form}/edit`) or as model attributes. See [Form Settings](Usage-Form-Builder#form-settings).
+
+| Form attribute | Effect in the renderer |
+|----------------|------------------------|
+| `success_message` | Shown after a successful submission. Falls back to "Thank you! Your submission has been received." |
+| `redirect_url` | After a successful submission the component redirects to this URL and dispatches a `redirect-to` event with it (see [Redirecting After Submission](#redirecting-after-submission)) |
+| `description` | Shown above the fields when set |
+| `submit_button_text` | Label of the submit button |
+| `is_multi_step`, `show_progress_bar`, `allow_step_navigation` | Multi-step behavior (see [Multi-Step Forms](Usage-Multi-Step-Forms)) |
+| `settings.label_placement`, `settings.description_placement` | The form's default label and help text placement |
+
+The renderer does not print the form's name as a heading. Add your own heading around the component if you want one.
 
 ## Examples
 
 ### Basic Form
 
 ```blade
-<livewire:forms::form-renderer slug="contact" />
+<livewire:form-renderer :form="$form" />
 ```
 
-### With Custom Success Message
+### With Prefilled Values
 
 ```blade
-<livewire:forms::form-renderer
-    slug="contact"
-    success-message="Thanks! We'll respond within 24 hours."
+<livewire:form-renderer
+    :form="$form"
+    :prefill="['plan' => 'pro', 'email' => auth()->user()?->email]"
 />
 ```
 
-### With Redirect
+### Custom Wrapper and Heading
 
 ```blade
-<livewire:forms::form-renderer
-    slug="signup"
-    redirect-url="/welcome"
-/>
+<section class="newsletter-form bg-white p-6 rounded-lg">
+    <h2 class="text-xl font-semibold">{{ $form->name }}</h2>
+
+    <livewire:form-renderer :form="$form" />
+</section>
 ```
 
-### Minimal Display
+### Several Forms on One Page
+
+Give each instance its own `key`:
 
 ```blade
-<livewire:forms::form-renderer
-    slug="newsletter"
-    :show-title="false"
-    :show-description="false"
-    css-class="newsletter-form"
-/>
+<livewire:form-renderer :form="$contactForm" key="contact-form" />
+<livewire:form-renderer :form="$newsletterForm" key="newsletter-form" />
 ```
+
+Field IDs are prefixed per instance, so the same form can appear twice on a page without ID clashes.
 
 ## Component State
 
-The component manages several states:
+The main public properties:
 
 ```php
-public array $formData = [];     // Field values
-public array $errors = [];       // Validation errors
-public bool $submitted = false;  // Submission state
-public int $currentStep = 1;     // Current step (multi-step)
+public Form $form;                   // The form being rendered
+public array $formData = [];         // Field values, keyed by field name
+public array $files = [];            // Uploaded files, keyed by field name
+public bool $isSubmitted = false;    // True after a successful submission
+public int $currentStepIndex = 0;    // Current step (0-based, multi-step forms)
+public ?string $errorMessage = null; // Form-level error (rate limit, failed save)
+public array $hiddenFields = [];     // Fields hidden by conditional logic
 ```
 
 ## Events Emitted
 
-| Event | Payload | Description |
-|-------|---------|-------------|
-| `form-submitted` | `{ formId, submissionId }` | Form submitted |
-| `step-changed` | `{ step }` | Step navigation |
-| `validation-failed` | `{ errors }` | Validation errors |
+| Event | Payload | When |
+|-------|---------|------|
+| `form-submitted` | `{ formId, submissionId }` | A submission was saved |
+| `form-submitted` | `{ formId, isSpam: true }` | The honeypot or timing check caught a bot. Nothing is saved and the visitor sees the success message |
+| `redirect-to` | `{ url }` | After a saved submission, when the form has a `redirect_url` |
+| `step-changed` | `{ step }` | The visitor moved to another step (1-based) |
+| `forms-validation-failed` | `{ formId, count }` | Validation failed on submit or on a step change. The renderer uses it to announce the errors and focus the first invalid field |
+| `form-reset` | `{ formId }` | `resetForm()` cleared the form for another response |
+| `forms-captcha-reset` | `{ formId }` | A CAPTCHA token was spent and the widget needs a new one (used internally) |
+
+### Redirecting After Submission
+
+After a saved submission the renderer redirects to the form's redirect URL (since 1.6.0) and dispatches `redirect-to` with it, which you can listen for to track the conversion first. Only `http`/`https` URLs and site paths are followed.
 
 ### JavaScript Listeners
 
 ```javascript
-document.addEventListener('livewire:initialized', () => {
-    Livewire.on('form-submitted', (event) => {
+document.addEventListener('livewire:init', () => {
+    Livewire.on('form-submitted', ({ formId, submissionId, isSpam }) => {
+        if (isSpam) {
+            return;
+        }
+
         // Track conversion
         gtag('event', 'conversion', {
             send_to: 'AW-XXXXX/XXXXX',
-            form_id: event.formId,
+            form_id: formId,
         });
     });
 
-    Livewire.on('validation-failed', (event) => {
-        // Scroll to first error
-        const firstError = document.querySelector('.field-error');
-        firstError?.scrollIntoView({ behavior: 'smooth' });
+    Livewire.on('step-changed', ({ step }) => {
+        console.log('Now on step', step);
     });
 });
 ```
 
+The events are also dispatched on `window`, so Alpine can listen with `x-on:form-submitted.window="..."`.
+
+For server-side work after a submission, listen for the `ArtisanPackUI\Forms\Events\FormSubmitted` Laravel event instead.
+
 ## Methods
 
-### submit
-
-Validates and submits the form:
-
-```php
-public function submit(): void
-{
-    $this->validate($this->getValidationRules());
-
-    $submission = $this->submissionService->create(
-        $this->form,
-        $this->formData
-    );
-
-    if ($this->redirectUrl) {
-        $this->redirect($this->redirectUrl);
-    } else {
-        $this->submitted = true;
-    }
-
-    $this->dispatch('form-submitted', [
-        'formId' => $this->form->id,
-        'submissionId' => $submission->id,
-    ]);
-}
-```
-
-### nextStep / previousStep
-
-Navigate multi-step forms:
-
-```php
-public function nextStep(): void
-{
-    $this->validateCurrentStep();
-    $this->currentStep++;
-    $this->dispatch('step-changed', step: $this->currentStep);
-}
-
-public function previousStep(): void
-{
-    $this->currentStep--;
-    $this->dispatch('step-changed', step: $this->currentStep);
-}
-```
+| Method | Description |
+|--------|-------------|
+| `submit()` | Runs the spam, rate limit, validation and CAPTCHA checks, saves the submission and dispatches `form-submitted` |
+| `nextStep()` | Validates the current step, then moves forward |
+| `previousStep()` | Moves back one step |
+| `goToStep(int $stepIndex)` | Jumps to a step (0-based). Only works when the form allows step navigation. Moving forward validates each step in between |
+| `resetForm()` | Clears the form so the visitor can submit again |
+| `removeFile(string $fieldName, string $key)` | Removes one upload from a multi-file field before submitting |
 
 ## Validation
 
-Validation rules are generated from field configuration:
-
-```php
-protected function getValidationRules(): array
-{
-    $rules = [];
-
-    foreach ($this->getVisibleFields() as $field) {
-        $fieldRules = [];
-
-        if ($field->required) {
-            $fieldRules[] = 'required';
-        }
-
-        if ($field->validation['min'] ?? null) {
-            $fieldRules[] = 'min:' . $field->validation['min'];
-        }
-
-        if ($field->validation['max'] ?? null) {
-            $fieldRules[] = 'max:' . $field->validation['max'];
-        }
-
-        // Add type-specific rules
-        if ($field->type === 'email') {
-            $fieldRules[] = 'email';
-        }
-
-        $rules["formData.{$field->name}"] = $fieldRules;
-    }
-
-    return $rules;
-}
-```
+Validation rules are built from each field's configuration (required, type and the field's validation settings). Only fields that are visible after conditional logic are validated and saved. Errors show inline next to each field, and form-level errors (rate limiting, a failed save) show in an alert above the fields.
 
 ## Customizing the View
 
@@ -200,97 +177,13 @@ Publish and edit:
 php artisan vendor:publish --tag=forms-views
 ```
 
-### View Structure
+The renderer's views are then in:
 
-```blade
-{{-- resources/views/vendor/forms/livewire/form-renderer.blade.php --}}
-<div class="form-renderer {{ $cssClass }}">
-    @if ($submitted)
-        {{-- Success State --}}
-        <div class="form-success">
-            {{ $successMessage ?? $form->success_message ?? 'Thank you!' }}
-        </div>
-    @else
-        {{-- Form --}}
-        <form wire:submit="submit">
-            @if ($showTitle && $form->name)
-                <h2 class="form-title">{{ $form->name }}</h2>
-            @endif
+- `resources/views/vendor/forms/livewire/form-renderer.blade.php` - the wrapper, success state, step progress and navigation
+- `resources/views/vendor/forms/livewire/form-renderer/fields.blade.php` and `field.blade.php` - the field loop and each field's wrapper
+- `resources/views/vendor/forms/components/fields/{type}.blade.php` - one view per field type
 
-            @if ($showDescription && $form->description)
-                <p class="form-description">{{ $form->description }}</p>
-            @endif
-
-            {{-- Progress (multi-step) --}}
-            @if ($form->is_multi_step)
-                @include('forms::partials.progress')
-            @endif
-
-            {{-- Fields --}}
-            @foreach ($currentFields as $field)
-                @include("forms::partials.fields.{$field->type}", ['field' => $field])
-            @endforeach
-
-            {{-- Navigation --}}
-            @include('forms::partials.navigation')
-        </form>
-    @endif
-</div>
-```
-
-### Custom Field Templates
-
-Create custom field templates in `resources/views/vendor/forms/partials/fields/`:
-
-```blade
-{{-- custom-field.blade.php --}}
-<div class="form-group {{ $field->settings['wrapper_class'] ?? '' }}">
-    <label for="{{ $field->name }}">
-        {{ $field->label }}
-        @if ($field->required)
-            <span class="required">*</span>
-        @endif
-    </label>
-
-    <input
-        type="text"
-        id="{{ $field->name }}"
-        wire:model="formData.{{ $field->name }}"
-        class="form-input @error('formData.' . $field->name) is-invalid @enderror"
-        placeholder="{{ $field->placeholder }}"
-    >
-
-    @if ($field->help_text)
-        <small class="help-text">{{ $field->help_text }}</small>
-    @endif
-
-    @error('formData.' . $field->name)
-        <span class="error-message">{{ $message }}</span>
-    @enderror
-</div>
-```
-
-## File Uploads
-
-Handle file uploads with Livewire:
-
-```blade
-{{-- file.blade.php --}}
-<div class="form-group">
-    <label>{{ $field->label }}</label>
-
-    <input
-        type="file"
-        wire:model="formData.{{ $field->name }}"
-        accept="{{ $field->settings['accept'] ?? '*' }}"
-        @if ($field->settings['multiple'] ?? false) multiple @endif
-    >
-
-    <div wire:loading wire:target="formData.{{ $field->name }}">
-        Uploading...
-    </div>
-</div>
-```
+Only publish what you change, and republish after upgrading. The package logs a warning when a published renderer view is too old to work with conditional logic.
 
 ## Accessibility
 
@@ -298,27 +191,13 @@ The component includes accessibility features:
 
 - Proper label associations
 - ARIA attributes for errors
-- Focus management
-- Screen reader announcements
-
-```blade
-<input
-    type="text"
-    id="{{ $field->name }}"
-    aria-describedby="{{ $field->name }}-help {{ $field->name }}-error"
-    aria-invalid="{{ $errors->has('formData.' . $field->name) ? 'true' : 'false' }}"
->
-
-@if ($field->help_text)
-    <small id="{{ $field->name }}-help">{{ $field->help_text }}</small>
-@endif
-
-@error('formData.' . $field->name)
-    <span id="{{ $field->name }}-error" role="alert">{{ $message }}</span>
-@enderror
-```
+- Focus moves to the first invalid field when validation fails
+- Step changes and errors are announced in a live region
+- Keyboard navigation
 
 ## Extending the Component
+
+Extend the class and register it under your own name:
 
 ```php
 namespace App\Livewire;
@@ -329,21 +208,17 @@ class CustomFormRenderer extends FormRenderer
 {
     public function submit(): void
     {
-        // Pre-submission hook
-        $this->preSubmit();
-
         parent::submit();
 
-        // Post-submission hook
-        $this->postSubmit();
-    }
-
-    protected function preSubmit(): void
-    {
-        // Add custom data
-        $this->formData['submitted_from'] = request()->url();
+        if ($this->isSubmitted) {
+            // Post-submission work
+        }
     }
 }
+```
+
+```php
+Livewire::component('custom-form-renderer', \App\Livewire\CustomFormRenderer::class);
 ```
 
 ## Next Steps

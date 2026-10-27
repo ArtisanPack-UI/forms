@@ -3,6 +3,8 @@
 declare( strict_types=1 );
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Livewire\Features\SupportTesting\Testable;
 use Tests\TestCase;
 
 /*
@@ -22,6 +24,23 @@ pest()->extend( TestCase::class )
 
 pest()->extend( TestCase::class )
     ->in( 'Unit' );
+
+/*
+|--------------------------------------------------------------------------
+| Livewire
+|--------------------------------------------------------------------------
+|
+| FormRenderer's formLoadedAt is locked (since 1.6.0), so a test can't
+| backdate it to pass the minimum-time spam check. afterSpamDelay() moves
+| the clock past that check instead; the base test case resets the clock.
+|
+*/
+
+Testable::macro( 'afterSpamDelay', function ( int $seconds = 10 ): Testable {
+    Carbon::setTestNow( now()->addSeconds( $seconds ) );
+
+    return $this;
+} );
 
 /*
 |--------------------------------------------------------------------------
@@ -48,3 +67,40 @@ expect()->extend( 'toBeOne', function () {
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
+
+/**
+ * Checks whether Node can run TypeScript with its types stripped (22.6+).
+ *
+ * The parity tests skip when it cannot, and fail when it can but a shared
+ * helper does not run, so a broken helper is not reported as skipped. In CI
+ * (the `CI` environment variable is set) a missing Node fails the test
+ * instead of skipping it, so the parity checks cannot silently stop running.
+ *
+ * Node before 22.6 rejects the `--experimental-strip-types` flag, so a run
+ * with it shows whether TypeScript files can be imported.
+ *
+ * @throws RuntimeException When Node cannot run TypeScript in CI.
+ *
+ * @return bool True when Node accepts `--experimental-strip-types`.
+ */
+function nodeRunsTypeScript(): bool
+{
+    static $available = null;
+
+    if ( null === $available ) {
+        try {
+            $process = new Symfony\Component\Process\Process( ['node', '--experimental-strip-types', '--no-warnings', '-e', 'process.stdout.write( "true" );'] );
+            $process->run();
+
+            $available = $process->isSuccessful() && 'true' === $process->getOutput();
+        } catch ( Throwable ) {
+            $available = false;
+        }
+    }
+
+    if ( ! $available && false !== getenv( 'CI' ) && '' !== getenv( 'CI' ) ) {
+        throw new RuntimeException( 'Node 22.6+ is required in CI to run the PHP/TypeScript parity tests.' );
+    }
+
+    return $available;
+}

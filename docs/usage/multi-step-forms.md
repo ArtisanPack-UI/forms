@@ -107,7 +107,8 @@ $step = FormStep::create([
 The Form Renderer automatically handles multi-step forms:
 
 ```blade
-<livewire:forms::form-renderer slug="registration" />
+{{-- $form is the "registration" form, e.g. from FormService::getBySlug() --}}
+<livewire:form-renderer :form="$form" />
 ```
 
 ### Progress Indicator

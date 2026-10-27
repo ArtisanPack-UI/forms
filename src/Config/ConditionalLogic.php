@@ -64,12 +64,12 @@ class ConditionalLogic
         'equals' => [
             'needs_value'    => true,
             'value_type'     => 'text',
-            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden', 'date', 'time'],
+            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden', 'date', 'time', 'rating', 'slider', 'nps', 'color', 'calculation'],
         ],
         'not_equals' => [
             'needs_value'    => true,
             'value_type'     => 'text',
-            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden', 'date', 'time'],
+            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden', 'date', 'time', 'rating', 'slider', 'nps', 'color', 'calculation'],
         ],
         'contains' => [
             'needs_value'    => true,
@@ -94,52 +94,52 @@ class ConditionalLogic
         'is_empty' => [
             'needs_value'    => false,
             'value_type'     => 'none',
-            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'textarea', 'select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple', 'file', 'date', 'time', 'hidden'],
+            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'textarea', 'select', 'radio', 'checkbox', 'toggle', 'checkbox_group', 'select_multiple', 'file', 'date', 'time', 'hidden', 'rating', 'slider', 'nps', 'signature', 'color', 'calculation'],
         ],
         'is_not_empty' => [
             'needs_value'    => false,
             'value_type'     => 'none',
-            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'textarea', 'select', 'radio', 'checkbox', 'checkbox_group', 'select_multiple', 'file', 'date', 'time', 'hidden'],
+            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'textarea', 'select', 'radio', 'checkbox', 'toggle', 'checkbox_group', 'select_multiple', 'file', 'date', 'time', 'hidden', 'rating', 'slider', 'nps', 'signature', 'color', 'calculation'],
         ],
         'greater_than' => [
             'needs_value'    => true,
             'value_type'     => 'number',
-            'supports_types' => ['number'],
+            'supports_types' => ['number', 'rating', 'slider', 'nps', 'calculation'],
         ],
         'less_than' => [
             'needs_value'    => true,
             'value_type'     => 'number',
-            'supports_types' => ['number'],
+            'supports_types' => ['number', 'rating', 'slider', 'nps', 'calculation'],
         ],
         'greater_or_equal' => [
             'needs_value'    => true,
             'value_type'     => 'number',
-            'supports_types' => ['number'],
+            'supports_types' => ['number', 'rating', 'slider', 'nps', 'calculation'],
         ],
         'less_or_equal' => [
             'needs_value'    => true,
             'value_type'     => 'number',
-            'supports_types' => ['number'],
+            'supports_types' => ['number', 'rating', 'slider', 'nps', 'calculation'],
         ],
         'in' => [
             'needs_value'    => true,
             'value_type'     => 'list',
-            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden'],
+            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden', 'rating', 'slider', 'nps', 'color', 'calculation'],
         ],
         'not_in' => [
             'needs_value'    => true,
             'value_type'     => 'list',
-            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden'],
+            'supports_types' => ['text', 'email', 'number', 'url', 'phone', 'select', 'radio', 'hidden', 'rating', 'slider', 'nps', 'color', 'calculation'],
         ],
         'checked' => [
             'needs_value'    => false,
             'value_type'     => 'none',
-            'supports_types' => ['checkbox'],
+            'supports_types' => ['checkbox', 'toggle'],
         ],
         'unchecked' => [
             'needs_value'    => false,
             'value_type'     => 'none',
-            'supports_types' => ['checkbox'],
+            'supports_types' => ['checkbox', 'toggle'],
         ],
         'includes' => [
             'needs_value'    => true,

@@ -24,10 +24,14 @@ Controls who can view, create, update, and delete forms.
 | `viewAny` | Can list all forms |
 | `view` | Can view a specific form |
 | `create` | Can create new forms |
-| `update` | Can update a form |
+| `update` | Can update a form, its fields and steps |
 | `delete` | Can delete a form |
-| `restore` | Can restore soft-deleted forms |
-| `forceDelete` | Can permanently delete forms |
+| `duplicate` | Can duplicate a form |
+| `viewSubmissions` | Can view the form's submissions |
+| `exportSubmissions` | Can export the form's submissions |
+| `manageSettings` | Can change the form's settings |
+| `manageNotifications` | Can manage the form's notifications |
+| `changeFieldPrivacy` | Can weaken a masked field's privacy: turn **Mask in admin** off, change its type to one without privacy settings, or delete it while it has stored values (since 1.6.0). Defaults to the `revealMaskedValues` submission ability. |
 
 ### Default Behavior
 
@@ -143,9 +147,15 @@ Controls access to form submissions.
 |--------|-------------|
 | `viewAny` | Can list submissions |
 | `view` | Can view a specific submission |
+| `update` | Can update a submission and its administrative fields |
 | `delete` | Can delete a submission |
+| `markAsSpam` | Can mark a submission as spam |
+| `downloadFile` | Can download an uploaded file |
+| `revealMaskedValues` | Can see values of fields with **Mask in admin** on in full (since 1.6.0). Admins (`is_admin`) by default; the result passes through the `ap.forms.canRevealMaskedValues` filter. |
 | `export` | Can export submissions |
-| `downloadUpload` | Can download uploaded files |
+| `bulkAction` | Can run bulk actions |
+
+`revealMaskedValues` takes no model: check it with `Gate::allows( 'revealMaskedValues', FormSubmission::class )`, or `FieldPrivacy::canReveal( $user )`. See [Field Privacy & Visibility](Usage-Field-Privacy).
 
 ### Default Behavior
 

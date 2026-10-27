@@ -1,12 +1,12 @@
 <div class="textarea-stub">
     @if($label)
-        <label class="label">{{ $label }}</label>
+        <legend class="fieldset-legend">{{ $label }}</legend>
     @endif
-    @if($error)
+    @if($error && ! $omitError)
         <span class="error">{{ $error }}</span>
     @endif
     @if($hint)
         <span class="hint">{{ $hint }}</span>
     @endif
-    <textarea name="{{ $name }}" placeholder="{{ $placeholder }}" class="textarea textarea-bordered" rows="{{ $rows }}" {{ $required ? 'required' : '' }} {{ $attributes }}>{{ $slot }}</textarea>
+    <textarea id="artisanpack-stub-{{ $id }}" name="{{ $name }}" placeholder="{{ $placeholder }}" class="textarea textarea-bordered" rows="{{ $rows }}" {{ $required ? 'required' : '' }} {{ $attributes }}>{{ $slot }}</textarea>
 </div>

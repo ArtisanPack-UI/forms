@@ -155,7 +155,9 @@ describe( 'Vue Form Renderer', function (): void {
         } );
 
         it( 'imports shared conditional logic and validation', function (): void {
-            expect( $this->content )->toContain( '../../shared/conditionalLogic' )
+            // Conditional logic is evaluated with the calculations (since 1.6.0)
+            expect( $this->content )->toContain( '../../shared/calculation' )
+                ->and( file_get_contents( __DIR__ . '/../../resources/js/shared/calculation.ts' ) )->toContain( "import { getHiddenFields } from './conditionalLogic';" )
                 ->and( $this->content )->toContain( '../../shared/validation' );
         } );
 
@@ -316,10 +318,13 @@ describe( 'Vue Form Renderer', function (): void {
         } );
 
         it( 'supports field width classes', function (): void {
-            expect( $this->content )->toContain( 'full' )
-                ->and( $this->content )->toContain( 'half' )
-                ->and( $this->content )->toContain( 'third' )
-                ->and( $this->content )->toContain( 'two-thirds' );
+            $shared = file_get_contents( __DIR__ . '/../../resources/js/shared/fieldSettings.ts' );
+
+            expect( $this->content )->toContain( "import { WIDTH_CLASSES } from '../../../shared/fieldSettings';" )
+                ->and( $shared )->toContain( "full: 'w-full'," )
+                ->and( $shared )->toContain( "half: 'w-full md:w-1/2'," )
+                ->and( $shared )->toContain( "third: 'w-full md:w-1/3'," )
+                ->and( $shared )->toContain( "'two-thirds': 'w-full md:w-2/3'," );
         } );
     } );
 } );

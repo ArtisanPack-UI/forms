@@ -407,4 +407,4 @@ If you can't resolve an issue:
    - Error messages
    - Relevant configuration
 
-Contact: [support@artisanpackui.dev](Mailto:Support@Artisanpackui.Dev)
+Contact: [support@artisanpackui.dev](mailto:support@artisanpackui.dev)

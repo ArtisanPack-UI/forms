@@ -1,27 +1,52 @@
+{{--
+    A telephone input. An International phone field (since 1.6.0) puts a
+    country selector, bound to `formData.{name}_country`, before the input; a
+    number typed without a `+` country code is read in that country (see
+    PhoneFieldType). An input mask formats the number as it is typed.
+--}}
 @props(['field', 'value' => '', 'error' => null])
 
 @php
-    // Build aria-describedby with both hint and error IDs when applicable
-    $describedBy = [];
-    if ($error) {
-        $describedBy[] = 'error-' . $field->name;
-    }
-    if ($field->help_text) {
-        $describedBy[] = 'hint-' . $field->name;
-    }
-    $ariaDescribedBy = !empty($describedBy) ? implode(' ', $describedBy) : null;
+    // The input component renders a top label; the layout renders the others.
+    $layoutLabel = 'top' !== $field->getLabelPlacement();
+    $mask = $field->getInputMask();
+    $countries = $field->usesPhoneCountrySelector() ? \ArtisanPackUI\Forms\FieldTypes\PhoneFieldType::countries() : [];
 @endphp
 
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true])
 <x-artisanpack-input
     type="tel"
-    :label="$field->label"
-    :placeholder="$field->placeholder ?? '(123) 456-7890'"
-    :hint="$field->help_text"
-    :error="$error"
+    :label="$layoutLabel ? null : $field->label"
+    :placeholder="$field->placeholder ?? ([] === $countries ? __( '(123) 456-7890' ) : null)"
+    :omit-error="true"
+    :aria-invalid="filled($error) ? 'true' : null"
     :required="$field->is_required"
     wire:model.live="formData.{{ $field->name }}"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
+    :autocomplete="$field->getAutocomplete()"
+    :readonly="$field->isReadOnly()"
     :class="$field->css_classes"
     :aria-required="$field->is_required ? 'true' : 'false'"
-    :aria-describedby="$ariaDescribedBy"
-/>
+    :aria-labelledby="$layoutLabel && filled($field->label) ? $field->domId('label') : null"
+    :aria-describedby="$field->getDescribedBy($error)"
+    :x-mask="$mask"
+>
+    @if([] !== $countries)
+        <x-slot:prepend>
+            <select
+                id="{{ $field->domId() }}_country"
+                wire:model.live="formData.{{ $field->getPhoneCountryKey() }}"
+                class="select join-item w-auto max-w-48"
+                autocomplete="country"
+                aria-label="{{ __( ':field country', ['field' => $field->label] ) }}"
+                @disabled($field->isReadOnly())
+            >
+                @foreach($countries as $country)
+                    <option value="{{ $country['value'] }}">{{ $country['label'] }}</option>
+                @endforeach
+            </select>
+        </x-slot:prepend>
+    @endif
+</x-artisanpack-input>
+@include('forms::components.fields.partials.input-extras', ['field' => $field])
+@endcomponent

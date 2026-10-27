@@ -24,16 +24,27 @@ namespace ArtisanPackUI\Forms\Livewire;
 
 use ArtisanPackUI\Forms\Config\ConditionalLogic;
 use ArtisanPackUI\Forms\Config\FieldTypes;
+use ArtisanPackUI\Forms\FieldTypes\CompositeFieldType;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\FieldService;
 use ArtisanPackUI\Forms\Services\StepService;
+use ArtisanPackUI\Forms\Support\ChoiceImages;
+use ArtisanPackUI\Forms\Support\FieldSettings;
+use ArtisanPackUI\Forms\Support\PredefinedChoices;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 /**
  * Form builder Livewire component class.
@@ -45,6 +56,11 @@ use Livewire\Component;
  * - Multi-step form support
  * - Auto-save with dirty state tracking
  *
+ * Since 1.6.0, mounting the builder and every action that changes the form
+ * require the `update` ability on the form (see FormPolicy), so a user who
+ * reaches the builder for a form they may not edit gets a 403 rather than
+ * relying on the route's middleware alone.
+ *
  * @package    ArtisanPack_UI
  * @subpackage Forms
  *
@@ -52,6 +68,47 @@ use Livewire\Component;
  */
 class FormBuilder extends Component
 {
+    use WithFileUploads;
+
+    /**
+     * The attributes updateField() may change.
+     *
+     * The field's type, form, step, order, validation rules and conditional
+     * logic are changed through their own actions, which check what they are
+     * given.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const EDITABLE_FIELD_ATTRIBUTES = [
+        'label',
+        'name',
+        'placeholder',
+        'help_text',
+        'is_required',
+        'default_value',
+        'width',
+        'css_classes',
+        'field_config',
+    ];
+
+    /**
+     * The attributes updateStep() may change.
+     *
+     * A step's form and order are changed only by the step actions.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const EDITABLE_STEP_ATTRIBUTES = [
+        'title',
+        'description',
+        'prev_button_text',
+        'next_button_text',
+    ];
+
     /**
      * The form being edited.
      */
@@ -64,7 +121,11 @@ class FormBuilder extends Component
 
     /**
      * The currently active step ID (for multi-step forms).
+     *
+     * Locked (since 1.6.0): it is changed only through selectStep() and
+     * the step actions, which check the step belongs to the form.
      */
+    #[Locked]
     public ?int $activeStepId = null;
 
     /**
@@ -81,6 +142,11 @@ class FormBuilder extends Component
      * Last save timestamp for display.
      */
     public ?string $lastSavedAt = null;
+
+    /**
+     * The image being uploaded for an image choice (since 1.6.0; see storeChoiceImage()).
+     */
+    public ?TemporaryUploadedFile $choiceImage = null;
 
     /**
      * The field service instance.
@@ -112,9 +178,13 @@ class FormBuilder extends Component
 
     /**
      * Mount the component.
+     *
+     * @throws AuthorizationException When the user may not update the form (since 1.6.0).
      */
     public function mount( Form $form ): void
     {
+        $this->authorize( 'update', $form );
+
         $this->form = $form->load( ['fields', 'steps.fields'] );
 
         // Set active step to first step for multi-step forms
@@ -276,9 +346,13 @@ class FormBuilder extends Component
 
     /**
      * Add a new field to the form.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function addField( string $type ): void
     {
+        $this->authorizeUpdate();
+
         $stepId = $this->form->is_multi_step ? $this->activeStepId : null;
 
         $field = $this->fieldService->create( $this->form, $type, $stepId );
@@ -313,13 +387,40 @@ class FormBuilder extends Component
     /**
      * Update the selected field.
      *
+     * Since 1.6.0, only the attributes in EDITABLE_FIELD_ATTRIBUTES are
+     * changed (any others are ignored) and they are validated first.
+     *
+     *
      * @param  array<string, mixed>  $data
+     *
+     * @throws AuthorizationException When the user may not update the form.
+     * @throws ValidationException When an attribute is not valid.
      */
     public function updateField( array $data ): void
     {
+        $this->authorizeUpdate();
+
         if ( null === $this->selectedFieldId ) {
             return;
         }
+
+        $data = array_intersect_key( $data, array_flip( self::EDITABLE_FIELD_ATTRIBUTES ) );
+
+        if ( [] === $data ) {
+            return;
+        }
+
+        $data = Validator::make( $data, [
+            'label'         => ['nullable', 'string', 'max:255'],
+            'name'          => ['sometimes', 'required', 'string', 'max:100'],
+            'placeholder'   => ['nullable', 'string', 'max:255'],
+            'help_text'     => ['nullable', 'string', 'max:1000'],
+            'is_required'   => ['sometimes', 'boolean'],
+            'default_value' => ['nullable', 'string', 'max:1000'],
+            'width'         => ['sometimes', 'string', Rule::in( array_keys( FieldTypes::WIDTH_CLASSES ) )],
+            'css_classes'   => ['nullable', 'string', 'max:500'],
+            'field_config'  => ['nullable', 'array'],
+        ] )->validate();
 
         $field = $this->fieldService->getByUuid( $this->form, $this->selectedFieldId );
 
@@ -332,12 +433,226 @@ class FormBuilder extends Component
     }
 
     /**
+     * Update one of the selected field's type-specific settings.
+     *
+     * The setting must be in the field type's settings schema (see
+     * FieldSettings); its schema entry decides how the raw input is parsed and
+     * where it is stored. A blank or invalid value clears the setting so the
+     * renderer falls back to its default. The value is parsed here rather than
+     * in the `wire:change` expression: Livewire 4 rewrites bare identifiers
+     * such as `parseInt` in those expressions to `$wire` calls.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $key  The setting key.
+     * @param  mixed  $value  The raw input value.
+     *
+     * @throws AuthorizationException When the user may not update the form.
+     */
+    public function updateSetting( string $key, mixed $value ): void
+    {
+        $this->authorizeUpdate();
+
+        $field = $this->getSelectedFieldModel();
+
+        if ( null === $field ) {
+            return;
+        }
+
+        $setting = FieldSettings::find( $field, $key );
+
+        if ( null === $setting ) {
+            return;
+        }
+
+        $this->persistSelectedField( $field, FieldSettings::update( $field, $setting, $value ) );
+    }
+
+    /**
+     * Update the content of the selected heading, paragraph or HTML field.
+     *
+     * Applies the layout storage contract (heading → `label`, paragraph and
+     * HTML → `field_config.content`) and clears the legacy `default_value` copy.
+     *
+     * @since 1.6.0
+     *
+     * @param  string|null  $content  The new content.
+     *
+     * @throws AuthorizationException When the user may not update the form.
+     */
+    public function updateLayoutContent( ?string $content ): void
+    {
+        $this->authorizeUpdate();
+
+        $field = $this->getSelectedFieldModel();
+
+        if ( null === $field || ! in_array( $field->type, ['heading', 'paragraph', 'html'], true ) ) {
+            return;
+        }
+
+        $content = $content ?? '';
+
+        $data = 'heading' === $field->type
+            ? ['label' => $content]
+            : ['field_config' => array_merge( $field->field_config ?? [], ['content' => $content] )];
+
+        $this->persistSelectedField( $field, $data + ['default_value' => null] );
+    }
+
+    /**
+     * Stores the image uploaded for an image choice and gets its URL.
+     *
+     * The options editor uploads the image to `choiceImage` first, then puts
+     * the URL this returns in the option's `image` (since 1.6.0; see
+     * ChoiceImages).
+     *
+     * @since 1.6.0
+     *
+     * @throws AuthorizationException When the user may not update the form.
+     *
+     * @return string|null The image's URL, or null when it was not valid or could not be stored.
+     */
+    public function storeChoiceImage(): ?string
+    {
+        $this->authorizeUpdate();
+
+        $this->validate( ['choiceImage' => ChoiceImages::uploadRules()] );
+
+        $url = $this->choiceImage instanceof TemporaryUploadedFile
+            ? app( ChoiceImages::class )->store( $this->choiceImage, $this->form )
+            : null;
+
+        $this->reset( 'choiceImage' );
+
+        return $url;
+    }
+
+    /**
+     * Replace or extend the selected choice field's options from bulk text.
+     *
+     * The text holds one `value|label` (or `label`) per line, as the bulk
+     * editor and its predefined lists write it (see PredefinedChoices).
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $text  The bulk text.
+     * @param  string  $mode  `replace` the options, or `append` to them.
+     *
+     * @throws AuthorizationException When the user may not update the form.
+     */
+    public function applyBulkChoices( string $text, string $mode = 'replace' ): void
+    {
+        $this->authorizeUpdate();
+
+        $field = $this->getSelectedFieldModel();
+
+        if ( null === $field || ! FieldTypes::hasOptions( $field->type ) ) {
+            return;
+        }
+
+        $options = PredefinedChoices::apply(
+            $field->getConfig( 'options', [] ),
+            PredefinedChoices::parseBulk( $text ),
+            'append' === $mode ? 'append' : 'replace',
+        );
+
+        $this->persistSelectedField( $field, ['field_config' => array_merge( $field->field_config ?? [], ['options' => $options] )] );
+
+        $this->dispatch( 'forms-options-updated', field: $field->uuid, options: array_values( $options ) );
+    }
+
+    /**
+     * Replace the selected choice field's options.
+     *
+     * Only `options` changes: the rest of `field_config` is read from the
+     * saved field, so the options editor cannot revert settings changed since
+     * it was rendered. Each option keeps its value, label, default flag and
+     * image; images are made safe (see ChoiceImages::sanitizeOptions()).
+     *
+     * @since 1.6.0
+     *
+     * @param  array<int, mixed>  $options  The options, in order.
+     *
+     * @throws AuthorizationException When the user may not update the form.
+     * @throws ValidationException When an option is not valid.
+     */
+    public function updateOptions( array $options ): void
+    {
+        $this->authorizeUpdate();
+
+        $field = $this->getSelectedFieldModel();
+
+        if ( null === $field || ! FieldTypes::hasOptions( $field->type ) ) {
+            return;
+        }
+
+        $validated = Validator::make( ['options' => array_values( $options )], [
+            'options'             => ['present', 'array'],
+            'options.*'           => ['array'],
+            'options.*.value'     => ['nullable', 'string', 'max:255'],
+            'options.*.label'     => ['nullable', 'string', 'max:255'],
+            'options.*.default'   => ['sometimes', 'boolean'],
+            'options.*.image'     => ['nullable', 'string', 'max:2048'],
+            'options.*.image_alt' => ['nullable', 'string', 'max:255'],
+        ] )->validate();
+
+        $options = array_map(
+            fn ( array $option ): array => array_merge(
+                ['value' => (string) ( $option['value'] ?? '' ), 'label' => (string) ( $option['label'] ?? '' )],
+                array_filter( $option, fn ( mixed $value, string $key ): bool => ! in_array( $key, ['value', 'label'], true ) && null !== $value, ARRAY_FILTER_USE_BOTH ),
+            ),
+            $validated['options'] ?? [],
+        );
+        $options = array_values( ChoiceImages::sanitizeOptions( $options ) );
+
+        $this->persistSelectedField( $field, ['field_config' => array_merge( $field->field_config ?? [], ['options' => $options] )] );
+
+        $this->dispatch( 'forms-options-updated', field: $field->uuid, options: $options );
+    }
+
+    /**
+     * Change one setting of one of the selected composite field's sub-inputs.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $key  The sub-input key.
+     * @param  string  $setting  One of CompositeFieldType::SUB_INPUT_SETTINGS.
+     * @param  mixed  $value  The raw input value.
+     *
+     * @throws AuthorizationException When the user may not update the form.
+     */
+    public function updateSubInput( string $key, string $setting, mixed $value ): void
+    {
+        $this->authorizeUpdate();
+
+        $field = $this->getSelectedFieldModel();
+
+        if ( null === $field ) {
+            return;
+        }
+
+        $config = CompositeFieldType::updateSubInputConfig( $field, $key, $setting, $value );
+
+        if ( null === $config ) {
+            unset( $this->selectedField );
+
+            return;
+        }
+
+        $this->persistSelectedField( $field, ['field_config' => $config] );
+    }
+
+    /**
      * Update conditional logic for the selected field.
      *
      * @param  array<string, mixed>  $logic
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function updateConditionalLogic( array $logic ): void
     {
+        $this->authorizeUpdate();
+
         if ( null === $this->selectedFieldId ) {
             return;
         }
@@ -371,9 +686,13 @@ class FormBuilder extends Component
 
     /**
      * Clear conditional logic from the selected field.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function clearConditionalLogic(): void
     {
+        $this->authorizeUpdate();
+
         if ( null === $this->selectedFieldId ) {
             return;
         }
@@ -392,9 +711,13 @@ class FormBuilder extends Component
 
     /**
      * Delete a field.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function deleteField( string $uuid ): void
     {
+        $this->authorizeUpdate();
+
         $field = $this->fieldService->getByUuid( $this->form, $uuid );
 
         if ( $field ) {
@@ -414,9 +737,13 @@ class FormBuilder extends Component
 
     /**
      * Duplicate a field.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function duplicateField( string $uuid ): void
     {
+        $this->authorizeUpdate();
+
         $field = $this->fieldService->getByUuid( $this->form, $uuid );
 
         if ( $field ) {
@@ -434,10 +761,14 @@ class FormBuilder extends Component
      * Reorder fields based on drag-and-drop.
      *
      * @param  array<int, string>  $orderedUuids
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     #[On( 'fields-reordered' )]
     public function reorderFields( array $orderedUuids ): void
     {
+        $this->authorizeUpdate();
+
         $stepId = $this->form->is_multi_step ? $this->activeStepId : null;
 
         $this->fieldService->reorder( $this->form, $orderedUuids, $stepId );
@@ -452,9 +783,13 @@ class FormBuilder extends Component
 
     /**
      * Add a new step to the form.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function addStep(): void
     {
+        $this->authorizeUpdate();
+
         if ( ! $this->form->is_multi_step ) {
             return;
         }
@@ -471,10 +806,12 @@ class FormBuilder extends Component
 
     /**
      * Select a step.
+     *
+     * Since 1.6.0, a step of another form is ignored.
      */
     public function selectStep( int $stepId ): void
     {
-        if ( ! $this->form->is_multi_step ) {
+        if ( ! $this->form->is_multi_step || null === $this->stepService->getById( $this->form, $stepId ) ) {
             return;
         }
 
@@ -487,10 +824,31 @@ class FormBuilder extends Component
     /**
      * Update a step.
      *
+     * Since 1.6.0, only the attributes in EDITABLE_STEP_ATTRIBUTES are
+     * changed (any others are ignored), validated like the step API.
+     *
      * @param  array<string, mixed>  $data
+     *
+     * @throws AuthorizationException When the user may not update the form.
+     * @throws ValidationException When an attribute is not valid.
      */
     public function updateStep( int $stepId, array $data ): void
     {
+        $this->authorizeUpdate();
+
+        $data = array_intersect_key( $data, array_flip( self::EDITABLE_STEP_ATTRIBUTES ) );
+
+        if ( [] === $data ) {
+            return;
+        }
+
+        $data = Validator::make( $data, [
+            'title'            => ['nullable', 'string', 'max:255'],
+            'description'      => ['nullable', 'string', 'max:1000'],
+            'prev_button_text' => ['nullable', 'string', 'max:100'],
+            'next_button_text' => ['nullable', 'string', 'max:100'],
+        ] )->validate();
+
         $step = $this->stepService->getById( $this->form, $stepId );
 
         if ( $step ) {
@@ -503,9 +861,13 @@ class FormBuilder extends Component
 
     /**
      * Delete a step.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function deleteStep( int $stepId ): void
     {
+        $this->authorizeUpdate();
+
         $step = $this->stepService->getById( $this->form, $stepId );
 
         if ( $step && $this->form->steps()->count() > 1 ) {
@@ -530,10 +892,14 @@ class FormBuilder extends Component
      * Reorder steps based on drag-and-drop.
      *
      * @param  array<int, int>  $orderedIds
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     #[On( 'steps-reordered' )]
     public function reorderSteps( array $orderedIds ): void
     {
+        $this->authorizeUpdate();
+
         if ( ! $this->form->is_multi_step ) {
             return;
         }
@@ -548,9 +914,13 @@ class FormBuilder extends Component
      * Enable multi-step mode for the form.
      *
      * Creates a default first step and moves all existing fields to it.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function enableMultiStep(): void
     {
+        $this->authorizeUpdate();
+
         if ( $this->form->is_multi_step ) {
             return;
         }
@@ -576,9 +946,13 @@ class FormBuilder extends Component
      * Disable multi-step mode for the form.
      *
      * Removes all steps and unassigns fields from steps.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function disableMultiStep(): void
     {
+        $this->authorizeUpdate();
+
         if ( ! $this->form->is_multi_step ) {
             return;
         }
@@ -606,9 +980,13 @@ class FormBuilder extends Component
 
     /**
      * Save the form (auto-save trigger).
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function saveForm(): void
     {
+        $this->authorizeUpdate();
+
         if ( ! $this->isDirty ) {
             return;
         }
@@ -647,6 +1025,51 @@ class FormBuilder extends Component
         $this->isDirty = true;
 
         // Trigger auto-save after a delay
-        $this->dispatch( 'auto-save-trigger');
+        $this->dispatch( 'auto-save-trigger' );
+    }
+
+    /**
+     * Checks that the current user may update the form being built.
+     *
+     * Every action that changes the form calls this, since a Livewire action
+     * is a request of its own that the route's middleware never sees.
+     *
+     * @since 1.6.0
+     *
+     * @throws AuthorizationException When the user may not update the form.
+     */
+    protected function authorizeUpdate(): void
+    {
+        $this->authorize( 'update', $this->form );
+    }
+
+    /**
+     * Get the selected field model, if a field is selected.
+     *
+     * @since 1.6.0
+     */
+    protected function getSelectedFieldModel(): ?FormField
+    {
+        if ( null === $this->selectedFieldId ) {
+            return null;
+        }
+
+        return $this->fieldService->getByUuid( $this->form, $this->selectedFieldId );
+    }
+
+    /**
+     * Save changes to the selected field and refresh the editor state.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormField  $field  The selected field.
+     * @param  array<string, mixed>  $data  The attributes to update.
+     */
+    protected function persistSelectedField( FormField $field, array $data ): void
+    {
+        $this->fieldService->update( $field, $data );
+        $this->markDirty();
+
+        unset( $this->fields, $this->selectedField );
     }
 }

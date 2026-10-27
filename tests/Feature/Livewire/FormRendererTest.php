@@ -7,6 +7,10 @@ use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormStep;
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Security\SecurityServiceProvider;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 describe( 'FormRenderer Component', function (): void {
@@ -108,7 +112,7 @@ describe( 'FormRenderer Component', function (): void {
 
             Livewire::test( FormRenderer::class, ['form' => $form] )
                 ->set( 'honeypot', '' ) // Ensure honeypot is empty
-                ->set( 'formLoadedAt', time() - 10 ) // Ensure enough time has passed
+                ->afterSpamDelay() // Ensure enough time has passed
                 ->set( 'formData.name', '' )
                 ->call( 'submit' )
                 ->assertHasErrors( ['formData.name' => 'required'] );
@@ -120,7 +124,7 @@ describe( 'FormRenderer Component', function (): void {
 
             Livewire::test( FormRenderer::class, ['form' => $form] )
                 ->set( 'honeypot', '' ) // Ensure honeypot is empty
-                ->set( 'formLoadedAt', time() - 10 ) // Ensure enough time has passed
+                ->afterSpamDelay() // Ensure enough time has passed
                 ->set( 'formData.email', 'invalid-email' )
                 ->call( 'submit' )
                 ->assertHasErrors( ['formData.email' => 'email'] );
@@ -136,7 +140,7 @@ describe( 'FormRenderer Component', function (): void {
 
             Livewire::test( FormRenderer::class, ['form' => $form] )
                 ->set( 'formData.name', 'John Doe' )
-                ->set( 'formLoadedAt', time() - 10 ) // Simulate time passing
+                ->afterSpamDelay() // Simulate time passing
                 ->call( 'submit' )
                 ->assertHasNoErrors();
         } );
@@ -153,7 +157,7 @@ describe( 'FormRenderer Component', function (): void {
 
             Livewire::test( FormRenderer::class, ['form' => $form] )
                 ->set( 'formData.name', 'John Doe' )
-                ->set( 'formLoadedAt', time() - 10 ) // Simulate time passing
+                ->afterSpamDelay() // Simulate time passing
                 ->call( 'submit' )
                 ->assertSet( 'isSubmitted', true )
                 ->assertDispatched( 'form-submitted' );
@@ -171,7 +175,7 @@ describe( 'FormRenderer Component', function (): void {
 
             Livewire::test( FormRenderer::class, ['form' => $form] )
                 ->set( 'formData.email', 'test@example.com' )
-                ->set( 'formLoadedAt', time() - 10 )
+                ->afterSpamDelay()
                 ->call( 'submit' );
 
             $submission = FormSubmission::where( 'form_id', $form->id )->first();
@@ -186,7 +190,7 @@ describe( 'FormRenderer Component', function (): void {
             ] );
 
             Livewire::test( FormRenderer::class, ['form' => $form] )
-                ->set( 'formLoadedAt', time() - 10 )
+                ->afterSpamDelay()
                 ->call( 'submit' )
                 ->assertDispatched( 'redirect-to', url: 'https://example.com/thank-you' );
         } );
@@ -328,7 +332,7 @@ describe( 'FormRenderer Multi-Step', function (): void {
             ->set( 'formData.name', 'John Doe' )
             ->call( 'nextStep' )
             ->set( 'formData.email', 'john@example.com' )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->call( 'submit' )
             ->assertSet( 'isSubmitted', true );
 
@@ -360,7 +364,7 @@ describe( 'FormRenderer Spam Protection', function (): void {
 
             Livewire::test( FormRenderer::class, ['form' => $form] )
                 ->set( 'honeypot', 'spam-value' )
-                ->set( 'formLoadedAt', time() - 10 )
+                ->afterSpamDelay()
                 ->call( 'submit' )
                 ->assertSet( 'isSubmitted', true ) // Appears successful
                 ->assertDispatched( 'form-submitted', formId: $form->id, isSpam: true );
@@ -374,7 +378,7 @@ describe( 'FormRenderer Spam Protection', function (): void {
 
             Livewire::test( FormRenderer::class, ['form' => $form] )
                 ->set( 'honeypot', '' )
-                ->set( 'formLoadedAt', time() - 10 )
+                ->afterSpamDelay()
                 ->call( 'submit' )
                 ->assertSet( 'isSubmitted', true );
 
@@ -387,8 +391,7 @@ describe( 'FormRenderer Spam Protection', function (): void {
             $form = Form::factory()->create();
 
             Livewire::test( FormRenderer::class, ['form' => $form] )
-                ->set( 'formLoadedAt', time() ) // Just loaded
-                ->call( 'submit' )
+                ->call( 'submit' ) // Just loaded
                 ->assertSet( 'isSubmitted', true ) // Appears successful
                 ->assertDispatched( 'form-submitted', formId: $form->id, isSpam: true );
 
@@ -400,7 +403,7 @@ describe( 'FormRenderer Spam Protection', function (): void {
             $form = Form::factory()->create();
 
             Livewire::test( FormRenderer::class, ['form' => $form] )
-                ->set( 'formLoadedAt', time() - 10 ) // 10 seconds ago
+                ->afterSpamDelay() // 10 seconds ago
                 ->call( 'submit' )
                 ->assertSet( 'isSubmitted', true );
 
@@ -417,13 +420,13 @@ describe( 'FormRenderer Spam Protection', function (): void {
 
             // First few submissions should work
             for ( $i = 0; $i < 5; $i++ ) {
-                $component->set( 'formLoadedAt', time() - 10 )
+                $component->afterSpamDelay()
                     ->call( 'submit' )
                     ->call( 'resetForm' );
             }
 
             // The 6th should be rate limited
-            $component->set( 'formLoadedAt', time() - 10 )
+            $component->afterSpamDelay()
                 ->call( 'submit' );
 
             expect( $component->get( 'errorMessage' ) )->toContain( 'Too many submissions' );
@@ -507,11 +510,10 @@ describe( 'FormRenderer Conditional Logic', function (): void {
             ],
         ] );
 
-        // Set up component with the hidden field in hiddenFields
+        // The server hides the field itself, since category is not 'special'
         $component = Livewire::test( FormRenderer::class, ['form' => $form] )
             ->set( 'formData.category', 'general' )
-            ->set( 'hiddenFields', ['hidden_required' => true] )
-            ->set( 'formLoadedAt', time() - 10 )
+            ->afterSpamDelay()
             ->call( 'submit' );
 
         // Should not have validation error for hidden_required since it's hidden
@@ -545,4 +547,448 @@ describe( 'FormRenderer Default Values', function (): void {
 
         expect( $component->get( 'formData.interests' ) )->toBe( [] );
     } );
+} );
+
+describe( 'FormRenderer File Fields (issues #79, #80)', function (): void {
+    beforeEach( function (): void {
+        Storage::fake( 'form-uploads' );
+
+        $this->form = Form::factory()->create();
+    } );
+
+    it( 'does not seed formData for file fields', function (): void {
+        FormField::factory()->for( $this->form )->file()->create( ['name' => 'resume'] );
+
+        $component = Livewire::test( FormRenderer::class, ['form' => $this->form] );
+
+        expect( $component->get( 'formData' ) )->not->toHaveKey( 'resume' );
+    } );
+
+    it( 'accepts a required file field once a file is uploaded', function (): void {
+        FormField::factory()->for( $this->form )->file()->required()->create( ['name' => 'resume'] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->afterSpamDelay()
+            ->set( 'files.resume', UploadedFile::fake()->create( 'resume.pdf', 100 ) )
+            ->call( 'submit' )
+            ->assertHasNoErrors()
+            ->assertSet( 'isSubmitted', true );
+
+        $submission = FormSubmission::where( 'form_id', $this->form->id )->first();
+
+        expect( $submission )->not->toBeNull()
+            ->and( $submission->uploads )->toHaveCount( 1 );
+    } );
+
+    it( 'reports a missing required file under files.*', function (): void {
+        FormField::factory()->for( $this->form )->file()->required()->create( ['name' => 'resume', 'label' => 'Resume'] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->afterSpamDelay()
+            ->call( 'submit' )
+            ->assertHasErrors( ['files.resume' => 'required'] )
+            ->assertSee( 'The Resume field is required.' );
+    } );
+
+    it( 'validates an optional file against the builder settings', function ( string $name, int $kilobytes, string $rule ): void {
+        // Settings as the 1.6.0 builders save them: field_config only.
+        FormField::factory()->for( $this->form )->create( [
+            'name'         => 'attachment',
+            'type'         => 'file',
+            'is_required'  => false,
+            'field_config' => ['max_size' => 100, 'allowed_types' => ['pdf']],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->afterSpamDelay()
+            ->set( 'files.attachment', UploadedFile::fake()->create( $name, $kilobytes ) )
+            ->call( 'submit' )
+            ->assertHasErrors( ['files.attachment' => $rule] )
+            ->assertSet( 'isSubmitted', false );
+    } )->with( [
+        'disallowed type' => ['photo.png', 50, 'mimes'],
+        'too large'       => ['report.pdf', 2048, 'max'],
+    ] );
+
+    it( 'enforces settings saved by a pre-1.6.0 builder in validation_rules', function (): void {
+        FormField::factory()->for( $this->form )->create( [
+            'name'             => 'attachment',
+            'type'             => 'file',
+            'field_config'     => ['max_size' => 5120, 'allowed_types' => ['pdf', 'png']],
+            'validation_rules' => ['max_size' => 100, 'allowed_types' => ['pdf']],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->afterSpamDelay()
+            ->set( 'files.attachment', UploadedFile::fake()->create( 'photo.png', 50 ) )
+            ->call( 'submit' )
+            ->assertHasErrors( ['files.attachment' => 'mimes'] );
+    } );
+
+    it( 'renders the accept attribute and size hint from field_config', function (): void {
+        FormField::factory()->for( $this->form )->create( [
+            'name'         => 'attachment',
+            'type'         => 'file',
+            'field_config' => ['max_size' => 100, 'allowed_types' => ['pdf', 'docx']],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->assertSeeHtml( 'accept=".pdf,.docx"' )
+            ->assertSee( 'Maximum file size: 100 KB' );
+    } );
+} );
+
+describe( 'FormRenderer Required Checkbox (issue #81)', function (): void {
+    beforeEach( function (): void {
+        $this->form = Form::factory()->create();
+        FormField::factory()->for( $this->form )->required()->create( [
+            'name'  => 'terms',
+            'label' => 'I agree to the terms',
+            'type'  => 'checkbox',
+        ] );
+    } );
+
+    it( 'rejects a required checkbox that was checked then unchecked', function (): void {
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->afterSpamDelay()
+            ->set( 'formData.terms', true )
+            ->set( 'formData.terms', false )
+            ->call( 'submit' )
+            ->assertHasErrors( ['formData.terms' => 'accepted'] )
+            ->assertSee( 'The I agree to the terms field is required.' );
+
+        expect( FormSubmission::where( 'form_id', $this->form->id )->count() )->toBe( 0 );
+    } );
+
+    it( 'rejects a required checkbox that was never touched', function (): void {
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->afterSpamDelay()
+            ->call( 'submit' )
+            ->assertHasErrors( ['formData.terms' => 'accepted'] );
+    } );
+
+    it( 'accepts a checked required checkbox', function (): void {
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->afterSpamDelay()
+            ->set( 'formData.terms', true )
+            ->call( 'submit' )
+            ->assertHasNoErrors()
+            ->assertSet( 'isSubmitted', true );
+    } );
+} );
+
+describe( 'FormRenderer Layout Content (issue #82)', function (): void {
+    beforeEach( function (): void {
+        // The html partial sanitizes through artisanpack-ui/security's kses().
+        $this->app->register( SecurityServiceProvider::class );
+
+        $this->form = Form::factory()->create();
+    } );
+
+    it( 'renders layout content from its canonical column', function (): void {
+        FormField::factory()->for( $this->form )->create( ['type' => 'heading', 'name' => 'h', 'label' => 'Heading From Label'] );
+        FormField::factory()->for( $this->form )->create( [
+            'type'         => 'paragraph',
+            'name'         => 'p',
+            'label'        => 'Information',
+            'field_config' => ['content' => 'Paragraph from content'],
+        ] );
+        FormField::factory()->for( $this->form )->create( [
+            'type'         => 'html',
+            'name'         => 'html_block',
+            'field_config' => ['content' => '<strong>Html from content</strong>'],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->assertSee( 'Heading From Label' )
+            ->assertSee( 'Paragraph from content' )
+            ->assertSee( 'Html from content' );
+    } );
+
+    it( 'sanitizes html content before rendering it', function (): void {
+        FormField::factory()->for( $this->form )->create( [
+            'type'         => 'html',
+            'name'         => 'html_block',
+            'field_config' => ['content' => '<b>Safe</b><script>alert("xss")</script><img src="/a.png" onerror="alert(1)">'],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->assertSeeHtml( '<b>Safe</b>' )
+            ->assertDontSeeHtml( '<script>alert("xss")</script>' )
+            ->assertDontSeeHtml( 'onerror' );
+    } );
+
+    it( 'renders legacy content saved to default_value by the React and Vue builders', function (): void {
+        FormField::factory()->for( $this->form )->create( [
+            'type'          => 'heading',
+            'name'          => 'h',
+            'label'         => 'Section Heading',
+            'default_value' => 'Legacy heading',
+        ] );
+        FormField::factory()->for( $this->form )->create( [
+            'type'          => 'html',
+            'name'          => 'html_block',
+            'default_value' => '<em>Legacy html</em>',
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $this->form] )
+            ->assertSee( 'Legacy heading' )
+            ->assertDontSee( 'Section Heading' )
+            ->assertSee( 'Legacy html' );
+    } );
+} );
+
+describe( 'FormRenderer unsupported multiple flags (issue #84)', function (): void {
+    it( 'renders a single-value input even when field_config.multiple is set', function ( string $type ): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->create( [
+            'type'         => $type,
+            'name'         => 'pick',
+            'field_config' => [
+                'multiple' => true,
+                'options'  => [['value' => 'a', 'label' => 'A']],
+            ],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->assertSeeHtml( 'wire:model.live="formData.pick"' )
+            ->assertDontSeeHtml( 'multiple' );
+    } )->with( ['select'] ); // File fields support `multiple` since #114 (see MultiFileUploadTest).
+
+    it( 'stores one value for a select whose config still has multiple set', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->create( [
+            'type'         => 'select',
+            'name'         => 'pick',
+            'field_config' => [
+                'multiple' => true,
+                'options'  => [['value' => 'a', 'label' => 'A'], ['value' => 'b', 'label' => 'B']],
+            ],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->set( 'formData.pick', 'b' )
+            ->afterSpamDelay()
+            ->call( 'submit' )
+            ->assertHasNoErrors();
+
+        expect( FormSubmission::query()->firstOrFail()->values->first()->value )->toBe( 'b' );
+    } );
+} );
+
+describe( 'FormRenderer date field', function (): void {
+    it( 'renders the date input as the .input element itself so its text is centred', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->required()->create( [
+            'type'             => 'date',
+            'name'             => 'starts',
+            'label'            => 'Start Date',
+            'help_text'        => 'Pick a day',
+            'validation_rules' => ['min_date' => '2026-01-01', 'max_date' => '2026-12-31'],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->assertSeeHtml( 'type="date"' )
+            ->assertSeeHtml( 'wire:model.live="formData.starts"' )
+            ->assertSeeHtml( 'class="input input-bordered w-full' )
+            ->assertSeeHtml( 'min="2026-01-01"' )
+            ->assertSeeHtml( 'max="2026-12-31"' )
+            ->assertSeeHtml( 'aria-describedby="hint-f' . $form->id . '-starts"' )
+            ->assertDontSeeHtml( 'aria-invalid' )
+            ->assertDontSeeHtml( 'aria-label="Starts"' )
+            ->assertSee( 'Start Date' );
+    } );
+
+    it( 'marks the date input invalid when it has an error', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->required()->create( ['type' => 'date', 'name' => 'starts', 'help_text' => 'Pick a day'] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->afterSpamDelay()
+            ->call( 'submit' )
+            ->assertHasErrors( ['formData.starts' => 'required'] )
+            ->assertSeeHtml( 'aria-invalid="true"' )
+            ->assertSeeHtml( 'aria-describedby="error-f' . $form->id . '-starts hint-f' . $form->id . '-starts"' );
+    } );
+
+    it( 'gives an unlabelled date input an accessible name', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->create( ['type' => 'date', 'name' => 'start_date', 'label' => ''] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->assertSeeHtml( 'aria-label="Start Date"' );
+    } );
+} );
+
+describe( 'FormRenderer time field (issue #148)', function (): void {
+    it( 'leaves the time input unmarked while it has no error', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->time()->required()->create( ['name' => 'starts_at', 'label' => 'Start Time'] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->assertSeeHtml( 'type="time"' )
+            ->assertDontSeeHtml( 'aria-invalid' )
+            ->assertDontSeeHtml( 'aria-label="Starts At"' );
+    } );
+
+    it( 'marks the time input invalid when it has an error', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->time()->required()->create( ['name' => 'starts_at', 'label' => 'Start Time'] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->afterSpamDelay()
+            ->call( 'submit' )
+            ->assertHasErrors( ['formData.starts_at' => 'required'] )
+            ->assertSeeHtml( 'aria-invalid="true"' )
+            ->assertSeeHtml( 'aria-describedby="error-f' . $form->id . '-starts_at' );
+    } );
+
+    it( 'gives an unlabelled time input an accessible name', function ( string $label ): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->time()->create( ['name' => 'starts_at', 'label' => $label] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->assertSeeHtml( 'aria-label="Starts At"' );
+    } )->with( ['empty' => '', 'whitespace only' => '   '] );
+} );
+
+describe( 'FormRenderer custom-markup partials mark errors (issue #148)', function (): void {
+    it( 'marks the input or radio group invalid only when the field has an error', function ( string $type, array $attributes, string $marked ): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->required()->create( array_merge( ['type' => $type, 'name' => 'answer', 'label' => 'Answer'], $attributes ) );
+
+        $component = Livewire::test( FormRenderer::class, ['form' => $form] );
+
+        expect( substr_count( $component->html(), 'aria-invalid="true"' ) )->toBe( 0 );
+
+        $component->afterSpamDelay()->call( 'submit' )->assertHasErrors();
+
+        $html = $component->html();
+
+        expect( substr_count( $html, 'aria-invalid="true"' ) )->toBeGreaterThan( 0 )
+            ->and( $html )->toMatch( $marked );
+    } )->with( [
+        'checkbox'       => ['checkbox', [], '/<input[^>]*type="checkbox"[^>]*aria-invalid="true"/s'],
+        'checkbox group' => ['checkbox_group', ['field_config' => ['options' => [['value' => 'a', 'label' => 'A'], ['value' => 'b', 'label' => 'B']]]], '/<input[^>]*type="checkbox"[^>]*value="b"[^>]*aria-invalid="true"/s'],
+        'radio'          => ['radio', ['field_config' => ['options' => [['value' => 'a', 'label' => 'A'], ['value' => 'b', 'label' => 'B']]]], '/role="radiogroup"[^>]*aria-invalid="true"/s'],
+        'file'           => ['file', [], '/<input[^>]*type="file"[^>]*aria-invalid="true"/s'],
+    ] );
+
+    it( 'gives an unlabelled file input an accessible name', function ( bool $multiple, string $label ): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->create( ['type' => 'file', 'name' => 'resume_file', 'label' => $label, 'field_config' => ['multiple' => $multiple]] );
+
+        $component = Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->assertSeeHtml( 'aria-label="Resume File"' );
+
+        if ( $multiple ) {
+            $component->assertSeeHtml( 'aria-label="Files for Resume File"' );
+        }
+    } )->with( ['single' => false, 'multiple' => true] )->with( ['empty' => '', 'whitespace only' => '   '] );
+} );
+
+describe( 'FormRenderer locked state (issue #151)', function (): void {
+    it( 'rejects setting server-controlled state from the browser', function ( string $property, mixed $value ): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->create( ['type' => 'text', 'name' => 'name'] );
+
+        expect( fn () => Livewire::test( FormRenderer::class, ['form' => $form] )->set( $property, $value ) )
+            ->toThrow( CannotUpdateLockedPropertyException::class );
+    } )->with( [
+        'formLoadedAt'     => ['formLoadedAt', 0],
+        'currentStepIndex' => ['currentStepIndex', 1],
+        'hiddenFields'     => ['hiddenFields', ['name' => true]],
+    ] );
+
+    it( 'still catches a submission sent too soon after the form loaded', function (): void {
+        $form = Form::factory()->create();
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->call( 'submit' )
+            ->assertDispatched( 'form-submitted', formId: $form->id, isSpam: true );
+
+        expect( FormSubmission::count() )->toBe( 0 );
+    } );
+
+    it( 'still submits once the minimum time has passed', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->create( ['type' => 'text', 'name' => 'name'] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->set( 'formData.name', 'Jane' )
+            ->afterSpamDelay()
+            ->call( 'submit' )
+            ->assertHasNoErrors()
+            ->assertSet( 'isSubmitted', true );
+
+        expect( FormSubmission::count() )->toBe( 1 );
+    } );
+
+    it( 'works out hidden fields on the server as the form data changes', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->create( ['type' => 'text', 'name' => 'category'] );
+        FormField::factory()->for( $form )->required()->create( [
+            'type'              => 'text',
+            'name'              => 'details',
+            'conditional_logic' => ['action' => 'show', 'logic' => 'all', 'rules' => [['field' => 'category', 'operator' => 'equals', 'value' => 'special']]],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->set( 'formData.category', 'general' )
+            ->assertSet( 'hiddenFields.details', true )
+            ->set( 'formData.category', 'special' )
+            ->assertSet( 'hiddenFields.details', false )
+            ->afterSpamDelay()
+            ->call( 'submit' )
+            ->assertHasErrors( ['formData.details' => 'required'] );
+    } );
+
+    it( 'works hidden fields out again when the form is reset', function (): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->create( ['type' => 'text', 'name' => 'category'] );
+        FormField::factory()->for( $form )->create( [
+            'type'              => 'text',
+            'name'              => 'details',
+            'conditional_logic' => ['action' => 'show', 'logic' => 'all', 'rules' => [['field' => 'category', 'operator' => 'equals', 'value' => 'special']]],
+        ] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->assertSet( 'hiddenFields.details', true )
+            ->set( 'formData.category', 'special' )
+            ->assertSet( 'hiddenFields.details', false )
+            ->call( 'resetForm' )
+            ->assertSet( 'formData.category', '' )
+            ->assertSet( 'hiddenFields.details', true );
+    } );
+
+    it( 'no longer syncs hidden fields from the browser', function (): void {
+        $view = file_get_contents( __DIR__ . '/../../../resources/views/livewire/form-renderer.blade.php' );
+
+        expect( $view )->not->toContain( "\$wire.set('hiddenFields'" );
+    } );
+} );
+
+describe( 'FormRenderer layout field values (issue #152)', function (): void {
+    beforeEach( function (): void {
+        // The html partial sanitizes through artisanpack-ui/security's kses().
+        $this->app->register( SecurityServiceProvider::class );
+    } );
+
+    it( 'does not store a value sent for a layout field', function ( string $type ): void {
+        $form = Form::factory()->create();
+        FormField::factory()->for( $form )->create( ['type' => $type, 'name' => 'intro'] );
+        FormField::factory()->for( $form )->create( ['type' => 'text', 'name' => 'name'] );
+
+        Livewire::test( FormRenderer::class, ['form' => $form] )
+            ->set( 'formData.intro', [[1]] )
+            ->set( 'formData.name', 'Jane' )
+            ->afterSpamDelay()
+            ->call( 'submit' )
+            ->assertHasNoErrors()
+            ->assertSet( 'isSubmitted', true );
+
+        $values = FormSubmission::firstOrFail()->values;
+
+        expect( $values->pluck( 'field_name' )->all() )->toBe( ['name'] );
+    } )->with( ['heading', 'paragraph', 'divider', 'html'] );
 } );

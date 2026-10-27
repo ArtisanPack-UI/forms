@@ -3,7 +3,10 @@
  *
  * Fetches a form definition from the API, manages field values,
  * validation errors, file uploads, conditional logic, multi-step
- * navigation, and form submission.
+ * navigation, and form submission. Fields can add values to a submission
+ * through the form's submit hooks, such as an invisible CAPTCHA's token
+ * (since 1.6.0). Calculation fields are worked out from the other values as
+ * they change (since 1.6.0; see `shared/calculation.ts`).
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -11,7 +14,7 @@
  * @since      1.1.0
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import type {
 	FormField,
@@ -19,7 +22,19 @@ import type {
 	FormStep,
 	SubmitFormResponse,
 } from '../../types/artisanpack-forms';
-import { getHiddenFields } from '../../shared/conditionalLogic';
+import { resolveCalculatedValues } from '../../shared/calculation';
+import { createSubmitHooks, SubmitHookError } from '../../shared/captcha';
+import type { SubmitHooks } from '../../shared/captcha';
+import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composite';
+import { createIdPrefix, withIdPrefix } from '../../shared/domIds';
+import {
+	getConfirmationKey,
+	getInitialFieldValue,
+	requiresEmailConfirmation,
+	resolveOtherChoices,
+} from '../../shared/fieldSettings';
+import { t } from '../../shared/i18n';
+import { appendSubmissionValue, mapServerErrors, toFormValue } from '../../shared/submission';
 import { validateFields } from '../../shared/validation';
 
 /** Configuration options for the useForm hook. */
@@ -34,6 +49,13 @@ export interface UseFormOptions {
 	onError?: ( error: Error ) => void;
 	/** Whether to validate on the client before submitting. Defaults to true. */
 	clientValidation?: boolean;
+	/**
+	 * Values for fields with dynamic population on, keyed by parameter name.
+	 * Takes precedence over the page's query string and the field's default.
+	 *
+	 * @since 1.6.0
+	 */
+	prefill?: Record<string, unknown>;
 }
 
 /** Return type of the useForm hook. */
@@ -46,6 +68,12 @@ export interface UseFormReturn {
 	errors: Record<string, string[]>;
 	/** File uploads keyed by field name. */
 	files: Record<string, File | File[]>;
+	/**
+	 * Text typed into each field's "Other" choice, keyed by field name. The
+	 * choice stays selected in `values` and is replaced with this text on
+	 * submit (since 1.6.0).
+	 */
+	otherValues: Record<string, string>;
 	/** Map of field names to hidden state (true = hidden by conditional logic). */
 	hiddenFields: Record<string, boolean>;
 	/** Whether the form definition is loading. */
@@ -58,6 +86,14 @@ export interface UseFormReturn {
 	currentStep: number;
 	/** Total number of steps (1 for single-step forms). */
 	totalSteps: number;
+	/** A multi-step form's steps in order; empty for single-step forms (since 1.6.0). */
+	steps: FormStep[];
+	/**
+	 * Counts the times validation failed (a step, or the submission on the
+	 * client or the server), so the renderer can move focus to the first
+	 * invalid field each time (since 1.6.0).
+	 */
+	validationFailures: number;
 	/** Progress percentage (0-100) for multi-step forms. */
 	progressPercentage: number;
 	/** Fields visible in the current step (or all fields for single-step). */
@@ -66,10 +102,18 @@ export interface UseFormReturn {
 	currentStepData: FormStep | null;
 	/** Error from loading the form definition, if any. */
 	loadError: string | null;
+	/**
+	 * The prefix this form instance's element IDs start with, so two forms on
+	 * one page do not share IDs. Each field carries it as `id_prefix` (since
+	 * 1.6.0; see `fieldIdKey()`).
+	 */
+	idPrefix: string;
 	/** Sets a single field value. */
 	setValue: ( name: string, value: unknown ) => void;
 	/** Sets a file for a field. */
 	setFile: ( name: string, file: File | File[] ) => void;
+	/** Sets the text typed into a field's "Other" choice (since 1.6.0). */
+	setOtherValue: ( name: string, text: string ) => void;
 	/** Removes a file for a field. */
 	removeFile: ( name: string ) => void;
 	/** Navigates to the next step with validation. Returns true if successful. */
@@ -82,10 +126,18 @@ export interface UseFormReturn {
 	submit: () => Promise<void>;
 	/** Resets the form to its initial state. */
 	reset: () => void;
+	/**
+	 * The form's submit hook registry. Field components register with it
+	 * (through `SubmitHooksContext`) to add values just before the form is
+	 * sent and to learn how the submission went.
+	 *
+	 * @since 1.6.0
+	 */
+	submitHooks: SubmitHooks;
 }
 
 /** Layout field types that do not collect data. */
-const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );
+const LAYOUT_FIELDS = new Set( ['section', 'heading', 'paragraph', 'divider', 'html'] );
 
 /**
  * React hook for managing ArtisanPack form state.
@@ -109,19 +161,44 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		onSuccess,
 		onError,
 		clientValidation = true,
+		prefill,
 	} = options;
 
 	const [form, setForm] = useState<FormRenderData | null>( null );
-	const [values, setValues] = useState<Record<string, unknown>>( {} );
+	const [enteredValues, setValues] = useState<Record<string, unknown>>( {} );
 	const [errors, setErrors] = useState<Record<string, string[]>>( {} );
 	const [files, setFiles] = useState<Record<string, File | File[]>>( {} );
+	const [otherValues, setOtherValues] = useState<Record<string, string>>( {} );
 	const [isLoading, setIsLoading] = useState( true );
 	const [isSubmitting, setIsSubmitting] = useState( false );
 	const [isSubmitted, setIsSubmitted] = useState( false );
 	const [currentStep, setCurrentStep] = useState( 0 );
 	const [loadError, setLoadError] = useState<string | null>( null );
+	const [validationFailures, setValidationFailures] = useState( 0 );
+
+	// Count a failed validation, so the renderer moves focus to what failed (since 1.6.0)
+	const recordValidationFailure = useCallback( () => setValidationFailures( ( count ) => count + 1 ), [] );
 
 	const formLoadedAt = useRef<number>( 0 );
+
+	// This form instance's ID prefix, stable across renders and server rendering (since 1.6.0)
+	const reactId = useId();
+	const idPrefix = useMemo( () => createIdPrefix( reactId ), [reactId] );
+	const idPrefixRef = useRef( idPrefix );
+	idPrefixRef.current = idPrefix;
+
+	// One registry for the hook's lifetime, so fields keep their registrations across renders.
+	const submitHooksRef = useRef<SubmitHooks | null>( null );
+
+	if ( !submitHooksRef.current ) {
+		submitHooksRef.current = createSubmitHooks();
+	}
+
+	const submitHooks = submitHooksRef.current;
+
+	// Kept in a ref so a new prefill object on each render does not refetch the form.
+	const prefillRef = useRef( prefill );
+	prefillRef.current = prefill;
 
 	// Fetch the form definition
 	useEffect( () => {
@@ -136,7 +213,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				const response = await fetch( url );
 
 				if ( !response.ok ) {
-					throw new Error( `Failed to load form: ${response.statusText}` );
+					throw new Error( t( 'Failed to load form: :status', { status: response.statusText } ) );
 				}
 
 				const data: { data: FormRenderData } = await response.json();
@@ -145,7 +222,8 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 					return;
 				}
 
-				setForm( data.data );
+				// Each field carries the instance's ID prefix for its element IDs (since 1.6.0)
+				setForm( { ...data.data, fields: withIdPrefix( data.data.fields, idPrefixRef.current ) } );
 				formLoadedAt.current = Math.floor( Date.now() / 1000 );
 
 				// Initialize default values
@@ -156,21 +234,18 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 						continue;
 					}
 
-					if ( field.type === 'checkbox_group' || field.type === 'select_multiple' ) {
-						defaults[field.name] = typeof field.default_value === 'string' && field.default_value
-							? field.default_value.split( ',' ).map( ( v ) => v.trim() )
-							: [];
-					} else if ( field.type === 'checkbox' ) {
-						defaults[field.name] = field.default_value === '1' || field.default_value === 'true';
-					} else {
-						defaults[field.name] = field.default_value ?? '';
+					defaults[field.name] = getInitialFieldValue( field, { prefill: prefillRef.current } );
+
+					// The confirmation starts as the email, mirroring Livewire's `buildInitialFormData()`.
+					if ( requiresEmailConfirmation( field ) && typeof defaults[field.name] === 'string' ) {
+						defaults[getConfirmationKey( field )] = defaults[field.name];
 					}
 				}
 
 				setValues( defaults );
 			} catch ( err ) {
 				if ( !cancelled ) {
-					const message = err instanceof Error ? err.message : 'Failed to load form.';
+					const message = err instanceof Error ? err.message : t( 'Failed to load form.' );
 					setLoadError( message );
 				}
 			} finally {
@@ -187,14 +262,14 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		};
 	}, [baseUrl, formSlug] );
 
-	// Compute hidden fields from conditional logic
-	const hiddenFields = useMemo( () => {
+	// Work out calculations and hidden fields from conditional logic (since 1.6.0)
+	const { values, hiddenFields } = useMemo( () => {
 		if ( !form ) {
-			return {};
+			return { values: enteredValues, hiddenFields: {} };
 		}
 
-		return getHiddenFields( form.fields, values );
-	}, [form, values] );
+		return resolveCalculatedValues( form.fields, enteredValues );
+	}, [form, enteredValues] );
 
 	// Compute all fields for the entire form (with steps resolved)
 	const allFields = useMemo( () => {
@@ -251,8 +326,50 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		return Math.round( ( ( currentStep + 1 ) / totalSteps ) * 100 );
 	}, [currentStep, totalSteps] );
 
+	// The latest values, so setValue can compare a composite field's parts.
+	const valuesRef = useRef( values );
+	valuesRef.current = values;
+
+	// Email fields by their confirmation key, so a confirmation change clears the email's errors.
+	const confirmationFields = useMemo( () => {
+		const map: Record<string, string> = {};
+
+		for ( const field of allFields ) {
+			if ( requiresEmailConfirmation( field ) ) {
+				map[getConfirmationKey( field )] = field.name;
+			}
+		}
+
+		return map;
+	}, [allFields] );
+
+	const confirmationFieldsRef = useRef( confirmationFields );
+	confirmationFieldsRef.current = confirmationFields;
+
 	const setValue = useCallback( ( name: string, value: unknown ) => {
+		const previous = valuesRef.current[name];
+		const confirmedField = Object.prototype.hasOwnProperty.call( confirmationFieldsRef.current, name )
+			? confirmationFieldsRef.current[name]
+			: undefined;
+
+		valuesRef.current = { ...valuesRef.current, [name]: value };
 		setValues( ( prev ) => ( { ...prev, [name]: value } ) );
+		// A composite field's errors are keyed by sub-input; only the changed parts are cleared.
+		setErrors( ( prev ) => clearChangedFieldErrors( prev, name, previous, value ) );
+
+		// A confirmation mismatch is its email field's error.
+		if ( confirmedField !== undefined ) {
+			setErrors( ( prev ) => {
+				const next = { ...prev };
+				delete next[confirmedField];
+
+				return next;
+			} );
+		}
+	}, [] );
+
+	const setFile = useCallback( ( name: string, file: File | File[] ) => {
+		setFiles( ( prev ) => ( { ...prev, [name]: file } ) );
 		setErrors( ( prev ) => {
 			const next = { ...prev };
 			delete next[name];
@@ -261,8 +378,8 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		} );
 	}, [] );
 
-	const setFile = useCallback( ( name: string, file: File | File[] ) => {
-		setFiles( ( prev ) => ( { ...prev, [name]: file } ) );
+	const setOtherValue = useCallback( ( name: string, text: string ) => {
+		setOtherValues( ( prev ) => ( { ...prev, [name]: text } ) );
 		setErrors( ( prev ) => {
 			const next = { ...prev };
 			delete next[name];
@@ -289,9 +406,14 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				return {};
 			}
 
-			return validateFields( fieldsToValidate, values, hiddenFields, files );
+			return validateFields(
+				fieldsToValidate,
+				resolveOtherChoices( fieldsToValidate, values, otherValues ),
+				hiddenFields,
+				files,
+			);
 		},
-		[values, hiddenFields, files, clientValidation],
+		[values, otherValues, hiddenFields, files, clientValidation],
 	);
 
 	const nextStep = useCallback( (): boolean => {
@@ -303,6 +425,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 		if ( Object.keys( stepErrors ).length > 0 ) {
 			setErrors( ( prev ) => ( { ...prev, ...stepErrors } ) );
+			recordValidationFailure();
 
 			return false;
 		}
@@ -314,7 +437,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		}
 
 		return false;
-	}, [form, currentFields, currentStep, totalSteps, validateCurrentFields] );
+	}, [form, currentFields, currentStep, totalSteps, validateCurrentFields, recordValidationFailure] );
 
 	const prevStep = useCallback( () => {
 		if ( currentStep > 0 ) {
@@ -340,13 +463,14 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 			if ( Object.keys( stepErrors ).length > 0 ) {
 				setErrors( ( prev ) => ( { ...prev, ...stepErrors } ) );
+				recordValidationFailure();
 
 				return;
 			}
 
 			setCurrentStep( step );
 		},
-		[totalSteps, currentStep, currentFields, validateCurrentFields],
+		[totalSteps, currentStep, currentFields, validateCurrentFields, recordValidationFailure],
 	);
 
 	const submit = useCallback( async () => {
@@ -362,10 +486,11 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 		if ( Object.keys( validationErrors ).length > 0 ) {
 			setErrors( validationErrors );
+			recordValidationFailure();
 
 			// If multi-step, navigate to the first step with errors
 			if ( form.is_multi_step && sortedSteps.length > 0 ) {
-				const errorFieldNames = new Set( Object.keys( validationErrors ) );
+				const errorFieldNames = new Set( Object.keys( validationErrors ).map( getErrorFieldName ) );
 
 				for ( let i = 0; i < sortedSteps.length; i++ ) {
 					const stepFields = allFields.filter(
@@ -385,22 +510,49 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		setIsSubmitting( true );
 		setErrors( {} );
 
+		// Values fields add just before sending, such as an invisible CAPTCHA's token.
+		let collected: Record<string, unknown>;
+
+		try {
+			collected = await submitHooks.collect();
+		} catch ( err ) {
+			if ( err instanceof SubmitHookError ) {
+				setErrors( { [err.field]: [t( 'The verification check failed. Please try again.' )] } );
+				recordValidationFailure();
+			} else {
+				onError?.( err instanceof Error ? err : new Error( t( 'Form submission failed.' ) ) );
+			}
+
+			setIsSubmitting( false );
+
+			return;
+		}
+
 		try {
 			const url = `${baseUrl}/${encodeURIComponent( formSlug )}/submit`;
 			const formDataObj = new FormData();
 
-			// Add form data values
-			for ( const [key, value] of Object.entries( values ) ) {
-				if ( hiddenFields[key] ) {
+			// Add form data values, with each "Other" choice replaced by its text
+			for ( const [key, value] of Object.entries( resolveOtherChoices( allFields, values, otherValues ) ) ) {
+				if ( hiddenFields[key] || Object.prototype.hasOwnProperty.call( collected, key ) ) {
 					continue;
 				}
 
-				if ( Array.isArray( value ) ) {
-					for ( const item of value ) {
-						formDataObj.append( `data[${key}][]`, String( item ) );
-					}
-				} else if ( value !== null && value !== undefined ) {
-					formDataObj.append( `data[${key}]`, String( value ) );
+				// An email confirmation is skipped with its hidden email field.
+				const confirmedField = Object.prototype.hasOwnProperty.call( confirmationFields, key ) ? confirmationFields[key] : undefined;
+
+				if ( confirmedField !== undefined && hiddenFields[confirmedField] ) {
+					continue;
+				}
+
+				// Lists, arrays and composite maps are expanded; booleans are sent as '1'/'0'.
+				appendSubmissionValue( formDataObj, key, value );
+			}
+
+			// Add the values the submit hooks collected
+			for ( const [key, value] of Object.entries( collected ) ) {
+				if ( value !== null && value !== undefined ) {
+					formDataObj.append( `data[${key}]`, toFormValue( value ) );
 				}
 			}
 
@@ -437,21 +589,16 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 			if ( response.status === 422 ) {
 				const errorData = await response.json();
-				const serverErrors: Record<string, string[]> = {};
-
-				if ( errorData.errors ) {
-					for ( const [key, messages] of Object.entries( errorData.errors ) ) {
-						// Server errors come as "data.field_name", strip the prefix
-						const fieldName = key.replace( /^(data|files)\./, '' );
-						serverErrors[fieldName] = messages as string[];
-					}
-				}
+				// "data.field_name" becomes "field_name"; errors for no field on the form go to `_form`.
+				const serverErrors = mapServerErrors( errorData.errors, allFields );
 
 				setErrors( serverErrors );
+				recordValidationFailure();
+				submitHooks.settle( { ok: false, errors: serverErrors } );
 
 				// Navigate to the first step with server errors (multi-step forms)
 				if ( form.is_multi_step && sortedSteps.length > 0 ) {
-					const errorFieldNames = new Set( Object.keys( serverErrors ) );
+					const errorFieldNames = new Set( Object.keys( serverErrors ).map( getErrorFieldName ) );
 
 					for ( let i = 0; i < sortedSteps.length; i++ ) {
 						const stepFields = allFields.filter(
@@ -469,18 +616,21 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 			}
 
 			if ( response.status === 429 ) {
+				submitHooks.settle( { ok: false, errors: {} } );
 				setErrors( {
-					_form: ['Too many submissions. Please try again later.'],
+					_form: [t( 'Too many submissions. Please try again later.' )],
 				} );
+				recordValidationFailure();
 
 				return;
 			}
 
 			if ( !response.ok ) {
-				throw new Error( 'Form submission failed.' );
+				throw new Error( t( 'Form submission failed.' ) );
 			}
 
 			const result: SubmitFormResponse = await response.json();
+			submitHooks.settle( { ok: true, errors: {} } );
 			setIsSubmitted( true );
 
 			if ( result.redirect_url ) {
@@ -492,8 +642,9 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 			onSuccess?.( result );
 		} catch ( err ) {
 			const error =
-				err instanceof Error ? err : new Error( 'Form submission failed.' );
+				err instanceof Error ? err : new Error( t( 'Form submission failed.' ) );
 
+			submitHooks.settle( { ok: false, errors: {} } );
 			onError?.( error );
 		} finally {
 			setIsSubmitting( false );
@@ -508,9 +659,13 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		baseUrl,
 		formSlug,
 		values,
+		otherValues,
 		files,
+		confirmationFields,
+		submitHooks,
 		onSuccess,
 		onError,
+		recordValidationFailure,
 	] );
 
 	const reset = useCallback( () => {
@@ -525,20 +680,18 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				continue;
 			}
 
-			if ( field.type === 'checkbox_group' || field.type === 'select_multiple' ) {
-				defaults[field.name] = field.default_value
-					? field.default_value.split( ',' ).map( ( v ) => v.trim() )
-					: [];
-			} else if ( field.type === 'checkbox' ) {
-				defaults[field.name] = field.default_value === '1' || field.default_value === 'true';
-			} else {
-				defaults[field.name] = field.default_value ?? '';
+			defaults[field.name] = getInitialFieldValue( field, { prefill: prefillRef.current } );
+
+			// The confirmation starts as the email, mirroring Livewire's `buildInitialFormData()`.
+			if ( requiresEmailConfirmation( field ) && typeof defaults[field.name] === 'string' ) {
+				defaults[getConfirmationKey( field )] = defaults[field.name];
 			}
 		}
 
 		setValues( defaults );
 		setErrors( {} );
 		setFiles( {} );
+		setOtherValues( {} );
 		setIsSubmitted( false );
 		setCurrentStep( 0 );
 		formLoadedAt.current = Math.floor( Date.now() / 1000 );
@@ -549,23 +702,29 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		values,
 		errors,
 		files,
+		otherValues,
 		hiddenFields,
 		isLoading,
 		isSubmitting,
 		isSubmitted,
 		currentStep,
 		totalSteps,
+		steps: sortedSteps,
+		validationFailures,
 		progressPercentage,
 		currentFields,
 		currentStepData,
 		loadError,
+		idPrefix,
 		setValue,
 		setFile,
+		setOtherValue,
 		removeFile,
 		nextStep,
 		prevStep,
 		goToStep,
 		submit,
 		reset,
+		submitHooks,
 	};
 }

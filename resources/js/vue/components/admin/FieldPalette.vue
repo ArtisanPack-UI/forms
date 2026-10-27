@@ -18,6 +18,7 @@ import type {
 	FieldPaletteItem,
 	FieldType,
 } from '../../../types/artisanpack-forms';
+import { t } from '../../../shared/i18n';
 
 /** SVG path data for each field type icon (16x16 viewBox). */
 const ICON_PATHS: Record<string, string> = {
@@ -31,59 +32,93 @@ const ICON_PATHS: Record<string, string> = {
 	select: 'M2 4h12v2H2V4zm0 3h12v2H2V7zm0 3h12v2H2v-2zm10-7l2 3h-4l2-3z',
 	radio: 'M8 2a6 6 0 100 12A6 6 0 008 2zm0 1.5a4.5 4.5 0 110 9 4.5 4.5 0 010-9zm0 2a2.5 2.5 0 100 5 2.5 2.5 0 000-5z',
 	checkbox: 'M3 1h10a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V3a2 2 0 012-2zm0 1.5a.5.5 0 00-.5.5v10a.5.5 0 00.5.5h10a.5.5 0 00.5-.5V3a.5.5 0 00-.5-.5H3zm8.2 3L7 9.7 4.8 7.5 3.4 8.9l3.6 3.6 5.6-5.6-1.4-1.4z',
+	toggle: 'M5 4h6a4 4 0 010 8H5a4 4 0 010-8zm6 1.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z',
 	checkbox_group: 'M2 1h5v5H2V1zm1 1v3h3V2H3zm7-1h5v5H9V1zm1 1v3h3V2h-3zM2 9h5v5H2V9zm1 1v3h3v-3H3zm6-1h5v5H9V9zm1 1v3h3v-3h-3z',
 	select_multiple: 'M2 3h12v2H2V3zm0 4h12v2H2V7zm0 4h12v2H2v-2z',
 	file: 'M3 1h7l4 4v9a1 1 0 01-1 1H3a1 1 0 01-1-1V2a1 1 0 011-1zm6.5 1H3.5v12h9V5.5H9.5V2zM7 8l3 3.5H4L7 8z',
 	date: 'M4 0v2H2a1 1 0 00-1 1v11a1 1 0 001 1h12a1 1 0 001-1V3a1 1 0 00-1-1h-2V0h-2v2H6V0H4zM2 6h12v8H2V6zm2 2v2h2V8H4zm4 0v2h2V8H8zm4 0v2h2V8h-2z',
 	time: 'M8 1a7 7 0 100 14A7 7 0 008 1zm0 1.5a5.5 5.5 0 110 11 5.5 5.5 0 010-11zM7.25 4v4.5l3.5 2.1.75-1.2-2.75-1.65V4h-1.5z',
+	datetime: 'M4 0v2H2a1 1 0 00-1 1v11a1 1 0 001 1h6v-1.5H2.5V6h11v2H15V3a1 1 0 00-1-1h-2V0h-2v2H6V0H4zm8 9a3 3 0 100 6 3 3 0 000-6zm-.5 1h1v1.8l1.2.7-.5.9-1.7-1V10z',
+	date_range: 'M4 0v2H2a1 1 0 00-1 1v11a1 1 0 001 1h12a1 1 0 001-1V3a1 1 0 00-1-1h-2V0h-2v2H6V0H4zM2 6h12v8H2V6zm1 3h4v2H3V9zm6 0h4v2H9V9z',
+	list: 'M1 2h14v3H1V2zm0 4.5h14v3H1v-3zM1 11h14v3H1v-3z',
+	calculation: 'M3 1h10a1 1 0 011 1v12a1 1 0 01-1 1H3a1 1 0 01-1-1V2a1 1 0 011-1zm1 1.5v3h8v-3H4zM4 7v1.5h1.5V7H4zm3.25 0v1.5h1.5V7h-1.5zM10.5 7v1.5H12V7h-1.5zM4 10v1.5h1.5V10H4zm3.25 0v1.5h1.5V10h-1.5zm3.25 0v3H12v-3h-1.5zM4 13v.5h4.75V13H4z',
+	section: 'M1 1h14v14H1V1zm1.5 1.5v2h11v-2h-11zm0 3.5v7.5h11V6h-11z',
 	heading: 'M2 2h3v5h6V2h3v12h-3V9H5v5H2V2z',
 	paragraph: 'M6 1h8v2h-2v11h-2V3H8v11H6V9a4 4 0 010-8z',
 	divider: 'M1 7h14v2H1V7z',
 	html: 'M4.5 4L1 8l3.5 4 1.4-1.2L3.2 8l2.7-2.8L4.5 4zm7 0l-1.4 1.2L12.8 8l-2.7 2.8L11.5 12 15 8l-3.5-4z',
+	rating: 'M8 1l2.1 4.3 4.7.7-3.4 3.3.8 4.7L8 11.8 3.8 14l.8-4.7L1.2 6l4.7-.7L8 1z',
+	slider: 'M1 7h5v2H1V7zm9 0h5v2h-5V7zM8 4a4 4 0 110 8 4 4 0 010-8z',
+	color: 'M8 1C5.5 4.5 3 7.2 3 10a5 5 0 0010 0c0-2.8-2.5-5.5-5-9zm0 2.6c1.6 2.3 3.5 4.5 3.5 6.4a3.5 3.5 0 01-7 0c0-1.9 1.9-4.1 3.5-6.4z',
+	nps: 'M1 11h2v4H1v-4zm3-2h2v6H4V9zm3-2h2v8H7V7zm3-3h2v11h-2V4zm3-3h2v14h-2V1z',
+	matrix: 'M1 2h3v3H1V2zm5 0h3v3H6V2zm5 0h3v3h-3V2zM1 7h3v3H1V7zm5 0h3v3H6V7zm5 0h3v3h-3V7zM1 12h3v3H1v-3zm5 0h3v3H6v-3zm5 0h3v3h-3v-3z',
+	ranking: 'M1 2h2v2H1V2zm4 0h10v2H5V2zM1 7h2v2H1V7zm4 0h8v2H5V7zm-4 5h2v2H1v-2zm4 0h6v2H5v-2z',
+	signature: 'M11.5 1L15 4.5l-8 8H3.5V9l8-8zm0 2.1L5 9.6V11h1.4l6.5-6.5-1.4-1.4zM1 14.5h14V16H1v-1.5z',
+	name: 'M8 1a3.5 3.5 0 110 7 3.5 3.5 0 010-7zm0 1.5a2 2 0 100 4 2 2 0 000-4zM2 15c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5h-1.5c0-2.4-2-4-4.5-4s-4.5 1.6-4.5 4H2z',
+	address: 'M8 0a5.5 5.5 0 015.5 5.5C13.5 10 8 16 8 16S2.5 10 2.5 5.5A5.5 5.5 0 018 0zm0 1.5a4 4 0 00-4 4c0 2.6 2.6 6.2 4 8 1.4-1.8 4-5.4 4-8a4 4 0 00-4-4zM8 3.5a2 2 0 110 4 2 2 0 010-4z',
+	consent: 'M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm.5 1.5v11h7v-11h-7zM6 4h4v1.5H6V4zm4.4 4.3l1 1.1L7.6 13 5.6 11l1-1.1 1 1 2.8-2.6z',
+	captcha: 'M8 0l6 2.5v4.5c0 4-2.6 7.6-6 9-3.4-1.4-6-5-6-9V2.5L8 0zm0 1.6L3.5 3.5V7c0 3.2 2 6.1 4.5 7.3 2.5-1.2 4.5-4.1 4.5-7.3V3.5L8 1.6zm2.4 3.7l1 1.1L7.2 10.6 4.8 8.2l1-1.1 1.4 1.4 3.2-3.2z',
 };
 
-/** Default field palette organized by category. */
-const FIELD_PALETTE: FieldPaletteGroup[] = [
+/** Default field palette organized by category, translated at render. */
+const FIELD_PALETTE = computed( (): FieldPaletteGroup[] => [
 	{
-		label: 'Basic Fields',
+		label: t( 'Basic Fields' ),
 		fields: [
-			{ type: 'text', label: 'Text', icon: 'text', category: 'basic' },
-			{ type: 'email', label: 'Email', icon: 'email', category: 'basic' },
-			{ type: 'phone', label: 'Phone', icon: 'phone', category: 'basic' },
-			{ type: 'number', label: 'Number', icon: 'number', category: 'basic' },
-			{ type: 'url', label: 'URL', icon: 'url', category: 'basic' },
-			{ type: 'textarea', label: 'Textarea', icon: 'textarea', category: 'basic' },
-			{ type: 'hidden', label: 'Hidden', icon: 'hidden', category: 'basic' },
+			{ type: 'text', label: t( 'Text' ), icon: 'text', category: 'basic' },
+			{ type: 'email', label: t( 'Email' ), icon: 'email', category: 'basic' },
+			{ type: 'phone', label: t( 'Phone' ), icon: 'phone', category: 'basic' },
+			{ type: 'number', label: t( 'Number' ), icon: 'number', category: 'basic' },
+			{ type: 'url', label: t( 'URL' ), icon: 'url', category: 'basic' },
+			{ type: 'textarea', label: t( 'Textarea' ), icon: 'textarea', category: 'basic' },
+			{ type: 'hidden', label: t( 'Hidden' ), icon: 'hidden', category: 'basic' },
 		],
 	},
 	{
-		label: 'Choice Fields',
+		label: t( 'Choice Fields' ),
 		fields: [
-			{ type: 'select', label: 'Select', icon: 'select', category: 'choice' },
-			{ type: 'radio', label: 'Radio', icon: 'radio', category: 'choice' },
-			{ type: 'checkbox', label: 'Checkbox', icon: 'checkbox', category: 'choice' },
-			{ type: 'checkbox_group', label: 'Checkbox Group', icon: 'checkbox_group', category: 'choice' },
-			{ type: 'select_multiple', label: 'Multi-Select', icon: 'select_multiple', category: 'choice' },
+			{ type: 'select', label: t( 'Select' ), icon: 'select', category: 'choice' },
+			{ type: 'radio', label: t( 'Radio' ), icon: 'radio', category: 'choice' },
+			{ type: 'checkbox', label: t( 'Checkbox' ), icon: 'checkbox', category: 'choice' },
+			{ type: 'toggle', label: t( 'Toggle' ), icon: 'toggle', category: 'choice' },
+			{ type: 'checkbox_group', label: t( 'Checkbox Group' ), icon: 'checkbox_group', category: 'choice' },
+			{ type: 'select_multiple', label: t( 'Multi-Select' ), icon: 'select_multiple', category: 'choice' },
 		],
 	},
 	{
-		label: 'Advanced Fields',
+		label: t( 'Advanced Fields' ),
 		fields: [
-			{ type: 'file', label: 'File Upload', icon: 'file', category: 'advanced' },
-			{ type: 'date', label: 'Date', icon: 'date', category: 'advanced' },
-			{ type: 'time', label: 'Time', icon: 'time', category: 'advanced' },
+			{ type: 'file', label: t( 'File Upload' ), icon: 'file', category: 'advanced' },
+			{ type: 'date', label: t( 'Date' ), icon: 'date', category: 'advanced' },
+			{ type: 'time', label: t( 'Time' ), icon: 'time', category: 'advanced' },
+			{ type: 'datetime', label: t( 'Date & Time' ), icon: 'datetime', category: 'advanced' },
+			{ type: 'date_range', label: t( 'Date Range' ), icon: 'date_range', category: 'advanced' },
+			{ type: 'rating', label: t( 'Rating' ), icon: 'rating', category: 'advanced' },
+			{ type: 'slider', label: t( 'Slider' ), icon: 'slider', category: 'advanced' },
+			{ type: 'color', label: t( 'Color' ), icon: 'color', category: 'advanced' },
+			{ type: 'nps', label: t( 'Net Promoter Score' ), icon: 'nps', category: 'advanced' },
+			{ type: 'matrix', label: t( 'Likert / Matrix' ), icon: 'matrix', category: 'advanced' },
+			{ type: 'ranking', label: t( 'Ranking' ), icon: 'ranking', category: 'advanced' },
+			{ type: 'name', label: t( 'Name' ), icon: 'name', category: 'advanced' },
+			{ type: 'address', label: t( 'Address' ), icon: 'address', category: 'advanced' },
+			{ type: 'list', label: t( 'List' ), icon: 'list', category: 'advanced' },
+			{ type: 'calculation', label: t( 'Calculation' ), icon: 'calculation', category: 'advanced' },
+			{ type: 'signature', label: t( 'Signature' ), icon: 'signature', category: 'advanced' },
+			{ type: 'consent', label: t( 'Consent' ), icon: 'consent', category: 'advanced' },
+			{ type: 'captcha', label: t( 'CAPTCHA' ), icon: 'captcha', category: 'advanced' },
 		],
 	},
 	{
-		label: 'Layout',
+		label: t( 'Layout' ),
 		fields: [
-			{ type: 'heading', label: 'Heading', icon: 'heading', category: 'layout' },
-			{ type: 'paragraph', label: 'Paragraph', icon: 'paragraph', category: 'layout' },
-			{ type: 'divider', label: 'Divider', icon: 'divider', category: 'layout' },
-			{ type: 'html', label: 'HTML', icon: 'html', category: 'layout' },
+			{ type: 'section', label: t( 'Section' ), icon: 'section', category: 'layout' },
+			{ type: 'heading', label: t( 'Heading' ), icon: 'heading', category: 'layout' },
+			{ type: 'paragraph', label: t( 'Paragraph' ), icon: 'paragraph', category: 'layout' },
+			{ type: 'divider', label: t( 'Divider' ), icon: 'divider', category: 'layout' },
+			{ type: 'html', label: t( 'HTML' ), icon: 'html', category: 'layout' },
 		],
 	},
-];
+] );
 
 const props = withDefaults( defineProps<{
 	/** Optional external search filter. When undefined, an internal search input is shown. */
@@ -105,12 +140,12 @@ const search = computed( () => props.searchFilter ?? internalSearch.value );
 
 const filteredGroups = computed( () => {
 	if ( !search.value ) {
-		return FIELD_PALETTE;
+		return FIELD_PALETTE.value;
 	}
 
 	const lower = search.value.toLowerCase();
 
-	return FIELD_PALETTE
+	return FIELD_PALETTE.value
 		.map( ( group ) => ( {
 			...group,
 			fields: group.fields.filter( ( field ) =>
@@ -139,13 +174,13 @@ defineExpose( { FIELD_PALETTE } );
 
 <template>
 	<div :class="['space-y-4', props.class]">
-		<h3 class="text-lg font-semibold">Add Field</h3>
+		<h3 class="text-lg font-semibold">{{ t( 'Add Field' ) }}</h3>
 
 		<Input
 			v-if="searchFilter === undefined"
 			type="search"
 			size="sm"
-			placeholder="Search fields..."
+			:placeholder="t( 'Search fields...' )"
 			:model-value="internalSearch"
 			class="w-full"
 			@update:model-value="internalSearch = ($event as string)"
@@ -168,7 +203,7 @@ defineExpose( { FIELD_PALETTE } );
 						size="sm"
 						class="justify-start gap-2 w-full"
 						draggable="true"
-						:title="`Add ${field.label} field`"
+						:title="t( 'Add :field field', { field: field.label } )"
 						@click="emit( 'addField', field.type )"
 						@dragstart="onDragStart( $event, field.type )"
 					>
@@ -192,7 +227,7 @@ defineExpose( { FIELD_PALETTE } );
 			v-if="filteredGroups.length === 0"
 			class="text-sm text-base-content/50 text-center py-4"
 		>
-			No fields match your search.
+			{{ t( 'No fields match your search.' ) }}
 		</p>
 	</div>
 </template>

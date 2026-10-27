@@ -2,8 +2,10 @@
 
 declare( strict_types=1 );
 
+use ArtisanPackUI\Forms\Http\Requests\Api\SubmitFormApiRequest;
 use ArtisanPackUI\Forms\Http\Requests\StoreFormRequest;
 use ArtisanPackUI\Forms\Mail\FormSubmissionNotification;
+use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormNotification;
 use ArtisanPackUI\Forms\Models\FormSubmission;
@@ -266,6 +268,24 @@ describe( 'Wave 5 hooks', function (): void {
             $reflection->invoke( $request );
 
             expect( $captured )->toBeInstanceOf( StoreFormRequest::class );
+        } );
+
+        it( 'fires ap.forms.beforeValidate for an API submission', function (): void {
+            $captured = null;
+
+            addAction( 'ap.forms.beforeValidate', function ( $request ) use ( &$captured ): void {
+                $captured = $request;
+            } );
+
+            $form = Form::factory()->create( ['is_active' => true] );
+            FormField::factory()->for( $form )->create( ['type' => 'text', 'name' => 'name'] );
+
+            $this->postJson( route( 'api.forms.submit', $form ), [
+                'data'            => ['name' => 'Ada'],
+                '_form_loaded_at' => time() - 10,
+            ] )->assertCreated();
+
+            expect( $captured )->toBeInstanceOf( SubmitFormApiRequest::class );
         } );
     } );
 } );

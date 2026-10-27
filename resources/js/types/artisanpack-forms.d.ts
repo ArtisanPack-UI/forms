@@ -35,11 +35,28 @@ export type BuiltInFieldType =
     | 'select'
     | 'radio'
     | 'checkbox'
+    | 'toggle'
     | 'checkbox_group'
     | 'select_multiple'
     | 'file'
     | 'date'
     | 'time'
+    | 'datetime'
+    | 'date_range'
+    | 'rating'
+    | 'slider'
+    | 'color'
+    | 'calculation'
+    | 'nps'
+    | 'matrix'
+    | 'ranking'
+    | 'name'
+    | 'address'
+    | 'list'
+    | 'signature'
+    | 'consent'
+    | 'captcha'
+    | 'section'
     | 'heading'
     | 'paragraph'
     | 'divider'
@@ -111,6 +128,63 @@ export type FieldWidth = 'full' | 'half' | 'third' | 'two-thirds';
 export type LabelPosition = 'above' | 'beside' | 'hidden';
 
 /**
+ * Where a field's label is shown (since 1.6.0). `left` sits beside the input
+ * from the `md` breakpoint up; `hidden` keeps it for screen readers.
+ */
+export type LabelPlacement = 'top' | 'left' | 'hidden';
+
+/**
+ * Where a field's description (help text) is shown relative to its input (since 1.6.0).
+ */
+export type DescriptionPlacement = 'above' | 'below';
+
+/**
+ * Whether a field is on the public form or only filled in by admins (since 1.6.0).
+ */
+export type FieldVisibility = 'visible' | 'administrative';
+
+/**
+ * How a radio or checkbox group arranges its choices (since 1.6.0).
+ */
+export type ChoiceLayout = 'stacked' | 'inline' | '2-col' | '3-col';
+
+/**
+ * Where a composite field shows its sub-input labels (since 1.6.0).
+ */
+export type SubLabelPlacement = 'below' | 'above' | 'hidden';
+
+/**
+ * How a composite field is exported to CSV (since 1.6.0).
+ */
+export type CompositeExportFormat = 'columns' | 'single';
+
+/**
+ * The input type of a composite field's sub-input (since 1.6.0).
+ */
+export type SubInputType = 'text' | 'email' | 'tel' | 'url' | 'number' | 'select' | 'date';
+
+/**
+ * A Name field's format (since 1.6.0): one `full` input, first and last, or
+ * all five parts.
+ */
+export type NameFormat = 'simple' | 'normal' | 'extended';
+
+/**
+ * An Address field's type (since 1.6.0). `us` and `canada` use a state or
+ * province select, check the postal code and fix the country.
+ */
+export type AddressType = 'international' | 'us' | 'canada';
+
+/**
+ * A built-in CAPTCHA provider (since 1.6.0). Apps may register others
+ * through the `ap.forms.captchaDrivers` filter.
+ */
+export type CaptchaProvider = 'turnstile' | 'hcaptcha' | 'recaptcha_v2' | 'recaptcha_v3' | ( string & {} );
+
+/** A CAPTCHA widget's size (since 1.6.0). `invisible` runs the check on submit. */
+export type CaptchaSize = 'normal' | 'compact' | 'invisible';
+
+/**
  * Error display mode options.
  */
 export type ErrorDisplay = 'below' | 'tooltip' | 'summary';
@@ -158,7 +232,16 @@ export interface ConditionalLogic {
 export interface FieldOption {
     label: string;
     value: string;
-    [key: string]: string;
+    /** Whether the option starts selected (since 1.6.0). */
+    default?: boolean;
+    /**
+     * The option's image for image choices (since 1.6.0): an `http`/`https`
+     * URL or a site path. The label stays the choice's accessible name.
+     */
+    image?: string;
+    /** Alternative text for the option's image (since 1.6.0). */
+    image_alt?: string;
+    [key: string]: string | boolean | undefined;
 }
 
 /**
@@ -169,13 +252,60 @@ export interface ValidationRules {
     max?: number;
     pattern?: string;
     step?: number;
+    /** A `YYYY-MM-DD` date, `today` or a relative date such as `+30 days` (relative since 1.6.0). */
     min_date?: string;
+    /** A `YYYY-MM-DD` date, `today` or a relative date such as `-18 years` (relative since 1.6.0). */
     max_date?: string;
     min_time?: string;
     max_time?: string;
+    /** @deprecated since 1.6.0 — file fields store this in `field_config.max_size`. */
     max_size?: number;
+    /** @deprecated since 1.6.0 — file fields store this in `field_config.allowed_types`. */
     allowed_types?: string[];
+    /** A textarea's word limit, checked by the `forms_max_words` rule (since 1.6.0). */
+    max_words?: number;
+    /** Whether a number field accepts whole numbers only (since 1.6.0). */
+    integer_only?: boolean;
+    /** How strictly an email field checks addresses. Defaults to `rfc` (since 1.6.0). */
+    email_validation?: EmailValidation;
+    /** The only domains (and their subdomains) an email field accepts (since 1.6.0). */
+    allowed_domains?: string[];
+    /** Domains (and their subdomains) an email field rejects (since 1.6.0). */
+    blocked_domains?: string[];
+    /** The schemes a URL field accepts. Defaults to `http` and `https` (since 1.6.0). */
+    allowed_schemes?: string[];
+    /** Narrows a date field to today and later (`no_past`) or earlier (`no_future`) (since 1.6.0). */
+    date_range?: DateRange | '';
+    /** Whether a date field rejects Saturdays and Sundays (since 1.6.0). */
+    disable_weekends?: boolean;
+    /** `YYYY-MM-DD` dates a date field rejects (since 1.6.0). */
+    disabled_dates?: string[];
+    /** The youngest age, in years, a date field's birthdate allows (since 1.6.0). */
+    min_age?: number;
+    /** The oldest age, in years, a date field's birthdate allows (since 1.6.0). */
+    max_age?: number;
 }
+
+/**
+ * How strictly an email field checks addresses: RFC syntax, RFC with a DNS
+ * lookup (server only), or strict RFC (since 1.6.0).
+ */
+export type EmailValidation = 'rfc' | 'dns' | 'strict';
+
+/** A date field's "No past dates" or "No future dates" range (since 1.6.0). */
+export type DateRange = 'no_past' | 'no_future';
+
+/** How a date field shows dates and orders its month, day and year inputs (since 1.6.0). */
+export type DateFormat = 'mdy' | 'dmy' | 'ymd';
+
+/** How a date field is filled in (since 1.6.0). */
+export type DateInputMode = 'picker' | 'dropdowns' | 'fields';
+
+/** The clock a time field shows (since 1.6.0). */
+export type TimeFormat = '24' | '12';
+
+/** How a time field is filled in (since 1.6.0). */
+export type TimeInputMode = 'picker' | 'dropdowns';
 
 /**
  * Base field configuration shared by all field types.
@@ -189,14 +319,549 @@ interface BaseFieldConfig {
  */
 export interface OptionsFieldConfig extends BaseFieldConfig {
     options: FieldOption[];
+    /** Whether radio and checkbox groups add an "Other" choice with a text input (since 1.6.0). */
+    enable_other?: boolean;
+    /** The "Other" choice's label. Defaults to "Other" (since 1.6.0). */
+    other_label?: string;
+    /** A registered choice source the options are loaded from instead of `options` (since 1.6.0). */
+    choices_source?: string;
+    /** How a radio or checkbox group arranges its choices. Defaults to `stacked` (since 1.6.0). */
+    layout?: ChoiceLayout;
+    /**
+     * Whether a radio or checkbox group shows its choices as `images`, each
+     * option's image above its label, or as plain labels (`list`, the
+     * default) (since 1.6.0).
+     */
+    display?: 'list' | 'images';
+    /** Whether a radio or checkbox group shows its choices in a random order (since 1.6.0). */
+    randomize?: boolean;
+    /** Whether a checkbox group offers a "Select All" checkbox (since 1.6.0). */
+    select_all?: boolean;
+    /** Whether a select or multi-select is a searchable combobox (since 1.6.0). */
+    searchable?: boolean;
+}
+
+/**
+ * A composite field's own settings for one sub-input, in
+ * `field_config.sub_inputs.{key}` (since 1.6.0).
+ */
+export interface SubInputConfig {
+    enabled?: boolean;
+    required?: boolean;
+    label?: string;
+    placeholder?: string;
+    /** The value the input starts with (since 1.6.0). */
+    default?: string;
+    /** The prefill key and query string parameter that populates the input (since 1.6.0). */
+    parameter?: string;
+}
+
+/**
+ * Configuration for composite (multi-input) fields (since 1.6.0).
+ */
+export interface CompositeFieldConfig extends BaseFieldConfig {
+    /** Per sub-input overrides, keyed by sub-input key. */
+    sub_inputs?: Record<string, SubInputConfig>;
+    /** Where the sub-input labels are shown. Defaults to `below`. */
+    sub_label_placement?: SubLabelPlacement;
+    /** How the field is exported. Defaults to `columns`. */
+    export_format?: CompositeExportFormat;
+}
+
+/**
+ * One of a composite field's sub-inputs, with the field's settings applied
+ * (`FormField::getSubInputs()` on the server; since 1.6.0).
+ */
+export interface SubInputDefinition {
+    key: string;
+    /** The sub-label, already translated. */
+    label: string;
+    /** The type's own sub-label, shown as the builder's placeholder. */
+    default_label: string;
+    placeholder: string | null;
+    enabled: boolean;
+    /** Whether a required field requires this input (see `required_sub_inputs`). */
+    required: boolean;
+    autocomplete: string | null;
+    type: SubInputType;
+    /** Whether the input spans the whole row (since 1.6.0). */
+    wide?: boolean;
+    /** A `select` input's options (since 1.6.0); empty for other types. */
+    options?: Array<{ value: string; label: string }>;
+    /** The value the input starts with (since 1.6.0). */
+    default?: string | null;
+    /** The prefill key and query string parameter that populates the input (since 1.6.0). */
+    parameter?: string | null;
+}
+
+/**
+ * Configuration for Name fields (since 1.6.0).
+ */
+export interface NameFieldConfig extends CompositeFieldConfig {
+    /** Defaults to `normal`. */
+    name_format?: NameFormat;
+    /** The prefix select's choices; unset for the default list. */
+    prefix_choices?: string[];
+    /** Whether the suffix is free text (default) or a select of `suffix_choices`. */
+    suffix_input?: 'text' | 'select';
+    suffix_choices?: string[];
+}
+
+/**
+ * Configuration for Address fields (since 1.6.0).
+ */
+export interface AddressFieldConfig extends CompositeFieldConfig {
+    /** Defaults to `international`. */
+    address_type?: AddressType;
+    /** An ISO 3166-1 alpha-2 code from the `ap.forms.countries` list. */
+    default_country?: string;
+    /** Stores the default country without asking (international addresses only). */
+    hide_country?: boolean;
+    /** The state's default; a two-letter code for U.S. and Canada addresses. */
+    default_state?: string;
+}
+
+/**
+ * Configuration for Email fields (since 1.6.0).
+ */
+export interface EmailFieldConfig extends CommonFieldConfig {
+    /** Asks for the email twice, submitted as `{name}` and `{name}_confirmation`. */
+    confirm_email?: boolean;
+    email_sub_label?: string;
+    confirm_sub_label?: string;
+    confirm_placeholder?: string;
+}
+
+/**
+ * Configuration for Consent fields (since 1.6.0).
+ */
+export interface ConsentFieldConfig extends CommonFieldConfig {
+    /** The text beside the checkbox. */
+    consent_text?: string;
+    /** HTML shown below the checkbox; sanitized with kses by the server. */
+    consent_description?: string;
+}
+
+/**
+ * Configuration for CAPTCHA fields (since 1.6.0).
+ */
+export interface CaptchaFieldConfig extends BaseFieldConfig {
+    /** Unset for the default provider (`spam_protection.captcha.driver`). */
+    captcha_provider?: CaptchaProvider;
+    /** Defaults to `normal`. */
+    captcha_size?: CaptchaSize;
+    /** Defaults to `auto`. */
+    captcha_theme?: 'auto' | 'light' | 'dark';
+}
+
+/**
+ * What a renderer needs to show a CAPTCHA field's challenge (since 1.6.0).
+ * Holds only public values; never the secret key.
+ */
+export interface CaptchaWidget {
+    provider: CaptchaProvider;
+    site_key: string;
+    /** The provider's script URL. */
+    script: string;
+    size: CaptchaSize;
+    theme: 'auto' | 'light' | 'dark';
+    /** The action a reCAPTCHA v3 token is requested for. */
+    action?: string;
+}
+
+/**
+ * The value stored for a Consent field (since 1.6.0), in `value_array`.
+ */
+export interface ConsentValue {
+    consented: '1' | '0';
+    /** The checkbox text agreed to, unless `privacy.consent.store_text` is off. */
+    text?: string;
+    /** The description agreed to, as sanitized HTML. */
+    description?: string;
+    /** A SHA-256 hash of the text and description. */
+    revision?: string;
+    /** When the visitor submitted, in ISO 8601. */
+    consented_at?: string;
+}
+
+/**
+ * A predefined choice list the builders' bulk editor can insert (since 1.6.0).
+ */
+export interface PredefinedChoiceList {
+    key: string;
+    label: string;
+    choices: Array<{ value: string; label: string }>;
 }
 
 /**
  * Configuration for file upload fields.
  */
 export interface FileFieldConfig extends BaseFieldConfig {
+    /** Maximum upload size in KB. */
     max_size?: number;
-    allowed_mimes?: string[];
+    /** Allowed file extensions, without a leading dot (e.g. `pdf`). */
+    allowed_types?: string[];
+    /**
+     * Whether the field takes several files, submitted as `files[{name}][]`
+     * (since 1.6.0). Each is stored as its own upload.
+     */
+    multiple?: boolean;
+    /** The most files a multi-file field takes (since 1.6.0). */
+    max_files?: number;
+    /** The largest total size in KB of a multi-file field's files (since 1.6.0). */
+    max_total_size?: number;
+    /** Image bounds in pixels; other files are not checked (since 1.6.0). */
+    min_width?: number;
+    max_width?: number;
+    min_height?: number;
+    max_height?: number;
+    /**
+     * Where uploads are kept (since 1.6.0): the private forms disk (default)
+     * or artisanpack-ui/media-library, whose disk is public by default.
+     */
+    storage?: 'forms' | 'media_library';
+}
+
+/**
+ * An input mask preset, or `custom` for the `custom_mask` pattern (since 1.6.0).
+ */
+export type InputMaskPreset = 'us_phone' | 'zip' | 'zip_plus4' | 'ssn' | 'date' | 'custom';
+
+/**
+ * Configuration for text fields (since 1.6.0).
+ */
+export interface TextFieldConfig extends CommonFieldConfig {
+    /** The input mask preset; unset for none. */
+    input_mask?: InputMaskPreset | '';
+    /** The pattern of a `custom` mask: `9` a digit, `a` a letter, `*` either. */
+    custom_mask?: string;
+    /** Whether a text or textarea field shows a live character or word counter. */
+    show_counter?: boolean;
+}
+
+/**
+ * How a phone field checks numbers (since 1.6.0).
+ */
+export type PhoneFormat = 'any' | 'us' | 'international';
+
+/**
+ * A country an International phone field's selector offers (since 1.6.0).
+ */
+export interface PhoneCountry {
+    /** The ISO 3166-1 alpha-2 code. */
+    value: string;
+    /** The country name with its calling code, such as `United Kingdom (+44)`. */
+    label: string;
+    /** The calling code without the `+`, such as `44`. */
+    dial_code: string;
+}
+
+/**
+ * Configuration for phone fields (since 1.6.0).
+ */
+export interface PhoneFieldConfig extends CommonFieldConfig {
+    /** How numbers are checked. Defaults to `any`. */
+    phone_format?: PhoneFormat;
+    /** The ISO code an International field's selector starts at. Defaults to `US`. */
+    default_country?: string;
+    input_mask?: InputMaskPreset | '';
+    custom_mask?: string;
+}
+
+/**
+ * Configuration for textarea fields (since 1.6.0).
+ */
+export interface TextareaFieldConfig extends CommonFieldConfig {
+    /** The number of rows. Defaults to 4. */
+    rows?: number;
+    /** Whether a text or textarea field shows a live character or word counter. */
+    show_counter?: boolean;
+    /** Whether visitors write in the rich text editor; the field then submits sanitized HTML. */
+    rich_text?: boolean;
+}
+
+/**
+ * Configuration for date fields (since 1.6.0).
+ */
+export interface DateFieldConfig extends CommonFieldConfig {
+    /** How dates are shown and the inputs ordered. Defaults to `ymd`. Values are stored as `YYYY-MM-DD`. */
+    date_format?: DateFormat;
+    /** The native picker, dropdowns or number fields. Defaults to `picker`. */
+    date_input?: DateInputMode;
+}
+
+/**
+ * Configuration for time fields (since 1.6.0).
+ */
+export interface TimeFieldConfig extends CommonFieldConfig {
+    /** The step in seconds. Defaults to 60. */
+    step?: number;
+    /** The clock of the dropdowns and of displayed times. Defaults to `24`. Values are stored as `HH:MM`. */
+    time_format?: TimeFormat;
+    /** The native picker or dropdowns. Defaults to `picker`. */
+    time_input?: TimeInputMode;
+}
+
+/**
+ * The format a number field reads typed numbers in (since 1.6.0).
+ */
+export type NumberFormat = 'decimal_dot' | 'decimal_comma' | 'currency';
+
+/**
+ * Configuration for number fields (since 1.6.0).
+ */
+export interface NumberFieldConfig extends CommonFieldConfig {
+    /** The format; unset for a plain number input. Stored values are plain decimals. */
+    number_format?: NumberFormat | '';
+    /** Text shown before the input, such as `$`. */
+    prefix?: string;
+    /** Text shown after the input, such as `kg`. */
+    suffix?: string;
+}
+
+/**
+ * Configuration for rating fields.
+ *
+ * @since 1.6.0
+ */
+export interface RatingFieldConfig extends BaseFieldConfig {
+    /** Number of stars, from 1 to 10. Defaults to 5. */
+    max_rating?: number;
+    /** Whether half stars can be chosen. */
+    allow_half?: boolean;
+    /** Star size. Defaults to `md`. */
+    size?: 'xs' | 'sm' | 'md' | 'lg';
+}
+
+/**
+ * Configuration for toggle (switch) fields.
+ *
+ * @since 1.6.0
+ */
+export interface ToggleFieldConfig extends BaseFieldConfig {
+    /** Switch size. Defaults to `md`. */
+    size?: 'xs' | 'sm' | 'md' | 'lg';
+    /** daisyUI color. Defaults to `primary`. */
+    color?: 'primary' | 'secondary' | 'accent' | 'success' | 'warning' | 'error' | 'info';
+    /** Text shown for "on" in submissions, notifications and exports. Defaults to "Yes". */
+    checked_label?: string;
+    /** Text shown for "off". Defaults to "No". */
+    unchecked_label?: string;
+}
+
+/**
+ * Settings every input type offers (since 1.6.0), stored in `field_config`.
+ */
+export interface CommonFieldConfig extends BaseFieldConfig {
+    /** An `autocomplete` token overriding the type's default (WCAG 1.3.5). */
+    autocomplete?: string;
+    /** Label shown in submissions, exports and admin notifications instead of the label. */
+    admin_label?: string;
+    /** Message for every failed rule except the required one. May be a translation key. */
+    error_message?: string;
+    /** Message shown when a required field is left empty. May be a translation key. */
+    required_message?: string;
+    /** Whether the field may be populated from the prefill, query string or a filter. */
+    dynamic_population?: boolean;
+    /** The prefill key and query string parameter; defaults to the field name. */
+    dynamic_parameter?: string;
+    /** Where the label is shown; unset keeps the form's default (since 1.6.0). */
+    label_placement?: LabelPlacement;
+    /** Where the description is shown; unset keeps the form's default (since 1.6.0). */
+    description_placement?: DescriptionPlacement;
+    /** `administrative` fields are left out of the public form and filled in on the submission (since 1.6.0). */
+    visibility?: FieldVisibility;
+    /** Rejects a value already submitted for the field (text, email, phone, number, url and hidden; since 1.6.0). */
+    no_duplicates?: boolean;
+    /** Sends the value to notifications and webhooks without saving it (since 1.6.0). */
+    do_not_store?: boolean;
+    /** Masks the value in the admin unless the user may reveal it (since 1.6.0). */
+    mask_in_admin?: boolean;
+    /** Days after which `forms:prune-submissions` redacts the value (since 1.6.0). */
+    redact_after_days?: number;
+}
+
+/**
+ * Configuration for paragraph and HTML layout fields. A heading's text is
+ * stored in the field `label`.
+ */
+export interface ContentFieldConfig extends BaseFieldConfig {
+    /**
+     * A paragraph's text, which may use `<strong>`, `<em>`, `<u>` and
+     * `<a href>` (since 1.6.0), or an HTML block's markup, which may use
+     * `{field_name}` merge tags (since 1.6.0).
+     */
+    content?: string;
+    /** A heading's level, `h2`–`h6`. */
+    level?: string;
+    /** A heading's alignment (since 1.6.0). Defaults to `left`. */
+    align?: 'left' | 'center' | 'right';
+}
+
+/**
+ * Configuration for sections (since 1.6.0). The section's title is its label.
+ */
+export interface SectionFieldConfig extends BaseFieldConfig {
+    /** Shown under the title. */
+    description?: string;
+    /** Whether visitors can show and hide the section's fields. */
+    collapsible?: boolean;
+    /** Whether a collapsible section starts collapsed. */
+    collapsed?: boolean;
+}
+
+/**
+ * Configuration for date and time fields (since 1.6.0). Values are submitted
+ * as `YYYY-MM-DDTHH:MM` and stored as `YYYY-MM-DD HH:MM`.
+ */
+export interface DateTimeFieldConfig extends CommonFieldConfig {
+    date_format?: DateFormat;
+    time_format?: TimeFormat;
+    /** The picker's step in seconds. */
+    step?: number;
+}
+
+/**
+ * Configuration for date range fields (since 1.6.0). A composite of `start`
+ * and `end` dates, stored as `YYYY-MM-DD`.
+ */
+export interface DateRangeFieldConfig extends CompositeFieldConfig {
+    date_format?: DateFormat;
+}
+
+/**
+ * Configuration for list (repeater) fields (since 1.6.0).
+ */
+export interface ListFieldConfig extends BaseFieldConfig {
+    /** One column per line: `Label | type | options` (see `ListColumn`). */
+    columns?: string;
+    /** Names one row in the add and remove buttons ("Attendee"). */
+    row_label?: string;
+    min_rows?: number;
+    max_rows?: number;
+    /** How the rows are exported to CSV. Defaults to `lines`. */
+    export_format?: 'lines' | 'json';
+}
+
+/**
+ * One column of a list field, parsed from its `columns` setting (since 1.6.0).
+ */
+export interface ListColumn {
+    /** The cell's key in each row: the label's slug. */
+    key: string;
+    label: string;
+    type: 'text' | 'email' | 'number' | 'select';
+    /** A select column's options; empty for other types. */
+    options: Array<{ value: string; label: string }>;
+}
+
+/**
+ * Configuration for slider fields (since 1.6.0). The limits fall back to 0,
+ * 100 and 1; see `FormField.slider` for the resolved values.
+ */
+export interface SliderFieldConfig extends CommonFieldConfig {
+    min?: number;
+    max?: number;
+    step?: number;
+    /** Whether to leave out the value shown beside the slider. Screen readers still announce it. */
+    hide_value?: boolean;
+    /** Text shown before the value, such as `$`. */
+    prefix?: string;
+    /** Text shown after the value, such as `%`. */
+    suffix?: string;
+}
+
+/**
+ * Configuration for calculation fields (since 1.6.0); see
+ * `FormField.calculation` for the resolved values.
+ */
+export interface CalculationFieldConfig extends CommonFieldConfig {
+    /** The formula, such as `{quantity} * {price}`: numbers, field merge tags, `+ - * /` and parentheses. */
+    formula?: string;
+    /** The decimal places the result is rounded to, 0 to 10. Defaults to 2. */
+    decimals?: number;
+}
+
+/**
+ * A calculation's resolved formula and decimal places (since 1.6.0).
+ */
+export interface CalculationSettings {
+    formula: string;
+    decimals: number;
+}
+
+/**
+ * A slider's resolved limits and value label (since 1.6.0).
+ */
+export interface SliderSettings {
+    min: number;
+    max: number;
+    step: number;
+    prefix: string;
+    suffix: string;
+    /** Whether the value is shown beside the slider. */
+    show_value: boolean;
+}
+
+/**
+ * Configuration for Net Promoter Score fields (since 1.6.0).
+ */
+export interface NpsFieldConfig extends CommonFieldConfig {
+    /** Shown under 0. Defaults to "Not likely". */
+    low_label?: string;
+    /** Shown under 10. Defaults to "Extremely likely". */
+    high_label?: string;
+    /** Whether submissions and exports tag each score as a promoter, passive or detractor. */
+    show_category?: boolean;
+}
+
+/**
+ * Configuration for Likert / matrix fields (since 1.6.0).
+ */
+export interface MatrixFieldConfig extends CommonFieldConfig {
+    /** `matrix` (a row per statement, the default) or `single` (one scale). */
+    mode?: 'matrix' | 'single';
+    /** One statement per line. */
+    rows?: string;
+    /** One choice per line, as `Label` or `Label | value`. Defaults to a five-point agreement scale. */
+    columns?: string;
+}
+
+/**
+ * One row (statement) of a matrix field, parsed from its `rows` setting (since 1.6.0).
+ */
+export interface MatrixRow {
+    /** The row's key in the value: the statement's slug. */
+    key: string;
+    label: string;
+}
+
+/**
+ * One column (choice) of a matrix field, parsed from its `columns` setting (since 1.6.0).
+ */
+export interface MatrixColumn {
+    value: string;
+    label: string;
+}
+
+/**
+ * Configuration for ranking fields (since 1.6.0). The choices are the
+ * field's options; the value lists every option value, most preferred first.
+ */
+export interface RankingFieldConfig extends CommonFieldConfig {
+    options: FieldOption[];
+    /** Whether each visitor's list starts in a random order. */
+    randomize?: boolean;
+}
+
+/**
+ * Configuration for signature fields (since 1.6.0). A drawn signature is
+ * submitted as a PNG data URL (`data:image/png;base64,…`) and a typed one as
+ * the visitor's full name.
+ */
+export interface SignatureFieldConfig extends CommonFieldConfig {
+    /** The drawing pad's height in pixels: 120, 160 (the default), 200 or 240. */
+    pad_height?: number | string;
 }
 
 /**
@@ -206,12 +871,85 @@ export interface FileFieldConfig extends BaseFieldConfig {
 export type FieldConfig =
     | OptionsFieldConfig
     | FileFieldConfig
+    | RatingFieldConfig
+    | ToggleFieldConfig
+    | CommonFieldConfig
+    | ContentFieldConfig
+    | CompositeFieldConfig
+    | NameFieldConfig
+    | AddressFieldConfig
+    | EmailFieldConfig
+    | ConsentFieldConfig
+    | CaptchaFieldConfig
+    | TextFieldConfig
+    | PhoneFieldConfig
+    | NumberFieldConfig
+    | TextareaFieldConfig
+    | DateFieldConfig
+    | TimeFieldConfig
+    | SectionFieldConfig
+    | DateTimeFieldConfig
+    | DateRangeFieldConfig
+    | ListFieldConfig
+    | SliderFieldConfig
+    | CalculationFieldConfig
+    | NpsFieldConfig
+    | MatrixFieldConfig
+    | RankingFieldConfig
+    | SignatureFieldConfig
     | BaseFieldConfig
     | null;
+
+/**
+ * How a field setting is edited in the builder.
+ *
+ * @since 1.6.0
+ */
+export type FieldSettingInput = 'text' | 'textarea' | 'integer' | 'number' | 'select' | 'toggle' | 'date' | 'time' | 'list' | 'date_expression' | 'formula';
+
+/**
+ * One type-specific setting from a field type's settings schema
+ * (`ArtisanPackUI\Forms\Support\FieldSettings` on the server). The builders
+ * render a field's settings from its `settings_schema`.
+ *
+ * @since 1.6.0
+ */
+export interface FieldSettingDefinition {
+    /** The storage key. */
+    key: string;
+    /** Builder label, already translated. */
+    label: string;
+    input: FieldSettingInput;
+    /** The column the value is stored in. */
+    store: 'field_config' | 'validation_rules';
+    /** A column an older copy may still live in; read first, cleared on write. */
+    legacy_store?: 'field_config' | 'validation_rules';
+    /** The builder tab the setting belongs to. */
+    tab: 'general' | 'validation' | 'advanced';
+    hint?: string;
+    placeholder?: string;
+    /** The value the renderer falls back to when the setting is unset. */
+    default?: string | number | boolean;
+    min?: number;
+    max?: number;
+    max_length?: number;
+    step?: number | 'any';
+    options?: Array<{ value: string; label: string }>;
+    monospace?: boolean;
+}
 
 // ---------------------------------------------------------------------------
 // Model Types (API Resource Shapes)
 // ---------------------------------------------------------------------------
+
+/**
+ * Earliest and latest dates the server resolved for a date field, as
+ * `YYYY-MM-DD`; null when unbounded (since 1.6.0).
+ */
+export interface ServerDateBounds {
+    min: string | null;
+    max: string | null;
+}
 
 /**
  * Form field as returned by the API (FormFieldResource).
@@ -236,6 +974,153 @@ export interface FormField {
     sort_order: number;
     /** Present only when the field type supports options and options are non-empty. */
     options?: FieldOption[];
+    /** Whether the field is shown but not editable (since 1.6.0). */
+    is_read_only?: boolean;
+    /**
+     * The value a read-only field submits, after the `ap.forms.readOnlyValue`
+     * filter (since 1.6.0). Present only when `is_read_only` is true.
+     */
+    read_only_value?: unknown;
+    /**
+     * The `autocomplete` token the input exposes: the field's setting or the
+     * type's default, or null for none (since 1.6.0).
+     */
+    autocomplete?: string | null;
+    /** The custom message for every failed rule except "required", translated (since 1.6.0). */
+    error_message?: string;
+    /** The custom message for a required field left empty, translated (since 1.6.0). */
+    required_message?: string;
+    /**
+     * The prefill key and query string parameter that populate the field, or
+     * null when dynamic population is off (since 1.6.0).
+     */
+    dynamic_parameter?: string | null;
+    /** Whether the field is left out of the public form and filled in on the submission (since 1.6.0). */
+    is_administrative?: boolean;
+    /**
+     * The label of the field's "Other" choice, present only when a radio or
+     * checkbox group offers one (since 1.6.0).
+     */
+    other_choice_label?: string;
+    /**
+     * The label placement set on the field or its form, or null when neither
+     * sets one. Only in the public render payload (since 1.6.0).
+     */
+    label_placement?: LabelPlacement | null;
+    /**
+     * The description placement set on the field or its form, or null when
+     * neither sets one. Only in the public render payload (since 1.6.0).
+     */
+    description_placement?: DescriptionPlacement | null;
+    /**
+     * The ID prefix of the form instance rendering the field, which its
+     * element IDs start with (see `fieldIdKey()`). Set by the React and Vue
+     * renderers, not the API (since 1.6.0).
+     */
+    id_prefix?: string;
+    /**
+     * A date, date and time or date range field's earliest and latest allowed
+     * dates (`YYYY-MM-DD`, null when unbounded), resolved by the server for
+     * its "today" so relative limits match its validation (since 1.6.0).
+     */
+    date_limits?: ServerDateBounds;
+    /**
+     * A date field's limits narrowed by its age limits, resolved by the
+     * server: the bounds its input offers (since 1.6.0).
+     */
+    date_bounds?: ServerDateBounds;
+    /**
+     * A composite field's sub-inputs, enabled or not (since 1.6.0). Present
+     * only for composite fields.
+     */
+    sub_inputs?: SubInputDefinition[];
+    /** The keys of the sub-inputs a submission must fill in (since 1.6.0). */
+    required_sub_inputs?: string[];
+    /** Where a composite field shows its sub-input labels (since 1.6.0). */
+    sub_label_placement?: SubLabelPlacement;
+    /**
+     * An email field's two sub-labels and the confirm input's placeholder,
+     * present only when email confirmation is on (since 1.6.0). The
+     * confirmation is submitted as `data[{name}_confirmation]`.
+     */
+    email_confirmation?: { email: string; confirm: string; confirm_placeholder: string | null };
+    /**
+     * A consent field's checkbox text and sanitized description HTML (since
+     * 1.6.0). Present only for consent fields.
+     */
+    consent?: { text: string; description: string };
+    /**
+     * A CAPTCHA field's widget settings, or null when its provider has no
+     * keys (render nothing then; since 1.6.0). Present only for CAPTCHA fields.
+     */
+    captcha?: CaptchaWidget | null;
+    /**
+     * A text or phone field's resolved input mask and the format hint shown
+     * under it, present only when the field has a mask (since 1.6.0).
+     */
+    input_mask?: { mask: string; hint: string };
+    /**
+     * The description that gives a number field's prefix and suffix to screen
+     * readers, present only when it has either (since 1.6.0).
+     */
+    affix_description?: string;
+    /**
+     * A paragraph's content as sanitized HTML, with basic formatting and line
+     * breaks kept (since 1.6.0). Present only for paragraphs.
+     */
+    content_html?: string;
+    /**
+     * A composite field's display separator: what joins its filled parts
+     * (since 1.6.0). Present only for composite fields.
+     */
+    format_separator?: string;
+    /**
+     * A list field's columns, row limits and row label (since 1.6.0). Present
+     * only for list fields.
+     */
+    list?: { columns: ListColumn[]; min_rows: number | null; max_rows: number; row_label: string };
+    /** A slider's resolved limits and value label (since 1.6.0). Present only for sliders. */
+    slider?: SliderSettings;
+    /**
+     * A calculation's formula and decimal places (since 1.6.0). Present only
+     * for calculations. The result is worked out on the client as the
+     * visitor types and again on the server on submit.
+     */
+    calculation?: CalculationSettings;
+    /** A Net Promoter Score field's end labels (since 1.6.0). Present only for NPS fields. */
+    nps?: { low: string; high: string };
+    /**
+     * A matrix field's statements and scale (since 1.6.0). `single` is true
+     * for a single scale (no rows), whose value is one column value; a grid's
+     * value maps row keys to column values. Present only for matrix fields.
+     */
+    matrix?: { single: boolean; rows: MatrixRow[]; columns: MatrixColumn[] };
+    /**
+     * A signature field's pad height in pixels and the largest drawn PNG the
+     * server accepts, in bytes (since 1.6.0). Present only for signature fields.
+     */
+    signature?: { pad_height: number; max_bytes: number };
+    /**
+     * How a phone field checks numbers, present only when it checks them
+     * (since 1.6.0). `countries` lists the selector's countries for the
+     * `international` format and is empty otherwise.
+     */
+    phone?: { format: PhoneFormat; default_country: string; countries: PhoneCountry[] };
+    /**
+     * The value the field starts with: its default value with server merge
+     * tags replaced, the options marked as defaults, or the
+     * `ap.forms.fieldValue.{parameter}` filter's value; a map of sub-input
+     * keys for a composite field, empty rows for a list, a map of unanswered
+     * rows for a matrix and every option value in order for a ranking. Page tags
+     * (`{embed_url}`, `{referer}`, `{query:…}`) are left for the client. Only
+     * in the public render payload (since 1.6.0).
+     */
+    resolved_default_value?: string | boolean | string[] | Record<string, string> | Array<Record<string, string>> | null;
+    /**
+     * The field type's settings schema (since 1.6.0). Left out of the public
+     * render payload.
+     */
+    settings_schema?: FieldSettingDefinition[];
     created_at: string;
     updated_at: string;
 }
@@ -298,6 +1183,10 @@ export interface Form {
     show_progress_bar: boolean;
     allow_step_navigation: boolean;
     is_active: boolean;
+    /** The form's default label placement, or null for top (since 1.6.0). */
+    label_placement: LabelPlacement | null;
+    /** The form's default description placement, or null for below (since 1.6.0). */
+    description_placement: DescriptionPlacement | null;
     created_at: string;
     updated_at: string;
     /** Included when the fields relationship is loaded. */
@@ -338,11 +1227,34 @@ export interface FormSubmissionValue {
     field_id: number | null;
     field_name: string;
     field_label: string | null;
+    /** The field's admin label when the value was submitted (since 1.6.0). */
+    field_admin_label: string | null;
     field_type: FieldType;
     value: string | null;
-    value_array: string[] | null;
+    value_array: string[] | Record<string, string> | null;
     display_value: string;
+    /** Option labels for an array value, one per item (since 1.6.0). */
+    display_values: string[];
+    /**
+     * A rich text value's HTML, sanitized on the server, or null when the
+     * display value is plain text (since 1.6.0). `display_value` holds the
+     * plain text.
+     */
+    display_html: string | null;
+    /**
+     * Whether the value is masked because its field is masked in the admin
+     * and the user may not reveal it. `value` and `display_value` then hold
+     * the masked text (since 1.6.0).
+     */
+    is_masked: boolean;
+    /** Whether `forms:prune-submissions` redacted the value (since 1.6.0). */
+    is_redacted: boolean;
     upload_id: number | null;
+    /**
+     * Every upload a file value holds, in upload order: a multi-file value's
+     * uploads, or its single `upload_id` (since 1.6.0).
+     */
+    upload_ids: number[];
     created_at: string;
 }
 
@@ -369,6 +1281,11 @@ export interface FormSubmission {
     values?: FormSubmissionValue[];
     /** Included when the uploads relationship is loaded. */
     uploads?: FormUpload[];
+    /**
+     * The form's administrative fields, which admins fill in on the
+     * submission. Included by the single-submission endpoints (since 1.6.0).
+     */
+    administrative_fields?: FormField[];
 }
 
 // ---------------------------------------------------------------------------
@@ -450,6 +1367,10 @@ export interface StoreFormRequest {
     is_multi_step?: boolean;
     show_progress_bar?: boolean;
     allow_step_navigation?: boolean;
+    /** The default label placement; null clears it (since 1.6.0). */
+    label_placement?: LabelPlacement | null;
+    /** The default description placement; null clears it (since 1.6.0). */
+    description_placement?: DescriptionPlacement | null;
 }
 
 /**
@@ -533,6 +1454,18 @@ export interface UpdateSubmissionRequest {
     is_spam?: boolean;
     is_starred?: boolean;
     admin_notes?: string | null;
+    /**
+     * Values for the form's administrative fields, keyed by field name and
+     * validated with each field's rules (since 1.6.0).
+     */
+    admin_values?: Record<string, unknown>;
+    /**
+     * IDs of files to delete from the form's administrative file fields
+     * (since 1.6.0). Files are uploaded in a multipart request instead, as
+     * `admin_files[{name}]` (`admin_files[{name}][]` for a multi-file field)
+     * POSTed with `_method=PUT`.
+     */
+    remove_admin_uploads?: number[];
 }
 
 /**

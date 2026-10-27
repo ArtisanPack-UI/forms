@@ -3,7 +3,8 @@
  *
  * Fetches a form definition from the API, manages field values,
  * validation errors, file uploads, conditional logic, multi-step
- * navigation, and form submission.
+ * navigation, and form submission. Calculation fields are worked out from
+ * the other values as they change (since 1.6.0; see `shared/calculation.ts`).
  *
  * @package    ArtisanPack_UI
  * @subpackage Forms
@@ -11,7 +12,8 @@
  * @since      1.1.0
  */
 
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, toValue, watch } from 'vue';
+import type { MaybeRefOrGetter } from 'vue';
 
 import type {
 	FormField,
@@ -19,30 +21,57 @@ import type {
 	FormStep,
 	SubmitFormResponse,
 } from '../../types/artisanpack-forms';
-import { getHiddenFields } from '../../shared/conditionalLogic';
+import { isCalculationField, resolveCalculatedValues } from '../../shared/calculation';
+import { createSubmitHooks, SubmitHookError } from '../../shared/captcha';
+import type { SubmitHooks } from '../../shared/captcha';
+import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composite';
+import { createIdPrefix, withIdPrefix } from '../../shared/domIds';
+import { getInitialFieldValue, resolveOtherChoices } from '../../shared/fieldSettings';
+import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
+import { t } from '../../shared/i18n';
+import { appendSubmissionValue, mapServerErrors } from '../../shared/submission';
 import { validateFields } from '../../shared/validation';
 
 /** Configuration options for the useForm composable. */
 export interface UseFormOptions {
-	/** Base URL for the forms API (e.g. "https://example.com/api/v1/forms"). */
-	baseUrl: string;
-	/** The form slug or ID used in the API URL. */
-	formSlug: string;
+	/**
+	 * Base URL for the forms API (e.g. "https://example.com/api/v1/forms").
+	 * A ref or getter is watched, and the form reloads when it changes
+	 * (since 1.6.0).
+	 */
+	baseUrl: MaybeRefOrGetter<string>;
+	/**
+	 * The form slug or ID used in the API URL. A ref or getter is watched,
+	 * and the form reloads when it changes (since 1.6.0).
+	 */
+	formSlug: MaybeRefOrGetter<string>;
 	/** Optional callback when submission succeeds. */
 	onSuccess?: ( response: SubmitFormResponse ) => void;
 	/** Optional callback when submission fails. */
 	onError?: ( error: Error ) => void;
 	/** Whether to validate on the client before submitting. Defaults to true. */
 	clientValidation?: boolean;
+	/**
+	 * Values for fields with dynamic population on, keyed by parameter name.
+	 * Takes precedence over the page's query string and the field's default.
+	 *
+	 * @since 1.6.0
+	 */
+	prefill?: Record<string, unknown>;
 }
 
 /** Layout field types that do not collect data. */
-const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );
+const LAYOUT_FIELDS = new Set( ['section', 'heading', 'paragraph', 'divider', 'html'] );
 
 /**
  * Initializes default form values from field definitions.
+ *
+ * An email field that asks for the address twice seeds its confirmation
+ * with the email's initial value, so a prefilled address is not reported
+ * as a mismatch. Mirrors the Livewire renderer's `buildInitialFormData()`
+ * (since 1.6.0).
  */
-function buildDefaults( fields: FormField[] ): Record<string, unknown> {
+function buildDefaults( fields: FormField[], prefill?: Record<string, unknown> ): Record<string, unknown> {
 	const defaults: Record<string, unknown> = {};
 
 	for ( const field of fields ) {
@@ -50,18 +79,26 @@ function buildDefaults( fields: FormField[] ): Record<string, unknown> {
 			continue;
 		}
 
-		if ( field.type === 'checkbox_group' || field.type === 'select_multiple' ) {
-			defaults[field.name] = typeof field.default_value === 'string' && field.default_value
-				? field.default_value.split( ',' ).map( ( v ) => v.trim() )
-				: [];
-		} else if ( field.type === 'checkbox' ) {
-			defaults[field.name] = field.default_value === '1' || field.default_value === 'true';
-		} else {
-			defaults[field.name] = field.default_value ?? '';
+		defaults[field.name] = getInitialFieldValue( field, { prefill } );
+
+		if ( requiresEmailConfirmation( field ) ) {
+			const email = defaults[field.name];
+
+			defaults[getConfirmationKey( field )] = typeof email === 'string' ? email : '';
 		}
 	}
 
 	return defaults;
+}
+
+/**
+ * Map each email confirmation key to the name of the email field it
+ * confirms (since 1.6.0).
+ */
+function getConfirmationFields( fields: FormField[] ): Record<string, string> {
+	return Object.fromEntries(
+		fields.filter( requiresEmailConfirmation ).map( ( field ) => [getConfirmationKey( field ), field.name] ),
+	);
 }
 
 /**
@@ -86,26 +123,66 @@ export function useForm( options: UseFormOptions ) {
 		onSuccess,
 		onError,
 		clientValidation = true,
+		prefill,
 	} = options;
 
 	const form = ref<FormRenderData | null>( null );
 	const values = ref<Record<string, unknown>>( {} );
 	const errors = ref<Record<string, string[]>>( {} );
 	const files = ref<Record<string, File | File[]>>( {} );
+
+	/**
+	 * Text typed into each field's "Other" choice, keyed by field name. The
+	 * choice stays selected in `values` and is replaced with this text on
+	 * submit (since 1.6.0).
+	 */
+	const otherValues = ref<Record<string, string>>( {} );
 	const isLoading = ref( true );
 	const isSubmitting = ref( false );
 	const isSubmitted = ref( false );
 	const currentStep = ref( 0 );
 	const loadError = ref<string | null>( null );
+
+	/**
+	 * Counts the times validation failed (a step, or the submission on the
+	 * client or the server), so the renderer can move focus to the first
+	 * invalid field each time (since 1.6.0).
+	 */
+	const validationFailures = ref( 0 );
 	const formLoadedAt = ref( 0 );
 
-	// Computed: hidden fields from conditional logic
-	const hiddenFields = computed( () => {
+	/**
+	 * The prefix this form instance's element IDs start with, so two forms on
+	 * one page do not share IDs. Each field carries it as `id_prefix` (since
+	 * 1.6.0; see `fieldIdKey()`).
+	 */
+	const idPrefix = createIdPrefix();
+
+	/** The form's submit hooks, which fields such as the CAPTCHA register with (since 1.6.0). */
+	const submitHooks: SubmitHooks = createSubmitHooks();
+
+	/** Each email confirmation key, mapped to its email field's name (since 1.6.0). */
+	const confirmationFields = computed( () => getConfirmationFields( form.value?.fields ?? [] ) );
+
+	// Computed: calculations and hidden fields from conditional logic (since 1.6.0)
+	const resolved = computed( () => {
 		if ( !form.value ) {
-			return {};
+			return { values: values.value, hiddenFields: {} as Record<string, boolean> };
 		}
 
-		return getHiddenFields( form.value.fields, values.value );
+		return resolveCalculatedValues( form.value.fields, values.value );
+	} );
+
+	const hiddenFields = computed( () => resolved.value.hiddenFields );
+
+	// Keep each calculation's result in `values`, so it renders and submits like any other value
+	watch( () => resolved.value.values, ( next ) => {
+		const changed = ( form.value?.fields ?? [] )
+			.filter( ( field ) => isCalculationField( field ) && values.value[field.name] !== next[field.name] );
+
+		if ( changed.length > 0 ) {
+			values.value = { ...values.value, ...Object.fromEntries( changed.map( ( field ) => [field.name, next[field.name]] ) ) };
+		}
 	} );
 
 	// Computed: all fields
@@ -159,34 +236,79 @@ export function useForm( options: UseFormOptions ) {
 		return Math.round( ( ( currentStep.value + 1 ) / totalSteps.value ) * 100 );
 	} );
 
+	/** Counts form loads, so a response for a slug since replaced is ignored. */
+	let latestLoad = 0;
+
 	// Fetch form definition
 	async function fetchForm(): Promise<void> {
+		const load = ++latestLoad;
+
 		isLoading.value = true;
 		loadError.value = null;
 
 		try {
-			const url = `${baseUrl}/${encodeURIComponent( formSlug )}/render`;
+			const url = `${toValue( baseUrl )}/${encodeURIComponent( toValue( formSlug ) )}/render`;
 			const response = await fetch( url );
 
 			if ( !response.ok ) {
-				throw new Error( `Failed to load form: ${response.statusText}` );
+				throw new Error( t( 'Failed to load form: :status', { status: response.statusText } ) );
 			}
 
 			const data: { data: FormRenderData } = await response.json();
-			form.value = data.data;
+
+			if ( load !== latestLoad ) {
+				return;
+			}
+
+			// Each field carries the instance's ID prefix for its element IDs (since 1.6.0)
+			form.value = { ...data.data, fields: withIdPrefix( data.data.fields, idPrefix ) };
 			formLoadedAt.value = Math.floor( Date.now() / 1000 );
-			values.value = buildDefaults( data.data.fields );
+			values.value = buildDefaults( data.data.fields, prefill );
+			errors.value = {};
+			files.value = {};
+			otherValues.value = {};
+			isSubmitted.value = false;
+			currentStep.value = 0;
 		} catch ( err ) {
-			loadError.value = err instanceof Error ? err.message : 'Failed to load form.';
+			if ( load === latestLoad ) {
+				loadError.value = err instanceof Error ? err.message : t( 'Failed to load form.' );
+			}
 		} finally {
-			isLoading.value = false;
+			if ( load === latestLoad ) {
+				isLoading.value = false;
+			}
 		}
 	}
 
 	onMounted( fetchForm );
 
+	// Load the new form when the slug or API changes, as the React hook does (since 1.6.0)
+	watch( [() => toValue( baseUrl ), () => toValue( formSlug )], () => {
+		fetchForm();
+	} );
+
 	function setValue( name: string, value: unknown ): void {
+		const previous = values.value[name];
+
 		values.value = { ...values.value, [name]: value };
+
+		// A composite field's errors are keyed by sub-input; only the changed parts are cleared.
+		if ( Object.keys( errors.value ).some( ( key ) => key === name || key.startsWith( `${name}.` ) ) ) {
+			errors.value = clearChangedFieldErrors( errors.value, name, previous, value );
+		}
+
+		// A mismatched confirmation is its email field's error.
+		const confirmedField = confirmationFields.value[name];
+
+		if ( confirmedField && errors.value[confirmedField] ) {
+			const next = { ...errors.value };
+			delete next[confirmedField];
+			errors.value = next;
+		}
+	}
+
+	function setFile( name: string, file: File | File[] ): void {
+		files.value = { ...files.value, [name]: file };
 
 		if ( errors.value[name] ) {
 			const next = { ...errors.value };
@@ -195,8 +317,8 @@ export function useForm( options: UseFormOptions ) {
 		}
 	}
 
-	function setFile( name: string, file: File | File[] ): void {
-		files.value = { ...files.value, [name]: file };
+	function setOtherValue( name: string, text: string ): void {
+		otherValues.value = { ...otherValues.value, [name]: text };
 
 		if ( errors.value[name] ) {
 			const next = { ...errors.value };
@@ -216,7 +338,12 @@ export function useForm( options: UseFormOptions ) {
 			return {};
 		}
 
-		return validateFields( fieldsToValidate, values.value, hiddenFields.value, files.value );
+		return validateFields(
+			fieldsToValidate,
+			resolveOtherChoices( fieldsToValidate, values.value, otherValues.value ),
+			hiddenFields.value,
+			files.value,
+		);
 	}
 
 	function nextStepFn(): boolean {
@@ -228,6 +355,7 @@ export function useForm( options: UseFormOptions ) {
 
 		if ( Object.keys( stepErrors ).length > 0 ) {
 			errors.value = { ...errors.value, ...stepErrors };
+			validationFailures.value++;
 
 			return false;
 		}
@@ -264,6 +392,7 @@ export function useForm( options: UseFormOptions ) {
 
 		if ( Object.keys( stepErrors ).length > 0 ) {
 			errors.value = { ...errors.value, ...stepErrors };
+			validationFailures.value++;
 
 			return;
 		}
@@ -284,10 +413,11 @@ export function useForm( options: UseFormOptions ) {
 
 		if ( Object.keys( validationErrors ).length > 0 ) {
 			errors.value = validationErrors;
+			validationFailures.value++;
 
 			// Navigate to first step with errors (multi-step)
 			if ( form.value.is_multi_step && sortedSteps.value.length > 0 ) {
-				const errorFieldNames = new Set( Object.keys( validationErrors ) );
+				const errorFieldNames = new Set( Object.keys( validationErrors ).map( getErrorFieldName ) );
 
 				for ( let i = 0; i < sortedSteps.value.length; i++ ) {
 					const stepFields = allFields.value.filter(
@@ -307,23 +437,48 @@ export function useForm( options: UseFormOptions ) {
 		isSubmitting.value = true;
 		errors.value = {};
 
-		try {
-			const url = `${baseUrl}/${encodeURIComponent( formSlug )}/submit`;
-			const formDataObj = new FormData();
+		/** How the request went, told to every submit hook once it was sent. */
+		let outcome: { ok: boolean; errors: Record<string, string[]> } | null = null;
 
-			// Add form data values
-			for ( const [key, value] of Object.entries( values.value ) ) {
+		try {
+			// Values fields add when the form is submitted, such as an invisible CAPTCHA's token.
+			let collected: Record<string, unknown>;
+
+			try {
+				collected = await submitHooks.collect();
+			} catch ( hookError ) {
+				if ( hookError instanceof SubmitHookError ) {
+					errors.value = { [hookError.field]: [t( 'The verification check failed. Please try again.' )] };
+					validationFailures.value++;
+
+					return;
+				}
+
+				throw hookError;
+			}
+
+			const url = `${toValue( baseUrl )}/${encodeURIComponent( toValue( formSlug ) )}/submit`;
+			const formDataObj = new FormData();
+			const submitted = {
+				...resolveOtherChoices( form.value.fields, values.value, otherValues.value ),
+				...collected,
+			};
+
+			// Add form data values, with each "Other" choice replaced by its text
+			for ( const [key, value] of Object.entries( submitted ) ) {
 				if ( hiddenFields.value[key] ) {
 					continue;
 				}
 
-				if ( Array.isArray( value ) ) {
-					for ( const item of value ) {
-						formDataObj.append( `data[${key}][]`, String( item ) );
-					}
-				} else if ( value !== null && value !== undefined ) {
-					formDataObj.append( `data[${key}]`, String( value ) );
+				// An email confirmation is left out with its hidden email field.
+				const confirmedField = confirmationFields.value[key];
+
+				if ( confirmedField && hiddenFields.value[confirmedField] ) {
+					continue;
 				}
+
+				// Lists, arrays and composite maps are expanded; booleans are sent as '1'/'0'.
+				appendSubmissionValue( formDataObj, key, value );
 			}
 
 			// Add files
@@ -349,6 +504,8 @@ export function useForm( options: UseFormOptions ) {
 			// Add form loaded timestamp for bot detection
 			formDataObj.append( '_form_loaded_at', String( formLoadedAt.value ) );
 
+			outcome = { ok: false, errors: {} };
+
 			const response = await fetch( url, {
 				method: 'POST',
 				body: formDataObj,
@@ -359,20 +516,16 @@ export function useForm( options: UseFormOptions ) {
 
 			if ( response.status === 422 ) {
 				const errorData = await response.json();
-				const serverErrors: Record<string, string[]> = {};
-
-				if ( errorData.errors ) {
-					for ( const [key, messages] of Object.entries( errorData.errors ) ) {
-						const fieldName = key.replace( /^(data|files)\./, '' );
-						serverErrors[fieldName] = messages as string[];
-					}
-				}
+				// "data.field_name" becomes "field_name"; errors for no field on the form go to `_form`.
+				const serverErrors = mapServerErrors( errorData.errors, allFields.value );
 
 				errors.value = serverErrors;
+				validationFailures.value++;
+				outcome = { ok: false, errors: serverErrors };
 
 				// Navigate to first step with server errors (multi-step)
 				if ( form.value.is_multi_step && sortedSteps.value.length > 0 ) {
-					const errorFieldNames = new Set( Object.keys( serverErrors ) );
+					const errorFieldNames = new Set( Object.keys( serverErrors ).map( getErrorFieldName ) );
 
 					for ( let i = 0; i < sortedSteps.value.length; i++ ) {
 						const stepFields = allFields.value.filter(
@@ -391,18 +544,20 @@ export function useForm( options: UseFormOptions ) {
 
 			if ( response.status === 429 ) {
 				errors.value = {
-					_form: ['Too many submissions. Please try again later.'],
+					_form: [t( 'Too many submissions. Please try again later.' )],
 				};
+				validationFailures.value++;
 
 				return;
 			}
 
 			if ( !response.ok ) {
-				throw new Error( 'Form submission failed.' );
+				throw new Error( t( 'Form submission failed.' ) );
 			}
 
 			const result: SubmitFormResponse = await response.json();
 			isSubmitted.value = true;
+			outcome = { ok: true, errors: {} };
 
 			if ( result.redirect_url ) {
 				window.location.href = result.redirect_url;
@@ -412,10 +567,15 @@ export function useForm( options: UseFormOptions ) {
 
 			onSuccess?.( result );
 		} catch ( err ) {
-			const error = err instanceof Error ? err : new Error( 'Form submission failed.' );
+			const error = err instanceof Error ? err : new Error( t( 'Form submission failed.' ) );
 			onError?.( error );
 		} finally {
 			isSubmitting.value = false;
+
+			// Fields learn how the submission went, e.g. a spent CAPTCHA token is reset.
+			if ( outcome ) {
+				submitHooks.settle( outcome );
+			}
 		}
 	}
 
@@ -424,9 +584,10 @@ export function useForm( options: UseFormOptions ) {
 			return;
 		}
 
-		values.value = buildDefaults( form.value.fields );
+		values.value = buildDefaults( form.value.fields, prefill );
 		errors.value = {};
 		files.value = {};
+		otherValues.value = {};
 		isSubmitted.value = false;
 		currentStep.value = 0;
 		formLoadedAt.value = Math.floor( Date.now() / 1000 );
@@ -437,19 +598,34 @@ export function useForm( options: UseFormOptions ) {
 		values,
 		errors,
 		files,
+		otherValues,
 		hiddenFields,
 		isLoading,
 		isSubmitting,
 		isSubmitted,
 		currentStep,
 		totalSteps,
+		/** A multi-step form's steps in order; empty for single-step forms (since 1.6.0). */
+		steps: sortedSteps,
+		validationFailures,
 		progressPercentage,
 		currentFields,
 		currentStepData,
 		loadError,
+		idPrefix,
 		setValue,
 		setFile,
+		setOtherValue,
 		removeFile,
+		/**
+		 * The form's submit hook registry. `FormRenderer` provides it to its
+		 * fields under `SUBMIT_HOOKS_KEY`; a field registers a hook to add
+		 * values when the form is submitted (`beforeSubmit`) and to hear how
+		 * the submission went (`afterSubmit`).
+		 *
+		 * @since 1.6.0
+		 */
+		submitHooks,
 		nextStep: nextStepFn,
 		prevStep: prevStepFn,
 		goToStep: goToStepFn,

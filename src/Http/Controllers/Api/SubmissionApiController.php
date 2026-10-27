@@ -19,6 +19,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Forms\Http\Controllers\Api;
 
+use ArtisanPackUI\Forms\Captcha\CaptchaVerifier;
 use ArtisanPackUI\Forms\Http\Requests\Api\BulkSubmissionApiRequest;
 use ArtisanPackUI\Forms\Http\Requests\Api\SubmitFormApiRequest;
 use ArtisanPackUI\Forms\Http\Requests\Api\UpdateSubmissionApiRequest;
@@ -27,13 +28,16 @@ use ArtisanPackUI\Forms\Http\Resources\PaginatedResourceCollection;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Models\FormUpload;
+use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\ExportService;
 use ArtisanPackUI\Forms\Services\SubmissionService;
+use ArtisanPackUI\Forms\Support\FieldPrivacy;
 use Exception;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -57,9 +61,11 @@ class SubmissionApiController extends Controller
      * @since 1.1.0
      *
      * @param SubmissionService $submissionService The submission service instance.
+     * @param CaptchaVerifier   $captchaVerifier   The CAPTCHA verifier (since 1.6.0).
      */
     public function __construct(
         protected SubmissionService $submissionService,
+        protected CaptchaVerifier $captchaVerifier,
     ) {
     }
 
@@ -78,7 +84,7 @@ class SubmissionApiController extends Controller
         $this->authorize( 'viewSubmissions', $form );
 
         $query = FormSubmission::where( 'form_id', $form->id )
-            ->with( ['values', 'uploads'] );
+            ->with( ['values.field', 'uploads.field'] );
 
         if ( $request->has( 'is_read' ) ) {
             $query->where( 'is_read', filter_var( $request->input( 'is_read' ), FILTER_VALIDATE_BOOLEAN ) );
@@ -118,13 +124,17 @@ class SubmissionApiController extends Controller
 
         $this->authorize( 'view', $submission );
 
-        $submission->load( ['values', 'uploads'] );
+        $submission->load( ['values.field', 'uploads.field', 'form.fields'] );
 
         return new FormSubmissionResource( $submission );
     }
 
     /**
-     * Updates submission metadata (read/starred/spam/notes).
+     * Updates submission metadata (read/starred/spam/notes) and administrative field values.
+     *
+     * Since 1.6.0, also replaces administrative file fields' files sent in
+     * `admin_files` and deletes the files listed in `remove_admin_uploads`.
+     * Files need a multipart request: POST with `_method=PUT`.
      *
      * @since 1.1.0
      *
@@ -142,9 +152,25 @@ class SubmissionApiController extends Controller
 
         $this->authorize( 'update', $submission );
 
-        $submission->update( $request->validated() );
+        $data        = Arr::except( $request->validated(), ['admin_values', 'admin_files', 'remove_admin_uploads'] );
+        $adminValues = $request->administrativeValues();
+        $adminFiles  = $request->administrativeFiles();
 
-        $freshSubmission = $submission->fresh( ['values', 'uploads'] );
+        $submission->update( $data );
+
+        if ( null !== $adminValues ) {
+            $this->submissionService->updateAdministrativeValues( $submission, $adminValues );
+        }
+
+        if ( [] !== $adminFiles ) {
+            $this->submissionService->updateAdministrativeFiles( $submission, $adminFiles );
+        }
+
+        foreach ( FormUpload::query()->where( 'submission_id', $submission->id )->whereKey( $request->uploadsToRemove() )->get() as $upload ) {
+            $this->submissionService->removeAdministrativeUpload( $submission, $upload );
+        }
+
+        $freshSubmission = $submission->fresh( ['values.field', 'uploads.field', 'form.fields'] );
 
         if ( null === $freshSubmission ) {
             abort( 404, __( 'Submission not found after update.' ) );
@@ -181,6 +207,8 @@ class SubmissionApiController extends Controller
      *
      * Handles validation, spam checks, rate limiting, file uploads,
      * and notification triggering — same logic as the Livewire FormRenderer.
+     * CAPTCHA tokens are checked last, just before the submission is saved;
+     * a failed check answers 422 with the error under `data.{field}`.
      *
      * @since 1.1.0
      *
@@ -231,6 +259,25 @@ class SubmissionApiController extends Controller
             return response()->json( $response, 201 );
         }
 
+        // Check CAPTCHA tokens last, since a provider accepts each token once
+        $data          = $request->input( 'data', [] );
+        $data          = is_array( $data ) ? $data : [];
+        $captchaErrors = $this->captchaVerifier->verify(
+            $form->fields,
+            $data,
+            app( ConditionalLogicService::class )->getHiddenFields( $form->fields, $data, true ),
+            $request->ip(),
+        );
+
+        if ( [] !== $captchaErrors ) {
+            return response()->json( [
+                'message' => reset( $captchaErrors ),
+                'errors'  => collect( $captchaErrors )
+                    ->mapWithKeys( fn ( string $message, string $name ): array => ["data.{$name}" => [$message]] )
+                    ->all(),
+            ], 422 );
+        }
+
         try {
             $metadata = $this->submissionService->getRequestMetadata( $request );
 
@@ -278,7 +325,7 @@ class SubmissionApiController extends Controller
         $this->authorize( 'exportSubmissions', $form );
 
         $submissions = FormSubmission::where( 'form_id', $form->id )
-            ->with( 'values' )
+            ->with( 'values.field' )
             ->orderBy( 'created_at', 'desc' )
             ->get();
 
@@ -363,6 +410,15 @@ class SubmissionApiController extends Controller
         }
 
         $this->authorize( 'view', $submission );
+
+        // Files of "Do not store" fields are never served, and masked files only to users who may reveal them (since 1.6.0)
+        if ( $upload->isTransient() ) {
+            abort( 404 );
+        }
+
+        if ( FieldPrivacy::masksUpload( $upload ) ) {
+            abort( 403 );
+        }
 
         if ( ! Storage::disk( $upload->disk )->exists( $upload->path ) ) {
             abort( 404, __( 'File not found.' ) );

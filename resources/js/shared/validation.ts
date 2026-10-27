@@ -12,14 +12,143 @@
 
 import type { FormField, ValidationRules } from '../types/artisanpack-forms';
 
+import { hasCaptchaWidget, runsOnSubmit } from './captcha';
+import { getFieldOptions, isMultipleChoiceField } from './choices';
+import {
+	getEnabledSubInputs,
+	getRequiredSubInputKeys,
+	isCompositeField,
+	SUB_INPUT_MAX_LENGTH,
+	toCompositeValue,
+} from './composite';
+import {
+	ACCEPTANCE_FIELD_TYPES,
+	allowsMultipleFiles,
+	allowsOtherChoice,
+	getConfirmationKey,
+	getFileAllowedTypes,
+	getFileMaxCount,
+	getFileMaxSize,
+	getFileMaxTotalSize,
+	getOtherChoiceLabel,
+	getRatingMax,
+	OTHER_CHOICE_MAX_LENGTH,
+	OTHER_CHOICE_VALUE,
+	ratingAllowsHalf,
+	requiresEmailConfirmation,
+} from './fieldSettings';
+import { countWords, getMaxWords } from './counter';
+import {
+	getAgeBirthdates,
+	getAgeLimit,
+	getDateLimits,
+	isAllowedDay,
+	parseIsoDate,
+} from './dateConstraints';
+import { validateColor } from './color';
+import { isAcceptedEmailDomain } from './emailDomains';
+import { t } from './i18n';
+import { isListField, validateListField } from './list';
+import { getInputMask, getInputMaskHint, maskToRegExp } from './mask';
+import { isMatrixField, validateMatrixField } from './matrix';
+import { validateNps } from './nps';
+import { validateRanking } from './ranking';
+import { validateSignature } from './signature';
+import { isOnStep, validateSlider } from './slider';
+import { getNumberFormat, isIntegerOnly, normalizeFormattedNumber } from './numberFormat';
+import { getPhoneFormat, isPlausiblePhoneNumber } from './phone';
+import { richTextToPlainText, usesRichText } from './richText';
+import { getAllowedUrlSchemes, isAllowedUrl, withUrlScheme } from './url';
+
 /** Layout field types that do not collect data. */
-const LAYOUT_FIELDS = new Set( ['heading', 'paragraph', 'divider', 'html'] );
+const LAYOUT_FIELDS = new Set( ['section', 'heading', 'paragraph', 'divider', 'html'] );
+
+/** A `datetime-local` value, with optional seconds (or the stored `Y-m-d H:i` form). */
+const DATE_TIME_PATTERN = /^(\d{4}-\d{2}-\d{2})[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
+
+/**
+ * Read a numeric limit. `0` counts as set; null, blank and non-numeric values
+ * do not. Mirrors `FormField::getValidationLimit()`.
+ */
+function numericLimit( value: unknown ): number | undefined {
+	if ( value === null || value === undefined || value === '' ) {
+		return undefined;
+	}
+
+	const num = Number( value );
+
+	return Number.isFinite( num ) ? num : undefined;
+}
+
+/** Read a non-blank string limit (date or time), or undefined. */
+function stringLimit( value: unknown ): string | undefined {
+	return typeof value === 'string' && value.trim() !== '' ? value : undefined;
+}
+
+/**
+ * Validators for types whose value is checked against their own settings
+ * rather than `validation_rules` (since 1.6.0).
+ */
+const TYPE_VALIDATORS: Record<string, ( field: FormField, value: unknown ) => string[]> = {
+	slider: validateSlider,
+	nps: validateNps,
+	ranking: validateRanking,
+	signature: validateSignature,
+	color: validateColor,
+};
 
 /** Field types where min/max rules apply to string length (not numeric value). */
 const TEXT_LENGTH_FIELDS = new Set( ['text', 'email', 'phone', 'url', 'textarea', 'hidden'] );
 
+/** The name a message uses for a field: its label, or its name without one. */
+function fieldLabel( field: FormField ): string {
+	return field.label ?? field.name;
+}
+
+/**
+ * Checks whether a required field is missing its value.
+ *
+ * Mirrors the server's presence rules: an unchecked checkbox or toggle fails
+ * `accepted` even after it was checked once, and a rating of 0 ("no rating")
+ * counts as missing.
+ */
+function isMissing(
+	field: FormField,
+	value: unknown,
+	files?: Record<string, File | File[]>,
+): boolean {
+	if ( field.type === 'file' ) {
+		const fileValue = files?.[field.name];
+
+		return !fileValue || ( Array.isArray( fileValue ) && fileValue.length === 0 );
+	}
+
+	if ( ACCEPTANCE_FIELD_TYPES.has( field.type ) ) {
+		return value !== true && value !== 1 && value !== '1' && value !== 'true' && value !== 'on' && value !== 'yes';
+	}
+
+	if ( field.type === 'rating' ) {
+		return !( Number( value ) > 0 );
+	}
+
+	if ( field.type === 'checkbox_group' || field.type === 'select_multiple' || field.type === 'ranking' ) {
+		return !Array.isArray( value ) || value.length === 0;
+	}
+
+	// An emptied rich text editor still holds markup such as `<p><br></p>`
+	if ( usesRichText( field ) && typeof value === 'string' ) {
+		return richTextToPlainText( value ) === '';
+	}
+
+	return value === null || value === undefined || String( value ).trim() === '';
+}
+
 /**
  * Validates a single field value against its field definition.
+ *
+ * A field's custom messages replace the built-in ones, as on the server:
+ * `required_message` when a required field is empty, and `error_message`
+ * for any other failure (see `FormField::buildValidationMessages()`).
  *
  * @returns An array of error messages (empty if valid).
  */
@@ -28,187 +157,399 @@ export function validateField(
 	value: unknown,
 	files?: Record<string, File | File[]>,
 ): string[] {
-	const errors: string[] = [];
-
 	if ( LAYOUT_FIELDS.has( field.type ) ) {
-		return errors;
+		return [];
 	}
 
+	if ( field.is_required && isMissing( field, value, files ) ) {
+		return [field.required_message ?? t( 'The :field field is required.', { field: fieldLabel( field ) } )];
+	}
+
+	const errors = validateValue( field, value, files );
+
+	return errors.length > 0 && field.error_message ? [field.error_message] : errors;
+}
+
+/**
+ * Validates a present value against the field's type and limits.
+ *
+ * @returns An array of error messages (empty if valid).
+ */
+function validateValue(
+	field: FormField,
+	value: unknown,
+	files?: Record<string, File | File[]>,
+): string[] {
+	const errors: string[] = [];
 	const rules = field.validation_rules;
-
-	// Required check
-	if ( field.is_required ) {
-		if ( field.type === 'file' ) {
-			const fileValue = files?.[field.name];
-
-			if ( !fileValue || ( Array.isArray( fileValue ) && fileValue.length === 0 ) ) {
-				errors.push( `${field.label ?? field.name} is required.` );
-
-				return errors;
-			}
-		} else if ( field.type === 'checkbox' ) {
-			if ( value !== true ) {
-				errors.push( `${field.label ?? field.name} is required.` );
-
-				return errors;
-			}
-		} else if ( field.type === 'checkbox_group' || field.type === 'select_multiple' ) {
-			if ( !Array.isArray( value ) || value.length === 0 ) {
-				errors.push( `${field.label ?? field.name} is required.` );
-
-				return errors;
-			}
-		} else if ( value === null || value === undefined || String( value ).trim() === '' ) {
-			errors.push( `${field.label ?? field.name} is required.` );
-
-			return errors;
-		}
-	}
 
 	// Skip further validation if value is empty and not required (except file fields)
 	if ( field.type !== 'file' && ( value === null || value === undefined || String( value ).trim() === '' ) ) {
 		return errors;
 	}
 
-	if ( !rules ) {
+	// Slider, color, NPS, ranking and signature values are checked against their own settings (since 1.6.0)
+	if ( Object.prototype.hasOwnProperty.call( TYPE_VALIDATORS, field.type ) ) {
+		return TYPE_VALIDATORS[field.type]( field, value );
+	}
+
+	if ( usesRichText( field ) && typeof value === 'string' && richTextToPlainText( value ) === '' ) {
 		return errors;
 	}
 
-	// Type-specific validation
-	if ( field.type === 'email' && typeof value === 'string' ) {
-		if ( !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test( value ) ) {
-			errors.push( 'Please enter a valid email address.' );
-		}
-	}
+	// A selected "Other" choice needs its text, mirroring the `forms_other_choice` rule.
+	// Callers validate values with the text already resolved (see `resolveOtherChoices()`).
+	if ( allowsOtherChoice( field ) ) {
+		const items = Array.isArray( value ) ? value : [value];
 
-	if ( field.type === 'url' && typeof value === 'string' ) {
-		try {
-			new URL( value );
-		} catch {
-			errors.push( 'Please enter a valid URL.' );
-		}
-	}
+		if ( items.some( ( item ) => item === OTHER_CHOICE_VALUE || String( item ).length > OTHER_CHOICE_MAX_LENGTH ) ) {
+			errors.push( t( 'Please specify :other for :field (up to :max characters).', { other: getOtherChoiceLabel( field ), field: fieldLabel( field ), max: OTHER_CHOICE_MAX_LENGTH } ) );
 
-	// Min/max length for text-like fields only (not number, date, time, etc.)
-	if ( typeof value === 'string' && TEXT_LENGTH_FIELDS.has( field.type ) ) {
-		if ( rules.min !== undefined && value.length < rules.min ) {
-			errors.push( `Must be at least ${rules.min} characters.` );
+			return errors;
 		}
 
-		if ( rules.max !== undefined && value.length > rules.max ) {
-			errors.push( `Must be no more than ${rules.max} characters.` );
-		}
-	}
+		// "Other" adds one answer of the visitor's own, not any number of them (since 1.6.0)
+		if ( isMultipleChoiceField( field ) ) {
+			const optionValues = new Set( getFieldOptions( field ).map( ( option ) => option.value ) );
 
-	// Pattern validation for string values
-	if ( typeof value === 'string' ) {
-		if ( rules.pattern ) {
-			try {
-				const regex = new RegExp( rules.pattern );
+			if ( items.filter( ( item ) => !optionValues.has( String( item ) ) ).length > 1 ) {
+				errors.push( t( 'Please choose one of the available options for :field.', { field: field.label ?? field.name } ) );
 
-				if ( !regex.test( value ) ) {
-					errors.push( 'The value does not match the required format.' );
-				}
-			} catch {
-				// Invalid regex pattern — skip
+				return errors;
 			}
 		}
 	}
 
-	// Numeric validation
-	if ( field.type === 'number' && typeof value === 'string' ) {
-		const num = Number( value );
+	// A checkbox group's or multi-select's min/max count its selections, as the
+	// server's `array` rules do; an unanswered optional one returned above (since 1.6.0)
+	if ( isMultipleChoiceField( field ) && Array.isArray( value ) ) {
+		const minSelections = numericLimit( rules?.min );
+		const maxSelections = numericLimit( rules?.max );
 
-		if ( isNaN( num ) ) {
-			errors.push( 'Please enter a valid number.' );
-		} else {
-			validateNumericRules( num, rules, errors );
+		if ( minSelections !== undefined && value.length < minSelections ) {
+			errors.push( t( 'Please choose at least :min options.', { min: minSelections } ) );
 		}
+
+		if ( maxSelections !== undefined && value.length > maxSelections ) {
+			errors.push( t( 'Please choose no more than :max options.', { max: maxSelections } ) );
+		}
+
+		return errors;
 	}
 
-	// Date validation
-	if ( field.type === 'date' && typeof value === 'string' ) {
-		validateDateRules( value, rules, errors );
+	// Rating validation reads `field_config`, so it runs even without validation rules
+	if ( field.type === 'rating' ) {
+		validateRating( field, value, errors );
+
+		return errors;
 	}
 
-	// Time validation
-	if ( field.type === 'time' && typeof value === 'string' ) {
-		validateTimeRules( value, rules, errors );
-	}
-
-	// File validation
+	// File validation reads `field_config`, so it runs even without validation rules
 	if ( field.type === 'file' && files ) {
 		const fileValue = files[field.name];
 
 		if ( fileValue ) {
 			const fileList = Array.isArray( fileValue ) ? fileValue : [fileValue];
 
+			validateFileListRules( fileList, field, errors );
+
 			for ( const file of fileList ) {
-				validateFileRules( file, rules, field, errors );
+				validateFileRules( file, field, errors );
 			}
 		}
+	}
+
+	// Input masks, phone formats and number formats read `field_config` too
+	if ( typeof value === 'string' ) {
+		const mask = getInputMask( field );
+
+		if ( mask && !maskToRegExp( mask ).test( value ) ) {
+			errors.push( t( 'Please match the expected format. :hint', { hint: getInputMaskHint( field ) ?? mask } ) );
+		}
+
+		if ( field.type === 'phone' && !isPlausiblePhoneNumber( value, getPhoneFormat( field ) ) ) {
+			errors.push( t( 'Please enter a valid phone number.' ) );
+		}
+
+		// Email and URL checks read their own settings, so they run without validation rules (since 1.6.0)
+		if ( field.type === 'email' ) {
+			if ( !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test( value ) ) {
+				errors.push( t( 'Please enter a valid email address for :field.', { field: fieldLabel( field ) } ) );
+			} else if ( !isAcceptedEmailDomain( field, value ) ) {
+				errors.push( t( 'Please use an email address from an accepted domain.' ) );
+			}
+		}
+
+		// The server adds `https://` to an address typed without a scheme, so check it with one
+		if ( field.type === 'url' ) {
+			const schemes = getAllowedUrlSchemes( field );
+
+			if ( !isAllowedUrl( withUrlScheme( value, schemes ), schemes ) ) {
+				errors.push( t( 'Please enter a valid URL for :field.', { field: fieldLabel( field ) } ) );
+			}
+		}
+
+		// Date formats, disabled days and age limits read their own settings too (since 1.6.0)
+		if ( field.type === 'date' ) {
+			validateDateField( field, value, errors );
+		}
+
+		if ( field.type === 'datetime' ) {
+			validateDateTimeField( field, value, errors );
+		}
+	}
+
+	if ( field.type === 'number' && ( typeof value === 'string' || typeof value === 'number' ) ) {
+		const format = getNumberFormat( field );
+		const plain = format ? normalizeFormattedNumber( String( value ), format ) : String( value );
+		const num = Number( plain );
+
+		if ( plain.trim() === '' || isNaN( num ) ) {
+			errors.push( t( 'Please enter a valid number for :field.', { field: fieldLabel( field ) } ) );
+		} else {
+			if ( isIntegerOnly( field ) && !Number.isInteger( num ) ) {
+				errors.push( t( 'Please enter a whole number.' ) );
+			}
+
+			if ( rules ) {
+				validateNumericRules( field, num, rules, errors );
+			}
+		}
+	}
+
+	if ( !rules ) {
+		return errors;
+	}
+
+	// Rich text limits count its text, not its markup (since 1.6.0)
+	const text = typeof value === 'string' && usesRichText( field ) ? richTextToPlainText( value ) : value;
+
+	// Min/max length for text-like fields only (not number, date, time, etc.)
+	if ( typeof text === 'string' && TEXT_LENGTH_FIELDS.has( field.type ) ) {
+		const minLength = numericLimit( rules.min );
+		const maxLength = numericLimit( rules.max );
+		// Characters, as the server's `mb_strlen()` counts them, not UTF-16 code units
+		const length = Array.from( text ).length;
+
+		if ( minLength !== undefined && length < minLength ) {
+			errors.push( t( 'The :field must be at least :min characters.', { field: fieldLabel( field ), min: minLength } ) );
+		}
+
+		if ( maxLength !== undefined && length > maxLength ) {
+			errors.push( t( 'The :field may not be greater than :max characters.', { field: fieldLabel( field ), max: maxLength } ) );
+		}
+	}
+
+	// Pattern validation for string values
+	if ( typeof value === 'string' ) {
+		// A pattern JS cannot run as the server does is left to the server
+		const regex = toClientPattern( rules.pattern );
+
+		if ( regex && !regex.test( value ) ) {
+			errors.push( t( 'The value does not match the required format.' ) );
+		}
+	}
+
+	// A textarea's word limit, mirroring the `forms_max_words` rule
+	const maxWords = getMaxWords( field );
+
+	if ( typeof text === 'string' && maxWords !== undefined && countWords( text ) > maxWords ) {
+		errors.push( t( 'Must be no more than :max words.', { max: maxWords } ) );
+	}
+
+	// Time validation
+	if ( field.type === 'time' && typeof value === 'string' ) {
+		validateTimeRules( field, value, rules, errors );
 	}
 
 	return errors;
 }
 
+/** The closing delimiter of each bracket-style PHP regex delimiter. */
+const BRACKET_DELIMITERS: Record<string, string> = { '(': ')', '{': '}', '[': ']', '<': '>' };
+
+/** The PCRE modifiers PHP accepts after a delimited pattern. */
+const PHP_PATTERN_MODIFIERS = /^[imsxuADSUXJn]*$/;
+
+/** The PCRE modifiers with the same meaning in a JS RegExp. */
+const JS_PATTERN_FLAGS = new Set( ['i', 'm', 's', 'u'] );
+
 /**
- * Validates numeric min/max/step constraints.
+ * Split a PHP-delimited pattern (`/^\d+$/i`, `#a#`, `{a}`) into its source
+ * and modifiers, finding the closing delimiter as PCRE does. Returns null
+ * when the string is not a valid delimited pattern, which the server then
+ * treats as undelimited.
  */
-function validateNumericRules(
-	num: number,
-	rules: ValidationRules,
-	errors: string[],
-): void {
-	if ( rules.min !== undefined && num < rules.min ) {
-		errors.push( `Must be at least ${rules.min}.` );
+function splitDelimitedPattern( raw: string ): { source: string; modifiers: string } | null {
+	const open = raw[0];
+
+	if ( open === undefined || /[a-zA-Z0-9\\\s]/.test( open ) ) {
+		return null;
 	}
 
-	if ( rules.max !== undefined && num > rules.max ) {
-		errors.push( `Must be no more than ${rules.max}.` );
-	}
+	const close = BRACKET_DELIMITERS[open] ?? open;
+	let depth = 0;
 
-	if ( rules.step !== undefined && rules.step > 0 ) {
-		const base = rules.min ?? 0;
-		const remainder = Math.abs( ( num - base ) % rules.step );
-		const epsilon = 1e-9;
+	for ( let i = 1; i < raw.length; i++ ) {
+		const char = raw[i];
 
-		if ( remainder > epsilon && Math.abs( remainder - rules.step ) > epsilon ) {
-			errors.push( `Must be a multiple of ${rules.step}.` );
+		if ( char === '\\' ) {
+			i++;
+
+			continue;
 		}
+
+		if ( close !== open && char === open ) {
+			depth++;
+		} else if ( char === close ) {
+			if ( depth === 0 ) {
+				const modifiers = raw.slice( i + 1 );
+
+				return PHP_PATTERN_MODIFIERS.test( modifiers ) ? { source: raw.slice( 1, i ), modifiers } : null;
+			}
+
+			depth--;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Build the RegExp a field's Pattern setting stands for, matching how the
+ * server reads it: a PHP-delimited pattern (`/^\d{6}$/i`) is unwrapped and
+ * its `i`, `m`, `s` and `u` modifiers become flags, and an undelimited one
+ * (`^[a-z]+$`) is used as is. Returns null, so the check is left to the
+ * server, when the pattern is empty, uses a modifier JS has no equivalent
+ * for, or is not valid JS.
+ *
+ * @since 1.6.0
+ */
+export function toClientPattern( raw: unknown ): RegExp | null {
+	if ( typeof raw !== 'string' || raw === '' ) {
+		return null;
+	}
+
+	const delimited = splitDelimitedPattern( raw );
+	let source = raw;
+	let flags = '';
+
+	if ( delimited ) {
+		const modifiers = new Set( delimited.modifiers.split( '' ) );
+
+		if ( [...modifiers].some( ( modifier ) => !JS_PATTERN_FLAGS.has( modifier ) ) ) {
+			return null;
+		}
+
+		source = delimited.source;
+		flags = [...modifiers].join( '' );
+	}
+
+	try {
+		return new RegExp( source, flags );
+	} catch {
+		return null;
 	}
 }
 
 /**
- * Validates date min/max constraints.
+ * Validates numeric min/max/step constraints. The step counts from the
+ * minimum (or 0) with the server's tolerance (`SubmissionRules::isOnStep()`).
  */
-function validateDateRules(
-	value: string,
+function validateNumericRules(
+	field: FormField,
+	num: number,
 	rules: ValidationRules,
 	errors: string[],
 ): void {
-	const date = new Date( value );
+	const min = numericLimit( rules.min );
+	const max = numericLimit( rules.max );
+	const step = numericLimit( rules.step );
 
-	if ( isNaN( date.getTime() ) ) {
-		errors.push( 'Please enter a valid date.' );
+	if ( min !== undefined && num < min ) {
+		errors.push( t( 'The :field must be at least :min.', { field: fieldLabel( field ), min } ) );
+	}
+
+	if ( max !== undefined && num > max ) {
+		errors.push( t( 'The :field may not be greater than :max.', { field: fieldLabel( field ), max } ) );
+	}
+
+	if ( step !== undefined && step > 0 && !isOnStep( num, min ?? 0, step ) ) {
+		errors.push( t( 'The :field must be in steps of :step.', { field: field.label ?? field.name, step } ) );
+	}
+}
+
+/**
+ * Validates a date: a real `YYYY-MM-DD` date (the dropdown and field modes
+ * submit incomplete dates with gaps), within the field's resolved limits, not
+ * a disabled day and within its age limits. Mirrors `DateFieldType::rules()`
+ * (since 1.6.0).
+ */
+function validateDateField(
+	field: FormField,
+	value: string,
+	errors: string[],
+): void {
+	if ( !parseIsoDate( value ) ) {
+		errors.push( t( 'Please enter a valid date for :field.', { field: fieldLabel( field ) } ) );
 
 		return;
 	}
 
-	if ( rules.min_date ) {
-		const minDate = new Date( rules.min_date );
+	const { min: minDate, max: maxDate } = getDateLimits( field );
 
-		if ( date < minDate ) {
-			errors.push( `Date must be on or after ${rules.min_date}.` );
-		}
+	// `YYYY-MM-DD` dates compare correctly as strings
+	if ( minDate !== undefined && value < minDate ) {
+		errors.push( t( 'The :field must be on or after :date.', { field: fieldLabel( field ), date: minDate } ) );
 	}
 
-	if ( rules.max_date ) {
-		const maxDate = new Date( rules.max_date );
+	if ( maxDate !== undefined && value > maxDate ) {
+		errors.push( t( 'The :field must be on or before :date.', { field: fieldLabel( field ), date: maxDate } ) );
+	}
 
-		if ( date > maxDate ) {
-			errors.push( `Date must be on or before ${rules.max_date}.` );
-		}
+	if ( !isAllowedDay( field, value ) ) {
+		errors.push( t( 'This date is not available. Please choose another date.' ) );
+	}
+
+	const minAge = getAgeLimit( field, 'min_age' );
+	const maxAge = getAgeLimit( field, 'max_age' );
+	const { latest, earliest } = getAgeBirthdates( field );
+
+	if ( minAge !== undefined && latest !== undefined && value > latest ) {
+		errors.push( t( 'You must be at least :age years old.', { age: minAge } ) );
+	}
+
+	if ( maxAge !== undefined && earliest !== undefined && value < earliest ) {
+		errors.push( t( 'You must be no older than :age years.', { age: maxAge } ) );
+	}
+}
+
+/**
+ * Validates a date and time value, mirroring `DateTimeFieldType`: a
+ * `datetime-local` value on a day within the field's min and max dates
+ * (since 1.6.0).
+ */
+function validateDateTimeField(
+	field: FormField,
+	value: string,
+	errors: string[],
+): void {
+	const match = DATE_TIME_PATTERN.exec( value.trim() );
+
+	if ( !match || !parseIsoDate( match[1] ) ) {
+		errors.push( t( 'Please enter a valid date and time for :field.', { field: field.label ?? field.name } ) );
+
+		return;
+	}
+
+	const { min, max } = getDateLimits( field );
+
+	if ( min !== undefined && match[1] < min ) {
+		errors.push( t( 'The :field must be on or after :date.', { field: field.label ?? field.name, date: min } ) );
+	}
+
+	if ( max !== undefined && match[1] > max ) {
+		errors.push( t( 'The :field must be on or before :date.', { field: field.label ?? field.name, date: max } ) );
 	}
 }
 
@@ -232,53 +573,254 @@ const TIME_FORMAT_REGEX = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
  * Validates time min/max constraints.
  */
 function validateTimeRules(
+	field: FormField,
 	value: string,
 	rules: ValidationRules,
 	errors: string[],
 ): void {
 	if ( !TIME_FORMAT_REGEX.test( value ) ) {
-		errors.push( 'Please enter a valid time.' );
+		errors.push( t( 'Please enter a valid time for :field.', { field: fieldLabel( field ) } ) );
 
 		return;
 	}
 
 	const normalized = normalizeTime( value );
+	const minTime = stringLimit( rules.min_time );
+	const maxTime = stringLimit( rules.max_time );
 
-	if ( rules.min_time && TIME_FORMAT_REGEX.test( rules.min_time ) && normalized < normalizeTime( rules.min_time ) ) {
-		errors.push( `Time must be on or after ${rules.min_time}.` );
+	if ( minTime !== undefined && TIME_FORMAT_REGEX.test( minTime ) && normalized < normalizeTime( minTime ) ) {
+		errors.push( t( 'The :field must be on or after :date.', { field: fieldLabel( field ), date: minTime } ) );
 	}
 
-	if ( rules.max_time && TIME_FORMAT_REGEX.test( rules.max_time ) && normalized > normalizeTime( rules.max_time ) ) {
-		errors.push( `Time must be on or before ${rules.max_time}.` );
+	if ( maxTime !== undefined && TIME_FORMAT_REGEX.test( maxTime ) && normalized > normalizeTime( maxTime ) ) {
+		errors.push( t( 'The :field must be on or before :date.', { field: fieldLabel( field ), date: maxTime } ) );
 	}
 }
 
 /**
- * Validates file size and MIME type constraints.
+ * Validates a rating: a number from 0 to the field's max, in whole or half
+ * stars. Mirrors `RatingFieldType::typeRules()`.
  */
-function validateFileRules(
-	file: File,
-	rules: ValidationRules,
+function validateRating( field: FormField, value: unknown, errors: string[] ): void {
+	const rating = Number( value );
+	const max = getRatingMax( field );
+
+	if ( !Number.isFinite( rating ) || rating < 0 || rating > max ) {
+		errors.push( t( 'The :field rating must be between 0 and :max.', { field: fieldLabel( field ), max } ) );
+
+		return;
+	}
+
+	const step = ratingAllowsHalf( field ) ? 0.5 : 1;
+
+	if ( Math.abs( rating / step - Math.round( rating / step ) ) > 1e-9 ) {
+		errors.push( step === 1
+			? t( 'The :field rating must be a whole star.', { field: fieldLabel( field ) } )
+			: t( 'The :field rating must be a whole or half star.', { field: fieldLabel( field ) } ) );
+	}
+}
+
+/**
+ * Validates a multi-file field's count and total size, mirroring
+ * `FileFieldType::rules()` (since 1.6.0).
+ */
+function validateFileListRules(
+	fileList: File[],
 	field: FormField,
 	errors: string[],
 ): void {
-	if ( rules.max_size ) {
-		const maxBytes = rules.max_size * 1024;
+	if ( !allowsMultipleFiles( field ) ) {
+		return;
+	}
 
-		if ( file.size > maxBytes ) {
-			errors.push( `${field.label ?? field.name}: File must be no larger than ${rules.max_size} KB.` );
+	const maxFiles = getFileMaxCount( field );
+	const maxTotalSize = getFileMaxTotalSize( field );
+
+	if ( maxFiles !== undefined && fileList.length > maxFiles ) {
+		errors.push( t( 'You may upload no more than :max files.', { max: maxFiles } ) );
+	}
+
+	if ( maxTotalSize !== undefined && fileList.reduce( ( total, file ) => total + file.size, 0 ) > maxTotalSize * 1024 ) {
+		errors.push( t( 'The files must not exceed :size KB in total.', { size: maxTotalSize } ) );
+	}
+}
+
+/**
+ * Validates file size and extension constraints.
+ */
+function validateFileRules(
+	file: File,
+	field: FormField,
+	errors: string[],
+): void {
+	const maxSize = getFileMaxSize( field );
+
+	if ( maxSize !== undefined && file.size > maxSize * 1024 ) {
+		errors.push( t( ':field: File must be no larger than :size KB.', { field: fieldLabel( field ), size: maxSize } ) );
+	}
+
+	const allowedTypes = getFileAllowedTypes( field );
+
+	if ( allowedTypes.length > 0 ) {
+		const dot = file.name.lastIndexOf( '.' );
+		const extension = dot >= 0 ? file.name.slice( dot + 1 ).toLowerCase() : '';
+
+		if ( !allowedTypes.includes( extension ) ) {
+			errors.push( t( ':field: File type ":type" is not allowed.', { field: fieldLabel( field ), type: extension || file.type } ) );
+		}
+	}
+}
+
+/**
+ * Validates a composite field, one sub-input at a time.
+ *
+ * Mirrors `CompositeFieldType::rules()`: the field's required inputs must be
+ * filled in, email and URL inputs must be valid, number inputs numeric and
+ * text no longer than `SUB_INPUT_MAX_LENGTH`. The field's custom required
+ * and error messages replace the built-in ones.
+ *
+ * @since 1.6.0
+ *
+ * @returns Error arrays keyed `{field}.{key}` (empty when valid).
+ */
+export function validateCompositeField( field: FormField, value: unknown ): Record<string, string[]> {
+	const parts = toCompositeValue( value );
+	const required = new Set( getRequiredSubInputKeys( field ) );
+	const errors: Record<string, string[]> = {};
+
+	for ( const subInput of getEnabledSubInputs( field ) ) {
+		const part = ( parts[subInput.key] ?? '' ).trim();
+		const replacements = { field: field.label ?? field.name, part: subInput.label };
+		let message: string | undefined;
+
+		if ( part === '' ) {
+			message = required.has( subInput.key )
+				? field.required_message ?? t( ':field: :part is required.', replacements )
+				: undefined;
+		} else if ( subInput.type === 'select' && ( subInput.options ?? [] ).length > 0 && !( subInput.options ?? [] ).some( ( option ) => option.value === part ) ) {
+			message = t( ':field: please choose a valid :part.', replacements );
+		} else if ( subInput.type === 'number' ) {
+			message = Number.isFinite( Number( part ) ) ? undefined : t( ':field: :part must be a number.', replacements );
+		} else if ( part.length > SUB_INPUT_MAX_LENGTH ) {
+			message = t( ':field: :part may not be longer than :max characters.', { ...replacements, max: SUB_INPUT_MAX_LENGTH } );
+		} else if ( subInput.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test( part ) ) {
+			message = t( ':field: :part must be a valid email address.', replacements );
+		} else if ( subInput.type === 'url' && !isValidUrl( part ) ) {
+			message = t( ':field: :part must be a valid URL.', replacements );
+		} else if ( subInput.type === 'date' ) {
+			message = validateDatePart( field, part, replacements );
+		}
+
+		if ( message !== undefined ) {
+			errors[`${field.name}.${subInput.key}`] = [part !== '' && field.error_message ? field.error_message : message];
 		}
 	}
 
-	if ( rules.allowed_types && rules.allowed_types.length > 0 ) {
-		if ( !rules.allowed_types.includes( file.type ) ) {
-			errors.push( `${field.label ?? field.name}: File type "${file.type}" is not allowed.` );
-		}
+	const enabledKeys = getEnabledSubInputs( field ).map( ( subInput ) => subInput.key );
+
+	if ( field.type === 'date_range' && enabledKeys.includes( 'start' ) && enabledKeys.includes( 'end' ) && Object.keys( errors ).length === 0 && !isDateRange( parts ) ) {
+		errors[field.name] = [field.error_message ?? t( 'Please enter both dates for :field, with the end date on or after the start date.', { field: field.label ?? field.name } )];
 	}
+
+	return errors;
+}
+
+/**
+ * Validates a date sub-input: a `YYYY-MM-DD` date within the field's min
+ * and max dates (since 1.6.0).
+ *
+ * @returns The error message, or undefined when valid.
+ */
+function validateDatePart( field: FormField, part: string, replacements: { field: string; part: string } ): string | undefined {
+	if ( !parseIsoDate( part ) ) {
+		return t( ':field: :part must be a valid date.', replacements );
+	}
+
+	const { min, max } = getDateLimits( field );
+
+	if ( min !== undefined && part < min ) {
+		return t( ':field: :part is too early.', replacements );
+	}
+
+	if ( max !== undefined && part > max ) {
+		return t( ':field: :part is too late.', replacements );
+	}
+
+	return undefined;
+}
+
+/**
+ * Whether a date range has both dates, or neither, and ends on or after its
+ * start. Mirrors `SubmissionRules::isDateRange()` (since 1.6.0).
+ */
+export function isDateRange( parts: Record<string, string> ): boolean {
+	const start = ( parts.start ?? '' ).trim();
+	const end = ( parts.end ?? '' ).trim();
+
+	if ( start === '' && end === '' ) {
+		return true;
+	}
+
+	if ( start === '' || end === '' ) {
+		return false;
+	}
+
+	return !parseIsoDate( start ) || !parseIsoDate( end ) || end >= start;
+}
+
+/** Whether a string parses as an absolute URL. */
+function isValidUrl( value: string ): boolean {
+	try {
+		new URL( value );
+
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Validates an email field's confirmation, mirroring Laravel's `confirmed`
+ * rule: a filled-in email must match `{name}_confirmation`. The field's
+ * custom error message replaces the built-in one (since 1.6.0).
+ *
+ * @returns An array of error messages (empty if valid).
+ */
+export function validateEmailConfirmation( field: FormField, value: unknown, confirmation: unknown ): string[] {
+	const email = value === null || value === undefined ? '' : String( value );
+
+	if ( email.trim() === '' || email === String( confirmation ?? '' ) ) {
+		return [];
+	}
+
+	return [field.error_message ?? t( 'The email addresses entered for :field do not match.', { field: field.label ?? field.name } )];
+}
+
+/**
+ * Validates a CAPTCHA field: a token is required while its provider is set
+ * up, except for invisible widgets, which fetch it when the form is
+ * submitted. The server checks the token itself (since 1.6.0).
+ *
+ * @returns An array of error messages (empty if valid).
+ */
+export function validateCaptchaField( field: FormField, value: unknown ): string[] {
+	if ( !hasCaptchaWidget( field ) || runsOnSubmit( field.captcha ) ) {
+		return [];
+	}
+
+	return typeof value === 'string' && value !== ''
+		? []
+		: [field.required_message ?? t( 'Please complete the verification check.' )];
 }
 
 /**
  * Validates all visible fields in a form.
+ *
+ * A composite field's errors are keyed `{field}.{key}` (since 1.6.0), a
+ * list's `{field}.{row}.{column}` and a matrix's `{field}.{row}` (since
+ * 1.6.0). An email field's
+ * confirmation is read from `{name}_confirmation` and a mismatch is the
+ * email field's error (since 1.6.0).
  *
  * @returns A map of field names to their error arrays.
  */
@@ -299,7 +841,39 @@ export function validateFields(
 			continue;
 		}
 
+		if ( isCompositeField( field ) ) {
+			Object.assign( errors, validateCompositeField( field, formData[field.name] ) );
+
+			continue;
+		}
+
+		if ( isListField( field ) ) {
+			Object.assign( errors, validateListField( field, formData[field.name] ) );
+
+			continue;
+		}
+
+		if ( isMatrixField( field ) ) {
+			Object.assign( errors, validateMatrixField( field, formData[field.name] ) );
+
+			continue;
+		}
+
+		if ( field.type === 'captcha' ) {
+			const captchaErrors = validateCaptchaField( field, formData[field.name] );
+
+			if ( captchaErrors.length > 0 ) {
+				errors[field.name] = captchaErrors;
+			}
+
+			continue;
+		}
+
 		const fieldErrors = validateField( field, formData[field.name], files );
+
+		if ( fieldErrors.length === 0 && requiresEmailConfirmation( field ) ) {
+			fieldErrors.push( ...validateEmailConfirmation( field, formData[field.name], formData[getConfirmationKey( field )] ) );
+		}
 
 		if ( fieldErrors.length > 0 ) {
 			errors[field.name] = fieldErrors;

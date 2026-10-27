@@ -12,6 +12,7 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Blade;
 use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as BaseTestCase;
+use Propaganistas\LaravelPhone\PhoneServiceProvider;
 
 /**
  * Base Test Case
@@ -64,6 +65,7 @@ abstract class TestCase extends BaseTestCase
         $providers = [
             HooksServiceProvider::class,
             LivewireServiceProvider::class,
+            PhoneServiceProvider::class,
         ];
 
         // AI provider is optional — only register when artisanpack-ui/ai is installed.

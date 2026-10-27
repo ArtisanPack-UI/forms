@@ -140,6 +140,33 @@ describe( 'FormApiController', function (): void {
             $response->assertUnprocessable()
                 ->assertJsonValidationErrors( 'name' );
         } );
+
+        it( 'derives the slug from a non-Latin name when the slug is sent empty', function (): void {
+            $form = Form::factory()->create( ['name' => 'Old Name', 'slug' => 'old-name'] );
+
+            $response = $this->actingAs( $this->user )
+                ->putJson( route( 'api.forms.update', $form ), [
+                    'name' => 'Привет мир',
+                    'slug' => '',
+                ] );
+
+            $response->assertSuccessful()
+                ->assertJsonPath( 'data.slug', 'privet-mir' );
+
+            expect( $form->fresh()->slug )->toBe( 'privet-mir' );
+        } );
+
+        it( 'keeps the slug when it is sent empty and the name has nothing to slug', function (): void {
+            $form = Form::factory()->create( ['name' => 'Old Name', 'slug' => 'old-name'] );
+
+            $this->actingAs( $this->user )
+                ->putJson( route( 'api.forms.update', $form ), [
+                    'name' => '!!!',
+                    'slug' => '',
+                ] )
+                ->assertSuccessful()
+                ->assertJsonPath( 'data.slug', 'old-name' );
+        } );
     } );
 
     describe( 'destroy', function (): void {
