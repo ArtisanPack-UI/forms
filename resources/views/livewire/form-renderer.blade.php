@@ -34,6 +34,10 @@
                 </x-artisanpack-button>
             </div>
         @endif
+    @elseif(! $form->is_active)
+        <div class="alert alert-info" role="status">
+            <span>{{ __( 'This form is not accepting submissions.' ) }}</span>
+        </div>
     @else
         <form wire:submit="submit" class="space-y-6" x-ref="form" novalidate>
             {{-- Form Title & Description --}}

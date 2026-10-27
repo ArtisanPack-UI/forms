@@ -521,6 +521,12 @@ class FormRenderer extends Component
     {
         $this->errorMessage = null;
 
+        if ( ! $this->form->is_active ) {
+            $this->errorMessage = __( 'This form is not accepting submissions.' );
+
+            return;
+        }
+
         // Check for spam
         if ( $this->submissionService->isSpam( $this->honeypot, $this->formLoadedAt ) ) {
             // Silent success for bots - don't save but pretend it worked
@@ -578,9 +584,11 @@ class FormRenderer extends Component
             // Dispatch success event
             $this->dispatch( 'form-submitted', formId: $this->form->id, submissionId: $submission->id );
 
-            // Handle redirect if configured
-            if ( $this->form->redirect_url ) {
-                $this->dispatch( 'redirect-to', url: $this->form->redirect_url );
+            $redirectUrl = $this->safeRedirectUrl();
+
+            if ( null !== $redirectUrl ) {
+                $this->dispatch( 'redirect-to', url: $redirectUrl );
+                $this->redirect( $redirectUrl );
             }
 
         } catch ( Exception $e ) {
@@ -1142,5 +1150,32 @@ class FormRenderer extends Component
             $this->sectionMembers,
             $this->deferredCaptchaFields,
         );
+    }
+
+    /**
+     * Returns the form's redirect URL when it is safe to send the visitor to.
+     *
+     * Only `http`/`https` URLs and site paths are followed, so a stored
+     * `javascript:` or other scheme can never run in the visitor's browser.
+     *
+     * @since 1.6.0
+     *
+     * @return string|null The URL to redirect to, or null for none.
+     */
+    protected function safeRedirectUrl(): ?string
+    {
+        $url = trim( (string) $this->form->redirect_url );
+
+        if ( '' === $url ) {
+            return null;
+        }
+
+        if ( str_starts_with( $url, '/' ) && ! str_starts_with( $url, '//' ) ) {
+            return $url;
+        }
+
+        $scheme = strtolower( (string) parse_url( $url, PHP_URL_SCHEME ) );
+
+        return in_array( $scheme, ['http', 'https'], true ) ? $url : null;
     }
 }
