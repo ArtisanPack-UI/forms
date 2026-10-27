@@ -14,6 +14,7 @@ use ArtisanPackUI\Forms\Services\SubmissionService;
 use ArtisanPackUI\Forms\Support\FieldSettings;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
+use Tests\Models\User;
 
 /**
  * Guards issue #97: an admin-only field label for submissions and exports.
@@ -87,7 +88,7 @@ describe( 'admin field label', function (): void {
     it( 'labels the submission detail view', function (): void {
         $submission = app( SubmissionService::class )->create( $this->form, ['source' => 'A friend', 'email' => 'ada@example.com'] );
 
-        Livewire::test( SubmissionDetail::class, ['submission' => $submission] )
+        Livewire::actingAs( User::factory()->create() )->test( SubmissionDetail::class, ['submission' => $submission] )
             ->assertSee( 'Source' )
             ->assertDontSee( 'How did you hear about us?' );
     } );

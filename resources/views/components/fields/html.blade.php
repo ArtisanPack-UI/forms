@@ -23,7 +23,7 @@
 
 <div
     class="html-content prose prose-sm max-w-none {{ $field->css_classes }}"
-    id="html-{{ $field->name }}"
+    id="{{ $field->domId('html') }}"
     @if($hasMergeTags)
         wire:ignore
         x-data="{

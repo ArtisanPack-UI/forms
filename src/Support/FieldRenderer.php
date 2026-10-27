@@ -39,10 +39,11 @@ class FieldRenderer
      * @param  mixed  $value  The current field value.
      * @param  string|null  $error  The current validation error, if any.
      * @param  array<string, string>  $subErrors  A composite field's errors by sub-input key (since 1.6.0; see subInputErrors()).
+     * @param  mixed  $files  A file field's current uploads: one file, or a multi-file field's files by key (since 1.6.0).
      *
      * @return string The (possibly filtered) HTML.
      */
-    public static function render( FormField $field, mixed $value = null, ?string $error = null, array $subErrors = [] ): string
+    public static function render( FormField $field, mixed $value = null, ?string $error = null, array $subErrors = [], mixed $files = null ): string
     {
         $view = $field->fieldType()->view();
 
@@ -64,6 +65,7 @@ class FieldRenderer
             'value'     => $value,
             'error'     => $error,
             'subErrors' => $subErrors,
+            'files'     => $files,
         ] )->render();
 
         return applyFilters( 'ap.forms.fieldRender', $html, $field );

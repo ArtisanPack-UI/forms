@@ -16,7 +16,7 @@
     - $multiple Whether any number of options may be chosen.
 --}}
 @php
-    $inputId = 'field-' . $field->name;
+    $inputId = $field->domId();
     $choices = collect($options)
         ->map(fn ($option) => [
             'value' => (string) ($option['value'] ?? $option),

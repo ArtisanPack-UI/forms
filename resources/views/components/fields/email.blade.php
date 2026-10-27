@@ -14,11 +14,11 @@
     $descriptionPlacement = $field->getDescriptionPlacement();
     $describedBy = $field->getDescribedBy($error);
     $inputs = [
-        ['id' => 'field-' . $field->name, 'model' => $field->name, 'label' => $labels['email'], 'placeholder' => $field->placeholder, 'autocomplete' => $field->getAutocomplete()],
-        ['id' => 'field-' . $confirmKey, 'model' => $confirmKey, 'label' => $labels['confirm'], 'placeholder' => $labels['confirm_placeholder'], 'autocomplete' => $field->getAutocomplete()],
+        ['id' => $field->domId(), 'model' => $field->name, 'label' => $labels['email'], 'placeholder' => $field->placeholder, 'autocomplete' => $field->getAutocomplete()],
+        ['id' => $field->domId() . '_confirmation', 'model' => $confirmKey, 'label' => $labels['confirm'], 'placeholder' => $labels['confirm_placeholder'], 'autocomplete' => $field->getAutocomplete()],
     ];
 @endphp
-<fieldset class="fieldset {{ $field->css_classes }}" id="fieldset-{{ $field->name }}" @if($describedBy) aria-describedby="{{ $describedBy }}" @endif>
+<fieldset class="fieldset {{ $field->css_classes }}" id="{{ $field->domId('fieldset') }}" @if($describedBy) aria-describedby="{{ $describedBy }}" @endif>
     @if(filled($field->label))
         <legend @class(['fieldset-legend', 'sr-only' => 'hidden' === $field->getLabelPlacement()])>
             {{ $field->label }}
@@ -29,7 +29,7 @@
     @endif
 
     @if(filled($field->help_text) && 'above' === $descriptionPlacement)
-        <p class="fieldset-label" id="hint-{{ $field->name }}">{{ $field->help_text }}</p>
+        <p class="fieldset-label" id="{{ $field->domId('hint') }}">{{ $field->help_text }}</p>
     @endif
 
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -47,7 +47,7 @@
                     @if(filled($input['placeholder'])) placeholder="{{ $input['placeholder'] }}" @endif
                     @if(filled($input['autocomplete'])) autocomplete="{{ $input['autocomplete'] }}" @endif
                     @if($field->is_required) required aria-required="true" @endif
-                    @if(filled($error)) aria-invalid="true" aria-describedby="error-{{ $field->name }}" @endif
+                    @if(filled($error)) aria-invalid="true" aria-describedby="{{ $field->domId('error') }}" @endif
                 />
                 @if('below' === $subLabelPlacement)
                     <label for="{{ $input['id'] }}" class="fieldset-label text-xs">{{ $input['label'] }}</label>
@@ -57,11 +57,11 @@
     </div>
 
     @if(filled($field->help_text) && 'below' === $descriptionPlacement)
-        <p class="fieldset-label" id="hint-{{ $field->name }}">{{ $field->help_text }}</p>
+        <p class="fieldset-label" id="{{ $field->domId('hint') }}">{{ $field->help_text }}</p>
     @endif
 
     @if(filled($error))
-        <p class="fieldset-label text-error" id="error-{{ $field->name }}" role="alert">{{ $error }}</p>
+        <p class="fieldset-label text-error" id="{{ $field->domId('error') }}">{{ $error }}</p>
     @endif
 </fieldset>
 @else
@@ -70,20 +70,21 @@
     $layoutLabel = 'top' !== $field->getLabelPlacement();
 @endphp
 
-@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true, 'renderError' => false])
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true])
 <x-artisanpack-input
     type="email"
     :label="$layoutLabel ? null : $field->label"
     :placeholder="$field->placeholder"
-    :error="$error"
+    :omit-error="true"
+    :aria-invalid="filled($error) ? 'true' : null"
     :required="$field->is_required"
     wire:model.live="formData.{{ $field->name }}"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     :autocomplete="$field->getAutocomplete()"
     :readonly="$field->isReadOnly()"
     :class="$field->css_classes"
     :aria-required="$field->is_required ? 'true' : 'false'"
-    :aria-labelledby="$layoutLabel && filled($field->label) ? 'label-' . $field->name : null"
+    :aria-labelledby="$layoutLabel && filled($field->label) ? $field->domId('label') : null"
     :aria-describedby="$field->getDescribedBy($error)"
 />
 @endcomponent

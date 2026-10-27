@@ -22,14 +22,14 @@
 @if(null !== $widget)
 @component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => false])
 <div
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     role="group"
-    @if(filled($field->label)) aria-labelledby="label-{{ $field->name }}" @endif
+    @if(filled($field->label)) aria-labelledby="{{ $field->domId('label') }}" @endif
     @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
     data-forms-captcha="{{ $widget['provider'] }}"
 >
     @if(filled($field->label))
-        <p @class(['label-text mb-2', 'sr-only' => 'hidden' === $field->getLabelPlacement() || 'invisible' === $widget['size']]) id="label-{{ $field->name }}">{{ $field->label }}</p>
+        <p @class(['label-text mb-2', 'sr-only' => 'hidden' === $field->getLabelPlacement() || 'invisible' === $widget['size']]) id="{{ $field->domId('label') }}">{{ $field->label }}</p>
     @endif
 
     <div

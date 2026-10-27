@@ -197,7 +197,7 @@ describe( 'rating Livewire renderer', function (): void {
 
         Livewire::test( FormRenderer::class, ['form' => $form] )
             ->assertSeeHtml( 'role="radiogroup"' )
-            ->assertSeeHtml( 'aria-labelledby="label-stars"' )
+            ->assertSeeHtml( 'aria-labelledby="label-f' . $form->id . '-stars"' )
             ->assertSeeHtml( 'aria-required="true"' )
             ->assertSeeHtml( 'rating-lg' )
             ->assertSeeHtml( 'rating-half' )

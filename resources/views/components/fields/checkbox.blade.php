@@ -6,7 +6,7 @@
     <input
         type="checkbox"
         wire:model.live="formData.{{ $field->name }}"
-        id="field-{{ $field->name }}"
+        id="{{ $field->domId() }}"
         class="checkbox checkbox-primary {{ $field->css_classes }}"
         @if($field->is_required) required aria-required="true" @endif
         @if($field->isReadOnly()) disabled aria-readonly="true" @endif

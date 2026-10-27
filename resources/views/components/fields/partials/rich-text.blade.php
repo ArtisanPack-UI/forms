@@ -21,7 +21,7 @@
     - $error The validation error, or null.
 --}}
 @php
-    $editorId = 'field-' . $field->name;
+    $editorId = $field->domId();
     $readOnly = $field->isReadOnly();
     $fieldName = filled($field->label) ? $field->label : \Illuminate\Support\Str::headline($field->name);
     $buttons = [
@@ -150,14 +150,14 @@
         aria-multiline="true"
         @class([
             'prose prose-sm max-w-none min-h-24 rounded-b-box border bg-base-100 px-4 py-2 focus:outline-2 focus:outline-offset-2 focus:outline-primary',
-            'empty:before:text-base-content/50 empty:before:content-[attr(data-placeholder)]',
+            'empty:before:text-base-content/70 empty:before:content-[attr(data-placeholder)]',
             $field->css_classes,
         ])
         x-bind:class="invalid ? 'border-error' : 'border-base-300'"
         style="min-height: {{ max( 1, (int) $field->getConfig('rows', 4) ) * 1.5 }}rem"
         contenteditable="{{ $readOnly ? 'false' : 'true' }}"
         @if(filled($field->placeholder)) data-placeholder="{{ $field->placeholder }}" @endif
-        @if(filled($field->label)) aria-labelledby="label-{{ $field->name }}" @else aria-label="{{ $fieldName }}" @endif
+        @if(filled($field->label)) aria-labelledby="{{ $field->domId('label') }}" @else aria-label="{{ $fieldName }}" @endif
         x-bind:aria-describedby="describedBy"
         @if($field->is_required) aria-required="true" @endif
         @if($readOnly) aria-readonly="true" @endif

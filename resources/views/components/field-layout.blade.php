@@ -18,12 +18,16 @@
                    (for inputs whose ID the component generates; not groups).
     - $renderError Whether this layout renders the error. False when the input
                    component renders it.
+    - $requiredText Whether a required field's label also says "(required)" to
+                   screen readers, for groups that can't take `aria-required`
+                   (since 1.6.0).
 --}}
 @php
     $renderLabel = ( $renderLabel ?? true ) && filled( $field->label );
     $labelFor = $labelFor ?? null;
     $focusInput = $focusInput ?? false;
     $renderError = $renderError ?? true;
+    $requiredText = $requiredText ?? false;
     $labelPlacement = $field->getLabelPlacement();
     $descriptionPlacement = $field->getDescriptionPlacement();
     $isLeft = $renderLabel && 'left' === $labelPlacement;
@@ -32,14 +36,17 @@
 <div @class(['form-control', 'md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:items-start md:gap-x-4' => $isLeft])>
     @if($renderLabel)
         <label
-            id="label-{{ $field->name }}"
+            id="{{ $field->domId('label') }}"
             @class(['label', 'sr-only' => 'hidden' === $labelPlacement, 'md:pt-3' => $isLeft])
             @if($labelFor) for="{{ $labelFor }}" @elseif($focusInput) x-on:click="$el.nextElementSibling?.querySelector('input:not([type=hidden]), select, textarea')?.focus()" @endif
         >
             <span class="label-text">
                 {{ $field->label }}
                 @if($field->is_required)
-                    <span class="text-error">*</span>
+                    <span class="text-error" @if($requiredText) aria-hidden="true" @endif>*</span>
+                    @if($requiredText)
+                        <span class="sr-only">{{ __( '(required)' ) }}</span>
+                    @endif
                 @endif
             </span>
         </label>
@@ -47,7 +54,7 @@
 
     <div @class(['md:col-start-2' => $isLeft])>
         @if(filled($field->help_text) && 'above' === $descriptionPlacement)
-            <label class="label" id="hint-{{ $field->name }}">
+            <label class="label" id="{{ $field->domId('hint') }}">
                 <span class="label-text-alt">{{ $field->help_text }}</span>
             </label>
         @endif
@@ -55,13 +62,13 @@
         {{ $slot }}
 
         @if(filled($field->help_text) && 'below' === $descriptionPlacement)
-            <label class="label" id="hint-{{ $field->name }}">
+            <label class="label" id="{{ $field->domId('hint') }}">
                 <span class="label-text-alt">{{ $field->help_text }}</span>
             </label>
         @endif
 
         @if($renderError && $error)
-            <label class="label" id="error-{{ $field->name }}">
+            <label class="label" id="{{ $field->domId('error') }}">
                 <span class="label-text-alt text-error">{{ $error }}</span>
             </label>
         @endif

@@ -751,7 +751,7 @@ describe( 'FormRenderer unsupported multiple flags (issue #84)', function (): vo
         ] );
 
         Livewire::test( FormRenderer::class, ['form' => $form] )
-            ->assertSeeHtml( 'id="field-pick"' )
+            ->assertSeeHtml( 'wire:model.live="formData.pick"' )
             ->assertDontSeeHtml( 'multiple' );
     } )->with( ['select'] ); // File fields support `multiple` since #114 (see MultiFileUploadTest).
 
@@ -793,7 +793,7 @@ describe( 'FormRenderer date field', function (): void {
             ->assertSeeHtml( 'class="input input-bordered w-full' )
             ->assertSeeHtml( 'min="2026-01-01"' )
             ->assertSeeHtml( 'max="2026-12-31"' )
-            ->assertSeeHtml( 'aria-describedby="hint-starts"' )
+            ->assertSeeHtml( 'aria-describedby="hint-f' . $form->id . '-starts"' )
             ->assertDontSeeHtml( 'aria-invalid' )
             ->assertDontSeeHtml( 'aria-label="Starts"' )
             ->assertSee( 'Start Date' );
@@ -808,7 +808,7 @@ describe( 'FormRenderer date field', function (): void {
             ->call( 'submit' )
             ->assertHasErrors( ['formData.starts' => 'required'] )
             ->assertSeeHtml( 'aria-invalid="true"' )
-            ->assertSeeHtml( 'aria-describedby="error-starts hint-starts"' );
+            ->assertSeeHtml( 'aria-describedby="error-f' . $form->id . '-starts hint-f' . $form->id . '-starts"' );
     } );
 
     it( 'gives an unlabelled date input an accessible name', function (): void {
@@ -840,7 +840,7 @@ describe( 'FormRenderer time field (issue #148)', function (): void {
             ->call( 'submit' )
             ->assertHasErrors( ['formData.starts_at' => 'required'] )
             ->assertSeeHtml( 'aria-invalid="true"' )
-            ->assertSeeHtml( 'aria-describedby="error-starts_at' );
+            ->assertSeeHtml( 'aria-describedby="error-f' . $form->id . '-starts_at' );
     } );
 
     it( 'gives an unlabelled time input an accessible name', function ( string $label ): void {

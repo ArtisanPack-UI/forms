@@ -31,11 +31,12 @@
     <input
         type="checkbox"
         wire:model.live="formData.{{ $field->name }}"
-        id="field-{{ $field->name }}"
+        id="{{ $field->domId() }}"
         class="toggle {{ $sizeClass }} {{ $colorClass }} {{ $field->css_classes }}"
         role="switch"
         @if($field->is_required) required aria-required="true" @endif
         @if($field->isReadOnly()) disabled aria-readonly="true" @endif
+        @if(filled($error)) aria-invalid="true" @endif
         @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
     />
     <span @class(['label-text', 'sr-only' => 'hidden' === $field->getLabelPlacement()])>

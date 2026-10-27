@@ -22,9 +22,10 @@
 <div
     class="rating {{ $sizeClasses }} {{ $allowHalf ? 'rating-half' : '' }} {{ $field->css_classes }}"
     role="radiogroup"
-    @if($field->label) aria-labelledby="label-{{ $field->name }}" @endif
+    @if($field->label) aria-labelledby="{{ $field->domId('label') }}" @endif
     @if($field->is_required) aria-required="true" @endif
     @if($readOnly) aria-readonly="true" @endif
+    @if(filled($error)) aria-invalid="true" @endif
     @if($field->getDescribedBy($error)) aria-describedby="{{ $field->getDescribedBy($error) }}" @endif
 >
     {{-- Hidden "no rating" option for clearing --}}
@@ -49,7 +50,7 @@
                 value="{{ $i - 0.5 }}"
                 class="mask mask-star-2 mask-half-1 bg-warning {{ $focusClasses }}"
                 @disabled($readOnly)
-                id="field-{{ $field->name }}-{{ $i }}-half"
+                id="{{ $field->domId() }}-{{ $i }}-half"
                 aria-label="{{ trans_choice( ':count star|:count stars', $i - 0.5, ['count' => $i - 0.5] ) }}"
             />
             {{-- Full star (right half) --}}
@@ -60,7 +61,7 @@
                 value="{{ $i }}"
                 class="mask mask-star-2 mask-half-2 bg-warning {{ $focusClasses }}"
                 @disabled($readOnly)
-                id="field-{{ $field->name }}-{{ $i }}"
+                id="{{ $field->domId() }}-{{ $i }}"
                 aria-label="{{ trans_choice( ':count star|:count stars', $i, ['count' => $i] ) }}"
             />
         @endfor
@@ -73,7 +74,7 @@
                 value="{{ $i }}"
                 class="mask mask-star-2 bg-warning {{ $focusClasses }}"
                 @disabled($readOnly)
-                id="field-{{ $field->name }}-{{ $i }}"
+                id="{{ $field->domId() }}-{{ $i }}"
                 aria-label="{{ trans_choice( ':count star|:count stars', $i, ['count' => $i] ) }}"
             />
         @endfor

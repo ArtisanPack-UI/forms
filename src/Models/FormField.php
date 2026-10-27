@@ -372,6 +372,13 @@ class FormField extends Model
     protected ?int $choiceSeed = null;
 
     /**
+     * The prefix of the element IDs the renderer gives this field, kept by withDomIdPrefix().
+     *
+     * @since 1.6.0
+     */
+    protected ?string $domIdPrefix = null;
+
+    /**
      * Leaves the cached field type handler and settings form out when the model is serialized.
      *
      * The handler holds locale-specific labels and may come from a filter, so
@@ -1344,6 +1351,45 @@ class FormField extends Model
     }
 
     /**
+     * Sets the prefix of the element IDs the renderer gives this field.
+     *
+     * The Livewire renderer passes one prefix per form on the page, so two
+     * forms with a field of the same name don't share element IDs.
+     *
+     * @since 1.6.0
+     *
+     * @param  string|null  $prefix  The prefix, or null for none.
+     *
+     * @return static The field.
+     */
+    public function withDomIdPrefix( ?string $prefix ): static
+    {
+        $this->domIdPrefix = filled( $prefix ) ? $prefix : null;
+
+        return $this;
+    }
+
+    /**
+     * Gets the ID of one of the elements the Blade partials render for the field.
+     *
+     * `{part}-{prefix}-{name}`, or `{part}-{name}` without a prefix (see
+     * withDomIdPrefix()). Labels, `aria-describedby`, `aria-controls` and
+     * focus targets all use this, so they match the elements' IDs.
+     *
+     * @since 1.6.0
+     *
+     * @param  string  $part  The element: `field` (the input), `label`, `hint`, `error`, `mask`, `counter`, etc.
+     *
+     * @return string The ID.
+     */
+    public function domId( string $part = 'field' ): string
+    {
+        return null === $this->domIdPrefix
+            ? "{$part}-{$this->name}"
+            : "{$part}-{$this->domIdPrefix}-{$this->name}";
+    }
+
+    /**
      * Sets the seed randomized choices are shuffled with.
      *
      * The Livewire renderer passes one seed per visitor, so its re-renders
@@ -1751,7 +1797,8 @@ class FormField extends Model
      * Gets the `aria-describedby` value for the field's input.
      *
      * References the `error-{name}` and `hint-{name}` elements the Blade
-     * partials render, wherever the description is placed.
+     * partials render, wherever the description is placed, with the
+     * renderer's ID prefix (see domId()).
      *
      * @since 1.6.0
      *
@@ -1762,12 +1809,12 @@ class FormField extends Model
     public function getDescribedBy( ?string $error = null ): ?string
     {
         $ids = array_filter( [
-            filled( $error ) ? 'error-' . $this->name : null,
-            filled( $this->help_text ) ? 'hint-' . $this->name : null,
-            null !== $this->getInputMask() ? 'mask-' . $this->name : null,
-            $this->showsCounter() ? 'counter-' . $this->name : null,
-            null !== $this->getAffixDescription() ? 'affix-' . $this->name : null,
-            $this->is_file_field && null !== $this->getFileLimitsHint() ? 'limits-' . $this->name : null,
+            filled( $error ) ? $this->domId( 'error' ) : null,
+            filled( $this->help_text ) ? $this->domId( 'hint' ) : null,
+            null !== $this->getInputMask() ? $this->domId( 'mask' ) : null,
+            $this->showsCounter() ? $this->domId( 'counter' ) : null,
+            null !== $this->getAffixDescription() ? $this->domId( 'affix' ) : null,
+            $this->is_file_field && null !== $this->getFileLimitsHint() ? $this->domId( 'limits' ) : null,
         ] );
 
         return [] === $ids ? null : implode( ' ', $ids );

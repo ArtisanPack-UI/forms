@@ -4,13 +4,14 @@
     Variables:
     - $field The FormField.
 
-    The parent view's $formData, $hiddenFields and $errors are in scope.
+    The parent view's $formData, $hiddenFields, $files and $errors are in
+    scope. A file field gets its current uploads, so its list survives a step
+    change or a show/hide. The wrapper keeps its `wire:key` when conditional
+    logic hides it (only `x-show` changes), so stateful partials are not torn
+    down on every toggle.
 --}}
-@php
-    $isHidden = $hiddenFields[$field->name] ?? false;
-@endphp
 <div
-    wire:key="field-{{ $field->uuid }}-{{ $isHidden ? 'hidden' : 'visible' }}"
+    wire:key="field-{{ $field->uuid }}"
     x-data="{ get visible() { return !($wire.hiddenFields?.[@js($field->name)] ?? false); } }"
     x-show="visible"
     x-transition:enter="transition ease-out duration-200"
@@ -29,5 +30,6 @@
         $formData[$field->name] ?? null,
         \ArtisanPackUI\Forms\Support\FieldRenderer::fieldError($field, $errors),
         \ArtisanPackUI\Forms\Support\FieldRenderer::subInputErrors($field, $errors),
+        $field->is_file_field ? (($files ?? [])[$field->name] ?? null) : null,
     ) !!}
 </div>

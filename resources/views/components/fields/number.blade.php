@@ -17,16 +17,17 @@
     $layoutLabel = 'top' !== $field->getLabelPlacement();
 @endphp
 
-@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true, 'renderError' => false])
+@component('forms::components.field-layout', ['field' => $field, 'error' => $error, 'renderLabel' => $layoutLabel, 'focusInput' => true])
 <x-artisanpack-input
     :type="null === $format ? 'number' : 'text'"
     :inputmode="null === $format ? null : ($field->isIntegerOnly() ? 'numeric' : 'decimal')"
     :label="$layoutLabel ? null : $field->label"
     :placeholder="$field->placeholder"
-    :error="$error"
+    :omit-error="true"
+    :aria-invalid="filled($error) ? 'true' : null"
     :required="$field->is_required"
     wire:model.live="formData.{{ $field->name }}"
-    id="field-{{ $field->name }}"
+    id="{{ $field->domId() }}"
     :autocomplete="$field->getAutocomplete()"
     :readonly="$field->isReadOnly()"
     :class="$field->css_classes"
@@ -36,7 +37,7 @@
     :min="null === $format ? $min : null"
     :max="null === $format ? $max : null"
     :aria-required="$field->is_required ? 'true' : 'false'"
-    :aria-labelledby="$layoutLabel && filled($field->label) ? 'label-' . $field->name : null"
+    :aria-labelledby="$layoutLabel && filled($field->label) ? $field->domId('label') : null"
     :aria-describedby="$field->getDescribedBy($error)"
 />
 @include('forms::components.fields.partials.input-extras', ['field' => $field])

@@ -21,12 +21,14 @@ class InputStub extends Component
      * Create a new component instance.
      */
     public function __construct(
+        public ?string $id = null,
         public ?string $label = null,
         public ?string $type = 'text',
         public ?string $name = null,
         public ?string $placeholder = null,
         public ?string $hint = null,
         public ?string $error = null,
+        public bool $omitError = false,
         public bool $required = false,
         public ?string $prefix = null,
         public ?string $suffix = null,

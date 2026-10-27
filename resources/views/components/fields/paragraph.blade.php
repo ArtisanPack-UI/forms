@@ -7,7 +7,7 @@
 
 <div
     class="prose prose-sm max-w-none {{ $field->css_classes }}"
-    id="paragraph-{{ $field->name }}"
+    id="{{ $field->domId('paragraph') }}"
 >
     {!! $field->getParagraphHtml() !!}
 </div>
