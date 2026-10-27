@@ -17,7 +17,7 @@
 <x-artisanpack-input
     type="tel"
     :label="$layoutLabel ? null : $field->label"
-    :placeholder="$field->placeholder ?? '(123) 456-7890'"
+    :placeholder="$field->placeholder ?? ([] === $countries ? __( '(123) 456-7890' ) : null)"
     :error="$error"
     :required="$field->is_required"
     wire:model.live="formData.{{ $field->name }}"

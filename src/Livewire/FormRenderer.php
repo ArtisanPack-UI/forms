@@ -157,6 +157,25 @@ class FormRenderer extends Component
     public array $hiddenFields = [];
 
     /**
+     * The URL of the page the form was loaded on, recorded with the submission.
+     *
+     * Captured on mount, since submit() runs during a Livewire update
+     * request whose URL is the Livewire endpoint.
+     *
+     * @since 1.6.0
+     */
+    #[Locked]
+    public ?string $pageUrl = null;
+
+    /**
+     * The referrer of the page the form was loaded on, recorded with the submission.
+     *
+     * @since 1.6.0
+     */
+    #[Locked]
+    public ?string $referrerUrl = null;
+
+    /**
      * The submission service instance.
      */
     protected SubmissionService $submissionService;
@@ -187,6 +206,8 @@ class FormRenderer extends Component
         $this->form            = $form->load( ['fields', 'steps.fields'] );
         $this->formLoadedAt    = now()->getTimestamp();
         $this->choiceSeed      = random_int( 1, 2147483647 );
+        $this->pageUrl         = request()->fullUrl();
+        $this->referrerUrl     = request()->header( 'referer' );
         $this->initialFormData = $this->buildInitialFormData( PopulationContext::fromPageRequest( request() ), $prefill );
         $this->initializeFormData();
         $this->evaluateConditionalLogic();
@@ -483,7 +504,7 @@ class FormRenderer extends Component
         // Check rate limiting
         $ipAddress = request()->ip() ?? 'unknown';
         if ( $this->submissionService->isRateLimited( $ipAddress, $this->form->id ) ) {
-            $this->errorMessage = 'Too many submissions. Please try again later.';
+            $this->errorMessage = __( 'Too many submissions. Please try again later.' );
 
             return;
         }
@@ -508,7 +529,10 @@ class FormRenderer extends Component
 
         try {
             // Get metadata
-            $metadata = $this->submissionService->getRequestMetadata( request() );
+            $metadata = array_replace( $this->submissionService->getRequestMetadata( request() ), [
+                'page_url'     => $this->pageUrl,
+                'referrer_url' => $this->referrerUrl,
+            ] );
 
             // Create the submission
             $submission = $this->submissionService->create(
@@ -534,7 +558,7 @@ class FormRenderer extends Component
                 'error'   => $e->getMessage(),
             ] );
 
-            $this->errorMessage = 'An error occurred while submitting the form. Please try again.';
+            $this->errorMessage = __( 'An error occurred while submitting the form. Please try again.' );
 
             // The challenge token was spent, so a retry needs a new one
             $this->dispatch( 'forms-captcha-reset', formId: $this->form->id );
