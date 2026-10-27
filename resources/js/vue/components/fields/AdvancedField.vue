@@ -27,6 +27,7 @@ import {
 	getLayoutDescribedBy,
 	getTimeStep,
 	isReadOnlyField,
+	toFileList,
 	withInputNotes,
 } from '../../../shared/fieldSettings';
 import { getDateBounds, getDateLimits } from '../../../shared/dateConstraints';
@@ -40,6 +41,11 @@ const props = defineProps<{
 	modelValue: unknown;
 	error?: string;
 	displayConfig: DisplayConfig;
+	/**
+	 * The files the form holds for a file field, so its selection survives a
+	 * remount on a step change or by conditional logic (since 1.6.0).
+	 */
+	files?: File | File[];
 }>();
 
 const emit = defineEmits<{
@@ -120,22 +126,33 @@ const readOnly = computed( () => isReadOnlyField( props.field ) );
 /** Whether the field takes several files (since 1.6.0). */
 const multiple = computed( () => allowsMultipleFiles( props.field ) );
 
-/** A multi-file field's files, and what the live region last announced (since 1.6.0). */
-const files = ref<File[]>( [] );
+/**
+ * A file field's files, which the form holds so a remounted field still
+ * lists them, and what the live region last announced (since 1.6.0).
+ */
+const selectedFiles = computed( () => toFileList( props.files ) );
 const announcement = ref( '' );
+
+/** Remounts a single-file input when its file is removed, so it forgets it too. */
+const fileInputKey = ref( 0 );
 
 /** Store a multi-file field's files and announce the change. */
 function updateFiles( next: File[], message: string ): void {
-	files.value = next;
 	announcement.value = message;
 	emit( 'fileChange', next );
+}
+
+/** Remove a single-file field's file. */
+function clearFile(): void {
+	emit( 'fileChange', [] as File[] );
+	fileInputKey.value++;
 }
 
 /** Add chosen or dropped files to a multi-file field, up to its max files. */
 function addFiles( fileList: FileList | null ): void {
 	const added = Array.from( fileList ?? [] );
 	const maxFiles = getFileMaxCount( props.field );
-	const room = maxFiles === undefined ? added.length : Math.max( 0, maxFiles - files.value.length );
+	const room = maxFiles === undefined ? added.length : Math.max( 0, maxFiles - selectedFiles.value.length );
 	const accepted = added.slice( 0, room );
 
 	if ( accepted.length === 0 && added.length > 0 ) {
@@ -145,18 +162,18 @@ function addFiles( fileList: FileList | null ): void {
 	}
 
 	updateFiles(
-		[...files.value, ...accepted],
+		[...selectedFiles.value, ...accepted],
 		accepted.length < added.length
 			? t( 'You may upload no more than :max files.', { max: maxFiles ?? 0 } )
-			: t( ':count files ready to upload.', { count: files.value.length + accepted.length } ),
+			: t( ':count files ready to upload.', { count: selectedFiles.value.length + accepted.length } ),
 	);
 }
 
 /** Remove one file from a multi-file field. */
 function removeFile( index: number ): void {
-	const removed = files.value[index];
+	const removed = selectedFiles.value[index];
 
-	updateFiles( files.value.filter( ( _file, position ) => position !== index ), t( ':name removed.', { name: removed?.name ?? '' } ) );
+	updateFiles( selectedFiles.value.filter( ( _file, position ) => position !== index ), t( ':name removed.', { name: removed?.name ?? '' } ) );
 }
 
 /** Show a file size in KB or MB. */
@@ -198,12 +215,12 @@ function handleFilesSelected( fileList: FileList | null ): void {
 			<p v-if="limitsHint" :id="limitsId" class="fieldset-label mt-1">{{ limitsHint }}</p>
 
 			<ul
-				v-if="files.length > 0"
+				v-if="selectedFiles.length > 0"
 				class="mt-3 flex flex-col gap-2"
 				:aria-label="t( 'Files for :field', { field: field.label ?? field.name } )"
 			>
 				<li
-					v-for="( file, index ) in files"
+					v-for="( file, index ) in selectedFiles"
 					:key="`${file.name}-${file.size}-${file.lastModified}-${index}`"
 					class="flex items-center gap-3 rounded-box bg-base-200 p-2"
 				>
@@ -226,6 +243,7 @@ function handleFilesSelected( fileList: FileList | null ): void {
 		<!-- File -->
 		<div v-else-if="field.type === 'file'">
 			<FileUpload
+				:key="fileInputKey"
 				v-described-by="describedBy"
 				v-bind="fileLabelProps"
 				:name="field.name"
@@ -238,6 +256,20 @@ function handleFilesSelected( fileList: FileList | null ): void {
 			/>
 
 			<p v-if="limitsHint" :id="limitsId" class="fieldset-label mt-1">{{ limitsHint }}</p>
+
+			<!-- The form's file, shown since a remounted native input forgets it (since 1.6.0) -->
+			<div v-if="selectedFiles[0]" class="mt-3 flex items-center gap-3 rounded-box bg-base-200 p-2">
+				<span class="min-w-0 grow truncate text-sm">{{ selectedFiles[0].name }}</span>
+				<span class="shrink-0 text-xs text-base-content/60">{{ formatFileSize( selectedFiles[0].size ) }}</span>
+				<button
+					type="button"
+					class="btn btn-ghost btn-sm btn-square"
+					:aria-label="t( 'Remove :name', { name: selectedFiles[0].name } )"
+					@click="clearFile"
+				>
+					<span aria-hidden="true">✕</span>
+				</button>
+			</div>
 		</div>
 
 		<!-- Date and time (since 1.6.0) -->

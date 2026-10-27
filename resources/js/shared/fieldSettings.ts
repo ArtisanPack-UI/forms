@@ -137,6 +137,20 @@ export function allowsMultipleFiles( field: FormField ): boolean {
 	return field.type === 'file' && ( value === true || value === 1 || value === '1' || value === 'true' );
 }
 
+/**
+ * The files a form holds for a file field, as a list: none, its one file, or
+ * a multi-file field's files. The renderers keep a file field's selection in
+ * the form, not the field, so it survives the field being remounted on a
+ * step change or by conditional logic (since 1.6.0).
+ */
+export function toFileList( files: File | File[] | null | undefined ): File[] {
+	if ( Array.isArray( files ) ) {
+		return files;
+	}
+
+	return files ? [files] : [];
+}
+
 /** Get the most files a multi-file field takes, or undefined when unlimited (since 1.6.0). */
 export function getFileMaxCount( field: FormField ): number | undefined {
 	return allowsMultipleFiles( field ) ? positiveConfigInteger( field, 'max_files' ) : undefined;

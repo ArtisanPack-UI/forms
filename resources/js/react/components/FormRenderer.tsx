@@ -202,6 +202,7 @@ export function FormRenderer( {
 		currentStepData,
 		loadError,
 		setValue,
+		files,
 		setFile,
 		otherValues,
 		setOtherValue,
@@ -285,6 +286,7 @@ export function FormRenderer( {
 				error={errors[field.name]?.[0]}
 				onChange={( value ) => setValue( field.name, value )}
 				onFileChange={( file ) => setFile( field.name, file )}
+				files={files[field.name]}
 				displayConfig={form.config.display}
 				otherValue={otherValues[field.name] ?? ''}
 				onOtherChange={( text ) => setOtherValue( field.name, text )}

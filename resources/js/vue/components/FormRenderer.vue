@@ -90,6 +90,7 @@ const {
 	currentStepData,
 	loadError,
 	setValue,
+	files,
 	setFile,
 	otherValues,
 	setOtherValue,
@@ -263,6 +264,7 @@ function handleFormSubmit( e: Event ): void {
 								:other-value="otherValues[field.name] ?? ''"
 								:confirm-value="getConfirmValue( field )"
 								:sub-errors="getSubInputErrors( errors, field.name )"
+								:files="files[field.name]"
 								@update:model-value="setValue( field.name, $event )"
 								@update:other-value="setOtherValue( field.name, $event )"
 								@update:confirm-value="setConfirmValue( field, $event )"
@@ -309,6 +311,7 @@ function handleFormSubmit( e: Event ): void {
 								:other-value="otherValues[field.name] ?? ''"
 								:confirm-value="getConfirmValue( field )"
 								:sub-errors="getSubInputErrors( errors, field.name )"
+								:files="files[field.name]"
 								@update:model-value="setValue( field.name, $event )"
 								@update:other-value="setOtherValue( field.name, $event )"
 								@update:confirm-value="setConfirmValue( field, $event )"
