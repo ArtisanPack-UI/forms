@@ -1013,6 +1013,12 @@ export interface FormField {
      */
     description_placement?: DescriptionPlacement | null;
     /**
+     * The ID prefix of the form instance rendering the field, which its
+     * element IDs start with (see `fieldIdKey()`). Set by the React and Vue
+     * renderers, not the API (since 1.6.0).
+     */
+    id_prefix?: string;
+    /**
      * A date, date and time or date range field's earliest and latest allowed
      * dates (`YYYY-MM-DD`, null when unbounded), resolved by the server for
      * its "today" so relative limits match its validation (since 1.6.0).

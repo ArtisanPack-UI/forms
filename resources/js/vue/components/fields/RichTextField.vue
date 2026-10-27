@@ -35,6 +35,7 @@ import {
 import type { RichTextCommand } from '../../../shared/richText';
 import FieldLayout from './FieldLayout.vue';
 import InputNotes from './InputNotes.vue';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = withDefaults( defineProps<{
 	field: FormField;
@@ -65,10 +66,10 @@ const labelId = computed( () => {
 		return undefined;
 	}
 
-	return layout.value.custom ? layout.value.labelId : `${props.field.name}-label`;
+	return layout.value.custom ? layout.value.labelId : `${fieldIdKey( props.field )}-label`;
 } );
-const hintId = computed( () => ( !layout.value.custom && props.field.help_text ? `${props.field.name}-hint` : undefined ) );
-const errorId = computed( () => ( props.error ? `${props.field.name}-error` : undefined ) );
+const hintId = computed( () => ( !layout.value.custom && props.field.help_text ? `${fieldIdKey( props.field )}-hint` : undefined ) );
+const errorId = computed( () => ( props.error ? `${fieldIdKey( props.field )}-error` : undefined ) );
 const describedBy = computed( () => [
 	layout.value.custom ? getLayoutDescribedBy( props.field, layout.value ) : hintId.value,
 	errorId.value,
@@ -150,7 +151,7 @@ function onToolbarKeydown( event: KeyboardEvent ): void {
 					role="toolbar"
 					class="flex flex-wrap gap-1 rounded-t-box border border-b-0 border-base-300 bg-base-200 p-1"
 					:aria-label="t( 'Formatting for :field', { field: fieldName } )"
-					:aria-controls="`field-${field.name}`"
+					:aria-controls="`field-${fieldIdKey( field )}`"
 					@keydown="onToolbarKeydown"
 				>
 					<button
@@ -170,7 +171,7 @@ function onToolbarKeydown( event: KeyboardEvent ): void {
 					</button>
 				</div>
 				<div
-					:id="`field-${field.name}`"
+					:id="`field-${fieldIdKey( field )}`"
 					ref="editor"
 					role="textbox"
 					aria-multiline="true"

@@ -22,6 +22,7 @@ import { getSectionDescription, isCollapsibleSection, startsCollapsed } from '..
 import type { FormField } from '../../../types/artisanpack-forms';
 
 import type { FieldComponentProps } from './types';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /** Props for the SectionGroup component. */
 export interface SectionGroupProps {
@@ -43,8 +44,8 @@ export interface SectionGroupProps {
 export function SectionGroup( { section, hidden = false, holdsCaptcha = false, hasErrors = false, children }: SectionGroupProps ) {
 	const collapsible = isCollapsibleSection( section );
 	const description = getSectionDescription( section );
-	const contentId = `section-${section.name}-content`;
-	const descriptionId = `section-${section.name}-description`;
+	const contentId = `section-${fieldIdKey( section )}-content`;
+	const descriptionId = `section-${fieldIdKey( section )}-description`;
 	const [open, setOpen] = useState( !startsCollapsed( section ) );
 
 	// A collapsed section opens to show its errors.
@@ -60,7 +61,7 @@ export function SectionGroup( { section, hidden = false, holdsCaptcha = false, h
 
 	return (
 		<fieldset
-			id={`section-${section.name}`}
+			id={`section-${fieldIdKey( section )}`}
 			className={`fieldset w-full rounded-box border border-base-300 p-4 ${section.css_classes ?? ''}`}
 			data-forms-section={section.name}
 			aria-describedby={description && !hidden ? descriptionId : undefined}

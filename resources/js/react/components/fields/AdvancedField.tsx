@@ -37,6 +37,7 @@ import { t } from '../../../shared/i18n';
 import { DatePartsField } from './DateTimeParts';
 import { FieldLayout } from './FieldLayout';
 import type { FieldComponentProps } from './types';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /**
  * Renders a file upload field.
@@ -63,7 +64,7 @@ export function FileField( props: FieldComponentProps ) {
  */
 function withLimitsNote( props: InputLabelProps, field: FormField, error: string | undefined ): { props: InputLabelProps; note: React.ReactNode } {
 	const hint = getFileLimitsHint( field );
-	const id = `field-${field.name}-limits`;
+	const id = `field-${fieldIdKey( field )}-limits`;
 
 	if ( hint === undefined ) {
 		return { props, note: null };
@@ -335,11 +336,11 @@ export function RatingField( { field, value, error, onChange, displayConfig }: F
 	const selected = Number.isFinite( current ) ? current : 0;
 
 	const layout = getFieldLayout( field, displayConfig );
-	const labelId = field.label ? ( layout.custom ? layout.labelId : `${field.name}-label` ) : undefined;
+	const labelId = field.label ? ( layout.custom ? layout.labelId : `${fieldIdKey( field )}-label` ) : undefined;
 	const hintId = layout.custom
 		? ( field.help_text ? layout.descriptionId : undefined )
-		: ( field.help_text && !error ? `${field.name}-hint` : undefined );
-	const errorId = error ? `${field.name}-error` : undefined;
+		: ( field.help_text && !error ? `${fieldIdKey( field )}-hint` : undefined );
+	const errorId = error ? `${fieldIdKey( field )}-error` : undefined;
 	const describedBy = [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
 	const labelHidden = displayConfig.label_position === 'hidden';
 

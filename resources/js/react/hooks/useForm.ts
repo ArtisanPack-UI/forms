@@ -14,7 +14,7 @@
  * @since      1.1.0
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import type {
 	FormField,
@@ -26,6 +26,7 @@ import { resolveCalculatedValues } from '../../shared/calculation';
 import { createSubmitHooks, SubmitHookError } from '../../shared/captcha';
 import type { SubmitHooks } from '../../shared/captcha';
 import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composite';
+import { createIdPrefix, withIdPrefix } from '../../shared/domIds';
 import {
 	getConfirmationKey,
 	getInitialFieldValue,
@@ -93,6 +94,12 @@ export interface UseFormReturn {
 	currentStepData: FormStep | null;
 	/** Error from loading the form definition, if any. */
 	loadError: string | null;
+	/**
+	 * The prefix this form instance's element IDs start with, so two forms on
+	 * one page do not share IDs. Each field carries it as `id_prefix` (since
+	 * 1.6.0; see `fieldIdKey()`).
+	 */
+	idPrefix: string;
 	/** Sets a single field value. */
 	setValue: ( name: string, value: unknown ) => void;
 	/** Sets a file for a field. */
@@ -162,6 +169,12 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 	const formLoadedAt = useRef<number>( 0 );
 
+	// This form instance's ID prefix, stable across renders and server rendering (since 1.6.0)
+	const reactId = useId();
+	const idPrefix = useMemo( () => createIdPrefix( reactId ), [reactId] );
+	const idPrefixRef = useRef( idPrefix );
+	idPrefixRef.current = idPrefix;
+
 	// One registry for the hook's lifetime, so fields keep their registrations across renders.
 	const submitHooksRef = useRef<SubmitHooks | null>( null );
 
@@ -197,7 +210,8 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 					return;
 				}
 
-				setForm( data.data );
+				// Each field carries the instance's ID prefix for its element IDs (since 1.6.0)
+				setForm( { ...data.data, fields: withIdPrefix( data.data.fields, idPrefixRef.current ) } );
 				formLoadedAt.current = Math.floor( Date.now() / 1000 );
 
 				// Initialize default values
@@ -680,6 +694,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		currentFields,
 		currentStepData,
 		loadError,
+		idPrefix,
 		setValue,
 		setFile,
 		setOtherValue,

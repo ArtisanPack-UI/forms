@@ -45,6 +45,7 @@ import InputNotes from './InputNotes.vue';
 import { vAutocomplete } from './autocomplete';
 import { vDescribedBy } from './describedBy';
 import { vInputAttrs } from './inputAttrs';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = defineProps<{
 	field: FormField;
@@ -200,7 +201,7 @@ const numberStep = computed( () =>
 		<div v-else-if="field.type === 'phone'" :class="{ 'flex items-end gap-2': phoneCountries.length > 0 }">
 			<select
 				v-if="phoneCountries.length > 0"
-				:id="`field-${field.name}-country`"
+				:id="`field-${fieldIdKey( field )}-country`"
 				class="select select-bordered w-auto max-w-48"
 				:value="phoneCountryCode ?? ''"
 				autocomplete="country"

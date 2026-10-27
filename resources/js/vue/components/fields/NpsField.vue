@@ -18,6 +18,7 @@ import { getFieldLayout, isReadOnlyField } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 import { getNpsLabels, getNpsScoreLabel, NPS_MAX_SCORE, NPS_MIN_SCORE, NPS_SCORES } from '../../../shared/nps';
 import FieldLayout from './FieldLayout.vue';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = defineProps<{
 	field: FormField;
@@ -36,7 +37,7 @@ const SCORE_CLASSES = 'btn btn-sm btn-outline w-full tabular-nums peer-checked:b
 const labels = computed( () => getNpsLabels( props.field ) );
 const readOnly = computed( () => isReadOnlyField( props.field ) );
 const selected = computed( () => ( props.modelValue === null || props.modelValue === undefined || props.modelValue === '' ? undefined : String( props.modelValue ) ) );
-const endsId = computed( () => `field-${props.field.name}-ends` );
+const endsId = computed( () => `field-${fieldIdKey( props.field )}-ends` );
 
 /** Where the label and description go (see `FieldLayout.vue`). */
 const layout = computed( () => getFieldLayout( props.field, props.displayConfig ) );
@@ -46,16 +47,16 @@ const labelId = computed( () => {
 		return undefined;
 	}
 
-	return layout.value.custom ? layout.value.labelId : `${props.field.name}-label`;
+	return layout.value.custom ? layout.value.labelId : `${fieldIdKey( props.field )}-label`;
 } );
 const hintId = computed( () => {
 	if ( layout.value.custom ) {
 		return props.field.help_text ? layout.value.descriptionId : undefined;
 	}
 
-	return props.field.help_text && !props.error ? `${props.field.name}-hint` : undefined;
+	return props.field.help_text && !props.error ? `${fieldIdKey( props.field )}-hint` : undefined;
 } );
-const errorId = computed( () => ( props.error ? `${props.field.name}-error` : undefined ) );
+const errorId = computed( () => ( props.error ? `${fieldIdKey( props.field )}-error` : undefined ) );
 const describedBy = computed( () => [endsId.value, hintId.value, errorId.value].filter( Boolean ).join( ' ' ) );
 </script>
 
@@ -84,7 +85,7 @@ const describedBy = computed( () => [endsId.value, hintId.value, errorId.value].
 				>
 					<label v-for="score in NPS_SCORES" :key="score" class="cursor-pointer">
 						<input
-							:id="`field-${field.name}-${score}`"
+							:id="`field-${fieldIdKey( field )}-${score}`"
 							type="radio"
 							:name="field.name"
 							:value="String( score )"

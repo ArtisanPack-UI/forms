@@ -8,10 +8,14 @@
   @since      1.1.0
 -->
 <script setup lang="ts">
-defineProps<{
+withDefaults( defineProps<{
 	slug: string;
 	fieldName: string;
-}>();
+	/** The form instance's ID prefix, so two forms on a page do not share the ID (since 1.6.0). */
+	idPrefix?: string;
+}>(), {
+	idPrefix: '',
+} );
 </script>
 
 <template>
@@ -19,10 +23,10 @@ defineProps<{
 		style="position: absolute; left: -9999px; opacity: 0; height: 0; overflow: hidden"
 		aria-hidden="true"
 	>
-		<label :for="`ap-hp-${slug}`">Leave this field empty</label>
+		<label :for="`ap-hp-${idPrefix}${slug}`">Leave this field empty</label>
 		<input
 			type="text"
-			:id="`ap-hp-${slug}`"
+			:id="`ap-hp-${idPrefix}${slug}`"
 			:name="fieldName"
 			tabindex="-1"
 			autocomplete="off"

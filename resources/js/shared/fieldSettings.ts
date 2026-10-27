@@ -46,6 +46,7 @@ import { getInitialMatrixValue, isMatrixField } from './matrix';
 import { getRankingOrder, isRankingField } from './ranking';
 import { getInitialSliderValue, isSliderField } from './slider';
 import { getInputMaskHint } from './mask';
+import { fieldIdKey } from './domIds';
 
 /** Field types whose content is edited in the builder's General tab. */
 export const CONTENT_LAYOUT_TYPES = new Set( ['heading', 'paragraph', 'html'] );
@@ -923,9 +924,9 @@ export function getFieldLayout( field: FormField, displayConfig?: DisplayConfig 
 		custom: Boolean( field.label_placement || field.description_placement ),
 		label,
 		description: field.description_placement ?? 'below',
-		inputId: `field-${field.name}`,
-		labelId: `field-${field.name}-label`,
-		descriptionId: `field-${field.name}-description`,
+		inputId: `field-${fieldIdKey( field )}`,
+		labelId: `field-${fieldIdKey( field )}-label`,
+		descriptionId: `field-${fieldIdKey( field )}-description`,
 	};
 }
 
@@ -988,9 +989,9 @@ export function getInputLabelProps(
  */
 export function getInputNoteIds( field: FormField ): string[] {
 	return [
-		getInputMaskHint( field ) !== undefined ? `field-${field.name}-mask` : undefined,
-		showsCounter( field ) ? `field-${field.name}-counter` : undefined,
-		field.affix_description ? `field-${field.name}-affix` : undefined,
+		getInputMaskHint( field ) !== undefined ? `field-${fieldIdKey( field )}-mask` : undefined,
+		showsCounter( field ) ? `field-${fieldIdKey( field )}-counter` : undefined,
+		field.affix_description ? `field-${fieldIdKey( field )}-affix` : undefined,
 	].filter( ( id ): id is string => id !== undefined );
 }
 
@@ -1006,7 +1007,7 @@ export function withInputNotes( props: InputLabelProps, field: FormField, error:
 		return props;
 	}
 
-	const id = props.id ?? `field-${field.name}`;
+	const id = props.id ?? `field-${fieldIdKey( field )}`;
 	const own = props['aria-describedby'] ?? [
 		props.hint && !error ? `${id}-hint` : undefined,
 		error ? `${id}-error` : undefined,

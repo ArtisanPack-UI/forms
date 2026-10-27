@@ -29,6 +29,7 @@ import { getDateLimits } from '../../../shared/dateConstraints';
 import { getFieldLayout } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 import type { FieldComponentProps } from './types';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /**
  * Renders a composite field.
@@ -43,8 +44,8 @@ export function CompositeField( { field, value, error, subErrors = {}, onChange,
 	const hiddenLabel = layout.label === 'hidden' || ( !layout.custom && displayConfig.label_position === 'hidden' );
 	const errorCount = subInputs.filter( ( subInput ) => subErrors[subInput.key] ).length;
 	const hasErrors = Boolean( error ) || errorCount > 0;
-	const hintId = field.help_text ? `${field.name}-hint` : undefined;
-	const errorId = hasErrors ? `${field.name}-error` : undefined;
+	const hintId = field.help_text ? `${fieldIdKey( field )}-hint` : undefined;
+	const errorId = hasErrors ? `${fieldIdKey( field )}-error` : undefined;
 	const describedBy = [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
 	const summary = error || ( errorCount === 1
 		? t( 'Please fix :count highlighted part of :field.', { count: errorCount, field: field.label ?? field.name } )
@@ -57,7 +58,7 @@ export function CompositeField( { field, value, error, subErrors = {}, onChange,
 
 	return (
 		<fieldset
-			id={`field-${field.name}`}
+			id={`field-${fieldIdKey( field )}`}
 			className={`fieldset ${field.css_classes ?? ''}`}
 			data-forms-composite={field.type}
 			aria-describedby={describedBy}

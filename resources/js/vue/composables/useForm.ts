@@ -25,6 +25,7 @@ import { isCalculationField, resolveCalculatedValues } from '../../shared/calcul
 import { createSubmitHooks, SubmitHookError } from '../../shared/captcha';
 import type { SubmitHooks } from '../../shared/captcha';
 import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composite';
+import { createIdPrefix, withIdPrefix } from '../../shared/domIds';
 import { getInitialFieldValue, resolveOtherChoices } from '../../shared/fieldSettings';
 import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
 import { t } from '../../shared/i18n';
@@ -143,6 +144,13 @@ export function useForm( options: UseFormOptions ) {
 	const loadError = ref<string | null>( null );
 	const formLoadedAt = ref( 0 );
 
+	/**
+	 * The prefix this form instance's element IDs start with, so two forms on
+	 * one page do not share IDs. Each field carries it as `id_prefix` (since
+	 * 1.6.0; see `fieldIdKey()`).
+	 */
+	const idPrefix = createIdPrefix();
+
 	/** The form's submit hooks, which fields such as the CAPTCHA register with (since 1.6.0). */
 	const submitHooks: SubmitHooks = createSubmitHooks();
 
@@ -245,7 +253,8 @@ export function useForm( options: UseFormOptions ) {
 				return;
 			}
 
-			form.value = data.data;
+			// Each field carries the instance's ID prefix for its element IDs (since 1.6.0)
+			form.value = { ...data.data, fields: withIdPrefix( data.data.fields, idPrefix ) };
 			formLoadedAt.value = Math.floor( Date.now() / 1000 );
 			values.value = buildDefaults( data.data.fields, prefill );
 			errors.value = {};
@@ -587,6 +596,7 @@ export function useForm( options: UseFormOptions ) {
 		currentFields,
 		currentStepData,
 		loadError,
+		idPrefix,
 		setValue,
 		setFile,
 		setOtherValue,

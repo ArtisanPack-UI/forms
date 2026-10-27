@@ -35,6 +35,7 @@ import { t } from '../../../shared/i18n';
 import FieldLayout from './FieldLayout.vue';
 import { vAutocomplete } from './autocomplete';
 import { vDescribedBy } from './describedBy';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = defineProps<{
 	field: FormField;
@@ -62,7 +63,7 @@ const layout = computed( () => getFieldLayout( props.field, props.displayConfig 
 const limitsHint = computed( () => ( props.field.type === 'file' ? getFileLimitsHint( props.field ) : undefined ) );
 
 /** The ID of the limits note, which the file input references. */
-const limitsId = computed( () => `field-${props.field.name}-limits` );
+const limitsId = computed( () => `field-${fieldIdKey( props.field )}-limits` );
 
 /** The IDs of the input's notes. */
 const noteIds = computed( () => ( limitsHint.value === undefined ? [] : [limitsId.value] ) );

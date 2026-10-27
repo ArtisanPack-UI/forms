@@ -143,7 +143,7 @@ describe( 'React renderer', function () use ( $resource, $between ): void {
             ->toContain( 'className={`${getChoiceLayoutClasses( field )} ${field.css_classes ?? \'\'}`}' )
             ->and( $group )->toContain( 'const showSelectAll = offersSelectAll( field ) && optionValues.length > 1;' )
             ->toContain( 'selectAllRef.current.indeterminate = selectedCount > 0 && selectedCount < optionValues.length;' )
-            ->toContain( "aria-controls={optionValues.map( ( _, index ) => `field-\${field.name}-\${index}` ).join( ' ' )}" )
+            ->toContain( "aria-controls={optionValues.map( ( _, index ) => `field-\${fieldIdKey( field )}-\${index}` ).join( ' ' )}" )
             ->toContain( "{t( 'Select All' )}" );
     } );
 

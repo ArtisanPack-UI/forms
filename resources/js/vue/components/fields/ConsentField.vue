@@ -16,6 +16,7 @@ import { computed } from 'vue';
 import type { DisplayConfig, FormField } from '../../../types/artisanpack-forms';
 import { getFieldLayout, getLayoutDescribedBy } from '../../../shared/fieldSettings';
 import FieldLayout from './FieldLayout.vue';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = defineProps<{
 	field: FormField;
@@ -60,10 +61,10 @@ const consentText = computed( () => props.field.consent?.text ?? '' );
 /** The server-sanitized consent description HTML. */
 const consentDescription = computed( () => props.field.consent?.description ?? '' );
 
-const labelId = computed( () => `label-${props.field.name}` );
-const descriptionId = computed( () => ( consentDescription.value !== '' ? `consent-description-${props.field.name}` : undefined ) );
-const hintId = computed( () => ( !layout.value.custom && props.field.help_text ? `${props.field.name}-hint` : undefined ) );
-const errorId = computed( () => ( props.error ? `${props.field.name}-error` : undefined ) );
+const labelId = computed( () => `label-${fieldIdKey( props.field )}` );
+const descriptionId = computed( () => ( consentDescription.value !== '' ? `consent-description-${fieldIdKey( props.field )}` : undefined ) );
+const hintId = computed( () => ( !layout.value.custom && props.field.help_text ? `${fieldIdKey( props.field )}-hint` : undefined ) );
+const errorId = computed( () => ( props.error ? `${fieldIdKey( props.field )}-error` : undefined ) );
 
 /** The consent description, the help text and the error, for the checkbox. */
 const describedBy = computed( () => [
@@ -81,9 +82,9 @@ const describedBy = computed( () => [
 				<span v-if="field.is_required" class="text-error ml-1" aria-hidden="true">*</span>
 			</p>
 
-			<label :for="`field-${field.name}`" class="label cursor-pointer justify-start gap-3">
+			<label :for="`field-${fieldIdKey( field )}`" class="label cursor-pointer justify-start gap-3">
 				<input
-					:id="`field-${field.name}`"
+					:id="`field-${fieldIdKey( field )}`"
 					type="checkbox"
 					:name="field.name"
 					:class="['checkbox checkbox-primary', field.css_classes ?? '']"
@@ -92,10 +93,10 @@ const describedBy = computed( () => [
 					:aria-required="field.is_required ? 'true' : undefined"
 					:aria-invalid="error ? true : undefined"
 					:aria-describedby="describedBy"
-					:aria-labelledby="field.label ? `${labelId} consent-text-${field.name}` : undefined"
+					:aria-labelledby="field.label ? `${labelId} consent-text-${fieldIdKey( field )}` : undefined"
 					@change="emit( 'update:modelValue', ( $event.target as HTMLInputElement ).checked )"
 				/>
-				<span :id="`consent-text-${field.name}`" class="label-text whitespace-normal">{{ consentText }}</span>
+				<span :id="`consent-text-${fieldIdKey( field )}`" class="label-text whitespace-normal">{{ consentText }}</span>
 			</label>
 
 			<!-- Sanitized with kses by the server (`ConsentFieldType::description()`). -->

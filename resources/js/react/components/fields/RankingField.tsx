@@ -21,6 +21,7 @@ import { t } from '../../../shared/i18n';
 import { getRankingChoices, getRankingOrder, moveRankingItem } from '../../../shared/ranking';
 
 import type { FieldComponentProps } from './types';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /** Where focus goes after a move: the moved choice's button in that direction. */
 interface FocusTarget {
@@ -37,10 +38,10 @@ export function RankingField( { field, value, error, onChange, displayConfig }: 
 	const readOnly = isReadOnlyField( field );
 	const layout = getFieldLayout( field, displayConfig );
 	const hiddenLabel = layout.label === 'hidden' || ( !layout.custom && displayConfig.label_position === 'hidden' );
-	const idPrefix = `field-${field.name}-`;
+	const idPrefix = `field-${fieldIdKey( field )}-`;
 	const instructionsId = readOnly ? undefined : `${idPrefix}instructions`;
-	const hintId = field.help_text ? `${field.name}-hint` : undefined;
-	const errorId = error ? `${field.name}-error` : undefined;
+	const hintId = field.help_text ? `${fieldIdKey( field )}-hint` : undefined;
+	const errorId = error ? `${fieldIdKey( field )}-error` : undefined;
 	const describedBy = [instructionsId, hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
 	const hint = hintId ? <p id={hintId} className="fieldset-label">{field.help_text}</p> : null;
 
@@ -86,7 +87,7 @@ export function RankingField( { field, value, error, onChange, displayConfig }: 
 
 	return (
 		<fieldset
-			id={`field-${field.name}`}
+			id={`field-${fieldIdKey( field )}`}
 			className={`fieldset ${field.css_classes ?? ''}`}
 			data-forms-ranking={field.name}
 			aria-describedby={describedBy}

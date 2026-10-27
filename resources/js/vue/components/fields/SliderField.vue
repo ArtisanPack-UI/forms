@@ -15,6 +15,7 @@ import type { DisplayConfig, FormField } from '../../../types/artisanpack-forms'
 import { getFieldLayout, isReadOnlyField } from '../../../shared/fieldSettings';
 import { formatSliderValue, getInitialSliderValue, getSliderSettings } from '../../../shared/slider';
 import FieldLayout from './FieldLayout.vue';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = defineProps<{
 	field: FormField;
@@ -35,22 +36,22 @@ const readOnly = computed( () => isReadOnlyField( props.field ) );
 /** Where the label and description go (see `FieldLayout.vue`). */
 const layout = computed( () => getFieldLayout( props.field, props.displayConfig ) );
 
-const inputId = computed( () => ( layout.value.custom ? layout.value.inputId : `field-${props.field.name}` ) );
+const inputId = computed( () => ( layout.value.custom ? layout.value.inputId : `field-${fieldIdKey( props.field )}` ) );
 const labelId = computed( () => {
 	if ( !props.field.label ) {
 		return undefined;
 	}
 
-	return layout.value.custom ? layout.value.labelId : `${props.field.name}-label`;
+	return layout.value.custom ? layout.value.labelId : `${fieldIdKey( props.field )}-label`;
 } );
 const hintId = computed( () => {
 	if ( layout.value.custom ) {
 		return props.field.help_text ? layout.value.descriptionId : undefined;
 	}
 
-	return props.field.help_text && !props.error ? `${props.field.name}-hint` : undefined;
+	return props.field.help_text && !props.error ? `${fieldIdKey( props.field )}-hint` : undefined;
 } );
-const errorId = computed( () => ( props.error ? `${props.field.name}-error` : undefined ) );
+const errorId = computed( () => ( props.error ? `${fieldIdKey( props.field )}-error` : undefined ) );
 const describedBy = computed( () => [hintId.value, errorId.value].filter( Boolean ).join( ' ' ) || undefined );
 </script>
 

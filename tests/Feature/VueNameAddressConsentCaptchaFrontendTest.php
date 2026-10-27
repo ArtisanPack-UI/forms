@@ -61,8 +61,8 @@ describe( 'Vue email confirmation', function () use ( $resource, $between ): voi
             ->toContain( '<legend v-if="field.label"' )
             ->toContain( 'class="grid grid-cols-1 gap-3 sm:grid-cols-2"' )
             ->toContain( 'type="email"' )
-            ->toContain( 'id: `field-${props.field.name}`,' )
-            ->toContain( 'id: `field-${getConfirmationKey( props.field )}`,' )
+            ->toContain( 'id: `field-${fieldIdKey( props.field )}`,' )
+            ->toContain( 'id: `field-${fieldIdKey( props.field )}_confirmation`,' )
             ->toContain( "label: props.field.email_confirmation?.email ?? ''," )
             ->toContain( "label: props.field.email_confirmation?.confirm ?? ''," )
             ->toContain( 'placeholder: props.field.email_confirmation?.confirm_placeholder ?? undefined,' )
@@ -115,9 +115,9 @@ describe( 'Vue email confirmation', function () use ( $resource, $between ): voi
 describe( 'Vue consent field', function () use ( $resource ): void {
     it( 'renders the label as a heading and the checkbox with its consent text', function () use ( $resource ): void {
         expect( $resource( 'vue/components/fields/ConsentField.vue' ) )
-            ->toContain( 'const labelId = computed( () => `label-${props.field.name}` );' )
-            ->toContain( ':aria-labelledby="field.label ? `${labelId} consent-text-${field.name}` : undefined"' )
-            ->toContain( '<span :id="`consent-text-${field.name}`" class="label-text whitespace-normal">{{ consentText }}</span>' )
+            ->toContain( 'const labelId = computed( () => `label-${fieldIdKey( props.field )}` );' )
+            ->toContain( ':aria-labelledby="field.label ? `${labelId} consent-text-${fieldIdKey( field )}` : undefined"' )
+            ->toContain( '<span :id="`consent-text-${fieldIdKey( field )}`" class="label-text whitespace-normal">{{ consentText }}</span>' )
             ->toContain( "<p v-if=\"field.label\" :id=\"labelId\" :class=\"['label-text font-medium', hiddenLabel ? 'sr-only' : '']\">" )
             ->toContain( 'type="checkbox"' )
             ->toContain( ':checked="isChecked"' )
@@ -129,7 +129,7 @@ describe( 'Vue consent field', function () use ( $resource ): void {
         expect( $resource( 'vue/components/fields/ConsentField.vue' ) )
             ->toContain( "const consentDescription = computed( () => props.field.consent?.description ?? '' );" )
             ->toContain( 'v-html="consentDescription"' )
-            ->toContain( '`consent-description-${props.field.name}`' )
+            ->toContain( '`consent-description-${fieldIdKey( props.field )}`' )
             ->toContain( "descriptionId.value,\n\tlayout.value.custom ? getLayoutDescribedBy( props.field, layout.value ) : hintId.value,\n\terrorId.value," )
             ->toContain( ':aria-describedby="describedBy"' )
             ->toContain( 'role="alert"' );

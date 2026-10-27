@@ -77,9 +77,9 @@ describe( 'shared helpers', function () use ( $resource, $between ): void {
         $settings = $resource( 'shared/fieldSettings.ts' );
 
         expect( $between( $settings, 'export function getInputNoteIds(', "\n}\n" ) )
-            ->toContain( '`field-${field.name}-mask`' )
-            ->toContain( '`field-${field.name}-counter`' )
-            ->toContain( '`field-${field.name}-affix`' )
+            ->toContain( '`field-${fieldIdKey( field )}-mask`' )
+            ->toContain( '`field-${fieldIdKey( field )}-counter`' )
+            ->toContain( '`field-${fieldIdKey( field )}-affix`' )
             ->and( $between( $settings, 'export function withInputNotes(', "\n}\n" ) )
             ->toContain( 'props.hint && !error ? `${id}-hint` : undefined,' )
             ->toContain( 'error ? `${id}-error` : undefined,' );
@@ -101,7 +101,7 @@ describe( 'React', function () use ( $resource, $between ): void {
 
     it( 'renders the phone country selector', function () use ( $resource, $between ): void {
         expect( $between( $resource( 'react/components/fields/TextField.tsx' ), 'export function PhoneField(', "\n}\n" ) )
-            ->toContain( 'id={`field-${field.name}-country`}' )
+            ->toContain( 'id={`field-${fieldIdKey( field )}-country`}' )
             ->toContain( 'autoComplete="country"' )
             ->toContain( "aria-label={t( ':field country', { field: field.label ?? field.name } )}" )
             ->toContain( 'onChange( composePhoneNumber( national, next ) );' );
@@ -119,8 +119,8 @@ describe( 'React', function () use ( $resource, $between ): void {
         expect( $resource( 'react/components/fields/InputNotes.tsx' ) )
             ->toContain( 'setTimeout( () => setAnnouncement( counter.text ), COUNTER_ANNOUNCE_DELAY )' )
             ->toContain( '<span className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</span>' )
-            ->toContain( 'id={`field-${field.name}-counter`}' )
-            ->toContain( 'id={`field-${field.name}-affix`} className="sr-only"' );
+            ->toContain( 'id={`field-${fieldIdKey( field )}-counter`}' )
+            ->toContain( 'id={`field-${fieldIdKey( field )}-affix`} className="sr-only"' );
     } );
 
     it( 'lists multiple files with remove buttons and a live region', function () use ( $resource, $between ): void {
@@ -158,7 +158,7 @@ describe( 'Vue', function () use ( $resource, $between ): void {
         expect( $resource( 'vue/components/fields/TextField.vue' ) )
             ->toContain( "@update:model-value=\"emit( 'update:modelValue', masked( String( \$event ?? '' ), stringValue ) )\"" )
             ->toContain( "emit( 'update:modelValue', composePhoneNumber( masked( text, phoneNational.value ), phoneCountry.value ) );" )
-            ->toContain( ':id="`field-${field.name}-country`"' )
+            ->toContain( ':id="`field-${fieldIdKey( field )}-country`"' )
             ->toContain( '<template v-if="affixes.prefix" #prefix>{{ affixes.prefix }}</template>' )
             ->toContain( '<template v-if="affixes.suffix" #suffix>{{ affixes.suffix }}</template>' )
             ->toContain( 'v-if="NOTED_TYPES.has( field.type )"' );

@@ -201,6 +201,7 @@ export function FormRenderer( {
 		currentFields,
 		currentStepData,
 		loadError,
+		idPrefix,
 		setValue,
 		files,
 		setFile,
@@ -333,12 +334,12 @@ export function FormRenderer( {
 							style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, overflow: 'hidden' }}
 							aria-hidden="true"
 						>
-							<label htmlFor={`ap-hp-${form.slug}`}>
+							<label htmlFor={`ap-hp-${idPrefix}${form.slug}`}>
 								Leave this field empty
 							</label>
 							<input
 								type="text"
-								id={`ap-hp-${form.slug}`}
+								id={`ap-hp-${idPrefix}${form.slug}`}
 								name={form.config.honeypot.field_name}
 								tabIndex={-1}
 								autoComplete="off"

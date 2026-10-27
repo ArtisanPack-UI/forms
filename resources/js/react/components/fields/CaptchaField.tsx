@@ -24,6 +24,7 @@ import { t } from '../../../shared/i18n';
 import { FieldLayout } from './FieldLayout';
 import { useSubmitHooks } from './SubmitHooksContext';
 import type { FieldComponentProps } from './types';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /**
  * Renders a CAPTCHA field, or nothing when its provider is not set up.
@@ -85,17 +86,17 @@ export function CaptchaField( { field, error, onChange, displayConfig }: FieldCo
 	const layout = getFieldLayout( field, displayConfig );
 	const hiddenLabel = runsOnSubmit( widget ) || layout.label === 'hidden'
 		|| ( !layout.custom && displayConfig.label_position === 'hidden' );
-	const labelId = field.label ? `label-${field.name}` : undefined;
+	const labelId = field.label ? `label-${fieldIdKey( field )}` : undefined;
 	const hintId = layout.custom
 		? ( field.help_text ? layout.descriptionId : undefined )
-		: ( field.help_text ? `${field.name}-hint` : undefined );
-	const errorId = error ? `${field.name}-error` : undefined;
+		: ( field.help_text ? `${fieldIdKey( field )}-hint` : undefined );
+	const errorId = error ? `${fieldIdKey( field )}-error` : undefined;
 	const describedBy = [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
 
 	return (
 		<FieldLayout field={field} layout={layout} renderLabel={false}>
 			<div
-				id={`field-${field.name}`}
+				id={`field-${fieldIdKey( field )}`}
 				role="group"
 				aria-labelledby={labelId}
 				aria-label={labelId ? undefined : field.name}

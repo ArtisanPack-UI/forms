@@ -52,6 +52,7 @@ import { Combobox } from './Combobox';
 import { FieldLayout } from './FieldLayout';
 import type { FieldComponentProps } from './types';
 import type { FieldOption } from '../../../types/artisanpack-forms';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /** Classes of an image choice card, mirroring the Blade `image-choice` partial (since 1.6.0). */
 const IMAGE_CHOICE_CLASSES = 'flex cursor-pointer flex-col overflow-hidden rounded-box border-2 border-base-300 bg-base-100 transition-colors hover:border-primary/50 has-[:checked]:border-primary has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60';
@@ -113,11 +114,11 @@ export function isChecked( value: unknown ): boolean {
  * otherwise the group renders them itself.
  */
 function getGroupIds( field: FieldComponentProps['field'], layout: FieldLayoutSettings, error?: string ) {
-	const labelId = field.label ? ( layout.custom ? layout.labelId : `${field.name}-label` ) : undefined;
-	const errorId = error ? `${field.name}-error` : undefined;
+	const labelId = field.label ? ( layout.custom ? layout.labelId : `${fieldIdKey( field )}-label` ) : undefined;
+	const errorId = error ? `${fieldIdKey( field )}-error` : undefined;
 	const hintId = layout.custom
 		? ( field.help_text ? layout.descriptionId : undefined )
-		: ( field.help_text && !error ? `${field.name}-hint` : undefined );
+		: ( field.help_text && !error ? `${fieldIdKey( field )}-hint` : undefined );
 
 	return { labelId, errorId, hintId, describedBy: [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined };
 }
@@ -138,7 +139,7 @@ interface OtherChoiceInputProps {
  * @since 1.6.0
  */
 function OtherChoiceInput( { field, value, error, readOnly, onChange }: OtherChoiceInputProps ) {
-	const inputId = `field-${field.name}-other-text`;
+	const inputId = `field-${fieldIdKey( field )}-other-text`;
 
 	return (
 		<div className="mt-2">
@@ -155,7 +156,7 @@ function OtherChoiceInput( { field, value, error, readOnly, onChange }: OtherCho
 				required
 				aria-required="true"
 				aria-invalid={error ? true : undefined}
-				aria-describedby={error ? `${field.name}-error` : undefined}
+				aria-describedby={error ? `${fieldIdKey( field )}-error` : undefined}
 				readOnly={readOnly}
 				onChange={( e ) => onChange?.( e.target.value )}
 			/>
@@ -172,9 +173,9 @@ function OtherChoiceInput( { field, value, error, readOnly, onChange }: OtherCho
 function SearchableSelect( { field, value, error, onChange, displayConfig, multiple }: FieldComponentProps & { multiple: boolean } ) {
 	const layout = getFieldLayout( field, displayConfig );
 	const inputId = layout.inputId;
-	const labelId = field.label && !layout.custom ? `${field.name}-label` : undefined;
-	const hintId = !layout.custom && field.help_text && !error ? `${field.name}-hint` : undefined;
-	const errorId = error ? `${field.name}-error` : undefined;
+	const labelId = field.label && !layout.custom ? `${fieldIdKey( field )}-label` : undefined;
+	const hintId = !layout.custom && field.help_text && !error ? `${fieldIdKey( field )}-hint` : undefined;
+	const errorId = error ? `${fieldIdKey( field )}-error` : undefined;
 	const describedBy = layout.custom
 		? [getLayoutDescribedBy( field, layout ), errorId].filter( Boolean ).join( ' ' ) || undefined
 		: [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
@@ -284,7 +285,7 @@ export function RadioField( { field, value, error, onChange, displayConfig, othe
 				className={`${getChoiceLayoutClasses( field )} ${field.css_classes ?? ''}`}
 			>
 				{choices.map( ( option, index ) => {
-					const optionId = `field-${field.name}-${option.value === OTHER_CHOICE_VALUE ? 'other' : index}`;
+					const optionId = `field-${fieldIdKey( field )}-${option.value === OTHER_CHOICE_VALUE ? 'other' : index}`;
 					const asImage = showsImages && option.value !== OTHER_CHOICE_VALUE;
 					const input = (
 						<input
@@ -297,7 +298,7 @@ export function RadioField( { field, value, error, onChange, displayConfig, othe
 							required={field.is_required && index === 0}
 							disabled={readOnly}
 							aria-labelledby={asImage ? `${optionId}-label` : undefined}
-							aria-controls={option.value === OTHER_CHOICE_VALUE && otherSelected ? `field-${field.name}-other-text` : undefined}
+							aria-controls={option.value === OTHER_CHOICE_VALUE && otherSelected ? `field-${fieldIdKey( field )}-other-text` : undefined}
 							onChange={() => onChange( option.value )}
 						/>
 					);
@@ -418,15 +419,15 @@ export function CheckboxGroupField( { field, value, error, onChange, displayConf
 					</legend>
 				)}
 				{showSelectAll && (
-					<label htmlFor={`field-${field.name}-select-all`} className="mb-2 flex cursor-pointer items-center gap-2 font-medium">
+					<label htmlFor={`field-${fieldIdKey( field )}-select-all`} className="mb-2 flex cursor-pointer items-center gap-2 font-medium">
 						<input
 							ref={selectAllRef}
-							id={`field-${field.name}-select-all`}
+							id={`field-${fieldIdKey( field )}-select-all`}
 							type="checkbox"
 							className="checkbox checkbox-primary"
 							checked={selectedCount === optionValues.length}
 							disabled={readOnly}
-							aria-controls={optionValues.map( ( _, index ) => `field-${field.name}-${index}` ).join( ' ' )}
+							aria-controls={optionValues.map( ( _, index ) => `field-${fieldIdKey( field )}-${index}` ).join( ' ' )}
 							onChange={( e ) => handleSelectAll( e.target.checked )}
 						/>
 						<span>{t( 'Select All' )}</span>
@@ -434,29 +435,29 @@ export function CheckboxGroupField( { field, value, error, onChange, displayConf
 				)}
 				<div className={`${getChoiceLayoutClasses( field )} ${field.css_classes ?? ''}`}>
 					{choices.map( ( option, index ) => showsImages && option.value !== OTHER_CHOICE_VALUE ? (
-						<ImageChoice key={option.value} option={option} labelId={`field-${field.name}-${index}-label`}>
+						<ImageChoice key={option.value} option={option} labelId={`field-${fieldIdKey( field )}-${index}-label`}>
 							<input
-								id={`field-${field.name}-${index}`}
+								id={`field-${fieldIdKey( field )}-${index}`}
 								type="checkbox"
 								name={`${field.name}[]`}
 								value={option.value}
 								className="checkbox checkbox-primary checkbox-sm"
 								checked={selectedValues.includes( option.value )}
 								disabled={readOnly}
-								aria-labelledby={`field-${field.name}-${index}-label`}
+								aria-labelledby={`field-${fieldIdKey( field )}-${index}-label`}
 								onChange={( e ) => handleChange( option.value, e.target.checked )}
 							/>
 						</ImageChoice>
 					) : (
 						<Checkbox
 							key={option.value}
-							id={option.value === OTHER_CHOICE_VALUE ? `field-${field.name}-other` : `field-${field.name}-${index}`}
+							id={option.value === OTHER_CHOICE_VALUE ? `field-${fieldIdKey( field )}-other` : `field-${fieldIdKey( field )}-${index}`}
 							label={option.label}
 							name={`${field.name}[]`}
 							checked={selectedValues.includes( option.value )}
 							onChange={( e ) => handleChange( option.value, e.target.checked )}
 							disabled={readOnly}
-							aria-controls={option.value === OTHER_CHOICE_VALUE && otherSelected ? `field-${field.name}-other-text` : undefined}
+							aria-controls={option.value === OTHER_CHOICE_VALUE && otherSelected ? `field-${fieldIdKey( field )}-other-text` : undefined}
 							right
 						/>
 					) )}
@@ -489,9 +490,9 @@ export function SelectMultipleField( props: FieldComponentProps ) {
 	const selectedValues = Array.isArray( value ) ? value.map( String ) : [];
 	const readOnly = isReadOnlyField( field );
 	const layout = getFieldLayout( field, displayConfig );
-	const legendId = field.label && !layout.custom ? `${field.name}-label` : undefined;
-	const hintId = field.help_text && !error ? `${field.name}-hint` : undefined;
-	const errorId = error ? `${field.name}-error` : undefined;
+	const legendId = field.label && !layout.custom ? `${fieldIdKey( field )}-label` : undefined;
+	const hintId = field.help_text && !error ? `${fieldIdKey( field )}-hint` : undefined;
+	const errorId = error ? `${fieldIdKey( field )}-error` : undefined;
 	const describedBy = layout.custom
 		? [getLayoutDescribedBy( field, layout ), errorId].filter( Boolean ).join( ' ' ) || undefined
 		: [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;

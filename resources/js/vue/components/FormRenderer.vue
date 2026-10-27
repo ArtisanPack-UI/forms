@@ -89,6 +89,7 @@ const {
 	currentFields,
 	currentStepData,
 	loadError,
+	idPrefix,
 	setValue,
 	files,
 	setFile,
@@ -277,6 +278,7 @@ function handleFormSubmit( e: Event ): void {
 				<HoneypotField
 					v-if="form.config.honeypot.enabled"
 					:slug="form.slug"
+					:id-prefix="idPrefix"
 					:field-name="form.config.honeypot.field_name"
 				/>
 			</div>
@@ -324,6 +326,7 @@ function handleFormSubmit( e: Event ): void {
 				<HoneypotField
 					v-if="form.config.honeypot.enabled"
 					:slug="form.slug"
+					:id-prefix="idPrefix"
 					:field-name="form.config.honeypot.field_name"
 				/>
 
