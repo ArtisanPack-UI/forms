@@ -7,8 +7,13 @@ use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Models\FormSubmissionValue;
 use Livewire\Livewire;
+use Tests\Models\User;
 
 describe( 'SubmissionDetail Livewire Component', function (): void {
+    beforeEach( function (): void {
+        $this->actingAs( User::factory()->create() );
+    } );
+
     describe( 'rendering', function (): void {
         it( 'renders the component', function (): void {
             $form       = Form::factory()->create();

@@ -168,7 +168,7 @@ describe( 'display', function (): void {
 
         $submission = $this->form->submissions()->first();
 
-        Livewire::test( SubmissionDetail::class, ['submission' => $submission] )
+        Livewire::actingAs( User::factory()->create() )->test( SubmissionDetail::class, ['submission' => $submission] )
             ->assertSeeHtml( '<img src="data:image/png;base64,' . SIGNATURE_PNG . '"' )
             ->assertSeeHtml( route( 'forms.uploads.download', [$this->form, $submission, FormUpload::query()->sole()] ) );
     } );

@@ -22,8 +22,7 @@ namespace ArtisanPackUI\Forms\Livewire;
 use ArtisanPackUI\Forms\Captcha\CaptchaVerifier;
 use ArtisanPackUI\Forms\FieldTypes\CalculationFieldType;
 use ArtisanPackUI\Forms\FieldTypes\CaptchaFieldType;
-use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
-use ArtisanPackUI\Forms\FieldTypes\RankingFieldType;
+use ArtisanPackUI\Forms\Livewire\Concerns\ManagesStructuredFieldValues;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormStep;
@@ -56,6 +55,7 @@ use Livewire\WithFileUploads;
  */
 class FormRenderer extends Component
 {
+    use ManagesStructuredFieldValues;
     use WithFileUploads;
 
     /**
@@ -537,113 +537,6 @@ class FormRenderer extends Component
     }
 
     /**
-     * Adds an empty row to a list field, up to its max rows.
-     *
-     * Dispatches `forms-list-row-added` with the field and the new row's
-     * index, so the partial can focus the row and announce it.
-     *
-     * @since 1.6.0
-     *
-     * @param  string  $fieldName  The list field's name.
-     */
-    public function addListRow( string $fieldName ): void
-    {
-        $field = $this->listField( $fieldName );
-
-        if ( null === $field ) {
-            return;
-        }
-
-        $rows = $this->listRows( $fieldName );
-
-        if ( count( $rows ) >= ListFieldType::maxRows( $field ) ) {
-            return;
-        }
-
-        $rows[]                       = array_fill_keys( array_column( ListFieldType::columns( $field ), 'key' ), '' );
-        $this->formData[ $fieldName ] = $rows;
-
-        $this->evaluateConditionalLogic();
-
-        $this->dispatch( 'forms-list-row-added', field: $fieldName, index: count( $rows ) - 1 );
-    }
-
-    /**
-     * Removes a row from a list field, keeping one empty row when it was the last.
-     *
-     * Clears the field's errors, since the rows after it move up, and
-     * dispatches `forms-list-row-removed` with the field and the removed row's
-     * index.
-     *
-     * @since 1.6.0
-     *
-     * @param  string  $fieldName  The list field's name.
-     * @param  int  $index  The row's index.
-     */
-    public function removeListRow( string $fieldName, int $index ): void
-    {
-        $field = $this->listField( $fieldName );
-        $rows  = $this->listRows( $fieldName );
-
-        if ( null === $field || ! array_key_exists( $index, $rows ) ) {
-            return;
-        }
-
-        unset( $rows[ $index ] );
-
-        $this->formData[ $fieldName ] = [] === $rows
-            ? [array_fill_keys( array_column( ListFieldType::columns( $field ), 'key' ), '' )]
-            : array_values( $rows );
-
-        $this->evaluateConditionalLogic();
-
-        foreach ( $this->getErrorBag()->keys() as $key ) {
-            if ( "formData.{$fieldName}" === $key || str_starts_with( (string) $key, "formData.{$fieldName}." ) ) {
-                $this->resetValidation( $key );
-            }
-        }
-
-        $this->dispatch( 'forms-list-row-removed', field: $fieldName, index: $index );
-    }
-
-    /**
-     * Moves one choice of a ranking field to a new position.
-     *
-     * Positions count from 0. Dispatches `forms-ranking-moved` with the
-     * field, the choice's value and its new position, so the partial can keep
-     * focus on the moved choice and announce where it went.
-     *
-     * @since 1.6.0
-     *
-     * @param  string  $fieldName  The ranking field's name.
-     * @param  int  $from  The choice's position.
-     * @param  int  $to  The position to move it to.
-     */
-    public function moveRankingItem( string $fieldName, int $from, int $to ): void
-    {
-        $field = $this->form->fields->firstWhere( 'name', $fieldName );
-
-        if ( ! $field instanceof FormField || RankingFieldType::TYPE !== $field->type || $field->isAdministrative() || $field->isReadOnly() ) {
-            return;
-        }
-
-        $order = RankingFieldType::order( $field, $this->formData[ $fieldName ] ?? [] );
-        $moved = RankingFieldType::move( $order, $from, $to );
-
-        if ( $moved === $order ) {
-            return;
-        }
-
-        $this->formData[ $fieldName ] = $moved;
-
-        $this->evaluateConditionalLogic();
-
-        $this->resetValidation( "formData.{$fieldName}" );
-
-        $this->dispatch( 'forms-ranking-moved', field: $fieldName, value: $moved[ $to ], position: $to );
-    }
-
-    /**
      * Reset the form to allow another submission.
      *
      * Conditional logic is worked out again for the starting values, since
@@ -994,35 +887,34 @@ class FormRenderer extends Component
     // =========================================
 
     /**
-     * Gets a list field of the form by name.
+     * Gets a list or ranking field of the public form by name.
+     *
+     * Administrative fields are filled in on the submission, not here.
      *
      * @since 1.6.0
      *
      * @param  string  $fieldName  The field's name.
+     * @param  string  $type  The field type the action expects.
      *
-     * @return FormField|null The field, or null when the form has no list field by that name.
+     * @return FormField|null The field, or null when the form has no such public field.
      */
-    protected function listField( string $fieldName ): ?FormField
+    protected function structuredValueField( string $fieldName, string $type ): ?FormField
     {
         $field = $this->form->fields->firstWhere( 'name', $fieldName );
 
-        return $field instanceof FormField && ListFieldType::TYPE === $field->type && ! $field->isAdministrative() ? $field : null;
+        return $field instanceof FormField && $type === $field->type && ! $field->isAdministrative() ? $field : null;
     }
 
     /**
-     * Gets a list field's rows from the form data, numbered from 0.
+     * Works out conditional logic again after a list or ranking action.
      *
      * @since 1.6.0
      *
      * @param  string  $fieldName  The field's name.
-     *
-     * @return list<array<string, mixed>> The rows.
      */
-    protected function listRows( string $fieldName ): array
+    protected function structuredValueChanged( string $fieldName ): void
     {
-        $rows = $this->formData[ $fieldName ] ?? [];
-
-        return is_array( $rows ) ? array_values( array_filter( $rows, 'is_array' ) ) : [];
+        $this->evaluateConditionalLogic();
     }
 
     /**
