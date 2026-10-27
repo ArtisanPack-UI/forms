@@ -13,6 +13,7 @@
 import type { FormField, ValidationRules } from '../types/artisanpack-forms';
 
 import { hasCaptchaWidget, runsOnSubmit } from './captcha';
+import { getFieldOptions, isMultipleChoiceField } from './choices';
 import {
 	getEnabledSubInputs,
 	getRequiredSubInputKeys,
@@ -38,11 +39,10 @@ import {
 } from './fieldSettings';
 import { countWords, getMaxWords } from './counter';
 import {
-	earliestBirthdate,
+	getAgeBirthdates,
 	getAgeLimit,
 	getDateLimits,
 	isAllowedDay,
-	latestBirthdate,
 	parseIsoDate,
 } from './dateConstraints';
 import { validateColor } from './color';
@@ -54,7 +54,7 @@ import { isMatrixField, validateMatrixField } from './matrix';
 import { validateNps } from './nps';
 import { validateRanking } from './ranking';
 import { validateSignature } from './signature';
-import { validateSlider } from './slider';
+import { isOnStep, validateSlider } from './slider';
 import { getNumberFormat, isIntegerOnly, normalizeFormattedNumber } from './numberFormat';
 import { getPhoneFormat, isPlausiblePhoneNumber } from './phone';
 import { richTextToPlainText, usesRichText } from './richText';
@@ -99,6 +99,11 @@ const TYPE_VALIDATORS: Record<string, ( field: FormField, value: unknown ) => st
 
 /** Field types where min/max rules apply to string length (not numeric value). */
 const TEXT_LENGTH_FIELDS = new Set( ['text', 'email', 'phone', 'url', 'textarea', 'hidden'] );
+
+/** The name a message uses for a field: its label, or its name without one. */
+function fieldLabel( field: FormField ): string {
+	return field.label ?? field.name;
+}
 
 /**
  * Checks whether a required field is missing its value.
@@ -157,7 +162,7 @@ export function validateField(
 	}
 
 	if ( field.is_required && isMissing( field, value, files ) ) {
-		return [field.required_message ?? `${field.label ?? field.name} is required.`];
+		return [field.required_message ?? t( 'The :field field is required.', { field: fieldLabel( field ) } )];
 	}
 
 	const errors = validateValue( field, value, files );
@@ -198,10 +203,38 @@ function validateValue(
 		const items = Array.isArray( value ) ? value : [value];
 
 		if ( items.some( ( item ) => item === OTHER_CHOICE_VALUE || String( item ).length > OTHER_CHOICE_MAX_LENGTH ) ) {
-			errors.push( `Please specify ${getOtherChoiceLabel( field )} (up to ${OTHER_CHOICE_MAX_LENGTH} characters).` );
+			errors.push( t( 'Please specify :other for :field (up to :max characters).', { other: getOtherChoiceLabel( field ), field: fieldLabel( field ), max: OTHER_CHOICE_MAX_LENGTH } ) );
 
 			return errors;
 		}
+
+		// "Other" adds one answer of the visitor's own, not any number of them (since 1.6.0)
+		if ( isMultipleChoiceField( field ) ) {
+			const optionValues = new Set( getFieldOptions( field ).map( ( option ) => option.value ) );
+
+			if ( items.filter( ( item ) => !optionValues.has( String( item ) ) ).length > 1 ) {
+				errors.push( t( 'Please choose one of the available options for :field.', { field: field.label ?? field.name } ) );
+
+				return errors;
+			}
+		}
+	}
+
+	// A checkbox group's or multi-select's min/max count its selections, as the
+	// server's `array` rules do; an unanswered optional one returned above (since 1.6.0)
+	if ( isMultipleChoiceField( field ) && Array.isArray( value ) ) {
+		const minSelections = numericLimit( rules?.min );
+		const maxSelections = numericLimit( rules?.max );
+
+		if ( minSelections !== undefined && value.length < minSelections ) {
+			errors.push( t( 'Please choose at least :min options.', { min: minSelections } ) );
+		}
+
+		if ( maxSelections !== undefined && value.length > maxSelections ) {
+			errors.push( t( 'Please choose no more than :max options.', { max: maxSelections } ) );
+		}
+
+		return errors;
 	}
 
 	// Rating validation reads `field_config`, so it runs even without validation rules
@@ -241,7 +274,7 @@ function validateValue(
 		// Email and URL checks read their own settings, so they run without validation rules (since 1.6.0)
 		if ( field.type === 'email' ) {
 			if ( !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test( value ) ) {
-				errors.push( 'Please enter a valid email address.' );
+				errors.push( t( 'Please enter a valid email address for :field.', { field: fieldLabel( field ) } ) );
 			} else if ( !isAcceptedEmailDomain( field, value ) ) {
 				errors.push( t( 'Please use an email address from an accepted domain.' ) );
 			}
@@ -252,7 +285,7 @@ function validateValue(
 			const schemes = getAllowedUrlSchemes( field );
 
 			if ( !isAllowedUrl( withUrlScheme( value, schemes ), schemes ) ) {
-				errors.push( 'Please enter a valid URL.' );
+				errors.push( t( 'Please enter a valid URL for :field.', { field: fieldLabel( field ) } ) );
 			}
 		}
 
@@ -272,14 +305,14 @@ function validateValue(
 		const num = Number( plain );
 
 		if ( plain.trim() === '' || isNaN( num ) ) {
-			errors.push( 'Please enter a valid number.' );
+			errors.push( t( 'Please enter a valid number for :field.', { field: fieldLabel( field ) } ) );
 		} else {
 			if ( isIntegerOnly( field ) && !Number.isInteger( num ) ) {
 				errors.push( t( 'Please enter a whole number.' ) );
 			}
 
 			if ( rules ) {
-				validateNumericRules( num, rules, errors );
+				validateNumericRules( field, num, rules, errors );
 			}
 		}
 	}
@@ -295,29 +328,25 @@ function validateValue(
 	if ( typeof text === 'string' && TEXT_LENGTH_FIELDS.has( field.type ) ) {
 		const minLength = numericLimit( rules.min );
 		const maxLength = numericLimit( rules.max );
-		const length = usesRichText( field ) ? Array.from( text ).length : text.length;
+		// Characters, as the server's `mb_strlen()` counts them, not UTF-16 code units
+		const length = Array.from( text ).length;
 
 		if ( minLength !== undefined && length < minLength ) {
-			errors.push( `Must be at least ${minLength} characters.` );
+			errors.push( t( 'The :field must be at least :min characters.', { field: fieldLabel( field ), min: minLength } ) );
 		}
 
 		if ( maxLength !== undefined && length > maxLength ) {
-			errors.push( `Must be no more than ${maxLength} characters.` );
+			errors.push( t( 'The :field may not be greater than :max characters.', { field: fieldLabel( field ), max: maxLength } ) );
 		}
 	}
 
 	// Pattern validation for string values
 	if ( typeof value === 'string' ) {
-		if ( rules.pattern ) {
-			try {
-				const regex = new RegExp( rules.pattern );
+		// A pattern JS cannot run as the server does is left to the server
+		const regex = toClientPattern( rules.pattern );
 
-				if ( !regex.test( value ) ) {
-					errors.push( 'The value does not match the required format.' );
-				}
-			} catch {
-				// Invalid regex pattern — skip
-			}
+		if ( regex && !regex.test( value ) ) {
+			errors.push( t( 'The value does not match the required format.' ) );
 		}
 	}
 
@@ -330,16 +359,105 @@ function validateValue(
 
 	// Time validation
 	if ( field.type === 'time' && typeof value === 'string' ) {
-		validateTimeRules( value, rules, errors );
+		validateTimeRules( field, value, rules, errors );
 	}
 
 	return errors;
 }
 
+/** The closing delimiter of each bracket-style PHP regex delimiter. */
+const BRACKET_DELIMITERS: Record<string, string> = { '(': ')', '{': '}', '[': ']', '<': '>' };
+
+/** The PCRE modifiers PHP accepts after a delimited pattern. */
+const PHP_PATTERN_MODIFIERS = /^[imsxuADSUXJn]*$/;
+
+/** The PCRE modifiers with the same meaning in a JS RegExp. */
+const JS_PATTERN_FLAGS = new Set( ['i', 'm', 's', 'u'] );
+
 /**
- * Validates numeric min/max/step constraints.
+ * Split a PHP-delimited pattern (`/^\d+$/i`, `#a#`, `{a}`) into its source
+ * and modifiers, finding the closing delimiter as PCRE does. Returns null
+ * when the string is not a valid delimited pattern, which the server then
+ * treats as undelimited.
+ */
+function splitDelimitedPattern( raw: string ): { source: string; modifiers: string } | null {
+	const open = raw[0];
+
+	if ( open === undefined || /[a-zA-Z0-9\\\s]/.test( open ) ) {
+		return null;
+	}
+
+	const close = BRACKET_DELIMITERS[open] ?? open;
+	let depth = 0;
+
+	for ( let i = 1; i < raw.length; i++ ) {
+		const char = raw[i];
+
+		if ( char === '\\' ) {
+			i++;
+
+			continue;
+		}
+
+		if ( close !== open && char === open ) {
+			depth++;
+		} else if ( char === close ) {
+			if ( depth === 0 ) {
+				const modifiers = raw.slice( i + 1 );
+
+				return PHP_PATTERN_MODIFIERS.test( modifiers ) ? { source: raw.slice( 1, i ), modifiers } : null;
+			}
+
+			depth--;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Build the RegExp a field's Pattern setting stands for, matching how the
+ * server reads it: a PHP-delimited pattern (`/^\d{6}$/i`) is unwrapped and
+ * its `i`, `m`, `s` and `u` modifiers become flags, and an undelimited one
+ * (`^[a-z]+$`) is used as is. Returns null, so the check is left to the
+ * server, when the pattern is empty, uses a modifier JS has no equivalent
+ * for, or is not valid JS.
+ *
+ * @since 1.6.0
+ */
+export function toClientPattern( raw: unknown ): RegExp | null {
+	if ( typeof raw !== 'string' || raw === '' ) {
+		return null;
+	}
+
+	const delimited = splitDelimitedPattern( raw );
+	let source = raw;
+	let flags = '';
+
+	if ( delimited ) {
+		const modifiers = new Set( delimited.modifiers.split( '' ) );
+
+		if ( [...modifiers].some( ( modifier ) => !JS_PATTERN_FLAGS.has( modifier ) ) ) {
+			return null;
+		}
+
+		source = delimited.source;
+		flags = [...modifiers].join( '' );
+	}
+
+	try {
+		return new RegExp( source, flags );
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Validates numeric min/max/step constraints. The step counts from the
+ * minimum (or 0) with the server's tolerance (`SubmissionRules::isOnStep()`).
  */
 function validateNumericRules(
+	field: FormField,
 	num: number,
 	rules: ValidationRules,
 	errors: string[],
@@ -349,21 +467,15 @@ function validateNumericRules(
 	const step = numericLimit( rules.step );
 
 	if ( min !== undefined && num < min ) {
-		errors.push( `Must be at least ${min}.` );
+		errors.push( t( 'The :field must be at least :min.', { field: fieldLabel( field ), min } ) );
 	}
 
 	if ( max !== undefined && num > max ) {
-		errors.push( `Must be no more than ${max}.` );
+		errors.push( t( 'The :field may not be greater than :max.', { field: fieldLabel( field ), max } ) );
 	}
 
-	if ( step !== undefined && step > 0 ) {
-		const base = min ?? 0;
-		const remainder = Math.abs( ( num - base ) % step );
-		const epsilon = 1e-9;
-
-		if ( remainder > epsilon && Math.abs( remainder - step ) > epsilon ) {
-			errors.push( `Must be a multiple of ${step}.` );
-		}
+	if ( step !== undefined && step > 0 && !isOnStep( num, min ?? 0, step ) ) {
+		errors.push( t( 'The :field must be in steps of :step.', { field: field.label ?? field.name, step } ) );
 	}
 }
 
@@ -379,7 +491,7 @@ function validateDateField(
 	errors: string[],
 ): void {
 	if ( !parseIsoDate( value ) ) {
-		errors.push( 'Please enter a valid date.' );
+		errors.push( t( 'Please enter a valid date for :field.', { field: fieldLabel( field ) } ) );
 
 		return;
 	}
@@ -388,11 +500,11 @@ function validateDateField(
 
 	// `YYYY-MM-DD` dates compare correctly as strings
 	if ( minDate !== undefined && value < minDate ) {
-		errors.push( `Date must be on or after ${minDate}.` );
+		errors.push( t( 'The :field must be on or after :date.', { field: fieldLabel( field ), date: minDate } ) );
 	}
 
 	if ( maxDate !== undefined && value > maxDate ) {
-		errors.push( `Date must be on or before ${maxDate}.` );
+		errors.push( t( 'The :field must be on or before :date.', { field: fieldLabel( field ), date: maxDate } ) );
 	}
 
 	if ( !isAllowedDay( field, value ) ) {
@@ -401,12 +513,13 @@ function validateDateField(
 
 	const minAge = getAgeLimit( field, 'min_age' );
 	const maxAge = getAgeLimit( field, 'max_age' );
+	const { latest, earliest } = getAgeBirthdates( field );
 
-	if ( minAge !== undefined && value > latestBirthdate( minAge ) ) {
+	if ( minAge !== undefined && latest !== undefined && value > latest ) {
 		errors.push( t( 'You must be at least :age years old.', { age: minAge } ) );
 	}
 
-	if ( maxAge !== undefined && value < earliestBirthdate( maxAge ) ) {
+	if ( maxAge !== undefined && earliest !== undefined && value < earliest ) {
 		errors.push( t( 'You must be no older than :age years.', { age: maxAge } ) );
 	}
 }
@@ -460,12 +573,13 @@ const TIME_FORMAT_REGEX = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
  * Validates time min/max constraints.
  */
 function validateTimeRules(
+	field: FormField,
 	value: string,
 	rules: ValidationRules,
 	errors: string[],
 ): void {
 	if ( !TIME_FORMAT_REGEX.test( value ) ) {
-		errors.push( 'Please enter a valid time.' );
+		errors.push( t( 'Please enter a valid time for :field.', { field: fieldLabel( field ) } ) );
 
 		return;
 	}
@@ -475,11 +589,11 @@ function validateTimeRules(
 	const maxTime = stringLimit( rules.max_time );
 
 	if ( minTime !== undefined && TIME_FORMAT_REGEX.test( minTime ) && normalized < normalizeTime( minTime ) ) {
-		errors.push( `Time must be on or after ${minTime}.` );
+		errors.push( t( 'The :field must be on or after :date.', { field: fieldLabel( field ), date: minTime } ) );
 	}
 
 	if ( maxTime !== undefined && TIME_FORMAT_REGEX.test( maxTime ) && normalized > normalizeTime( maxTime ) ) {
-		errors.push( `Time must be on or before ${maxTime}.` );
+		errors.push( t( 'The :field must be on or before :date.', { field: fieldLabel( field ), date: maxTime } ) );
 	}
 }
 
@@ -492,7 +606,7 @@ function validateRating( field: FormField, value: unknown, errors: string[] ): v
 	const max = getRatingMax( field );
 
 	if ( !Number.isFinite( rating ) || rating < 0 || rating > max ) {
-		errors.push( `Please choose a rating from 0 to ${max}.` );
+		errors.push( t( 'The :field rating must be between 0 and :max.', { field: fieldLabel( field ), max } ) );
 
 		return;
 	}
@@ -500,7 +614,9 @@ function validateRating( field: FormField, value: unknown, errors: string[] ): v
 	const step = ratingAllowsHalf( field ) ? 0.5 : 1;
 
 	if ( Math.abs( rating / step - Math.round( rating / step ) ) > 1e-9 ) {
-		errors.push( step === 1 ? 'Please choose a whole star.' : 'Please choose a whole or half star.' );
+		errors.push( step === 1
+			? t( 'The :field rating must be a whole star.', { field: fieldLabel( field ) } )
+			: t( 'The :field rating must be a whole or half star.', { field: fieldLabel( field ) } ) );
 	}
 }
 
@@ -540,7 +656,7 @@ function validateFileRules(
 	const maxSize = getFileMaxSize( field );
 
 	if ( maxSize !== undefined && file.size > maxSize * 1024 ) {
-		errors.push( `${field.label ?? field.name}: File must be no larger than ${maxSize} KB.` );
+		errors.push( t( ':field: File must be no larger than :size KB.', { field: fieldLabel( field ), size: maxSize } ) );
 	}
 
 	const allowedTypes = getFileAllowedTypes( field );
@@ -550,7 +666,7 @@ function validateFileRules(
 		const extension = dot >= 0 ? file.name.slice( dot + 1 ).toLowerCase() : '';
 
 		if ( !allowedTypes.includes( extension ) ) {
-			errors.push( `${field.label ?? field.name}: File type "${extension || file.type}" is not allowed.` );
+			errors.push( t( ':field: File type ":type" is not allowed.', { field: fieldLabel( field ), type: extension || file.type } ) );
 		}
 	}
 }

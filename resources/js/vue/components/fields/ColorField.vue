@@ -19,6 +19,7 @@ import { getColorPickerValue, normalizeColor } from '../../../shared/color';
 import { getFieldLayout, isReadOnlyField } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 import FieldLayout from './FieldLayout.vue';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = defineProps<{
 	field: FormField;
@@ -37,15 +38,15 @@ const readOnly = computed( () => isReadOnlyField( props.field ) );
 /** Where the label and description go (see `FieldLayout.vue`). */
 const layout = computed( () => getFieldLayout( props.field, props.displayConfig ) );
 
-const inputId = computed( () => ( layout.value.custom ? layout.value.inputId : `field-${props.field.name}` ) );
+const inputId = computed( () => ( layout.value.custom ? layout.value.inputId : `field-${fieldIdKey( props.field )}` ) );
 const hintId = computed( () => {
 	if ( layout.value.custom ) {
 		return props.field.help_text ? layout.value.descriptionId : undefined;
 	}
 
-	return props.field.help_text && !props.error ? `${props.field.name}-hint` : undefined;
+	return props.field.help_text && !props.error ? `${fieldIdKey( props.field )}-hint` : undefined;
 } );
-const errorId = computed( () => ( props.error ? `${props.field.name}-error` : undefined ) );
+const errorId = computed( () => ( props.error ? `${fieldIdKey( props.field )}-error` : undefined ) );
 const describedBy = computed( () => [hintId.value, errorId.value].filter( Boolean ).join( ' ' ) || undefined );
 const pickerLabel = computed( () => t( ':field color picker', { field: props.field.label || props.field.name } ) );
 </script>

@@ -29,6 +29,7 @@ import {
 	toListRows,
 } from '../../../shared/list';
 import type { ListRow } from '../../../shared/list';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = withDefaults( defineProps<{
 	field: FormField;
@@ -60,8 +61,8 @@ const layout = computed( () => getFieldLayout( props.field, props.displayConfig 
 const hiddenLabel = computed( () => layout.value.label === 'hidden' || ( !layout.value.custom && props.displayConfig.label_position === 'hidden' ) );
 const cellErrorCount = computed( () => Object.keys( props.subErrors ).length );
 const hasErrors = computed( () => Boolean( props.error ) || cellErrorCount.value > 0 );
-const hintId = computed( () => ( props.field.help_text ? `${props.field.name}-hint` : undefined ) );
-const errorId = computed( () => ( hasErrors.value ? `${props.field.name}-error` : undefined ) );
+const hintId = computed( () => ( props.field.help_text ? `${fieldIdKey( props.field )}-hint` : undefined ) );
+const errorId = computed( () => ( hasErrors.value ? `${fieldIdKey( props.field )}-error` : undefined ) );
 const describedBy = computed( () => [hintId.value, errorId.value].filter( Boolean ).join( ' ' ) || undefined );
 const gridStyle = computed( () => ( { gridTemplateColumns: `repeat(${Math.max( 1, columns.value.length )}, minmax(0, 1fr)) auto` } ) );
 
@@ -74,7 +75,7 @@ const addButton = ref<HTMLButtonElement | null>( null );
 
 /** The ID of a cell's input. */
 function inputId( index: number, key: string ): string {
-	return `field-${props.field.name}-${index}-${key}`;
+	return `field-${fieldIdKey( props.field )}-${index}-${key}`;
 }
 
 /** Store a cell's new text. */
@@ -114,7 +115,7 @@ async function removeRow( index: number ): Promise<void> {
 
 <template>
 	<fieldset
-		:id="`field-${field.name}`"
+		:id="`field-${fieldIdKey( field )}`"
 		:class="['fieldset', field.css_classes ?? '']"
 		:data-forms-list="field.name"
 		:aria-describedby="describedBy"
@@ -136,11 +137,11 @@ async function removeRow( index: number ): Promise<void> {
 				v-for="( row, index ) in rows"
 				:key="index"
 				role="group"
-				:aria-labelledby="`field-${field.name}-row-${index}-label`"
+				:aria-labelledby="`field-${fieldIdKey( field )}-row-${index}-label`"
 				class="flex flex-col gap-2 rounded-box bg-base-200 p-3 sm:grid sm:items-start sm:bg-transparent sm:p-0"
 				:style="gridStyle"
 			>
-				<span :id="`field-${field.name}-row-${index}-label`" class="sr-only">{{ `${rowLabel} ${index + 1}` }}</span>
+				<span :id="`field-${fieldIdKey( field )}-row-${index}-label`" class="sr-only">{{ `${rowLabel} ${index + 1}` }}</span>
 
 				<div v-for="column in columns" :key="column.key" class="flex flex-col gap-1">
 					<label :for="inputId( index, column.key )" class="label text-sm sm:sr-only">{{ column.label }}</label>

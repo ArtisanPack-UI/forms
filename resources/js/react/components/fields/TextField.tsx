@@ -53,6 +53,7 @@ import { FieldLayout } from './FieldLayout';
 import { InputNotes } from './InputNotes';
 import { RichTextEditor } from './RichTextEditor';
 import type { FieldComponentProps } from './types';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /**
  * Gets an input's label props with its notes (mask format, counter, prefix
@@ -145,13 +146,13 @@ function ConfirmedEmailField( { field, value, error, onChange, displayConfig, co
 	const subLabelPlacement = getSubLabelPlacement( field );
 	const labels = field.email_confirmation;
 	const readOnly = isReadOnlyField( field );
-	const hintId = field.help_text ? `${field.name}-hint` : undefined;
-	const errorId = error ? `${field.name}-error` : undefined;
+	const hintId = field.help_text ? `${fieldIdKey( field )}-hint` : undefined;
+	const errorId = error ? `${fieldIdKey( field )}-error` : undefined;
 	const describedBy = [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
 	const hint = hintId ? <p id={hintId} className="fieldset-label">{field.help_text}</p> : null;
 	const inputs = [
 		{
-			id: `field-${field.name}`,
+			id: `field-${fieldIdKey( field )}`,
 			name: field.name,
 			label: labels?.email ?? '',
 			placeholder: field.placeholder,
@@ -159,7 +160,7 @@ function ConfirmedEmailField( { field, value, error, onChange, displayConfig, co
 			change: ( text: string ) => onChange( text ),
 		},
 		{
-			id: `field-${getConfirmationKey( field )}`,
+			id: `field-${fieldIdKey( field )}_confirmation`,
 			name: getConfirmationKey( field ),
 			label: labels?.confirm ?? '',
 			placeholder: labels?.confirm_placeholder ?? null,
@@ -169,7 +170,7 @@ function ConfirmedEmailField( { field, value, error, onChange, displayConfig, co
 	];
 
 	return (
-		<fieldset id={`fieldset-${field.name}`} className={`fieldset ${field.css_classes ?? ''}`} aria-describedby={describedBy}>
+		<fieldset id={`fieldset-${fieldIdKey( field )}`} className={`fieldset ${field.css_classes ?? ''}`} aria-describedby={describedBy}>
 			{field.label && (
 				<legend className={`fieldset-legend ${hiddenLabel ? 'sr-only' : ''}`}>
 					{field.label}
@@ -259,7 +260,7 @@ export function PhoneField( { field, value, error, onChange, displayConfig }: Fi
 				<div className="flex items-end gap-2">
 					{/* The selected country's calling code is added to a number typed without one (since 1.6.0). */}
 					<select
-						id={`field-${field.name}-country`}
+						id={`field-${fieldIdKey( field )}-country`}
 						className="select select-bordered w-auto max-w-48"
 						value={countryCode ?? ''}
 						autoComplete="country"
@@ -399,9 +400,9 @@ function RichTextareaField( { field, value, error, onChange, displayConfig }: Fi
 	const layout = getFieldLayout( field, displayConfig );
 	const html = String( value ?? '' );
 	const labelHidden = displayConfig.label_position === 'hidden';
-	const labelId = field.label ? ( layout.custom ? layout.labelId : `${field.name}-label` ) : undefined;
-	const errorId = error ? `${field.name}-error` : undefined;
-	const hintId = !layout.custom && field.help_text ? `${field.name}-hint` : undefined;
+	const labelId = field.label ? ( layout.custom ? layout.labelId : `${fieldIdKey( field )}-label` ) : undefined;
+	const errorId = error ? `${fieldIdKey( field )}-error` : undefined;
+	const hintId = !layout.custom && field.help_text ? `${fieldIdKey( field )}-hint` : undefined;
 	const describedBy = [
 		layout.custom ? getLayoutDescribedBy( field, layout ) : hintId,
 		errorId,

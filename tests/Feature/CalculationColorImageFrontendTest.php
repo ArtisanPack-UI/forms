@@ -63,7 +63,7 @@ describe( 'React', function () use ( $resource ): void {
 
         expect( $choices )->toContain( 'function ImageChoice(' )
             ->toContain( 'aria-labelledby={asImage ? `${optionId}-label` : undefined}' )
-            ->toContain( 'aria-labelledby={`field-${field.name}-${index}-label`}' )
+            ->toContain( 'aria-labelledby={`field-${fieldIdKey( field )}-${index}-label`}' )
             ->toContain( 'alt={getChoiceImageAlt( option )}' );
     } );
 
@@ -75,7 +75,7 @@ describe( 'React', function () use ( $resource ): void {
             ->toContain( "aria-label={t( 'Image alt text: :label', { label: option.label || option.value } )}" )
             ->toContain( 'accept="image/jpeg,image/png,image/gif,image/webp"' )
             ->and( $resource( 'react/components/admin/FormBuilder.tsx' ) )
-            ->toContain( '`/${form?.id}/fields/choice-images`' )
+            ->toContain( "formPath( '/fields/choice-images' )" )
             ->and( $resource( 'react/hooks/useApi.ts' ) )
             ->toContain( 'headers: buildHeaders( !isFormData ),' )
             ->and( $resource( 'react/components/admin/FieldPalette.tsx' ) )
@@ -107,7 +107,7 @@ describe( 'Vue', function () use ( $resource ): void {
     it( 'names each image choice by its label', function () use ( $resource ): void {
         expect( $resource( 'vue/components/fields/ChoiceField.vue' ) )
             ->toContain( '<ImageChoice' )
-            ->toContain( ':aria-labelledby="`field-${field.name}-${index}-label`"' )
+            ->toContain( ':aria-labelledby="`field-${fieldIdKey( field )}-${index}-label`"' )
             ->and( $resource( 'vue/components/fields/ImageChoice.vue' ) )
             ->toContain( '<img v-if="image" :src="image" :alt="alt"' );
     } );

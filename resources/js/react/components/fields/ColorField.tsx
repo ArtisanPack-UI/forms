@@ -20,6 +20,7 @@ import { t } from '../../../shared/i18n';
 
 import { FieldLayout } from './FieldLayout';
 import type { FieldComponentProps } from './types';
+import { fieldIdKey } from '../../../shared/domIds';
 
 /**
  * Renders a color field.
@@ -28,12 +29,12 @@ export function ColorField( { field, value, error, onChange, displayConfig }: Fi
 	const layout = getFieldLayout( field, displayConfig );
 	const readOnly = isReadOnlyField( field );
 	const text = typeof value === 'string' ? value : '';
-	const inputId = layout.custom ? layout.inputId : `field-${field.name}`;
+	const inputId = layout.custom ? layout.inputId : `field-${fieldIdKey( field )}`;
 	const labelHidden = displayConfig.label_position === 'hidden';
 	const hintId = layout.custom
 		? ( field.help_text ? layout.descriptionId : undefined )
-		: ( field.help_text && !error ? `${field.name}-hint` : undefined );
-	const errorId = error ? `${field.name}-error` : undefined;
+		: ( field.help_text && !error ? `${fieldIdKey( field )}-hint` : undefined );
+	const errorId = error ? `${fieldIdKey( field )}-error` : undefined;
 	const describedBy = [hintId, errorId].filter( Boolean ).join( ' ' ) || undefined;
 
 	return (

@@ -173,14 +173,40 @@ export function earliestBirthdate( age: number, from: DateParts = today() ): str
 const DATE_LIMIT_TYPES = new Set( ['date', 'datetime', 'date_range'] );
 
 /**
+ * Read bounds the server resolved (`date_limits` / `date_bounds`), or
+ * undefined when it sent none.
+ */
+function readServerBounds( raw: unknown ): DateBounds | undefined {
+	if ( !raw || typeof raw !== 'object' ) {
+		return undefined;
+	}
+
+	const { min, max } = raw as { min?: unknown; max?: unknown };
+	const read = ( value: unknown ): string | undefined => ( typeof value === 'string' && parseIsoDate( value ) ? value : undefined );
+
+	return { min: read( min ), max: read( max ) };
+}
+
+/**
  * Get a date field's earliest and latest allowed dates: its min and max
  * dates narrowed by the "No past dates" or "No future dates" range. Mirrors
  * `FormField::getDateLimits()`. Date and time and date range fields take the
  * min and max dates too (since 1.6.0).
+ *
+ * The limits the server resolved (`field.date_limits`) are used when the
+ * field has them, so "today" is the server's day, not the browser's; they
+ * are worked out here otherwise, such as for the builder's preview (since
+ * 1.6.0).
  */
 export function getDateLimits( field: FormField ): DateBounds {
 	if ( !DATE_LIMIT_TYPES.has( field.type ) ) {
 		return {};
+	}
+
+	const fromServer = readServerBounds( field.date_limits );
+
+	if ( fromServer ) {
+		return fromServer;
 	}
 
 	const rules = field.validation_rules;
@@ -196,8 +222,16 @@ export function getDateLimits( field: FormField ): DateBounds {
 /**
  * Get the bounds a date field's input offers: its limits narrowed by its
  * age limits. Used for the native `min` and `max` and the year dropdown.
+ * The server's bounds (`field.date_bounds`) are used when present (since
+ * 1.6.0).
  */
 export function getDateBounds( field: FormField ): DateBounds {
+	const fromServer = DATE_LIMIT_TYPES.has( field.type ) ? readServerBounds( field.date_bounds ) : undefined;
+
+	if ( fromServer ) {
+		return fromServer;
+	}
+
 	const limits = getDateLimits( field );
 	const minAge = getAgeLimit( field, 'min_age' );
 	const maxAge = getAgeLimit( field, 'max_age' );
@@ -206,6 +240,28 @@ export function getDateBounds( field: FormField ): DateBounds {
 		[limits.min, maxAge === undefined ? undefined : earliestBirthdate( maxAge )],
 		[limits.max, minAge === undefined ? undefined : latestBirthdate( minAge )],
 	);
+}
+
+/**
+ * Get the birthdates a date field's age limits allow: the latest for its
+ * minimum age and the earliest for its maximum age. When the server sent its
+ * bounds and an age limit is what sets one of them, that bound is used, so
+ * "today" is the server's day (since 1.6.0).
+ */
+export function getAgeBirthdates( field: FormField ): { latest?: string; earliest?: string } {
+	const minAge = getAgeLimit( field, 'min_age' );
+	const maxAge = getAgeLimit( field, 'max_age' );
+	const bounds = readServerBounds( field.date_bounds );
+	const limits = bounds ? getDateLimits( field ) : {};
+
+	return {
+		latest: minAge === undefined
+			? undefined
+			: bounds?.max !== undefined && bounds.max !== limits.max ? bounds.max : latestBirthdate( minAge ),
+		earliest: maxAge === undefined
+			? undefined
+			: bounds?.min !== undefined && bounds.min !== limits.min ? bounds.min : earliestBirthdate( maxAge ),
+	};
 }
 
 /** Whether a date field rejects Saturdays and Sundays. */

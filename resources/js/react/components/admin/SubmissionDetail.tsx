@@ -131,7 +131,7 @@ export function SubmissionDetail( {
 
 		try {
 			const response = await get<{ data: FormSubmission }>(
-				`/${form.id}/submissions/${submissionId}`,
+				`/${encodeURIComponent( form.slug )}/submissions/${submissionId}`,
 			);
 			setSubmission( response.data );
 			setAdminNotes( response.data.admin_notes ?? '' );
@@ -140,7 +140,7 @@ export function SubmissionDetail( {
 			// Auto-mark as read after successful fetch
 			if ( !response.data.is_read ) {
 				try {
-					await put( `/${form.id}/submissions/${submissionId}`, { is_read: true } );
+					await put( `/${encodeURIComponent( form.slug )}/submissions/${submissionId}`, { is_read: true } );
 					setSubmission( ( prev ) => prev ? { ...prev, is_read: true } : prev );
 				} catch {
 					// Silently fail mark-as-read to avoid blocking the view
@@ -153,7 +153,7 @@ export function SubmissionDetail( {
 		} finally {
 			setIsLoading( false );
 		}
-	}, [get, put, form.id, submissionId, seedAdministrativeFields] );
+	}, [get, put, form.slug, submissionId, seedAdministrativeFields] );
 
 	useEffect( () => {
 		loadSubmission();
@@ -166,14 +166,14 @@ export function SubmissionDetail( {
 	const updateSubmission = useCallback( async ( data: UpdateSubmissionRequest ) => {
 		try {
 			const response = await put<{ data: FormSubmission }>(
-				`/${form.id}/submissions/${submissionId}`,
+				`/${encodeURIComponent( form.slug )}/submissions/${submissionId}`,
 				data,
 			);
 			setSubmission( response.data );
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : t( 'Failed to update submission.' ) );
 		}
-	}, [put, form.id, submissionId] );
+	}, [put, form.slug, submissionId] );
 
 	const toggleStar = useCallback( async () => {
 		if ( !submission || isUpdating ) {
@@ -248,7 +248,7 @@ export function SubmissionDetail( {
 				let uploaded: { data: FormSubmission };
 
 				try {
-					uploaded = await post<{ data: FormSubmission }>( `/${form.id}/submissions/${submissionId}`, buildAdminFilesBody( adminFiles ) );
+					uploaded = await post<{ data: FormSubmission }>( `/${encodeURIComponent( form.slug )}/submissions/${submissionId}`, buildAdminFilesBody( adminFiles ) );
 				} catch ( uploadError ) {
 					uploadFailed = true;
 
@@ -263,7 +263,7 @@ export function SubmissionDetail( {
 			}
 
 			const response = await put<{ data: FormSubmission }>(
-				`/${form.id}/submissions/${submissionId}`,
+				`/${encodeURIComponent( form.slug )}/submissions/${submissionId}`,
 				{ admin_values: values },
 			);
 			setSubmission( response.data );
@@ -290,7 +290,7 @@ export function SubmissionDetail( {
 		} finally {
 			setIsSavingAdmin( false );
 		}
-	}, [submission, adminValues, adminOtherValues, adminFiles, post, put, form.id, submissionId, seedAdministrativeFields] );
+	}, [submission, adminValues, adminOtherValues, adminFiles, post, put, form.slug, submissionId, seedAdministrativeFields] );
 
 	const removeAdministrativeUpload = useCallback( async ( upload: FormUpload ) => {
 		if ( !window.confirm( t( 'Remove :name? The file will be deleted.', { name: upload.original_name } ) ) ) {
@@ -299,7 +299,7 @@ export function SubmissionDetail( {
 
 		try {
 			const response = await put<{ data: FormSubmission }>(
-				`/${form.id}/submissions/${submissionId}`,
+				`/${encodeURIComponent( form.slug )}/submissions/${submissionId}`,
 				{ remove_admin_uploads: [upload.id] },
 			);
 			setSubmission( response.data );
@@ -308,7 +308,7 @@ export function SubmissionDetail( {
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : t( 'Failed to update submission.' ) );
 		}
-	}, [put, form.id, submissionId] );
+	}, [put, form.slug, submissionId] );
 
 	const deleteSubmission = useCallback( async () => {
 		if ( !window.confirm( t( 'Are you sure you want to delete this submission?' ) ) ) {
@@ -316,12 +316,12 @@ export function SubmissionDetail( {
 		}
 
 		try {
-			await del( `/${form.id}/submissions/${submissionId}` );
+			await del( `/${encodeURIComponent( form.slug )}/submissions/${submissionId}` );
 			onBack?.();
 		} catch ( err ) {
 			setError( err instanceof Error ? err.message : t( 'Failed to delete submission.' ) );
 		}
-	}, [del, form.id, submissionId, onBack] );
+	}, [del, form.slug, submissionId, onBack] );
 
 	const downloadFile = useCallback( async ( upload: FormUpload ) => {
 		try {

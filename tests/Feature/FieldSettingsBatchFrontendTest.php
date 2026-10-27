@@ -166,7 +166,7 @@ describe( 'Custom validation messages in React and Vue (issue #96)', function ()
     it( 'replaces the client messages like the server does', function () use ( $resource, $between ): void {
         $validate = $between( $resource( 'shared/validation.ts' ), 'export function validateField(', "\n}\n" );
 
-        expect( $validate )->toContain( 'return [field.required_message ?? `${field.label ?? field.name} is required.`];' )
+        expect( $validate )->toContain( "return [field.required_message ?? t( 'The :field field is required.', { field: fieldLabel( field ) } )];" )
             ->toContain( 'return errors.length > 0 && field.error_message ? [field.error_message] : errors;' );
     } );
 

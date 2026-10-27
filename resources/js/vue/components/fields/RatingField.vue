@@ -21,6 +21,7 @@ import {
 } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 import FieldLayout from './FieldLayout.vue';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = defineProps<{
 	field: FormField;
@@ -58,16 +59,16 @@ const labelId = computed( () => {
 		return undefined;
 	}
 
-	return layout.value.custom ? layout.value.labelId : `${props.field.name}-label`;
+	return layout.value.custom ? layout.value.labelId : `${fieldIdKey( props.field )}-label`;
 } );
 const hintId = computed( () => {
 	if ( layout.value.custom ) {
 		return props.field.help_text ? layout.value.descriptionId : undefined;
 	}
 
-	return props.field.help_text && !props.error ? `${props.field.name}-hint` : undefined;
+	return props.field.help_text && !props.error ? `${fieldIdKey( props.field )}-hint` : undefined;
 } );
-const errorId = computed( () => ( props.error ? `${props.field.name}-error` : undefined ) );
+const errorId = computed( () => ( props.error ? `${fieldIdKey( props.field )}-error` : undefined ) );
 const describedBy = computed( () => [hintId.value, errorId.value].filter( Boolean ).join( ' ' ) || undefined );
 const ariaLabel = computed( () =>
 	props.displayConfig.label_position === 'hidden' || !props.field.label

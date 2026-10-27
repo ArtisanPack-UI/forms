@@ -143,7 +143,7 @@ describe( 'React renderer', function () use ( $resource, $between ): void {
             ->toContain( 'className={`${getChoiceLayoutClasses( field )} ${field.css_classes ?? \'\'}`}' )
             ->and( $group )->toContain( 'const showSelectAll = offersSelectAll( field ) && optionValues.length > 1;' )
             ->toContain( 'selectAllRef.current.indeterminate = selectedCount > 0 && selectedCount < optionValues.length;' )
-            ->toContain( "aria-controls={optionValues.map( ( _, index ) => `field-\${field.name}-\${index}` ).join( ' ' )}" )
+            ->toContain( "aria-controls={optionValues.map( ( _, index ) => `field-\${fieldIdKey( field )}-\${index}` ).join( ' ' )}" )
             ->toContain( "{t( 'Select All' )}" );
     } );
 
@@ -183,8 +183,10 @@ describe( 'React renderer', function () use ( $resource, $between ): void {
     } );
 
     it( 'submits a composite value per sub-input and routes its errors to the right step', function () use ( $resource ): void {
-        expect( $resource( 'react/hooks/useForm.ts' ) )
-            ->toContain( 'formDataObj.append( `data[${key}][${subKey}]`, String( part ?? \'\' ) );' )
+        expect( $resource( 'shared/submission.ts' ) )
+            ->toContain( 'body.append( `data[${name}][${part}]`, toFormValue( partValue ) );' )
+            ->and( $resource( 'react/hooks/useForm.ts' ) )
+            ->toContain( 'appendSubmissionValue( formDataObj, key, value );' )
             ->toContain( 'new Set( Object.keys( validationErrors ).map( getErrorFieldName ) )' )
             ->toContain( 'new Set( Object.keys( serverErrors ).map( getErrorFieldName ) )' );
     } );
@@ -269,7 +271,7 @@ describe( 'Vue renderer', function () use ( $resource, $between ): void {
             ->toContain( ':autocomplete="subInput.autocomplete ?? undefined"' )
             ->and( substr_count( $resource( 'vue/components/FormRenderer.vue' ), ':sub-errors="getSubInputErrors( errors, field.name )"' ) )->toBe( 2 )
             ->and( $resource( 'vue/composables/useForm.ts' ) )
-            ->toContain( 'formDataObj.append( `data[${key}][${subKey}]`, String( part ?? \'\' ) );' );
+            ->toContain( 'appendSubmissionValue( formDataObj, key, value );' );
     } );
 } );
 

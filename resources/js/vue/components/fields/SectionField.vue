@@ -18,6 +18,7 @@
 import { computed, ref, watch } from 'vue';
 import type { FormField } from '../../../types/artisanpack-forms';
 import { getSectionDescription, isCollapsibleSection, startsCollapsed } from '../../../shared/sections';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = withDefaults( defineProps<{
 	/** The section field. */
@@ -36,8 +37,8 @@ const props = withDefaults( defineProps<{
 
 const collapsible = computed( () => isCollapsibleSection( props.field ) );
 const description = computed( () => getSectionDescription( props.field ) );
-const contentId = computed( () => `section-${props.field.name}-content` );
-const descriptionId = computed( () => `section-${props.field.name}-description` );
+const contentId = computed( () => `section-${fieldIdKey( props.field )}-content` );
+const descriptionId = computed( () => `section-${fieldIdKey( props.field )}-description` );
 const open = ref( !startsCollapsed( props.field ) );
 
 // A collapsed section opens to show its errors.
@@ -51,7 +52,7 @@ watch( () => props.hasErrors, ( hasErrors ) => {
 <template>
 	<fieldset
 		v-if="!hidden || holdsCaptcha"
-		:id="`section-${field.name}`"
+		:id="`section-${fieldIdKey( field )}`"
 		:class="['fieldset w-full rounded-box border border-base-300 p-4', field.css_classes ?? '']"
 		:data-forms-section="field.name"
 		:aria-describedby="description && !hidden ? descriptionId : undefined"

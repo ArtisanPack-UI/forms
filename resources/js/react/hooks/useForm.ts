@@ -14,7 +14,7 @@
  * @since      1.1.0
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import type {
 	FormField,
@@ -26,6 +26,7 @@ import { resolveCalculatedValues } from '../../shared/calculation';
 import { createSubmitHooks, SubmitHookError } from '../../shared/captcha';
 import type { SubmitHooks } from '../../shared/captcha';
 import { clearChangedFieldErrors, getErrorFieldName } from '../../shared/composite';
+import { createIdPrefix, withIdPrefix } from '../../shared/domIds';
 import {
 	getConfirmationKey,
 	getInitialFieldValue,
@@ -33,6 +34,7 @@ import {
 	resolveOtherChoices,
 } from '../../shared/fieldSettings';
 import { t } from '../../shared/i18n';
+import { appendSubmissionValue, mapServerErrors, toFormValue } from '../../shared/submission';
 import { validateFields } from '../../shared/validation';
 
 /** Configuration options for the useForm hook. */
@@ -84,6 +86,14 @@ export interface UseFormReturn {
 	currentStep: number;
 	/** Total number of steps (1 for single-step forms). */
 	totalSteps: number;
+	/** A multi-step form's steps in order; empty for single-step forms (since 1.6.0). */
+	steps: FormStep[];
+	/**
+	 * Counts the times validation failed (a step, or the submission on the
+	 * client or the server), so the renderer can move focus to the first
+	 * invalid field each time (since 1.6.0).
+	 */
+	validationFailures: number;
 	/** Progress percentage (0-100) for multi-step forms. */
 	progressPercentage: number;
 	/** Fields visible in the current step (or all fields for single-step). */
@@ -92,6 +102,12 @@ export interface UseFormReturn {
 	currentStepData: FormStep | null;
 	/** Error from loading the form definition, if any. */
 	loadError: string | null;
+	/**
+	 * The prefix this form instance's element IDs start with, so two forms on
+	 * one page do not share IDs. Each field carries it as `id_prefix` (since
+	 * 1.6.0; see `fieldIdKey()`).
+	 */
+	idPrefix: string;
 	/** Sets a single field value. */
 	setValue: ( name: string, value: unknown ) => void;
 	/** Sets a file for a field. */
@@ -158,8 +174,18 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 	const [isSubmitted, setIsSubmitted] = useState( false );
 	const [currentStep, setCurrentStep] = useState( 0 );
 	const [loadError, setLoadError] = useState<string | null>( null );
+	const [validationFailures, setValidationFailures] = useState( 0 );
+
+	// Count a failed validation, so the renderer moves focus to what failed (since 1.6.0)
+	const recordValidationFailure = useCallback( () => setValidationFailures( ( count ) => count + 1 ), [] );
 
 	const formLoadedAt = useRef<number>( 0 );
+
+	// This form instance's ID prefix, stable across renders and server rendering (since 1.6.0)
+	const reactId = useId();
+	const idPrefix = useMemo( () => createIdPrefix( reactId ), [reactId] );
+	const idPrefixRef = useRef( idPrefix );
+	idPrefixRef.current = idPrefix;
 
 	// One registry for the hook's lifetime, so fields keep their registrations across renders.
 	const submitHooksRef = useRef<SubmitHooks | null>( null );
@@ -187,7 +213,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				const response = await fetch( url );
 
 				if ( !response.ok ) {
-					throw new Error( `Failed to load form: ${response.statusText}` );
+					throw new Error( t( 'Failed to load form: :status', { status: response.statusText } ) );
 				}
 
 				const data: { data: FormRenderData } = await response.json();
@@ -196,7 +222,8 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 					return;
 				}
 
-				setForm( data.data );
+				// Each field carries the instance's ID prefix for its element IDs (since 1.6.0)
+				setForm( { ...data.data, fields: withIdPrefix( data.data.fields, idPrefixRef.current ) } );
 				formLoadedAt.current = Math.floor( Date.now() / 1000 );
 
 				// Initialize default values
@@ -218,7 +245,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				setValues( defaults );
 			} catch ( err ) {
 				if ( !cancelled ) {
-					const message = err instanceof Error ? err.message : 'Failed to load form.';
+					const message = err instanceof Error ? err.message : t( 'Failed to load form.' );
 					setLoadError( message );
 				}
 			} finally {
@@ -398,6 +425,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 		if ( Object.keys( stepErrors ).length > 0 ) {
 			setErrors( ( prev ) => ( { ...prev, ...stepErrors } ) );
+			recordValidationFailure();
 
 			return false;
 		}
@@ -409,7 +437,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		}
 
 		return false;
-	}, [form, currentFields, currentStep, totalSteps, validateCurrentFields] );
+	}, [form, currentFields, currentStep, totalSteps, validateCurrentFields, recordValidationFailure] );
 
 	const prevStep = useCallback( () => {
 		if ( currentStep > 0 ) {
@@ -435,13 +463,14 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 			if ( Object.keys( stepErrors ).length > 0 ) {
 				setErrors( ( prev ) => ( { ...prev, ...stepErrors } ) );
+				recordValidationFailure();
 
 				return;
 			}
 
 			setCurrentStep( step );
 		},
-		[totalSteps, currentStep, currentFields, validateCurrentFields],
+		[totalSteps, currentStep, currentFields, validateCurrentFields, recordValidationFailure],
 	);
 
 	const submit = useCallback( async () => {
@@ -457,6 +486,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 		if ( Object.keys( validationErrors ).length > 0 ) {
 			setErrors( validationErrors );
+			recordValidationFailure();
 
 			// If multi-step, navigate to the first step with errors
 			if ( form.is_multi_step && sortedSteps.length > 0 ) {
@@ -488,8 +518,9 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		} catch ( err ) {
 			if ( err instanceof SubmitHookError ) {
 				setErrors( { [err.field]: [t( 'The verification check failed. Please try again.' )] } );
+				recordValidationFailure();
 			} else {
-				onError?.( err instanceof Error ? err : new Error( 'Form submission failed.' ) );
+				onError?.( err instanceof Error ? err : new Error( t( 'Form submission failed.' ) ) );
 			}
 
 			setIsSubmitting( false );
@@ -514,31 +545,14 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 					continue;
 				}
 
-				if ( Array.isArray( value ) ) {
-					value.forEach( ( item, index ) => {
-						if ( item !== null && typeof item === 'object' ) {
-							// A list's rows are maps of columns (since 1.6.0).
-							for ( const [column, cell] of Object.entries( item as Record<string, unknown> ) ) {
-								formDataObj.append( `data[${key}][${index}][${column}]`, String( cell ?? '' ) );
-							}
-						} else {
-							formDataObj.append( `data[${key}][]`, String( item ) );
-						}
-					} );
-				} else if ( value !== null && typeof value === 'object' ) {
-					// A composite field's value is a map of sub-inputs.
-					for ( const [subKey, part] of Object.entries( value as Record<string, unknown> ) ) {
-						formDataObj.append( `data[${key}][${subKey}]`, String( part ?? '' ) );
-					}
-				} else if ( value !== null && value !== undefined ) {
-					formDataObj.append( `data[${key}]`, String( value ) );
-				}
+				// Lists, arrays and composite maps are expanded; booleans are sent as '1'/'0'.
+				appendSubmissionValue( formDataObj, key, value );
 			}
 
 			// Add the values the submit hooks collected
 			for ( const [key, value] of Object.entries( collected ) ) {
 				if ( value !== null && value !== undefined ) {
-					formDataObj.append( `data[${key}]`, String( value ) );
+					formDataObj.append( `data[${key}]`, toFormValue( value ) );
 				}
 			}
 
@@ -575,17 +589,11 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 			if ( response.status === 422 ) {
 				const errorData = await response.json();
-				const serverErrors: Record<string, string[]> = {};
-
-				if ( errorData.errors ) {
-					for ( const [key, messages] of Object.entries( errorData.errors ) ) {
-						// Server errors come as "data.field_name", strip the prefix
-						const fieldName = key.replace( /^(data|files)\./, '' );
-						serverErrors[fieldName] = messages as string[];
-					}
-				}
+				// "data.field_name" becomes "field_name"; errors for no field on the form go to `_form`.
+				const serverErrors = mapServerErrors( errorData.errors, allFields );
 
 				setErrors( serverErrors );
+				recordValidationFailure();
 				submitHooks.settle( { ok: false, errors: serverErrors } );
 
 				// Navigate to the first step with server errors (multi-step forms)
@@ -610,14 +618,15 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 			if ( response.status === 429 ) {
 				submitHooks.settle( { ok: false, errors: {} } );
 				setErrors( {
-					_form: ['Too many submissions. Please try again later.'],
+					_form: [t( 'Too many submissions. Please try again later.' )],
 				} );
+				recordValidationFailure();
 
 				return;
 			}
 
 			if ( !response.ok ) {
-				throw new Error( 'Form submission failed.' );
+				throw new Error( t( 'Form submission failed.' ) );
 			}
 
 			const result: SubmitFormResponse = await response.json();
@@ -633,7 +642,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 			onSuccess?.( result );
 		} catch ( err ) {
 			const error =
-				err instanceof Error ? err : new Error( 'Form submission failed.' );
+				err instanceof Error ? err : new Error( t( 'Form submission failed.' ) );
 
 			submitHooks.settle( { ok: false, errors: {} } );
 			onError?.( error );
@@ -656,6 +665,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		submitHooks,
 		onSuccess,
 		onError,
+		recordValidationFailure,
 	] );
 
 	const reset = useCallback( () => {
@@ -699,10 +709,13 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		isSubmitted,
 		currentStep,
 		totalSteps,
+		steps: sortedSteps,
+		validationFailures,
 		progressPercentage,
 		currentFields,
 		currentStepData,
 		loadError,
+		idPrefix,
 		setValue,
 		setFile,
 		setOtherValue,

@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { FormField } from '../../../types/artisanpack-forms';
 import { COUNTER_ANNOUNCE_DELAY, getCounterState, showsCounter } from '../../../shared/counter';
 import { getInputMaskHint } from '../../../shared/mask';
+import { fieldIdKey } from '../../../shared/domIds';
 
 interface InputNotesProps {
 	field: FormField;
@@ -35,10 +36,10 @@ export function InputNotes( { field, value }: InputNotesProps ) {
 	return (
 		<>
 			{maskHint && (
-				<p id={`field-${field.name}-mask`} className="fieldset-label mt-1">{maskHint}</p>
+				<p id={`field-${fieldIdKey( field )}-mask`} className="fieldset-label mt-1">{maskHint}</p>
 			)}
 			{field.affix_description && (
-				<span id={`field-${field.name}-affix`} className="sr-only">{field.affix_description}</span>
+				<span id={`field-${fieldIdKey( field )}-affix`} className="sr-only">{field.affix_description}</span>
 			)}
 			{showsCounter( field ) && <InputCounter field={field} value={value} />}
 		</>
@@ -69,7 +70,7 @@ function InputCounter( { field, value }: InputNotesProps ) {
 	return (
 		<>
 			<p
-				id={`field-${field.name}-counter`}
+				id={`field-${fieldIdKey( field )}-counter`}
 				className={`fieldset-label mt-1 justify-end ${counter.overLimit ? 'text-error' : ''}`}
 			>
 				{counter.text}

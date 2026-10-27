@@ -21,6 +21,7 @@ import { getFieldLayout, getLayoutDescribedBy } from '../../../shared/fieldSetti
 import { t } from '../../../shared/i18n';
 import { useSubmitHooks } from '../../composables/submitHooks';
 import FieldLayout from './FieldLayout.vue';
+import { fieldIdKey } from '../../../shared/domIds';
 
 const props = defineProps<{
 	field: FormField;
@@ -54,9 +55,9 @@ const hiddenLabel = computed( () =>
 	|| ( hasCaptchaWidget( props.field ) && props.field.captcha.size === 'invisible' ),
 );
 
-const labelId = computed( () => ( props.field.label ? `label-${props.field.name}` : undefined ) );
-const hintId = computed( () => ( !layout.value.custom && props.field.help_text ? `${props.field.name}-hint` : undefined ) );
-const errorId = computed( () => ( props.error ? `${props.field.name}-error` : undefined ) );
+const labelId = computed( () => ( props.field.label ? `label-${fieldIdKey( props.field )}` : undefined ) );
+const hintId = computed( () => ( !layout.value.custom && props.field.help_text ? `${fieldIdKey( props.field )}-hint` : undefined ) );
+const errorId = computed( () => ( props.error ? `${fieldIdKey( props.field )}-error` : undefined ) );
 const describedBy = computed( () => [
 	layout.value.custom ? getLayoutDescribedBy( props.field, layout.value ) : hintId.value,
 	errorId.value,
@@ -101,7 +102,7 @@ onBeforeUnmount( () => {
 <template>
 	<FieldLayout v-if="hasWidget" :field="field" :layout="layout" :render-label="false">
 		<div
-			:id="`field-${field.name}`"
+			:id="`field-${fieldIdKey( field )}`"
 			role="group"
 			:aria-labelledby="labelId"
 			:aria-describedby="describedBy"

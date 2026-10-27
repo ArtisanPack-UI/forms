@@ -54,6 +54,26 @@ export function runsOnSubmit( widget: CaptchaWidget ): boolean {
 	return widget.size === 'invisible';
 }
 
+/**
+ * The invisible CAPTCHAs of a multi-step form that sit on another step than
+ * the current one. Their token is only fetched by their submit hook, which
+ * exists while the field is mounted, so the renderers keep them mounted
+ * (out of sight) on every step; otherwise a CAPTCHA on an earlier step never
+ * sends a token and the form cannot be submitted.
+ *
+ * @since 1.6.0
+ */
+export function getOffStepSubmitCaptchas(
+	fields: FormField[],
+	currentStepId: number | null | undefined,
+	hiddenFields: Record<string, boolean>,
+): FormField[] {
+	return fields.filter( ( field ) => hasCaptchaWidget( field )
+		&& runsOnSubmit( field.captcha )
+		&& field.step_id !== currentStepId
+		&& !hiddenFields[field.name] );
+}
+
 /** Whether a provider's global API has loaded. */
 function isReady( provider: string ): boolean {
 	const g = globals();
