@@ -91,8 +91,8 @@ describe( 'shared helpers', function () use ( $resource, $between ): void {
             ->and( $between( $validation, 'function validateDateField(', "\n}\n" ) )
             ->toContain( 'if ( !parseIsoDate( value ) ) {' )
             ->toContain( 'if ( !isAllowedDay( field, value ) ) {' )
-            ->toContain( 'if ( minAge !== undefined && value > latestBirthdate( minAge ) ) {' )
-            ->toContain( 'if ( maxAge !== undefined && value < earliestBirthdate( maxAge ) ) {' );
+            ->toContain( 'if ( minAge !== undefined && latest !== undefined && value > latest ) {' )
+            ->toContain( 'if ( maxAge !== undefined && earliest !== undefined && value < earliest ) {' );
     } );
 } );
 

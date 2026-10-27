@@ -39,11 +39,10 @@ import {
 } from './fieldSettings';
 import { countWords, getMaxWords } from './counter';
 import {
-	earliestBirthdate,
+	getAgeBirthdates,
 	getAgeLimit,
 	getDateLimits,
 	isAllowedDay,
-	latestBirthdate,
 	parseIsoDate,
 } from './dateConstraints';
 import { validateColor } from './color';
@@ -508,12 +507,13 @@ function validateDateField(
 
 	const minAge = getAgeLimit( field, 'min_age' );
 	const maxAge = getAgeLimit( field, 'max_age' );
+	const { latest, earliest } = getAgeBirthdates( field );
 
-	if ( minAge !== undefined && value > latestBirthdate( minAge ) ) {
+	if ( minAge !== undefined && latest !== undefined && value > latest ) {
 		errors.push( t( 'You must be at least :age years old.', { age: minAge } ) );
 	}
 
-	if ( maxAge !== undefined && value < earliestBirthdate( maxAge ) ) {
+	if ( maxAge !== undefined && earliest !== undefined && value < earliest ) {
 		errors.push( t( 'You must be no older than :age years.', { age: maxAge } ) );
 	}
 }
