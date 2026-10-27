@@ -178,7 +178,7 @@ class FileFieldType extends AbstractFieldType
                     'tab'     => 'advanced',
                     'default' => 'forms',
                     'label'   => __( 'Storage' ),
-                    'hint'    => __( 'Media Library needs artisanpack-ui/media-library. Its files follow the media library disk\'s visibility, which is public by default; files it cannot take stay on the forms disk.' ),
+                    'hint'    => __( 'Media Library needs artisanpack-ui/media-library. Its files follow the media library disk\'s visibility, which is public by default; files it cannot take stay on the forms disk. Ignored for "Mask in admin" and "Do not store" fields: their files always stay on the private forms disk.' ),
                     'options' => [
                         ['value' => 'forms', 'label' => __( 'Forms disk (private)' )],
                         ['value' => 'media_library', 'label' => __( 'Media Library' )],
