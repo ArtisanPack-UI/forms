@@ -189,6 +189,17 @@ class SubmissionRules
     public const DISTINCT = 'forms_distinct';
 
     /**
+     * The name of the rule that checks a multiple-choice field's minimum selections.
+     *
+     * Unlike `min`, it lets an optional field be left empty (`[]`).
+     *
+     * @since 1.6.0
+     *
+     * @var string
+     */
+    public const MIN_SELECTIONS = 'forms_min_selections';
+
+    /**
      * Registers the rules with the validator.
      *
      * @since 1.6.0
@@ -212,6 +223,7 @@ class SubmissionRules
         $validator->extend( self::SIGNATURE, fn ( string $attribute, mixed $value ): bool => SignatureFieldType::isValidSignature( $value ) );
         $validator->extend( self::STEP, fn ( string $attribute, mixed $value, array $parameters ): bool => self::isOnStep( $value, $parameters ) );
         $validator->extend( self::DISTINCT, fn ( string $attribute, mixed $value ): bool => self::hasDistinctValues( $value ) );
+        $validator->extend( self::MIN_SELECTIONS, fn ( string $attribute, mixed $value, array $parameters ): bool => self::hasMinimumSelections( $value, $parameters ) );
     }
 
     /**
@@ -272,6 +284,29 @@ class SubmissionRules
         $steps = ( (float) $value - (float) $base ) / (float) $step;
 
         return abs( $steps - round( $steps ) ) < 1e-9 * max( 1.0, abs( $steps ) );
+    }
+
+    /**
+     * Checks that a multiple-choice value has at least the minimum number of selections.
+     *
+     * An empty list passes, since whether the field must be answered is the
+     * `required` rule's job. Values that are not lists pass, leaving them to
+     * the `array` rule.
+     *
+     * @since 1.6.0
+     *
+     * @param  mixed  $value  The submitted list.
+     * @param  array<int, string>  $parameters  The minimum.
+     *
+     * @return bool True when empty or at the minimum.
+     */
+    public static function hasMinimumSelections( mixed $value, array $parameters ): bool
+    {
+        if ( ! is_array( $value ) || [] === $value ) {
+            return true;
+        }
+
+        return count( $value ) >= (int) ( $parameters[0] ?? 0 );
     }
 
     /**
