@@ -55,7 +55,7 @@ import { isMatrixField, validateMatrixField } from './matrix';
 import { validateNps } from './nps';
 import { validateRanking } from './ranking';
 import { validateSignature } from './signature';
-import { validateSlider } from './slider';
+import { isOnStep, validateSlider } from './slider';
 import { getNumberFormat, isIntegerOnly, normalizeFormattedNumber } from './numberFormat';
 import { getPhoneFormat, isPlausiblePhoneNumber } from './phone';
 import { richTextToPlainText, usesRichText } from './richText';
@@ -308,7 +308,7 @@ function validateValue(
 			}
 
 			if ( rules ) {
-				validateNumericRules( num, rules, errors );
+				validateNumericRules( field, num, rules, errors );
 			}
 		}
 	}
@@ -448,9 +448,11 @@ export function toClientPattern( raw: unknown ): RegExp | null {
 }
 
 /**
- * Validates numeric min/max/step constraints.
+ * Validates numeric min/max/step constraints. The step counts from the
+ * minimum (or 0) with the server's tolerance (`SubmissionRules::isOnStep()`).
  */
 function validateNumericRules(
+	field: FormField,
 	num: number,
 	rules: ValidationRules,
 	errors: string[],
@@ -467,14 +469,8 @@ function validateNumericRules(
 		errors.push( `Must be no more than ${max}.` );
 	}
 
-	if ( step !== undefined && step > 0 ) {
-		const base = min ?? 0;
-		const remainder = Math.abs( ( num - base ) % step );
-		const epsilon = 1e-9;
-
-		if ( remainder > epsilon && Math.abs( remainder - step ) > epsilon ) {
-			errors.push( `Must be a multiple of ${step}.` );
-		}
+	if ( step !== undefined && step > 0 && !isOnStep( num, min ?? 0, step ) ) {
+		errors.push( t( 'The :field must be in steps of :step.', { field: field.label ?? field.name, step } ) );
 	}
 }
 

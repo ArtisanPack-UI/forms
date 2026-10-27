@@ -75,3 +75,28 @@ describe( 'the Other choice (FT-04)', function (): void {
         ] );
     } );
 } );
+
+describe( 'number step (FT-05)', function (): void {
+    it( 'checks the step from the minimum with the server\'s tolerance', function (): void {
+        $quarter = ['type' => 'number', 'validation_rules' => ['step' => 0.25, 'min' => 0]];
+        $tenth   = ['type' => 'number', 'validation_rules' => ['step' => 0.1]];
+
+        $errors = jsValidate( [
+            [$quarter, '1.1'],
+            [$quarter, '1.25'],
+            [$tenth, '0.3'],
+            [$tenth, '123456789.3'],
+        ] );
+
+        if ( null === $errors ) {
+            $this->markTestSkipped( 'Node 22.7+ is needed to run the shared helpers.' );
+        }
+
+        expect( $errors )->toBe( [
+            ['The Answer must be in steps of 0.25.'],
+            [],
+            [],
+            [],
+        ] );
+    } );
+} );
