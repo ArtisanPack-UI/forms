@@ -17,6 +17,7 @@ use ArtisanPackUI\Forms\Support\FieldSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\ViewErrorBag;
 use Livewire\Livewire;
+use Tests\Models\User;
 
 /**
  * Guards issue #135: the calculation field.
@@ -57,7 +58,7 @@ describe( 'registration', function (): void {
     } );
 
     it( 'can be added from the Livewire builder palette', function (): void {
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )->call( 'addField', 'calculation' );
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )->call( 'addField', 'calculation' );
 
         expect( $this->form->fields()->where( 'type', 'calculation' )->whereKeyNot( $this->total->id )->sole()->field_config )->toBe( ['formula' => '', 'decimals' => 2] );
     } );
@@ -291,7 +292,7 @@ describe( 'builder', function (): void {
     it( 'offers the other fields in the formula picker and flags problems', function (): void {
         $this->total->update( ['field_config' => ['formula' => '{quantity} * {tax}']] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $this->total->uuid )
             ->assertSeeHtml( 'id="field-setting-formula-insert"' )
             ->assertSeeHtml( '<option value="{quantity}">Quantity ({quantity})</option>' )

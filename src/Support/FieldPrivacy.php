@@ -14,7 +14,9 @@ namespace ArtisanPackUI\Forms\Support;
 
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Forms\Models\FormUpload;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -92,6 +94,44 @@ class FieldPrivacy
             ->filter( fn ( FormField $field ): bool => $field->isMaskedInAdmin() )
             ->values()
             ->modelKeys();
+    }
+
+    /**
+     * Checks whether an upload's file is masked from a user.
+     *
+     * A file uploaded to a field with "Mask in admin" on is hidden (its name,
+     * preview and download) unless the user may reveal masked values.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormUpload  $upload  The upload.
+     * @param  Authenticatable|null  $user  The user, or null for the authenticated user.
+     *
+     * @return bool True when masked.
+     */
+    public static function masksUpload( FormUpload $upload, ?Authenticatable $user = null ): bool
+    {
+        return true === $upload->field?->isMaskedInAdmin() && ! self::canReveal( $user );
+    }
+
+    /**
+     * Gets the uploads of a submission the admin may list for a user.
+     *
+     * Leaves out the files of "Do not store" fields, which are only kept for
+     * the submission's deliveries, and the files masked from the user.
+     *
+     * @since 1.6.0
+     *
+     * @param  iterable<FormUpload>  $uploads  The uploads.
+     * @param  Authenticatable|null  $user  The user, or null for the authenticated user.
+     *
+     * @return Collection<int, FormUpload> The uploads to list.
+     */
+    public static function visibleUploads( iterable $uploads, ?Authenticatable $user = null ): Collection
+    {
+        return collect( $uploads )
+            ->reject( fn ( FormUpload $upload ): bool => $upload->isTransient() || self::masksUpload( $upload, $user ) )
+            ->values();
     }
 
     /**

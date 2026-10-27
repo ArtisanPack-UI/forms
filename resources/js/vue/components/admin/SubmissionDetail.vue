@@ -4,7 +4,10 @@
   Displays a single submission with field values, admin notes,
   file downloads, metadata, and navigation between submissions. A consent
   value shows the text agreed to, and a composite value (name, address) its
-  formatted lines (since 1.6.0). Mirrors the Livewire `submission-detail`.
+  formatted lines (since 1.6.0). An administrative file field shows its
+  stored files, each with a remove button that asks first, and a file chosen
+  for it replaces them when the fields are saved (since 1.6.0). Mirrors the
+  Livewire `submission-detail`.
 
   @package    ArtisanPack_UI
   @subpackage Forms
@@ -19,6 +22,7 @@ import type {
 	ConsentValue,
 	DisplayConfig,
 	Form,
+	FormField,
 	FormSubmission,
 	FormSubmissionValue,
 	FormUpload,
@@ -27,7 +31,7 @@ import type {
 import { ApiValidationError, useApi } from '../../composables/useApi';
 import type { UseApiOptions } from '../../composables/useApi';
 import { getSubInputErrors } from '../../../shared/composite';
-import { getAdministrativeFormState, resolveOtherChoices } from '../../../shared/fieldSettings';
+import { allowsMultipleFiles, getAdministrativeFormState, resolveOtherChoices } from '../../../shared/fieldSettings';
 import { t } from '../../../shared/i18n';
 import { validateFields } from '../../../shared/validation';
 import FieldRenderer from '../fields/FieldRenderer.vue';
@@ -74,7 +78,7 @@ const emit = defineEmits<{
 	'navigate': [submissionId: number];
 }>();
 
-const { get, put, del, download } = useApi( {
+const { get, post, put, del, download } = useApi( {
 	baseUrl: props.baseUrl,
 	csrfToken: props.csrfToken,
 	authorization: props.authorization,
@@ -99,6 +103,12 @@ const adminOtherValues = ref<Record<string, string>>( {} );
 const adminErrors = ref<Record<string, string[]>>( {} );
 const isSavingAdmin = ref( false );
 const adminSaved = ref( false );
+/** Files chosen for the administrative file fields, keyed by field name (since 1.6.0). */
+const adminFiles = ref<Record<string, File | File[]>>( {} );
+/** Bumped to clear the administrative file inputs (since 1.6.0). */
+const adminFileInputsKey = ref( 0 );
+/** Announces administrative upload progress and removals to screen readers (since 1.6.0). */
+const adminAnnouncement = ref( '' );
 
 /** Seeds the administrative field inputs from a loaded submission. */
 function seedAdministrativeFields( loaded: FormSubmission ): void {
@@ -107,6 +117,8 @@ function seedAdministrativeFields( loaded: FormSubmission ): void {
 	adminValues.value = state.values;
 	adminOtherValues.value = state.otherValues;
 	adminErrors.value = {};
+	adminFiles.value = {};
+	adminFileInputsKey.value++;
 }
 
 // ---------------------------------------------------------------------------
@@ -234,7 +246,8 @@ async function saveNotes(): Promise<void> {
 }
 
 async function saveAdministrativeFields(): Promise<void> {
-	const fields = submission.value?.administrative_fields ?? [];
+	// A file field's files are sent apart from the values (since 1.6.0)
+	const fields = ( submission.value?.administrative_fields ?? [] ).filter( ( field ) => field.type !== 'file' );
 	const values = resolveOtherChoices( fields, adminValues.value, adminOtherValues.value );
 	const clientErrors = validateFields( fields, values, {} );
 
@@ -250,6 +263,15 @@ async function saveAdministrativeFields(): Promise<void> {
 	adminErrors.value = {};
 
 	try {
+		// Files go first in a multipart request, so a required file field is filled when the values are checked
+		if ( Object.keys( adminFiles.value ).length > 0 ) {
+			adminAnnouncement.value = t( 'Uploading files…' );
+
+			await post( `/${props.form.slug}/submissions/${props.submissionId}`, buildAdminFilesBody( adminFiles.value ) );
+
+			adminAnnouncement.value = t( 'Upload finished.' );
+		}
+
 		const response = await put<{ data: FormSubmission }>(
 			`/${props.form.slug}/submissions/${props.submissionId}`,
 			{ admin_values: values },
@@ -262,16 +284,72 @@ async function saveAdministrativeFields(): Promise<void> {
 			const serverErrors: Record<string, string[]> = {};
 
 			for ( const [key, messages] of Object.entries( err.errors ) ) {
-				serverErrors[key.replace( /^admin_values\./, '' )] = messages;
+				const fileKey = key.match( /^admin_files\.([^.]+)/ );
+
+				serverErrors[fileKey ? fileKey[1] : key.replace( /^admin_values\./, '' )] = messages;
 			}
 
 			adminErrors.value = serverErrors;
+			adminAnnouncement.value = '';
 		} else {
 			error.value = err instanceof Error ? err.message : t( 'Failed to update submission.' );
+			adminAnnouncement.value = t( 'The upload failed.' );
 		}
 	} finally {
 		isSavingAdmin.value = false;
 	}
+}
+
+function setAdminFile( name: string, file: File | File[] ): void {
+	adminFiles.value = { ...adminFiles.value, [name]: file };
+	adminSaved.value = false;
+}
+
+/** Deletes one file of an administrative file field, after asking (since 1.6.0). */
+async function removeAdministrativeUpload( upload: FormUpload ): Promise<void> {
+	if ( !window.confirm( t( 'Remove :name? The file will be deleted.', { name: upload.original_name } ) ) ) {
+		return;
+	}
+
+	try {
+		const response = await put<{ data: FormSubmission }>(
+			`/${props.form.slug}/submissions/${props.submissionId}`,
+			{ remove_admin_uploads: [upload.id] },
+		);
+		submission.value = response.data;
+		adminSaved.value = false;
+		adminAnnouncement.value = t( ':name removed.', { name: upload.original_name } );
+	} catch ( err ) {
+		error.value = err instanceof Error ? err.message : t( 'Failed to update submission.' );
+	}
+}
+
+/** Gets the stored files of an administrative file field (since 1.6.0). */
+function getFieldUploads( field: FormField ): FormUpload[] {
+	const value = submission.value?.values?.find( ( item ) => item.field_id === field.id && !item.is_redacted );
+
+	return value ? findUploads( value ) : [];
+}
+
+/**
+ * Builds the multipart body that replaces administrative file fields' files.
+ * The update route is PUT, which PHP only parses as multipart through a POST
+ * with `_method` (since 1.6.0).
+ */
+function buildAdminFilesBody( files: Record<string, File | File[]> ): FormData {
+	const body = new FormData();
+
+	body.append( '_method', 'PUT' );
+
+	for ( const [name, file] of Object.entries( files ) ) {
+		if ( Array.isArray( file ) ) {
+			file.forEach( ( item ) => body.append( `admin_files[${name}][]`, item ) );
+		} else {
+			body.append( `admin_files[${name}]`, file );
+		}
+	}
+
+	return body;
 }
 
 function setAdminValue( name: string, value: unknown ): void {
@@ -624,24 +702,62 @@ function isConsented( value: FormSubmissionValue ): boolean {
 			>
 				<p class="text-sm text-base-content/60 mb-4">{{ t( 'Internal fields that are not shown on the public form' ) }}</p>
 				<form class="flex flex-wrap gap-4" @submit.prevent="saveAdministrativeFields">
-					<FieldRenderer
-						v-for="field in submission.administrative_fields"
-						:key="field.id"
-						:field="field"
-						:model-value="adminValues[field.name]"
-						:error="adminErrors[field.name]?.[0]"
-						:display-config="ADMIN_FIELD_DISPLAY"
-						:other-value="adminOtherValues[field.name] ?? ''"
-						:sub-errors="getSubInputErrors( adminErrors, field.name )"
-						@update:model-value="setAdminValue( field.name, $event )"
-						@update:other-value="setAdminOtherValue( field.name, $event )"
-					/>
+					<template v-for="field in submission.administrative_fields" :key="field.id">
+						<div v-if="field.type === 'file'" class="w-full space-y-2">
+							<div v-if="getFieldUploads( field ).length > 0" class="space-y-1">
+								<ul class="flex flex-col gap-2" :aria-label="t( 'Current files for :field', { field: field.label || field.name } )">
+									<li
+										v-for="upload in getFieldUploads( field )"
+										:key="upload.id"
+										class="flex items-center gap-3 rounded-box bg-base-200 p-2"
+									>
+										<span class="min-w-0 grow truncate text-sm">{{ upload.original_name }} ({{ upload.human_size }})</span>
+										<Button color="ghost" size="xs" @click="downloadFile( upload )">
+											{{ t( 'Download' ) }}
+										</Button>
+										<Button
+											color="ghost"
+											size="xs"
+											:aria-label="t( 'Remove :name', { name: upload.original_name } )"
+											@click="removeAdministrativeUpload( upload )"
+										>
+											<span aria-hidden="true">{{ t( 'Remove' ) }}</span>
+										</Button>
+									</li>
+								</ul>
+								<p class="text-xs text-base-content/60">
+									{{ allowsMultipleFiles( field ) ? t( 'Choosing new files replaces the current ones.' ) : t( 'Choosing a new file replaces the current one.' ) }}
+								</p>
+							</div>
+							<!-- A stored file is kept, so the input is only required while there is none -->
+							<FieldRenderer
+								:key="`${field.id}-${adminFileInputsKey}`"
+								:field="getFieldUploads( field ).length > 0 ? { ...field, is_required: false } : field"
+								:model-value="undefined"
+								:error="adminErrors[field.name]?.[0]"
+								:display-config="ADMIN_FIELD_DISPLAY"
+								@file-change="setAdminFile( field.name, $event )"
+							/>
+						</div>
+						<FieldRenderer
+							v-else
+							:field="field"
+							:model-value="adminValues[field.name]"
+							:error="adminErrors[field.name]?.[0]"
+							:display-config="ADMIN_FIELD_DISPLAY"
+							:other-value="adminOtherValues[field.name] ?? ''"
+							:sub-errors="getSubInputErrors( adminErrors, field.name )"
+							@update:model-value="setAdminValue( field.name, $event )"
+							@update:other-value="setAdminOtherValue( field.name, $event )"
+						/>
+					</template>
 					<div class="w-full flex items-center gap-3">
 						<Button type="submit" color="primary" size="sm" :disabled="isSavingAdmin">
 							{{ isSavingAdmin ? t( 'Saving...' ) : t( 'Save Administrative Fields' ) }}
 						</Button>
 						<span v-if="adminSaved" class="text-sm text-success" role="status">{{ t( 'Saved.' ) }}</span>
 					</div>
+					<div class="sr-only" aria-live="polite" aria-atomic="true">{{ adminAnnouncement }}</div>
 				</form>
 			</Card>
 

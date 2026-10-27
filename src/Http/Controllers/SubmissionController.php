@@ -21,6 +21,7 @@ use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Models\FormUpload;
 use ArtisanPackUI\Forms\Services\ExportService;
+use ArtisanPackUI\Forms\Support\FieldPrivacy;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
@@ -159,6 +160,15 @@ class SubmissionController extends Controller
         }
 
         $this->authorize( 'view', $submission );
+
+        // Files of "Do not store" fields are never served, and masked files only to users who may reveal them (since 1.6.0)
+        if ( $upload->isTransient() ) {
+            abort( 404 );
+        }
+
+        if ( FieldPrivacy::masksUpload( $upload ) ) {
+            abort( 403 );
+        }
 
         if ( ! Storage::disk( $upload->disk )->exists( $upload->path ) ) {
             abort( 404, __( 'File not found.' ) );

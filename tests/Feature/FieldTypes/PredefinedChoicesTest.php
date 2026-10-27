@@ -8,6 +8,7 @@ use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Support\PredefinedChoices;
 use Illuminate\Foundation\Auth\User;
 use Livewire\Livewire;
+use Tests\Models\User as TestUser;
 
 /**
  * Guards issue #104: bulk-edited choices and predefined choice lists.
@@ -120,7 +121,7 @@ describe( 'bulk editing in the Livewire builder', function (): void {
     } );
 
     it( 'replaces the selected field\'s options and keeps its other settings', function (): void {
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( TestUser::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $this->field->uuid )
             ->call( 'applyBulkChoices', "red|Crimson\nblue|Blue" );
 
@@ -131,7 +132,7 @@ describe( 'bulk editing in the Livewire builder', function (): void {
     } );
 
     it( 'appends a predefined list', function (): void {
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( TestUser::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $this->field->uuid )
             ->call( 'applyBulkChoices', PredefinedChoices::toBulk( PredefinedChoices::get( 'days_of_week' ) ), 'append' );
 
@@ -141,7 +142,7 @@ describe( 'bulk editing in the Livewire builder', function (): void {
     it( 'ignores fields without options', function (): void {
         $text = FormField::factory()->for( $this->form )->create( ['type' => 'text', 'name' => 'note', 'sort_order' => 2] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( TestUser::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $text->uuid )
             ->call( 'applyBulkChoices', 'a' );
 
@@ -149,7 +150,7 @@ describe( 'bulk editing in the Livewire builder', function (): void {
     } );
 
     it( 'offers the bulk editor and predefined lists in the options tab', function (): void {
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( TestUser::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $this->field->uuid )
             ->assertSee( 'Bulk Add / Predefined Choices' )
             ->assertSee( 'Replace Options' )

@@ -22,6 +22,7 @@ use ArtisanPackUI\Forms\Models\FormNotification;
 use ArtisanPackUI\Forms\Models\FormSubmission;
 use ArtisanPackUI\Forms\Models\FormUpload;
 use ArtisanPackUI\Forms\Services\NotificationService;
+use ArtisanPackUI\Forms\Support\TransientUploads;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
@@ -270,14 +271,27 @@ class FormSubmissionNotification extends Mailable
     /**
      * Gets the attachments for the message.
      *
+     * Since 1.6.0, the files uploaded to "Do not store" file fields are
+     * attached when the notification includes the submission data, since
+     * they are deleted once the submission's deliveries are sent (see
+     * TransientUploads).
+     *
      * @since 1.0.0
      *
      * @return array<int, Attachment> The message attachments.
      */
     public function attachments(): array
     {
-        // Future enhancement: attach uploaded files
-        return [];
+        if ( ! $this->notification->include_submission_data ) {
+            return [];
+        }
+
+        return array_map(
+            fn ( FormUpload $upload ): Attachment => Attachment::fromStorageDisk( $upload->disk, $upload->path )
+                ->as( $upload->original_name )
+                ->withMime( $upload->mime_type ?? 'application/octet-stream' ),
+            TransientUploads::uploadsOf( $this->submission ),
+        );
     }
 
     /**

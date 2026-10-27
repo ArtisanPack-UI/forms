@@ -31,6 +31,7 @@ use ArtisanPackUI\Forms\Models\FormUpload;
 use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\ExportService;
 use ArtisanPackUI\Forms\Services\SubmissionService;
+use ArtisanPackUI\Forms\Support\FieldPrivacy;
 use Exception;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -83,7 +84,7 @@ class SubmissionApiController extends Controller
         $this->authorize( 'viewSubmissions', $form );
 
         $query = FormSubmission::where( 'form_id', $form->id )
-            ->with( ['values.field', 'uploads'] );
+            ->with( ['values.field', 'uploads.field'] );
 
         if ( $request->has( 'is_read' ) ) {
             $query->where( 'is_read', filter_var( $request->input( 'is_read' ), FILTER_VALIDATE_BOOLEAN ) );
@@ -123,13 +124,17 @@ class SubmissionApiController extends Controller
 
         $this->authorize( 'view', $submission );
 
-        $submission->load( ['values.field', 'uploads', 'form.fields'] );
+        $submission->load( ['values.field', 'uploads.field', 'form.fields'] );
 
         return new FormSubmissionResource( $submission );
     }
 
     /**
      * Updates submission metadata (read/starred/spam/notes) and administrative field values.
+     *
+     * Since 1.6.0, also replaces administrative file fields' files sent in
+     * `admin_files` and deletes the files listed in `remove_admin_uploads`.
+     * Files need a multipart request: POST with `_method=PUT`.
      *
      * @since 1.1.0
      *
@@ -147,8 +152,9 @@ class SubmissionApiController extends Controller
 
         $this->authorize( 'update', $submission );
 
-        $data        = Arr::except( $request->validated(), 'admin_values' );
+        $data        = Arr::except( $request->validated(), ['admin_values', 'admin_files', 'remove_admin_uploads'] );
         $adminValues = $request->administrativeValues();
+        $adminFiles  = $request->administrativeFiles();
 
         $submission->update( $data );
 
@@ -156,7 +162,15 @@ class SubmissionApiController extends Controller
             $this->submissionService->updateAdministrativeValues( $submission, $adminValues );
         }
 
-        $freshSubmission = $submission->fresh( ['values.field', 'uploads', 'form.fields'] );
+        if ( [] !== $adminFiles ) {
+            $this->submissionService->updateAdministrativeFiles( $submission, $adminFiles );
+        }
+
+        foreach ( FormUpload::query()->where( 'submission_id', $submission->id )->whereKey( $request->uploadsToRemove() )->get() as $upload ) {
+            $this->submissionService->removeAdministrativeUpload( $submission, $upload );
+        }
+
+        $freshSubmission = $submission->fresh( ['values.field', 'uploads.field', 'form.fields'] );
 
         if ( null === $freshSubmission ) {
             abort( 404, __( 'Submission not found after update.' ) );
@@ -396,6 +410,15 @@ class SubmissionApiController extends Controller
         }
 
         $this->authorize( 'view', $submission );
+
+        // Files of "Do not store" fields are never served, and masked files only to users who may reveal them (since 1.6.0)
+        if ( $upload->isTransient() ) {
+            abort( 404 );
+        }
+
+        if ( FieldPrivacy::masksUpload( $upload ) ) {
+            abort( 403 );
+        }
 
         if ( ! Storage::disk( $upload->disk )->exists( $upload->path ) ) {
             abort( 404, __( 'File not found.' ) );

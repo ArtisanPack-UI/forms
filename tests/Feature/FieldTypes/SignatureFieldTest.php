@@ -21,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ViewErrorBag;
 use Livewire\Livewire;
+use Tests\Models\User;
 
 /**
  * Guards issue #129: the signature field.
@@ -57,7 +58,7 @@ describe( 'registration', function (): void {
     } );
 
     it( 'can be added from the Livewire builder palette', function (): void {
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )->call( 'addField', 'signature' );
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )->call( 'addField', 'signature' );
 
         expect( $this->form->fields()->where( 'id', '!=', $this->signature->id )->sole()->type )->toBe( 'signature' );
     } );

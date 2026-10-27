@@ -187,13 +187,21 @@ class FormSubmissionValue extends Model
     /**
      * Gets the display value with all but its last characters masked.
      *
+     * A file value is masked in full, so no part of a file name shows.
+     *
      * @since 1.6.0
      *
      * @return string The masked display value, such as `••••1234`.
      */
     public function getMaskedDisplayValueAttribute(): string
     {
-        return FieldPrivacy::mask( $this->display_value );
+        $display = $this->display_value;
+
+        if ( 'file' === $this->field_type ) {
+            return '' === $display || $this->isRedacted() ? '' : FieldPrivacy::MASK;
+        }
+
+        return FieldPrivacy::mask( $display );
     }
 
     /**

@@ -21,15 +21,18 @@ namespace ArtisanPackUI\Forms\Livewire;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormSubmission;
+use ArtisanPackUI\Forms\Models\FormUpload;
 use ArtisanPackUI\Forms\Services\SubmissionService;
 use ArtisanPackUI\Forms\Support\FieldPrivacy;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Validator;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /**
  * Submission detail Livewire component class.
@@ -44,6 +47,8 @@ use Livewire\Component;
  */
 class SubmissionDetail extends Component
 {
+    use WithFileUploads;
+
     /**
      * The submission ID.
      *
@@ -79,6 +84,25 @@ class SubmissionDetail extends Component
     public array $otherValues = [];
 
     /**
+     * Files uploaded to the administrative file fields, keyed by field name.
+     *
+     * A file replaces the field's stored file(s) when the fields are saved;
+     * a multi-file field takes a list.
+     *
+     * @since 1.6.0
+     *
+     * @var array<string, mixed>
+     */
+    public array $adminFiles = [];
+
+    /**
+     * The name of the administrative file just removed, announced to screen readers.
+     *
+     * @since 1.6.0
+     */
+    public ?string $removedFileName = null;
+
+    /**
      * Whether the administrative fields were just saved.
      *
      * @since 1.6.0
@@ -107,7 +131,7 @@ class SubmissionDetail extends Component
     #[Computed]
     public function submission(): ?FormSubmission
     {
-        return FormSubmission::with( ['form', 'values.field', 'uploads'] )
+        return FormSubmission::with( ['form', 'values.field', 'uploads.field'] )
             ->find( $this->submissionId );
     }
 
@@ -145,6 +169,48 @@ class SubmissionDetail extends Component
             ->filter( fn ( FormField $field ): bool => $this->isEditableAdministrativeField( $field ) )
             ->each( fn ( FormField $field ): FormField => $field->withSettingsForm( $form ) )
             ->values();
+    }
+
+    /**
+     * Get the stored files of each administrative file field, keyed by field ID.
+     *
+     * @since 1.6.0
+     *
+     * @return array<int, list<FormUpload>>
+     */
+    #[Computed]
+    public function administrativeFileUploads(): array
+    {
+        $submission = $this->submission;
+        $uploads    = [];
+
+        if ( null === $submission ) {
+            return [];
+        }
+
+        $service = app( SubmissionService::class );
+
+        foreach ( $this->administrativeFields as $field ) {
+            if ( $field->is_file_field ) {
+                $uploads[ $field->id ] = $service->administrativeFileValue( $submission, $field )?->getUploads() ?? [];
+            }
+        }
+
+        return $uploads;
+    }
+
+    /**
+     * Get the uploads the attachments list shows.
+     *
+     * Files of "Do not store" fields and files masked from the user are
+     * left out (since 1.6.0).
+     *
+     * @return SupportCollection<int, FormUpload>
+     */
+    #[Computed]
+    public function attachments(): SupportCollection
+    {
+        return FieldPrivacy::visibleUploads( $this->submission?->uploads ?? [] );
     }
 
     /**
@@ -205,7 +271,9 @@ class SubmissionDetail extends Component
     /**
      * Validates and saves the administrative field values.
      *
-     * Requires the `update` ability on the submission.
+     * Requires the `update` ability on the submission. Since 1.6.0, a file
+     * uploaded to an administrative file field replaces the field's stored
+     * file(s), checked with the field's own file rules.
      *
      * @since 1.6.0
      */
@@ -224,19 +292,62 @@ class SubmissionDetail extends Component
         $service  = app( SubmissionService::class );
         $fields   = $submission->form->fields->filter( fn ( FormField $field ): bool => $this->isEditableAdministrativeField( $field ) );
         $resolved = $service->resolveOtherChoices( $fields, $this->formData, $this->otherValues );
-        $rules    = $service->buildAdministrativeValidationRules( $fields, $submission );
+        $rules    = array_merge(
+            $service->buildAdministrativeValidationRules( $fields, $submission ),
+            $service->buildAdministrativeFileValidationRules( $fields, $submission ),
+        );
 
         if ( [] !== $rules ) {
             $this->withValidator( function ( Validator $validator ) use ( $resolved ): void {
                 $validator->setData( array_replace( $validator->getData(), ['formData' => $resolved] ) );
-            } )->validate( $rules, $service->buildValidationMessages( $this->administrativeFields ) );
+            } )->validate( $rules, $this->administrativeValidationMessages( $fields ) );
         }
 
         $service->updateAdministrativeValues( $submission, array_intersect_key( $resolved, $fields->keyBy( 'name' )->all() ) );
+        $service->updateAdministrativeFiles( $submission, array_intersect_key( $this->adminFiles, $fields->keyBy( 'name' )->all() ) );
+
+        $this->reset( 'adminFiles', 'removedFileName' );
 
         $this->administrativeFieldsSaved = true;
 
-        unset( $this->submission );
+        unset( $this->submission, $this->administrativeFileUploads, $this->attachments );
+    }
+
+    /**
+     * Removes one file from an administrative file field.
+     *
+     * Requires the `update` ability on the submission. The file must belong
+     * to the submission and to an administrative file field the user edits.
+     *
+     * @since 1.6.0
+     *
+     * @param  int  $uploadId  The upload's ID.
+     */
+    public function removeAdministrativeUpload( int $uploadId ): void
+    {
+        $submission = FormSubmission::with( 'form.fields' )->find( $this->submissionId );
+
+        if ( null === $submission ) {
+            return;
+        }
+
+        Gate::authorize( 'update', $submission );
+
+        $upload = FormUpload::query()->where( 'submission_id', $submission->id )->find( $uploadId );
+        $field  = null === $upload ? null : $submission->form?->fields->firstWhere( 'id', $upload->field_id );
+
+        if ( null === $upload || ! $field instanceof FormField || ! $this->isEditableAdministrativeField( $field ) ) {
+            return;
+        }
+
+        $name = $upload->original_name;
+
+        if ( app( SubmissionService::class )->removeAdministrativeUpload( $submission, $upload ) ) {
+            $this->removedFileName           = $name;
+            $this->administrativeFieldsSaved = false;
+        }
+
+        unset( $this->submission, $this->administrativeFileUploads, $this->attachments );
     }
 
     /**
@@ -357,6 +468,33 @@ class SubmissionDetail extends Component
     }
 
     /**
+     * Gets the validation messages for the administrative fields.
+     *
+     * A file field's messages are keyed under `adminFiles`, where its files
+     * are bound.
+     *
+     * @since 1.6.0
+     *
+     * @param  iterable<FormField>  $fields  The administrative fields.
+     *
+     * @return array<string, string> The messages.
+     */
+    protected function administrativeValidationMessages( iterable $fields ): array
+    {
+        $messages = [];
+
+        foreach ( $fields as $field ) {
+            $prefix = $field->is_file_field ? 'adminFiles' : 'formData';
+
+            foreach ( $field->buildValidationMessages() as $rule => $message ) {
+                $messages[ "{$prefix}.{$field->name}.{$rule}" ] = $message;
+            }
+        }
+
+        return $messages;
+    }
+
+    /**
      * Fills $formData and $otherValues from the submission's stored administrative values.
      *
      * Text stored for an "Other" choice selects the choice and fills its input.
@@ -370,7 +508,8 @@ class SubmissionDetail extends Component
         $submission->loadMissing( ['form.fields', 'values'] );
 
         foreach ( $submission->form?->fields ?? [] as $field ) {
-            if ( ! $this->isEditableAdministrativeField( $field ) ) {
+            // A file field shows its stored files instead (see administrativeFileUploads())
+            if ( ! $this->isEditableAdministrativeField( $field ) || $field->is_file_field ) {
                 continue;
             }
 

@@ -204,6 +204,50 @@ Filenames are sanitized to prevent path traversal and other attacks:
 // Stored as: "a1b2c3d4_passwd"
 ```
 
+## Visibility and Privacy
+
+File fields have the same **Visibility** setting and per-field privacy settings as other inputs, in the builder's Advanced tab. Because a file is stored as a file and a `form_uploads` row rather than as a submission value, each one is handled with the file in mind.
+
+### Administrative File Fields
+
+With **Visibility** set to **Administrative**, the field is left out of the public form and its validation, and a file sent for it is ignored. Admins add the file on the submission instead:
+
+- **Livewire** — the submission detail's **Administrative Fields** card lists the stored file(s), each with a download link and a **Remove** button that asks for confirmation (its accessible name includes the file name), and a labelled file input. A chosen file replaces the stored one(s) when the administrative fields are saved. The upload's progress and result are announced in a polite live region.
+- **React and Vue** — `SubmissionDetail` shows the same list and input, and uploads chosen files in a multipart request when the fields are saved.
+- **API** — send the files to the update endpoint as multipart `admin_files[{name}]` (`admin_files[{name}][]` for a multi-file field). PHP only parses multipart bodies on `POST`, so send a `POST` with `_method=PUT`. Each file is checked with the field's **Max File Size**, **Allowed File Types**, image and multi-file limits. To delete files, send their upload IDs in `remove_admin_uploads`; each must be a file of one of the submission's administrative file fields that you may edit.
+
+```bash
+curl -X POST https://example.com/api/forms/contact/submissions/42 \
+  -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+  -F _method=PUT -F "admin_files[contract]=@contract.pdf"
+
+curl -X PUT https://example.com/api/forms/contact/submissions/42 \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"remove_admin_uploads": [17]}'
+```
+
+A required administrative file field only needs a file while the submission has none for it; a stored file is kept until it is replaced or removed. Replacing or removing a file deletes the stored file and its `FormUpload`. These actions need the `update` ability on the submission.
+
+### Do Not Store
+
+The files are stored only for as long as the submission's notifications and webhooks need them. No submission value is saved for the field.
+
+- Notifications that include the submission data attach the files.
+- Webhooks receive them in `submission.files`, one entry per file with its `field`, `name`, `mime_type`, `size` and base64 `content`.
+- The files never appear in the admin, the API or exports, and their download routes return 404.
+
+Each notification and webhook job holds the files from the moment it is dispatched until it has run, or has failed for the last time; a job that throws keeps them for its retry. When the last job lets go, the files and their upload records are deleted. With no notifications or webhooks, they are deleted as soon as the submission is saved. `forms:prune-submissions` deletes any that are still held a day later, in case a job was lost.
+
+The upload's `pending_deliveries` column counts what still holds the file (run the migrations). `FormUpload::isTransient()` checks it and `FormUpload::stored()` leaves such uploads out of a query.
+
+### Mask in Admin
+
+The file's name, preview and download link are hidden from users who may not reveal masked values. The submission detail and list show `••••` with a **Masked** badge, the attachments list leaves the file out, and the download routes return 403 for those users. In the API the value is masked and has no `upload_id` or `upload_ids`, and the file is left out of `uploads`. Exports leave the file column out unless the user may reveal it. Admins (`is_admin`) may reveal by default; see the `revealMaskedValues` ability and the `ap.forms.canRevealMaskedValues` filter.
+
+### Redact After N Days
+
+`forms:prune-submissions` deletes the stored files and upload records of values older than the period, and marks the values redacted (`redacted_at`). A redacted file value shows as "[Redacted]".
+
 ## Deleting Uploads
 
 ### With Submission
@@ -254,7 +298,7 @@ class ProcessUpload
 
 ### In Admin
 
-Uploads are displayed in the submission detail view with download links.
+Uploads are displayed in the submission detail view with download links. Files of "Do not store" fields are never listed, and files of fields masked in the admin are hidden from users who may not reveal them (see [Visibility and Privacy](#visibility-and-privacy)).
 
 ### In Custom Views
 
@@ -286,7 +330,7 @@ The prune command also deletes associated files:
 php artisan forms:prune-submissions --days=365
 ```
 
-This deletes both database records and physical files.
+This deletes both database records and physical files. It also deletes the files of values past their field's **Redact after (days)** period and any "Do not store" files still held a day after upload (see [Visibility and Privacy](#visibility-and-privacy)).
 
 ## Troubleshooting
 

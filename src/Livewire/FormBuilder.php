@@ -36,7 +36,11 @@ use ArtisanPackUI\Forms\Support\PredefinedChoices;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -52,6 +56,11 @@ use Livewire\WithFileUploads;
  * - Multi-step form support
  * - Auto-save with dirty state tracking
  *
+ * Since 1.6.0, mounting the builder and every action that changes the form
+ * require the `update` ability on the form (see FormPolicy), so a user who
+ * reaches the builder for a form they may not edit gets a 403 rather than
+ * relying on the route's middleware alone.
+ *
  * @package    ArtisanPack_UI
  * @subpackage Forms
  *
@@ -60,6 +69,29 @@ use Livewire\WithFileUploads;
 class FormBuilder extends Component
 {
     use WithFileUploads;
+
+    /**
+     * The attributes updateField() may change.
+     *
+     * The field's type, form, step, order, validation rules and conditional
+     * logic are changed through their own actions, which check what they are
+     * given.
+     *
+     * @since 1.6.0
+     *
+     * @var list<string>
+     */
+    public const EDITABLE_FIELD_ATTRIBUTES = [
+        'label',
+        'name',
+        'placeholder',
+        'help_text',
+        'is_required',
+        'default_value',
+        'width',
+        'css_classes',
+        'field_config',
+    ];
 
     /**
      * The form being edited.
@@ -73,7 +105,11 @@ class FormBuilder extends Component
 
     /**
      * The currently active step ID (for multi-step forms).
+     *
+     * Locked (since 1.6.0): it is changed only through selectStep() and
+     * the step actions, which check the step belongs to the form.
      */
+    #[Locked]
     public ?int $activeStepId = null;
 
     /**
@@ -126,9 +162,13 @@ class FormBuilder extends Component
 
     /**
      * Mount the component.
+     *
+     * @throws AuthorizationException When the user may not update the form (since 1.6.0).
      */
     public function mount( Form $form ): void
     {
+        $this->authorize( 'update', $form );
+
         $this->form = $form->load( ['fields', 'steps.fields'] );
 
         // Set active step to first step for multi-step forms
@@ -290,9 +330,13 @@ class FormBuilder extends Component
 
     /**
      * Add a new field to the form.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function addField( string $type ): void
     {
+        $this->authorizeUpdate();
+
         $stepId = $this->form->is_multi_step ? $this->activeStepId : null;
 
         $field = $this->fieldService->create( $this->form, $type, $stepId );
@@ -327,13 +371,40 @@ class FormBuilder extends Component
     /**
      * Update the selected field.
      *
+     * Since 1.6.0, only the attributes in EDITABLE_FIELD_ATTRIBUTES are
+     * changed (any others are ignored) and they are validated first.
+     *
+     *
      * @param  array<string, mixed>  $data
+     *
+     * @throws AuthorizationException When the user may not update the form.
+     * @throws ValidationException When an attribute is not valid.
      */
     public function updateField( array $data ): void
     {
+        $this->authorizeUpdate();
+
         if ( null === $this->selectedFieldId ) {
             return;
         }
+
+        $data = array_intersect_key( $data, array_flip( self::EDITABLE_FIELD_ATTRIBUTES ) );
+
+        if ( [] === $data ) {
+            return;
+        }
+
+        $data = Validator::make( $data, [
+            'label'         => ['nullable', 'string', 'max:255'],
+            'name'          => ['sometimes', 'required', 'string', 'max:100'],
+            'placeholder'   => ['nullable', 'string', 'max:255'],
+            'help_text'     => ['nullable', 'string', 'max:1000'],
+            'is_required'   => ['sometimes', 'boolean'],
+            'default_value' => ['nullable', 'string', 'max:1000'],
+            'width'         => ['sometimes', 'string', Rule::in( array_keys( FieldTypes::WIDTH_CLASSES ) )],
+            'css_classes'   => ['nullable', 'string', 'max:500'],
+            'field_config'  => ['nullable', 'array'],
+        ] )->validate();
 
         $field = $this->fieldService->getByUuid( $this->form, $this->selectedFieldId );
 
@@ -359,9 +430,13 @@ class FormBuilder extends Component
      *
      * @param  string  $key  The setting key.
      * @param  mixed  $value  The raw input value.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function updateSetting( string $key, mixed $value ): void
     {
+        $this->authorizeUpdate();
+
         $field = $this->getSelectedFieldModel();
 
         if ( null === $field ) {
@@ -386,9 +461,13 @@ class FormBuilder extends Component
      * @since 1.6.0
      *
      * @param  string|null  $content  The new content.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function updateLayoutContent( ?string $content ): void
     {
+        $this->authorizeUpdate();
+
         $field = $this->getSelectedFieldModel();
 
         if ( null === $field || ! in_array( $field->type, ['heading', 'paragraph', 'html'], true ) ) {
@@ -419,7 +498,7 @@ class FormBuilder extends Component
      */
     public function storeChoiceImage(): ?string
     {
-        $this->authorize( 'update', $this->form );
+        $this->authorizeUpdate();
 
         $this->validate( ['choiceImage' => ChoiceImages::uploadRules()] );
 
@@ -442,9 +521,13 @@ class FormBuilder extends Component
      *
      * @param  string  $text  The bulk text.
      * @param  string  $mode  `replace` the options, or `append` to them.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function applyBulkChoices( string $text, string $mode = 'replace' ): void
     {
+        $this->authorizeUpdate();
+
         $field = $this->getSelectedFieldModel();
 
         if ( null === $field || ! FieldTypes::hasOptions( $field->type ) ) {
@@ -468,9 +551,13 @@ class FormBuilder extends Component
      * @param  string  $key  The sub-input key.
      * @param  string  $setting  One of CompositeFieldType::SUB_INPUT_SETTINGS.
      * @param  mixed  $value  The raw input value.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function updateSubInput( string $key, string $setting, mixed $value ): void
     {
+        $this->authorizeUpdate();
+
         $field = $this->getSelectedFieldModel();
 
         if ( null === $field ) {
@@ -492,9 +579,13 @@ class FormBuilder extends Component
      * Update conditional logic for the selected field.
      *
      * @param  array<string, mixed>  $logic
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function updateConditionalLogic( array $logic ): void
     {
+        $this->authorizeUpdate();
+
         if ( null === $this->selectedFieldId ) {
             return;
         }
@@ -528,9 +619,13 @@ class FormBuilder extends Component
 
     /**
      * Clear conditional logic from the selected field.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function clearConditionalLogic(): void
     {
+        $this->authorizeUpdate();
+
         if ( null === $this->selectedFieldId ) {
             return;
         }
@@ -549,9 +644,13 @@ class FormBuilder extends Component
 
     /**
      * Delete a field.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function deleteField( string $uuid ): void
     {
+        $this->authorizeUpdate();
+
         $field = $this->fieldService->getByUuid( $this->form, $uuid );
 
         if ( $field ) {
@@ -571,9 +670,13 @@ class FormBuilder extends Component
 
     /**
      * Duplicate a field.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function duplicateField( string $uuid ): void
     {
+        $this->authorizeUpdate();
+
         $field = $this->fieldService->getByUuid( $this->form, $uuid );
 
         if ( $field ) {
@@ -591,10 +694,14 @@ class FormBuilder extends Component
      * Reorder fields based on drag-and-drop.
      *
      * @param  array<int, string>  $orderedUuids
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     #[On( 'fields-reordered' )]
     public function reorderFields( array $orderedUuids ): void
     {
+        $this->authorizeUpdate();
+
         $stepId = $this->form->is_multi_step ? $this->activeStepId : null;
 
         $this->fieldService->reorder( $this->form, $orderedUuids, $stepId );
@@ -609,9 +716,13 @@ class FormBuilder extends Component
 
     /**
      * Add a new step to the form.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function addStep(): void
     {
+        $this->authorizeUpdate();
+
         if ( ! $this->form->is_multi_step ) {
             return;
         }
@@ -628,10 +739,12 @@ class FormBuilder extends Component
 
     /**
      * Select a step.
+     *
+     * Since 1.6.0, a step of another form is ignored.
      */
     public function selectStep( int $stepId ): void
     {
-        if ( ! $this->form->is_multi_step ) {
+        if ( ! $this->form->is_multi_step || null === $this->stepService->getById( $this->form, $stepId ) ) {
             return;
         }
 
@@ -645,9 +758,13 @@ class FormBuilder extends Component
      * Update a step.
      *
      * @param  array<string, mixed>  $data
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function updateStep( int $stepId, array $data ): void
     {
+        $this->authorizeUpdate();
+
         $step = $this->stepService->getById( $this->form, $stepId );
 
         if ( $step ) {
@@ -660,9 +777,13 @@ class FormBuilder extends Component
 
     /**
      * Delete a step.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function deleteStep( int $stepId ): void
     {
+        $this->authorizeUpdate();
+
         $step = $this->stepService->getById( $this->form, $stepId );
 
         if ( $step && $this->form->steps()->count() > 1 ) {
@@ -687,10 +808,14 @@ class FormBuilder extends Component
      * Reorder steps based on drag-and-drop.
      *
      * @param  array<int, int>  $orderedIds
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     #[On( 'steps-reordered' )]
     public function reorderSteps( array $orderedIds ): void
     {
+        $this->authorizeUpdate();
+
         if ( ! $this->form->is_multi_step ) {
             return;
         }
@@ -705,9 +830,13 @@ class FormBuilder extends Component
      * Enable multi-step mode for the form.
      *
      * Creates a default first step and moves all existing fields to it.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function enableMultiStep(): void
     {
+        $this->authorizeUpdate();
+
         if ( $this->form->is_multi_step ) {
             return;
         }
@@ -733,9 +862,13 @@ class FormBuilder extends Component
      * Disable multi-step mode for the form.
      *
      * Removes all steps and unassigns fields from steps.
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function disableMultiStep(): void
     {
+        $this->authorizeUpdate();
+
         if ( ! $this->form->is_multi_step ) {
             return;
         }
@@ -763,9 +896,13 @@ class FormBuilder extends Component
 
     /**
      * Save the form (auto-save trigger).
+     *
+     * @throws AuthorizationException When the user may not update the form.
      */
     public function saveForm(): void
     {
+        $this->authorizeUpdate();
+
         if ( ! $this->isDirty ) {
             return;
         }
@@ -805,6 +942,21 @@ class FormBuilder extends Component
 
         // Trigger auto-save after a delay
         $this->dispatch( 'auto-save-trigger' );
+    }
+
+    /**
+     * Checks that the current user may update the form being built.
+     *
+     * Every action that changes the form calls this, since a Livewire action
+     * is a request of its own that the route's middleware never sees.
+     *
+     * @since 1.6.0
+     *
+     * @throws AuthorizationException When the user may not update the form.
+     */
+    protected function authorizeUpdate(): void
+    {
+        $this->authorize( 'update', $this->form );
     }
 
     /**

@@ -332,7 +332,7 @@ Returns a single submission with values and uploads.
 PUT /{form}/submissions/{submission}
 ```
 
-Updates submission metadata (not field values).
+Updates submission metadata and the form's administrative fields (not the public field values).
 
 **Request Body:**
 
@@ -341,9 +341,19 @@ Updates submission metadata (not field values).
     "is_read": true,
     "is_starred": false,
     "is_spam": false,
-    "admin_notes": "Followed up via email"
+    "admin_notes": "Followed up via email",
+    "admin_values": { "status": "contacted" },
+    "remove_admin_uploads": [17]
 }
 ```
+
+| Key | Description |
+|-----|-------------|
+| `admin_values` | Values for the administrative fields, keyed by field name and validated with each field's rules. File fields are left out; use `admin_files`. |
+| `admin_files` | Multipart only: files for administrative file fields, as `admin_files[{name}]` (`admin_files[{name}][]` for a multi-file field). Each replaces the field's stored files and is checked with the field's file rules. Send a `POST` with `_method=PUT`, since PHP only parses multipart bodies on `POST`. |
+| `remove_admin_uploads` | Upload IDs to delete from the submission's administrative file fields. |
+
+Fields masked in the admin can only be edited by users who may reveal masked values. A required administrative file field only needs a file while the submission has none for it. See [File Uploads](../usage/file-uploads.md#visibility-and-privacy).
 
 **Response:** `200 OK` with updated `FormSubmissionResource`
 

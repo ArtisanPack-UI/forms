@@ -36,7 +36,8 @@ class FormSubmissionValueResource extends JsonResource
      * Transforms the resource into an array.
      *
      * A value whose field is masked in the admin is masked (see
-     * FieldPrivacy::mask()) unless the user may reveal it.
+     * FieldPrivacy::mask()) unless the user may reveal it; a masked file
+     * value leaves out its uploads too (since 1.6.0).
      *
      * @since 1.1.0
      *
@@ -63,8 +64,8 @@ class FormSubmissionValueResource extends JsonResource
             'display_html'      => $masked ? null : $this->display_html,
             'is_masked'         => $masked,
             'is_redacted'       => $this->resource->isRedacted(),
-            'upload_id'         => $this->upload_id,
-            'upload_ids'        => $this->uploadIds(),
+            'upload_id'         => $masked ? null : $this->upload_id,
+            'upload_ids'        => $masked ? [] : $this->uploadIds(),
             'created_at'        => $this->created_at?->toIso8601String(),
         ];
     }

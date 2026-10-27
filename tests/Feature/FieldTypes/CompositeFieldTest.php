@@ -23,6 +23,7 @@ use ArtisanPackUI\Forms\Support\PopulationContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\MessageBag;
 use Livewire\Livewire;
+use Tests\Models\User;
 use Tests\Support\AddressFieldType;
 
 /**
@@ -364,7 +365,7 @@ describe( 'rendering', function (): void {
 
 describe( 'builder', function (): void {
     it( 'edits each sub-input from the Livewire builder', function (): void {
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $this->address->uuid )
             ->assertSee( 'Sub-Label' )
             ->call( 'updateSubInput', 'line2', 'enabled', true )
@@ -401,7 +402,7 @@ describe( 'builder', function (): void {
         FormField::factory()->for( $this->form )->create( ['type' => 'text', 'name' => 'notes', 'sort_order' => 2] );
         $notes = $this->form->fields()->where( 'name', 'notes' )->first();
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $notes->uuid )
             ->assertSeeHtml( 'address.street' )
             ->assertSeeHtml( 'Address: City' );

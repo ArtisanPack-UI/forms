@@ -7,6 +7,7 @@ use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormStep;
 use Livewire\Livewire;
+use Tests\Models\User;
 
 // Filters are process-global, so clear the ones these tests register here rather
 // than at the end of each test: an assertion or a render that throws must still
@@ -25,14 +26,14 @@ describe( 'FormBuilder Component', function (): void {
 
     describe( 'rendering', function (): void {
         it( 'renders the form builder component', function (): void {
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->assertStatus( 200 )
                 ->assertSee( 'Add Fields' )
                 ->assertSee( 'Form Fields' );
         } );
 
         it( 'shows field categories in the palette', function (): void {
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->assertSee( 'Basic Fields' )
                 ->assertSee( 'Choice Fields' )
                 ->assertSee( 'Advanced Fields' );
@@ -41,7 +42,7 @@ describe( 'FormBuilder Component', function (): void {
         it( 'shows existing fields on load', function (): void {
             $field = FormField::factory()->for( $this->form )->create( ['label' => 'Test Field'] );
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->assertSee( 'Test Field' );
         } );
 
@@ -69,7 +70,7 @@ describe( 'FormBuilder Component', function (): void {
                 return $categories;
             } );
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->assertSee( 'Bookings' )
                 ->assertSee( 'Booking Slot' );
         } );
@@ -82,7 +83,7 @@ describe( 'FormBuilder Component', function (): void {
                 static fn ( string $html, $f, $form ): string => $html . '<div>CUSTOM-SETTINGS-MARKER-' . $f->type . '</div>',
             );
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
                 ->assertSee( 'CUSTOM-SETTINGS-MARKER-text', false );
         } );
@@ -95,14 +96,14 @@ describe( 'FormBuilder Component', function (): void {
                 static fn ( string $html, $f ): string => $html . '<div>CARD-PREVIEW-MARKER-' . $f->type . '</div>',
             );
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->assertSee( 'CARD-PREVIEW-MARKER-text', false );
         } );
     } );
 
     describe( 'adding fields', function (): void {
         it( 'adds a text field when clicking the button', function (): void {
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'addField', 'text' )
                 ->assertDispatched( 'field-added' );
 
@@ -111,7 +112,7 @@ describe( 'FormBuilder Component', function (): void {
         } );
 
         it( 'adds an email field with correct defaults', function (): void {
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'addField', 'email' );
 
             $field = $this->form->fields()->first();
@@ -121,7 +122,7 @@ describe( 'FormBuilder Component', function (): void {
         } );
 
         it( 'selects the newly added field', function (): void {
-            $component = Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            $component = Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'addField', 'text' );
 
             $field = $this->form->fields()->first();
@@ -130,7 +131,7 @@ describe( 'FormBuilder Component', function (): void {
         } );
 
         it( 'marks form as dirty when adding a field', function (): void {
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->assertSet( 'isDirty', false )
                 ->call( 'addField', 'text' )
                 ->assertSet( 'isDirty', true );
@@ -141,7 +142,7 @@ describe( 'FormBuilder Component', function (): void {
         it( 'selects a field when clicked', function (): void {
             $field = FormField::factory()->for( $this->form )->create();
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
                 ->assertSet( 'selectedFieldId', $field->uuid );
         } );
@@ -149,7 +150,7 @@ describe( 'FormBuilder Component', function (): void {
         it( 'deselects the current field', function (): void {
             $field = FormField::factory()->for( $this->form )->create();
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
                 ->assertSet( 'selectedFieldId', $field->uuid )
                 ->call( 'deselectField' )
@@ -161,7 +162,7 @@ describe( 'FormBuilder Component', function (): void {
         it( 'updates the selected field', function (): void {
             $field = FormField::factory()->for( $this->form )->create( ['label' => 'Original'] );
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
                 ->call( 'updateField', ['label' => 'Updated Label'] );
 
@@ -171,7 +172,7 @@ describe( 'FormBuilder Component', function (): void {
         it( 'marks form as dirty when updating a field', function (): void {
             $field = FormField::factory()->for( $this->form )->create();
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
                 ->assertSet( 'isDirty', false )
                 ->call( 'updateField', ['label' => 'New Label'] )
@@ -186,7 +187,7 @@ describe( 'FormBuilder Component', function (): void {
                 'validation_rules' => ['max_size' => 4000, 'allowed_types' => ['png'], 'min' => 1],
             ] );
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
                 ->call( 'updateSetting', 'max_size', '100' )
                 ->call( 'updateSetting', 'allowed_types', ' pdf, ,docx ' )
@@ -204,7 +205,7 @@ describe( 'FormBuilder Component', function (): void {
                 'field_config' => ['max_size' => 100, 'allowed_types' => ['pdf']],
             ] );
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
                 ->call( 'updateSetting', $setting, $value );
 
@@ -218,7 +219,7 @@ describe( 'FormBuilder Component', function (): void {
         it( 'ignores unknown file settings', function (): void {
             $field = FormField::factory()->for( $this->form )->file()->create( ['field_config' => ['max_size' => 100]] );
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
                 ->call( 'updateSetting', 'options', 'x' )
                 ->assertSet( 'isDirty', false );
@@ -232,7 +233,7 @@ describe( 'FormBuilder Component', function (): void {
                 'validation_rules' => ['min' => 1, 'pattern' => '/x/'],
             ] );
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
                 ->call( 'updateSetting', 'max', '10' )
                 ->call( 'updateSetting', 'step', '0.5' )
@@ -245,7 +246,7 @@ describe( 'FormBuilder Component', function (): void {
         it( 'renders editor inputs without bare JS globals that Livewire 4 would rewrite', function (): void {
             $field = FormField::factory()->for( $this->form )->file()->create();
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
                 ->assertSeeHtml( "updateSetting('max_size', \$event.target.value)" )
                 ->assertSeeHtml( "updateSetting('allowed_types', \$event.target.value)" )
@@ -261,7 +262,7 @@ describe( 'FormBuilder Component', function (): void {
                 'field_config'  => ['level' => 'keep'],
             ] );
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
                 ->assertSeeHtml( 'id="field-content"' )
                 ->assertSee( 'Legacy content' )
@@ -282,7 +283,7 @@ describe( 'FormBuilder Component', function (): void {
                 'default_value' => 'Legacy heading',
             ] );
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
                 ->assertSee( 'Heading Text' )
                 ->assertSeeHtml( 'value="Legacy heading"' )
@@ -297,7 +298,7 @@ describe( 'FormBuilder Component', function (): void {
         it( 'ignores layout content updates for other field types', function (): void {
             $field = FormField::factory()->for( $this->form )->create( ['type' => 'text', 'label' => 'Name'] );
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
                 ->call( 'updateLayoutContent', 'Changed' );
 
@@ -305,7 +306,7 @@ describe( 'FormBuilder Component', function (): void {
         } );
 
         it( 'does nothing when no field is selected', function (): void {
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'updateSetting', 'max_size', '100' )
                 ->call( 'updateSetting', 'min', '1' )
                 ->call( 'updateLayoutContent', 'x' )
@@ -317,7 +318,7 @@ describe( 'FormBuilder Component', function (): void {
         it( 'deletes a field', function (): void {
             $field = FormField::factory()->for( $this->form )->create();
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'deleteField', $field->uuid )
                 ->assertDispatched( 'field-deleted' );
 
@@ -327,7 +328,7 @@ describe( 'FormBuilder Component', function (): void {
         it( 'clears selection when deleting the selected field', function (): void {
             $field = FormField::factory()->for( $this->form )->create();
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'selectField', $field->uuid )
                 ->call( 'deleteField', $field->uuid )
                 ->assertSet( 'selectedFieldId', null );
@@ -341,7 +342,7 @@ describe( 'FormBuilder Component', function (): void {
                 'type'  => 'text',
             ] );
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'duplicateField', $field->uuid )
                 ->assertDispatched( 'field-duplicated' );
 
@@ -355,7 +356,7 @@ describe( 'FormBuilder Component', function (): void {
         it( 'selects the duplicated field', function (): void {
             $field = FormField::factory()->for( $this->form )->create();
 
-            $component = Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            $component = Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'duplicateField', $field->uuid );
 
             $duplicate = $this->form->fields()->where( 'id', '!=', $field->id )->first();
@@ -369,7 +370,7 @@ describe( 'FormBuilder Component', function (): void {
             $field2 = FormField::factory()->for( $this->form )->create( ['sort_order' => 2] );
             $field3 = FormField::factory()->for( $this->form )->create( ['sort_order' => 3] );
 
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->dispatch( 'fields-reordered', orderedUuids: [$field3->uuid, $field2->uuid, $field1->uuid] );
 
             expect( $field1->fresh()->sort_order )->toBe( 3 )
@@ -380,7 +381,7 @@ describe( 'FormBuilder Component', function (): void {
 
     describe( 'saving', function (): void {
         it( 'clears dirty state after saving', function (): void {
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->call( 'addField', 'text' )
                 ->assertSet( 'isDirty', true )
                 ->call( 'saveForm' )
@@ -389,7 +390,7 @@ describe( 'FormBuilder Component', function (): void {
         } );
 
         it( 'does not save when not dirty', function (): void {
-            Livewire::test( FormBuilder::class, ['form' => $this->form] )
+            Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
                 ->assertSet( 'isDirty', false )
                 ->call( 'saveForm' )
                 ->assertNotDispatched( 'form-saved' );
@@ -404,18 +405,18 @@ describe( 'FormBuilder Multi-Step', function (): void {
     } );
 
     it( 'shows step manager for multi-step forms', function (): void {
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->assertSee( $this->step->title )
             ->assertSee( 'Add Step' );
     } );
 
     it( 'sets active step on mount', function (): void {
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->assertSet( 'activeStepId', $this->step->id );
     } );
 
     it( 'adds a new step', function (): void {
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'addStep' )
             ->assertDispatched( 'step-added' );
 
@@ -425,13 +426,13 @@ describe( 'FormBuilder Multi-Step', function (): void {
     it( 'selects a step', function (): void {
         $step2 = FormStep::factory()->for( $this->form )->create();
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectStep', $step2->id )
             ->assertSet( 'activeStepId', $step2->id );
     } );
 
     it( 'updates a step', function (): void {
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'updateStep', $this->step->id, ['title' => 'Updated Title'] );
 
         expect( $this->step->fresh()->title )->toBe( 'Updated Title' );
@@ -440,7 +441,7 @@ describe( 'FormBuilder Multi-Step', function (): void {
     it( 'deletes a step when more than one exists', function (): void {
         $step2 = FormStep::factory()->for( $this->form )->create();
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'deleteStep', $step2->id )
             ->assertDispatched( 'step-deleted' );
 
@@ -448,7 +449,7 @@ describe( 'FormBuilder Multi-Step', function (): void {
     } );
 
     it( 'adds fields to the active step', function (): void {
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'addField', 'text' );
 
         $field = $this->form->fields()->first();
@@ -460,7 +461,7 @@ describe( 'FormBuilder Multi-Step', function (): void {
         $step2 = FormStep::factory()->for( $this->form )->create( ['sort_order' => 2] );
         $step3 = FormStep::factory()->for( $this->form )->create( ['sort_order' => 3] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->dispatch( 'steps-reordered', orderedIds: [$step3->id, $step2->id, $this->step->id] );
 
         expect( $this->step->fresh()->sort_order )->toBe( 3 )
@@ -474,7 +475,7 @@ describe( 'FormBuilder Enable/Disable Multi-Step', function (): void {
         $form  = Form::factory()->create( ['is_multi_step' => false] );
         $field = FormField::factory()->for( $form )->create( ['step_id' => null] );
 
-        Livewire::test( FormBuilder::class, ['form' => $form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $form] )
             ->call( 'enableMultiStep' )
             ->assertDispatched( 'multi-step-enabled' );
 
@@ -490,7 +491,7 @@ describe( 'FormBuilder Enable/Disable Multi-Step', function (): void {
         $form = Form::factory()->multiStep()->create();
         FormStep::factory()->for( $form )->create();
 
-        Livewire::test( FormBuilder::class, ['form' => $form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $form] )
             ->call( 'enableMultiStep' )
             ->assertNotDispatched( 'multi-step-enabled' );
 
@@ -502,7 +503,7 @@ describe( 'FormBuilder Enable/Disable Multi-Step', function (): void {
         $step  = FormStep::factory()->for( $form )->create();
         $field = FormField::factory()->for( $form )->create( ['step_id' => $step->id] );
 
-        Livewire::test( FormBuilder::class, ['form' => $form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $form] )
             ->call( 'disableMultiStep' )
             ->assertDispatched( 'multi-step-disabled' )
             ->assertSet( 'activeStepId', null );
@@ -518,7 +519,7 @@ describe( 'FormBuilder Enable/Disable Multi-Step', function (): void {
     it( 'does nothing when disabling multi-step on single-step form', function (): void {
         $form = Form::factory()->create( ['is_multi_step' => false] );
 
-        Livewire::test( FormBuilder::class, ['form' => $form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $form] )
             ->call( 'disableMultiStep' )
             ->assertNotDispatched( 'multi-step-disabled' );
     } );
@@ -526,7 +527,7 @@ describe( 'FormBuilder Enable/Disable Multi-Step', function (): void {
     it( 'sets active step when enabling multi-step', function (): void {
         $form = Form::factory()->create( ['is_multi_step' => false] );
 
-        $component = Livewire::test( FormBuilder::class, ['form' => $form] )
+        $component = Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $form] )
             ->call( 'enableMultiStep' );
 
         $form->refresh();
@@ -547,7 +548,7 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
             'field_config' => ['keep' => 'me'],
         ] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
             ->call( 'updateSetting', $setting, $input )
             ->assertSet( 'isDirty', true );
@@ -569,7 +570,7 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
             'field_config' => [$setting => 'old'],
         ] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
             ->call( 'updateSetting', $setting, $input );
 
@@ -589,7 +590,7 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
     it( 'ignores settings that do not apply to the field type', function ( string $type, string $setting ): void {
         $field = FormField::factory()->for( $this->form )->create( ['type' => $type, 'field_config' => []] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
             ->call( 'updateSetting', $setting, '5' )
             ->assertSet( 'isDirty', false );
@@ -607,7 +608,7 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
             'validation_rules' => ['min_time' => '08:00', 'max_time' => '18:00'],
         ] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
             ->call( 'updateSetting', 'min_time', '09:00:00' )
             ->call( 'updateSetting', 'max_time', '' )
@@ -621,7 +622,7 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
             'validation_rules' => ['min_time' => '08:00'],
         ] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
             ->call( 'updateSetting', 'min_time', '25:00' );
 
@@ -631,7 +632,7 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
     it( 'ignores time limits on other field types', function (): void {
         $field = FormField::factory()->for( $this->form )->create( ['type' => 'date', 'validation_rules' => []] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
             ->call( 'updateSetting', 'min_time', '09:00' )
             ->assertSet( 'isDirty', false );
@@ -640,7 +641,7 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
     it( 'renders the controls for each field type', function ( string $type, array $expected ): void {
         $field = FormField::factory()->for( $this->form )->create( ['type' => $type] );
 
-        $test = Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        $test = Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid );
 
         foreach ( $expected as $html ) {
@@ -664,7 +665,7 @@ describe( 'FormBuilder display settings (issue #83)', function (): void {
     it( 'does not render display controls for unrelated types', function (): void {
         $field = FormField::factory()->for( $this->form )->create( ['type' => 'text'] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
             ->assertDontSeeHtml( "updateSetting('rows'" )
             ->assertDontSeeHtml( "updateSetting('min_time'" )

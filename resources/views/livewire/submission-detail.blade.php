@@ -177,14 +177,27 @@
                         <form wire:submit="saveAdministrativeFields" class="space-y-4">
                             @foreach ($this->administrativeFields as $field)
                                 <div wire:key="admin-field-{{ $field->uuid }}">
-                                    {!! \ArtisanPackUI\Forms\Support\FieldRenderer::render(
-                                        $field,
-                                        $formData[$field->name] ?? null,
-                                        $errors->first('formData.' . $field->name),
-                                        \ArtisanPackUI\Forms\Support\FieldRenderer::subInputErrors($field, $errors),
-                                    ) !!}
+                                    @if ($field->is_file_field)
+                                        @include('forms::livewire.submission-detail.administrative-file', [
+                                            'field' => $field,
+                                            'uploads' => $this->administrativeFileUploads[$field->id] ?? [],
+                                        ])
+                                    @else
+                                        {!! \ArtisanPackUI\Forms\Support\FieldRenderer::render(
+                                            $field,
+                                            $formData[$field->name] ?? null,
+                                            $errors->first('formData.' . $field->name),
+                                            \ArtisanPackUI\Forms\Support\FieldRenderer::subInputErrors($field, $errors),
+                                        ) !!}
+                                    @endif
                                 </div>
                             @endforeach
+
+                            <div class="sr-only" role="status" aria-live="polite">
+                                @if ($removedFileName)
+                                    {{ __( ':name removed.', ['name' => $removedFileName] ) }}
+                                @endif
+                            </div>
 
                             <div class="flex items-center gap-3">
                                 <x-artisanpack-button
@@ -218,10 +231,10 @@
                 </x-artisanpack-card>
 
                 <!-- Attachments -->
-                @if ($this->submission->uploads->isNotEmpty())
+                @if ($this->attachments->isNotEmpty())
                     <x-artisanpack-card :title="__( 'Attachments' )" separator>
                         <div class="space-y-3">
-                            @foreach ($this->submission->uploads as $upload)
+                            @foreach ($this->attachments as $upload)
                                 <div class="flex items-center justify-between p-3 bg-base-200 rounded-lg">
                                     <div class="flex items-center gap-3">
                                         <x-artisanpack-icon name="o-document" class="w-8 h-8 opacity-40" />

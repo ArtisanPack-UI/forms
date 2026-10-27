@@ -13,6 +13,7 @@ use ArtisanPackUI\Forms\Support\FieldSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Livewire\Livewire;
+use Tests\Models\User;
 
 /**
  * Guards issue #107: choice fields that load their options from a source
@@ -79,7 +80,7 @@ describe( 'choice source registry', function (): void {
     } );
 
     it( 'stores only a registered source from the builder', function (): void {
-        $component = Livewire::test( FormBuilder::class, ['form' => $this->form] )->call( 'selectField', $this->field->uuid );
+        $component = Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )->call( 'selectField', $this->field->uuid );
 
         $component->call( 'updateSetting', 'choices_source', 'invalid' );
         expect( $this->field->fresh()->getConfig( 'choices_source' ) )->toBeNull();
@@ -147,7 +148,7 @@ describe( 'resolved choices', function (): void {
     } );
 
     it( 'show as a notice instead of the options editor in the builder', function (): void {
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $this->field->uuid )
             ->assertSee( 'Choices are loaded from' )
             ->assertSee( 'Store locations' )
@@ -170,7 +171,7 @@ describe( 'validation against resolved choices', function (): void {
         $this->field->update( ['type' => 'checkbox_group'] );
         $rules = app( SubmissionService::class )->buildValidationRules( $this->form->fields()->get() );
 
-        expect( $rules['formData.store.*'] )->toBe( ['in:"north","south"'] );
+        expect( $rules['formData.store.*'] )->toBe( ['string', 'in:"north","south"'] );
 
         $this->postJson( route( 'api.forms.submit', $this->form ), [
             'data'            => ['store' => ['north', 'east']],
@@ -189,10 +190,10 @@ describe( 'validation against resolved choices', function (): void {
         expect( $this->field->fresh()->buildValidationRules() )->not->toContain( 'in:"north","south"' );
     } );
 
-    it( 'is not added to fields with a static options list', function (): void {
+    it( 'uses the static options list when the field has no source', function (): void {
         $this->field->update( ['field_config' => ['options' => [['value' => 'manual', 'label' => 'Manual']]]] );
 
-        expect( collect( $this->field->fresh()->buildValidationRules() )->filter( fn ( mixed $rule ): bool => is_string( $rule ) && str_starts_with( $rule, 'in:' ) ) )->toBeEmpty();
+        expect( $this->field->fresh()->buildValidationRules() )->toContain( 'in:"manual"' );
     } );
 
     it( 'uses the custom error message', function (): void {

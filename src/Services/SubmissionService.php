@@ -31,6 +31,7 @@ use ArtisanPackUI\Forms\Support\MediaLibraryStorage;
 use ArtisanPackUI\Forms\Support\NumberFormat;
 use ArtisanPackUI\Forms\Support\RichText;
 use ArtisanPackUI\Forms\Support\SubmissionRules;
+use ArtisanPackUI\Forms\Support\TransientUploads;
 use ArtisanPackUI\Forms\Support\UrlSchemes;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -108,7 +109,9 @@ class SubmissionService
      * Values for administrative fields are dropped, since admins fill those in
      * on the submission (see updateAdministrativeValues()). Values of "Do not
      * store" fields are not saved; they are added to the submission's loaded
-     * values for the notifications and webhooks of this request only. An
+     * values for the notifications and webhooks of this request only; a "Do
+     * not store" file field's files are stored until those have been sent
+     * (see TransientUploads). An
      * email field's confirmation (`{name}_confirmation`) and the token of a
      * type that stores no value (such as a CAPTCHA) are dropped before the
      * filter runs. Phone numbers checked by format are converted to E.164
@@ -164,8 +167,17 @@ class SubmissionService
             $this->storedFiles = [];
         }
 
-        // Send notifications after transaction completes (outside transaction to ensure submission is persisted)
-        $this->sendNotifications( $submission );
+        try {
+            // Send notifications after transaction completes (outside transaction to ensure submission is persisted)
+            $this->sendNotifications( $submission );
+        } finally {
+            // Every job that needs a "Do not store" file now holds it, so the
+            // submission's own hold is released (after any outer transaction
+            // commits, once the FormSubmitted listeners have dispatched theirs)
+            $transientUploadIds = TransientUploads::idsIn( $submission->getTransientValues() );
+
+            DB::afterCommit( fn () => TransientUploads::release( $transientUploadIds ) );
+        }
 
         return $submission;
     }
@@ -661,7 +673,8 @@ class SubmissionService
      * Builds the validation rules for the administrative fields an admin edits on a submission.
      *
      * Keyed like buildValidationRules(). A "No duplicates" check skips the
-     * submission being edited.
+     * submission being edited. File fields are left out, since their files
+     * are sent apart from the values (see buildAdministrativeFileValidationRules()).
      *
      * @since 1.6.0
      *
@@ -676,7 +689,7 @@ class SubmissionService
         $rules = [];
 
         foreach ( $fields as $field ) {
-            if ( ! $field->isAdministrative() ) {
+            if ( ! $field->isAdministrative() || $field->is_file_field ) {
                 continue;
             }
 
@@ -687,6 +700,174 @@ class SubmissionService
         }
 
         return $rules;
+    }
+
+    /**
+     * Builds the validation rules for the files an admin uploads to a submission's administrative file fields.
+     *
+     * Keyed like buildAdministrativeValidationRules(), with each field's own
+     * file rules (allowed types, size and image limits). A required field
+     * only needs a file while the submission has none for it, since a file
+     * that is already stored is kept unless it is replaced or removed.
+     *
+     * @since 1.6.0
+     *
+     * @param  iterable<FormField>  $fields  The form fields; only administrative file fields that store values are used.
+     * @param  FormSubmission  $submission  The submission being edited.
+     * @param  string  $prefix  The key the files are nested under.
+     *
+     * @return array<string, array<int, mixed>> The validation rules.
+     */
+    public function buildAdministrativeFileValidationRules( iterable $fields, FormSubmission $submission, string $prefix = 'adminFiles' ): array
+    {
+        $rules = [];
+
+        foreach ( $fields as $field ) {
+            if ( ! $field->isAdministrative() || ! $field->is_file_field || ! $field->storesValues() ) {
+                continue;
+            }
+
+            $hasFile = $this->administrativeFileValue( $submission, $field ) instanceof FormSubmissionValue;
+
+            foreach ( $field->buildKeyedValidationRules() as $inputKey => $fieldRules ) {
+                if ( '' === $inputKey && $hasFile ) {
+                    $fieldRules = array_map( fn ( mixed $rule ): mixed => 'required' === $rule ? 'nullable' : $rule, $fieldRules );
+                }
+
+                $key           = '' === $inputKey ? "{$prefix}.{$field->name}" : "{$prefix}.{$field->name}.{$inputKey}";
+                $rules[ $key ] = $fieldRules;
+            }
+        }
+
+        return $rules;
+    }
+
+    /**
+     * Replaces the files of a submission's administrative file fields with the ones an admin uploaded.
+     *
+     * Only administrative file fields that store values are written, and only
+     * those a file was uploaded for. The field's earlier files and upload
+     * records are deleted once the new ones are saved. Fires the submission's
+     * updated event once.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormSubmission  $submission  The submission.
+     * @param  array<string, mixed>  $files  The uploaded file, or a list for a multi-file field, keyed by field name.
+     *
+     * @throws RuntimeException If a file cannot be stored.
+     *
+     * @return FormSubmission The submission, with its `values` and `uploads` relations unloaded.
+     */
+    public function updateAdministrativeFiles( FormSubmission $submission, array $files ): FormSubmission
+    {
+        $submission->loadMissing( 'form.fields' );
+
+        $replaced          = [];
+        $this->storedFiles = [];
+
+        try {
+            DB::transaction( function () use ( $submission, $files, &$replaced ): void {
+                foreach ( $submission->form->fields as $field ) {
+                    if ( ! $field->isAdministrative() || ! $field->is_file_field || ! $field->storesValues() ) {
+                        continue;
+                    }
+
+                    $uploaded = $files[ $field->name ] ?? null;
+                    $uploaded = $field->allowsMultipleFiles()
+                        ? array_values( array_filter( is_array( $uploaded ) ? $uploaded : [$uploaded], fn ( mixed $file ): bool => $file instanceof UploadedFile ) )
+                        : ( $uploaded instanceof UploadedFile ? $uploaded : null );
+
+                    if ( null === $uploaded || [] === $uploaded ) {
+                        continue;
+                    }
+
+                    $current = $this->administrativeFileValue( $submission, $field );
+
+                    if ( null !== $current ) {
+                        array_push( $replaced, ...$current->getUploads() );
+                    }
+
+                    // A redacted value is replaced along with the current one
+                    FormSubmissionValue::query()
+                        ->where( 'submission_id', $submission->getKey() )
+                        ->where( 'field_id', $field->getKey() )
+                        ->delete();
+
+                    is_array( $uploaded )
+                        ? $this->handleMultipleFileUploads( $submission, $field, $uploaded )
+                        : $this->handleFileUpload( $submission, $field, $uploaded );
+                }
+
+                $submission->touch();
+            } );
+        } catch ( Throwable $exception ) {
+            $this->deleteStoredFiles();
+
+            throw $exception;
+        } finally {
+            $this->storedFiles = [];
+        }
+
+        // The old files are only deleted once the new ones are saved
+        foreach ( $replaced as $upload ) {
+            $upload->delete();
+        }
+
+        return $submission->unsetRelation( 'values' )->unsetRelation( 'uploads' );
+    }
+
+    /**
+     * Removes one file from a submission's administrative file field.
+     *
+     * Deletes the stored file and its upload record. A multi-file value keeps
+     * its other files; a value left with none is deleted. Fires the
+     * submission's updated event.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormSubmission  $submission  The submission.
+     * @param  FormUpload  $upload  The upload to remove.
+     *
+     * @return bool True when the upload belonged to one of the submission's administrative file fields and was removed.
+     */
+    public function removeAdministrativeUpload( FormSubmission $submission, FormUpload $upload ): bool
+    {
+        $submission->loadMissing( 'form.fields' );
+
+        $field = $submission->form?->fields->firstWhere( 'id', $upload->field_id );
+
+        if ( (int) $upload->submission_id !== (int) $submission->getKey() || ! $field instanceof FormField || ! $field->isAdministrative() || ! $field->is_file_field || $upload->isTransient() ) {
+            return false;
+        }
+
+        DB::transaction( function () use ( $submission, $field, $upload ): void {
+            $value = $this->administrativeFileValue( $submission, $field );
+
+            if ( null !== $value ) {
+                $remaining = array_values( array_filter(
+                    array_map( fn ( FormUpload $item ): int => (int) $item->id, $value->getUploads() ),
+                    fn ( int $id ): bool => $id !== (int) $upload->id,
+                ) );
+
+                if ( [] === $remaining ) {
+                    $value->delete();
+                } else {
+                    $value->forceFill( [
+                        'upload_id'   => $remaining[0],
+                        'value_array' => $field->allowsMultipleFiles() ? $remaining : null,
+                    ] )->save();
+                }
+            }
+
+            $submission->touch();
+        } );
+
+        $upload->delete();
+
+        $submission->unsetRelation( 'values' )->unsetRelation( 'uploads' );
+
+        return true;
     }
 
     /**
@@ -708,7 +889,8 @@ class SubmissionService
 
         DB::transaction( function () use ( $submission, $values ): void {
             foreach ( $submission->form->fields as $field ) {
-                if ( ! $field->isAdministrative() || ! $field->storesValues() || ! array_key_exists( $field->name, $values ) ) {
+                // A file field's files are saved apart (see updateAdministrativeFiles())
+                if ( ! $field->isAdministrative() || $field->is_file_field || ! $field->storesValues() || ! array_key_exists( $field->name, $values ) ) {
                     continue;
                 }
 
@@ -730,6 +912,25 @@ class SubmissionService
         } );
 
         return $submission->unsetRelation( 'values' );
+    }
+
+    /**
+     * Gets a submission's stored value for an administrative file field.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormSubmission  $submission  The submission.
+     * @param  FormField  $field  The file field.
+     *
+     * @return FormSubmissionValue|null The value, or null when the submission has no file for the field.
+     */
+    public function administrativeFileValue( FormSubmission $submission, FormField $field ): ?FormSubmissionValue
+    {
+        return FormSubmissionValue::query()
+            ->where( 'submission_id', $submission->getKey() )
+            ->where( 'field_id', $field->getKey() )
+            ->whereNull( 'redacted_at' )
+            ->first();
     }
 
     /**
@@ -851,17 +1052,20 @@ class SubmissionService
                 $this->saveFieldValue( $submission, $field, $value );
             }
 
-            // Set before the transaction commits, so the FormSubmitted listeners
-            // (dispatched after commit) see the values that are not stored.
-            if ( [] !== $transientValues ) {
-                $submission->withTransientValues( $transientValues, $fields );
-            }
-
             // Handle file uploads
             foreach ( $files as $fieldName => $file ) {
                 $field = $fields->get( $fieldName );
 
-                if ( ! $field || ! $field->is_file_field ) {
+                if ( ! $field || ! $field->is_file_field || $field->isAdministrative() ) {
+                    continue;
+                }
+
+                // A "Do not store" field's files are kept only for this request's deliveries
+                if ( ! $field->storesValues() ) {
+                    if ( null !== ( $attributes = $this->storeTransientUploads( $submission, $field, $file ) ) ) {
+                        $transientValues[] = $attributes;
+                    }
+
                     continue;
                 }
 
@@ -874,6 +1078,12 @@ class SubmissionService
                 if ( $file instanceof UploadedFile ) {
                     $this->handleFileUpload( $submission, $field, $file );
                 }
+            }
+
+            // Set before the transaction commits, so the FormSubmitted listeners
+            // (dispatched after commit) see the values that are not stored.
+            if ( [] !== $transientValues ) {
+                $submission->withTransientValues( $transientValues, $fields );
             }
 
             return $submission;
@@ -1121,6 +1331,47 @@ class SubmissionService
     }
 
     /**
+     * Stores the files of a "Do not store" file field until the submission's deliveries are sent.
+     *
+     * The uploads start with the submission's own hold (see
+     * TransientUploads). No submission value is saved; the attributes it
+     * would have are returned for the submission's transient values.
+     *
+     * @since 1.6.0
+     *
+     * @param  FormSubmission  $submission  The form submission.
+     * @param  FormField  $field  The file field.
+     * @param  mixed  $files  The uploaded file, or a list of them for a multi-file field.
+     *
+     * @throws InvalidArgumentException If a file extension is not allowed.
+     *
+     * @return array<string, mixed>|null The FormSubmissionValue attributes, or null when no file was uploaded.
+     */
+    protected function storeTransientUploads( FormSubmission $submission, FormField $field, mixed $files ): ?array
+    {
+        $files   = is_array( $files ) && $field->allowsMultipleFiles() ? $files : [$files];
+        $uploads = [];
+
+        foreach ( $files as $file ) {
+            if ( $file instanceof UploadedFile ) {
+                $uploads[] = $this->storeUpload( $submission, $field, $file, true );
+            }
+        }
+
+        if ( [] === $uploads ) {
+            return null;
+        }
+
+        $attributes = $this->uploadValueAttributes( $submission, $field, $uploads[0] );
+
+        if ( $field->allowsMultipleFiles() ) {
+            $attributes['value_array'] = array_map( fn ( FormUpload $upload ): int => (int) $upload->id, $uploads );
+        }
+
+        return $attributes;
+    }
+
+    /**
      * Builds the attributes of the submission value that points at an upload.
      *
      * @since 1.6.0
@@ -1157,12 +1408,13 @@ class SubmissionService
      * @param  FormSubmission  $submission  The form submission.
      * @param  FormField  $field  The file field.
      * @param  UploadedFile  $file  The uploaded file.
+     * @param  bool  $transient  Whether the file is kept only until the submission's deliveries are sent (see TransientUploads).
      *
      * @throws InvalidArgumentException If the file extension is not allowed.
      *
      * @return FormUpload The created upload record.
      */
-    protected function storeUpload( FormSubmission $submission, FormField $field, UploadedFile $file ): FormUpload
+    protected function storeUpload( FormSubmission $submission, FormField $field, UploadedFile $file, bool $transient = false ): FormUpload
     {
         // Validate extension against allowlist, whichever storage takes the file
         $extension = $this->getValidatedExtension( $file );
@@ -1171,15 +1423,16 @@ class SubmissionService
             $this->storedFiles[] = ['disk' => $media['disk'], 'path' => $media['path'], 'media_id' => $media['media_id']];
 
             return FormUpload::create( [
-                'submission_id' => $submission->id,
-                'field_id'      => $field->id,
-                'media_id'      => $media['media_id'],
-                'original_name' => $file->getClientOriginalName(),
-                'stored_name'   => basename( $media['path'] ),
-                'disk'          => $media['disk'],
-                'path'          => $media['path'],
-                'mime_type'     => $media['mime_type'],
-                'size'          => $media['size'],
+                'submission_id'      => $submission->id,
+                'field_id'           => $field->id,
+                'media_id'           => $media['media_id'],
+                'original_name'      => $file->getClientOriginalName(),
+                'stored_name'        => basename( $media['path'] ),
+                'disk'               => $media['disk'],
+                'path'               => $media['path'],
+                'mime_type'          => $media['mime_type'],
+                'size'               => $media['size'],
+                'pending_deliveries' => $transient ? 1 : null,
             ] );
         }
 
@@ -1209,14 +1462,15 @@ class SubmissionService
 
         // Create the upload record
         return FormUpload::create( [
-            'submission_id' => $submission->id,
-            'field_id'      => $field->id,
-            'original_name' => $file->getClientOriginalName(),
-            'stored_name'   => $storedName,
-            'disk'          => $disk,
-            'path'          => $path,
-            'mime_type'     => $file->getMimeType() ?? 'application/octet-stream',
-            'size'          => $fileSize ?: 0,
+            'submission_id'      => $submission->id,
+            'field_id'           => $field->id,
+            'original_name'      => $file->getClientOriginalName(),
+            'stored_name'        => $storedName,
+            'disk'               => $disk,
+            'path'               => $path,
+            'mime_type'          => $file->getMimeType() ?? 'application/octet-stream',
+            'size'               => $fileSize ?: 0,
+            'pending_deliveries' => $transient ? 1 : null,
         ] );
     }
 

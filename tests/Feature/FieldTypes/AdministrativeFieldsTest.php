@@ -25,14 +25,19 @@ describe( 'visibility setting', function (): void {
             ->toMatchArray( ['tab' => 'advanced', 'input' => 'select', 'default' => 'visible'] );
     } );
 
-    it( 'is not offered on file and layout fields', function ( string $type ): void {
+    it( 'is not offered on layout fields', function ( string $type ): void {
         expect( FieldSettings::find( FormField::factory()->make( ['type' => $type] ), 'visibility' ) )->toBeNull();
-    } )->with( ['file', 'paragraph'] );
+    } )->with( ['paragraph', 'heading'] );
+
+    it( 'is offered on file fields (#157)', function (): void {
+        expect( FieldSettings::find( FormField::factory()->make( ['type' => 'file'] ), 'visibility' ) )->toMatchArray( ['tab' => 'advanced', 'input' => 'select'] )
+            ->and( FormField::factory()->make( ['type' => 'file', 'field_config' => ['visibility' => 'administrative']] )->isAdministrative() )->toBeTrue();
+    } );
 
     it( 'marks a field administrative only when the type offers the setting', function (): void {
         expect( FormField::factory()->make( ['type' => 'text', 'field_config' => ['visibility' => 'administrative']] )->isAdministrative() )->toBeTrue()
             ->and( FormField::factory()->make( ['type' => 'text', 'field_config' => ['visibility' => 'visible']] )->isAdministrative() )->toBeFalse()
-            ->and( FormField::factory()->make( ['type' => 'file', 'field_config' => ['visibility' => 'administrative']] )->isAdministrative() )->toBeFalse();
+            ->and( FormField::factory()->make( ['type' => 'html', 'field_config' => ['visibility' => 'administrative']] )->isAdministrative() )->toBeFalse();
     } );
 } );
 
