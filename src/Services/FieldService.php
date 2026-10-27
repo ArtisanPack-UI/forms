@@ -90,9 +90,9 @@ class FieldService
      *
      * Since 1.6.0, a change that would show a masked field's values to users
      * who may not reveal them (turning "Mask in admin" off, a type change to
-     * a type that cannot be masked, or a rename) needs the
-     * `changeFieldPrivacy` form ability, and a calculation may not use a
-     * masked field.
+     * a type that cannot be masked) needs the `changeFieldPrivacy` form
+     * ability, and a calculation may not use a masked field. Renaming is
+     * allowed: stored values carry their own mask flag.
      *
      * @since 1.0.0
      *
@@ -372,13 +372,8 @@ class FieldService
         $updated = clone $field;
         $updated->fill( $data );
 
-        if ( $field->isMaskedInAdmin() ) {
-            $unmasks = ! $updated->isMaskedInAdmin();
-            $renames = array_key_exists( 'name', $data ) && (string) $data['name'] !== (string) $field->name;
-
-            if ( $unmasks || $renames ) {
-                Gate::authorize( 'changeFieldPrivacy', $field->form );
-            }
+        if ( $field->isMaskedInAdmin() && ! $updated->isMaskedInAdmin() ) {
+            Gate::authorize( 'changeFieldPrivacy', $field->form );
         }
 
         if ( 'calculation' !== $updated->type ) {

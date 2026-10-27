@@ -37,13 +37,14 @@ describe( 'the Livewire builder', function (): void {
         expect( $this->field->fresh()->isMaskedInAdmin() )->toBeTrue();
     } );
 
-    it( 'forbids an editor to rename a masked field', function (): void {
+    it( 'lets an editor rename a masked field, which stays masked', function (): void {
         Livewire::actingAs( $this->editor )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $this->field->uuid )
-            ->call( 'updateField', ['name' => 'tax_id'] )
-            ->assertForbidden();
+            ->call( 'updateField', ['label' => 'Tax ID'] )
+            ->assertSuccessful();
 
-        expect( $this->field->fresh()->name )->toBe( 'ssn' );
+        expect( $this->field->fresh()->name )->not->toBe( 'ssn' )
+            ->and( $this->field->fresh()->isMaskedInAdmin() )->toBeTrue();
     } );
 
     it( 'still lets an editor change other settings of a masked field', function (): void {
