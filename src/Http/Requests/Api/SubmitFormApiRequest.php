@@ -245,6 +245,9 @@ class SubmitFormApiRequest extends FormRequest
      * worked out on the server, so conditional logic reads their real results
      * (see SubmissionService::applyVisibleCalculations()).
      *
+     * A request without `data` (a multipart body from a form whose only
+     * inputs are files cannot encode an empty `data`) is read as empty data.
+     *
      * @since 1.6.0
      */
     protected function prepareForValidation(): void
@@ -253,6 +256,12 @@ class SubmitFormApiRequest extends FormRequest
 
         $form = $this->route( 'form' );
         $data = $this->input( 'data' );
+
+        if ( null === $data ) {
+            $data = [];
+
+            $this->merge( ['data' => $data] );
+        }
 
         if ( ! $form instanceof Form || ! is_array( $data ) ) {
             return;
