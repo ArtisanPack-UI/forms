@@ -22,6 +22,7 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Livewire;
 
 use ArtisanPackUI\Forms\Config\ConditionalLogic;
+use ArtisanPackUI\Forms\Http\Requests\Api\UpdateNotificationApiRequest;
 use ArtisanPackUI\Forms\Models\Form;
 use ArtisanPackUI\Forms\Models\FormField;
 use ArtisanPackUI\Forms\Models\FormNotification;
@@ -29,7 +30,10 @@ use ArtisanPackUI\Forms\Services\ConditionalLogicService;
 use ArtisanPackUI\Forms\Services\NotificationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -50,13 +54,45 @@ use Livewire\Component;
 class NotificationEditor extends Component
 {
     /**
+     * The attributes updateNotification() may change.
+     *
+     * The notification's form, sort order and conditional logic are changed
+     * through their own actions (or never), so a client cannot move a
+     * notification to another form by sending `form_id`.
+     *
+     * @since 1.6.0
+     *
+     * @var array<int, string>
+     */
+    public const EDITABLE_ATTRIBUTES = [
+        'name',
+        'type',
+        'to_email',
+        'to_field',
+        'cc_emails',
+        'bcc_emails',
+        'reply_to_email',
+        'reply_to_field',
+        'from_name',
+        'from_email',
+        'subject',
+        'message',
+        'include_submission_data',
+        'is_active',
+    ];
+
+    /**
      * The form being edited.
      */
     public Form $form;
 
     /**
      * The currently selected notification ID.
+     *
+     * Locked since 1.6.0: it changes only through selectNotification(),
+     * which checks that the notification belongs to this form.
      */
+    #[Locked]
     public ?int $selectedNotificationId = null;
 
     /**
@@ -90,6 +126,8 @@ class NotificationEditor extends Component
      */
     public function mount( Form $form ): void
     {
+        $this->authorize( 'manageNotifications', $form );
+
         $this->form = $form->load( ['notifications', 'fields'] );
 
         // Select first notification if exists
@@ -242,6 +280,13 @@ class NotificationEditor extends Component
      */
     public function addNotification( string $type ): void
     {
+        $this->authorizeUpdate();
+
+        Validator::make(
+            ['type' => $type],
+            ['type' => ['required', 'string', Rule::in( array_keys( $this->notificationTypes() ) )]],
+        )->validate();
+
         $notification = $this->notificationService->create( $this->form, $type );
 
         $this->selectedNotificationId = $notification->id;
@@ -257,24 +302,45 @@ class NotificationEditor extends Component
      */
     public function selectNotification( int $notificationId ): void
     {
-        $this->selectedNotificationId = $notificationId;
+        $this->authorizeUpdate();
+
+        $notification = $this->notificationService->getById( $this->form, $notificationId );
+
+        if ( null === $notification ) {
+            return;
+        }
+
+        $this->selectedNotificationId = $notification->id;
         unset( $this->selectedNotification );
     }
 
     /**
      * Update the selected notification.
      *
+     * Since 1.6.0, only the attributes in EDITABLE_ATTRIBUTES are changed,
+     * and they are validated with the same rules as the notification API.
+     *
      * @param  array<string, mixed>  $data
      */
     public function updateNotification( array $data ): void
     {
+        $this->authorizeUpdate();
+
         $notification = $this->selectedNotification;
 
         if ( null === $notification ) {
             return;
         }
 
-        $this->notificationService->update( $notification, $data );
+        $data = array_intersect_key( $data, array_flip( self::EDITABLE_ATTRIBUTES ) );
+
+        if ( [] === $data ) {
+            return;
+        }
+
+        $validated = Validator::make( $data, $this->notificationRules( array_keys( $data ) ) )->validate();
+
+        $this->notificationService->update( $notification, $validated );
         $this->markDirty();
 
         unset( $this->notifications, $this->selectedNotification );
@@ -285,6 +351,8 @@ class NotificationEditor extends Component
      */
     public function toggleActive( int $notificationId ): void
     {
+        $this->authorizeUpdate();
+
         $notification = $this->notificationService->getById( $this->form, $notificationId );
 
         if ( $notification ) {
@@ -300,6 +368,8 @@ class NotificationEditor extends Component
      */
     public function duplicateNotification( int $notificationId ): void
     {
+        $this->authorizeUpdate();
+
         $notification = $this->notificationService->getById( $this->form, $notificationId );
 
         if ( $notification ) {
@@ -318,6 +388,8 @@ class NotificationEditor extends Component
      */
     public function deleteNotification( int $notificationId ): void
     {
+        $this->authorizeUpdate();
+
         $notification = $this->notificationService->getById( $this->form, $notificationId );
 
         if ( $notification ) {
@@ -345,6 +417,8 @@ class NotificationEditor extends Component
     #[On( 'notifications-reordered' )]
     public function reorderNotifications( array $orderedIds ): void
     {
+        $this->authorizeUpdate();
+
         $this->notificationService->reorder( $this->form, $orderedIds );
         $this->markDirty();
 
@@ -362,6 +436,8 @@ class NotificationEditor extends Component
      */
     public function updateConditionalLogic( array $logic ): void
     {
+        $this->authorizeUpdate();
+
         $notification = $this->selectedNotification;
 
         if ( null === $notification ) {
@@ -387,6 +463,8 @@ class NotificationEditor extends Component
      */
     public function clearConditionalLogic(): void
     {
+        $this->authorizeUpdate();
+
         $notification = $this->selectedNotification;
 
         if ( null === $notification ) {
@@ -406,6 +484,8 @@ class NotificationEditor extends Component
      */
     public function save(): void
     {
+        $this->authorizeUpdate();
+
         // All changes are already saved immediately via service methods
         $this->isDirty = false;
         $this->dispatch( 'notifications-saved' );
@@ -426,6 +506,41 @@ class NotificationEditor extends Component
     // =========================================
     // State Management
     // =========================================
+
+    /**
+     * Check that the current user may still manage this form's notifications.
+     *
+     * @since 1.6.0
+     *
+     * @throws \Illuminate\Auth\Access\AuthorizationException When they may not.
+     */
+    protected function authorizeUpdate(): void
+    {
+        $this->authorize( 'manageNotifications', $this->form );
+    }
+
+    /**
+     * Get the validation rules for the given notification attributes.
+     *
+     * Reuses the notification API's rules, and limits the recipient and
+     * reply-to field references to this form's email fields.
+     *
+     * @since 1.6.0
+     *
+     * @param  array<int, string>  $attributes  The attributes being changed.
+     *
+     * @return array<string, mixed> The rules keyed by attribute.
+     */
+    protected function notificationRules( array $attributes ): array
+    {
+        $rules       = ( new UpdateNotificationApiRequest() )->rules();
+        $emailFields = $this->form->fields()->where( 'type', 'email' )->pluck( 'name' )->all();
+
+        $rules['to_field'][]       = Rule::in( $emailFields );
+        $rules['reply_to_field'][] = Rule::in( $emailFields );
+
+        return array_intersect_key( $rules, array_flip( $attributes ) );
+    }
 
     /**
      * Mark as having unsaved changes.
