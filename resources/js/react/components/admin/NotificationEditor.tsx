@@ -386,14 +386,14 @@ export function NotificationEditor( {
 							<Input
 								id="notif-name"
 								label={t( 'Name' )}
-								size="sm"
+								className="input-sm"
 								value={selectedNotification.name}
 								onChange={( e ) => updateNotification( selectedNotification.id, { name: e.target.value } )}
 							/>
 
 							<Checkbox
 								label={t( 'Active' )}
-								size="sm"
+								className="checkbox-sm"
 								checked={selectedNotification.is_active}
 								onChange={( e ) => updateNotification( selectedNotification.id, { is_active: e.target.checked } )}
 							/>
@@ -407,7 +407,7 @@ export function NotificationEditor( {
 								<Select
 									id="notif-to-field"
 									label={t( 'Send To (Email Field)' )}
-									size="sm"
+									className="select-sm"
 									value={selectedNotification.to_field ?? ''}
 									onChange={( e ) => updateNotification( selectedNotification.id, {
 										to_field: e.target.value || null,
@@ -426,7 +426,7 @@ export function NotificationEditor( {
 								<Input
 									id="notif-to-email"
 									label={t( 'To Email(s)' )}
-									size="sm"
+									className="input-sm"
 									value={selectedNotification.to_email ?? ''}
 									onChange={( e ) => updateNotification( selectedNotification.id, {
 										to_email: e.target.value || null,
@@ -439,7 +439,7 @@ export function NotificationEditor( {
 							<Input
 								id="notif-cc"
 								label={t( 'CC Emails' )}
-								size="sm"
+								className="input-sm"
 								value={selectedNotification.cc_emails ?? ''}
 								onChange={( e ) => updateNotification( selectedNotification.id, {
 									cc_emails: e.target.value || null,
@@ -450,7 +450,7 @@ export function NotificationEditor( {
 							<Input
 								id="notif-bcc"
 								label={t( 'BCC Emails' )}
-								size="sm"
+								className="input-sm"
 								value={selectedNotification.bcc_emails ?? ''}
 								onChange={( e ) => updateNotification( selectedNotification.id, {
 									bcc_emails: e.target.value || null,
@@ -466,7 +466,7 @@ export function NotificationEditor( {
 							<Input
 								id="notif-from-name"
 								label={t( 'From Name' )}
-								size="sm"
+								className="input-sm"
 								value={selectedNotification.from_name ?? ''}
 								onChange={( e ) => updateNotification( selectedNotification.id, {
 									from_name: e.target.value || null,
@@ -477,7 +477,7 @@ export function NotificationEditor( {
 								id="notif-from-email"
 								label={t( 'From Email' )}
 								type="email"
-								size="sm"
+								className="input-sm"
 								value={selectedNotification.from_email ?? ''}
 								onChange={( e ) => updateNotification( selectedNotification.id, {
 									from_email: e.target.value || null,
@@ -487,7 +487,7 @@ export function NotificationEditor( {
 							<Input
 								id="notif-reply-to"
 								label={t( 'Reply-To Email' )}
-								size="sm"
+								className="input-sm"
 								value={selectedNotification.reply_to_email ?? ''}
 								onChange={( e ) => updateNotification( selectedNotification.id, {
 									reply_to_email: e.target.value || null,
@@ -498,7 +498,7 @@ export function NotificationEditor( {
 								<Select
 									id="notif-reply-to-field"
 									label={t( 'Reply-To Field' )}
-									size="sm"
+									className="select-sm"
 									value={selectedNotification.reply_to_field ?? ''}
 									onChange={( e ) => updateNotification( selectedNotification.id, {
 										reply_to_field: e.target.value || null,
@@ -523,7 +523,7 @@ export function NotificationEditor( {
 							<Input
 								id="notif-subject"
 								label={t( 'Subject' )}
-								size="sm"
+								className="input-sm"
 								value={selectedNotification.subject}
 								onChange={( e ) => updateNotification( selectedNotification.id, {
 									subject: e.target.value,
@@ -576,7 +576,7 @@ export function NotificationEditor( {
 
 							<Checkbox
 								label={t( 'Include all submission data in email' )}
-								size="sm"
+								className="checkbox-sm"
 								checked={selectedNotification.include_submission_data}
 								onChange={( e ) => updateNotification( selectedNotification.id, {
 									include_submission_data: e.target.checked,
