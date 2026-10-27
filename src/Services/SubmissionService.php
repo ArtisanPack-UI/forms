@@ -17,7 +17,9 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Forms\Services;
 
 use ArtisanPackUI\Forms\FieldTypes\CalculationFieldType;
+use ArtisanPackUI\Forms\FieldTypes\CheckboxFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ColorFieldType;
+use ArtisanPackUI\Forms\FieldTypes\ConsentFieldType;
 use ArtisanPackUI\Forms\FieldTypes\DateTimeFieldType;
 use ArtisanPackUI\Forms\FieldTypes\ListFieldType;
 use ArtisanPackUI\Forms\FieldTypes\PhoneFieldType;
@@ -286,7 +288,10 @@ class SubmissionService
      * A `datetime-local` value becomes `Y-m-d H:i`, and a list keeps only its
      * filled rows, under their own keys, so an error names the row the
      * visitor sees. A color typed as `FF8800` or `#F80` becomes `#ff8800`
-     * (see ColorFieldType::normalizeValue()).
+     * (see ColorFieldType::normalizeValue()). A checkbox, toggle or consent
+     * box sent as `true` / `false` / `on` / `off` (as HTML forms and
+     * headless clients do) becomes `1` / `0`, which the `boolean` rule
+     * accepts.
      *
      * @since 1.6.0
      *
@@ -314,6 +319,8 @@ class SubmissionService
                 $formData[ $field->name ] = ListFieldType::filledRows( $field, $formData[ $field->name ], false );
             } elseif ( ColorFieldType::TYPE === $field->type ) {
                 $formData[ $field->name ] = ColorFieldType::normalizeValue( $formData[ $field->name ] );
+            } elseif ( $field->fieldType() instanceof CheckboxFieldType || $field->fieldType() instanceof ConsentFieldType ) {
+                $formData[ $field->name ] = $this->normalizeBooleanString( $formData[ $field->name ] );
             }
         }
 
@@ -995,6 +1002,32 @@ class SubmissionService
             'ip_address'   => $ipAddress,
             'user_agent'   => $userAgent,
         ];
+    }
+
+    /**
+     * Maps a boolean sent as text to `1` or `0`.
+     *
+     * `true` / `on` / `yes` become `1` and `false` / `off` / `no` become `0`
+     * (in any case); any other value is returned unchanged, so the `boolean`
+     * rule still rejects it.
+     *
+     * @since 1.6.0
+     *
+     * @param  mixed  $value  The submitted value.
+     *
+     * @return mixed The value, `1` or `0`.
+     */
+    protected function normalizeBooleanString( mixed $value ): mixed
+    {
+        if ( ! is_string( $value ) ) {
+            return $value;
+        }
+
+        return match ( strtolower( trim( $value ) ) ) {
+            'true', 'on', 'yes'  => '1',
+            'false', 'off', 'no' => '0',
+            default              => $value,
+        };
     }
 
     /**
