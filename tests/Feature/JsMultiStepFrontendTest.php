@@ -68,3 +68,32 @@ describe( 'Enter on a step before the last (RX5)', function (): void {
         ['vue/components/FormRenderer.vue', 'if ( form.value?.is_multi_step && currentStep.value < totalSteps.value - 1 ) {'],
     ] );
 } );
+
+describe( 'step changes and failed validation (RX4, VU-08)', function (): void {
+    it( 'announces the new step and marks the current one in React', function (): void {
+        expect( jsMultiStepSource( 'react/components/MultiStepForm.tsx' ) )
+            ->toContain( '<div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>' )
+            ->toContain( "setAnnouncement( t( 'Now on step :current of :total', { current: currentStep + 1, total: totalSteps } ) );" )
+            ->toContain( 'if ( !focusFirstInvalid( contentRef.current ) && !focusFirstField( contentRef.current ) ) {' )
+            ->toContain( "aria-current={i === currentStep ? 'step' : undefined}" )
+            ->toContain( '{allowStepNavigation && i <= currentStep ? (' );
+    } );
+
+    it( 'announces the new step and marks the current one in Vue', function (): void {
+        expect( jsMultiStepSource( 'vue/components/MultiStepForm.vue' ) )
+            ->toContain( '<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ announcement }}</div>' )
+            ->toContain( "announcement.value = t( 'Now on step :current of :total', { current: step + 1, total: props.totalSteps } );" )
+            ->toContain( '<Transition name="fade" mode="out-in" @after-enter="focusStep">' )
+            ->toContain( 'if ( !focusFirstInvalid( content ) && !focusFirstField( content ) ) {' )
+            ->toContain( ":aria-current=\"i === currentStep ? 'step' : undefined\"" )
+            ->toContain( 'v-if="allowStepNavigation && i <= currentStep"' );
+    } );
+
+    it( 'moves focus to the first invalid field when validation fails', function ( string $renderer, string $hook, string $focus ): void {
+        expect( jsMultiStepSource( $renderer ) )->toContain( $focus )->toContain( 'data-forms-error-summary' )
+            ->and( substr_count( jsMultiStepSource( $hook ), 'alidationFailure' ) )->toBeGreaterThanOrEqual( 6 );
+    } )->with( [
+        ['react/components/FormRenderer.tsx', 'react/hooks/useForm.ts', 'focusFirstInvalid( formRef.current );'],
+        ['vue/components/FormRenderer.vue', 'vue/composables/useForm.ts', 'focusFirstInvalid( formElement.value );'],
+    ] );
+} );

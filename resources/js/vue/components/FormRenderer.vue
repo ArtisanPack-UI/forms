@@ -12,12 +12,13 @@
   @since      1.1.0
 -->
 <script setup lang="ts">
-import { computed, provide } from 'vue';
+import { computed, nextTick, provide, ref, watch } from 'vue';
 import type { FunctionalComponent } from 'vue';
 import { Button } from '@artisanpack-ui/vue/form';
 import { getOffStepSubmitCaptchas } from '../../shared/captcha';
 import { getSubInputErrors } from '../../shared/composite';
 import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
+import { focusFirstInvalid } from '../../shared/focus';
 import { getFieldSegments } from '../../shared/sections';
 import type { FieldSegment } from '../../shared/sections';
 import type { FormField, FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
@@ -85,6 +86,8 @@ const {
 	isSubmitted,
 	currentStep,
 	totalSteps,
+	steps,
+	validationFailures,
 	progressPercentage,
 	currentFields,
 	currentStepData,
@@ -109,6 +112,15 @@ const {
 	prefill: props.prefill,
 	onSuccess: ( response ) => emit( 'success', response ),
 	onError: ( error ) => emit( 'error', error ),
+} );
+
+/** The form element, which focus moves within when validation fails. */
+const formElement = ref<HTMLFormElement | null>( null );
+
+// When validation fails, move focus to the first invalid field or the error summary, as Livewire does (since 1.6.0).
+watch( validationFailures, async () => {
+	await nextTick();
+	focusFirstInvalid( formElement.value );
 } );
 
 // Fields such as the CAPTCHA register their submit hooks with the form (since 1.6.0).
@@ -224,14 +236,14 @@ function handleFormSubmit( e: Event ): void {
 	</div>
 
 	<!-- Form -->
-	<form v-else :class="formClass" novalidate @submit="handleFormSubmit">
+	<form v-else ref="formElement" :class="formClass" novalidate @submit="handleFormSubmit">
 		<!-- Form description -->
 		<p v-if="form.description" class="mb-4 opacity-70">
 			{{ form.description }}
 		</p>
 
 		<!-- Form-level error messages -->
-		<div v-if="errors._form?.length" class="alert alert-error mb-4" role="alert">
+		<div v-if="errors._form?.length" class="alert alert-error mb-4" role="alert" tabindex="-1" data-forms-error-summary>
 			<span v-for="( msg, i ) in errors._form" :key="i">{{ msg }}</span>
 		</div>
 
@@ -241,6 +253,7 @@ function handleFormSubmit( e: Event ): void {
 			:current-step-data="currentStepData"
 			:current-step="currentStep"
 			:total-steps="totalSteps"
+			:steps="steps"
 			:progress-percentage="progressPercentage"
 			:show-progress-bar="form.show_progress_bar"
 			:allow-step-navigation="form.allow_step_navigation"

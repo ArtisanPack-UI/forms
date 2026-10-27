@@ -14,12 +14,13 @@
  * @since      1.1.0
  */
 
-import { Fragment } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { Button } from '@artisanpack-ui/react/form';
 
 import { getOffStepSubmitCaptchas } from '../../shared/captcha';
 import { getSubInputErrors } from '../../shared/composite';
 import { getConfirmationKey, requiresEmailConfirmation } from '../../shared/fieldSettings';
+import { focusFirstInvalid } from '../../shared/focus';
 import { getFieldSegments } from '../../shared/sections';
 import type { FormField, FormLayout, SubmitFormResponse } from '../../types/artisanpack-forms';
 import { useForm } from '../hooks/useForm';
@@ -197,6 +198,8 @@ export function FormRenderer( {
 		isSubmitted,
 		currentStep,
 		totalSteps,
+		steps,
+		validationFailures,
 		progressPercentage,
 		currentFields,
 		currentStepData,
@@ -221,6 +224,15 @@ export function FormRenderer( {
 		clientValidation,
 		prefill,
 	} );
+
+	const formRef = useRef<HTMLFormElement>( null );
+
+	// When validation fails, move focus to the first invalid field or the error summary, as Livewire does (since 1.6.0)
+	useEffect( () => {
+		if ( validationFailures > 0 ) {
+			focusFirstInvalid( formRef.current );
+		}
+	}, [validationFailures] );
 
 	// Loading state
 	if ( isLoading ) {
@@ -378,7 +390,7 @@ export function FormRenderer( {
 	};
 
 	return (
-		<form className={className} onSubmit={handleFormSubmit} noValidate>
+		<form ref={formRef} className={className} onSubmit={handleFormSubmit} noValidate>
 			{/* Form description */}
 			{form.description && (
 				<p className="mb-4 opacity-70">{form.description}</p>
@@ -386,7 +398,7 @@ export function FormRenderer( {
 
 			{/* Form-level error messages */}
 			{formErrors && formErrors.length > 0 && (
-				<div className="alert alert-error mb-4" role="alert">
+				<div className="alert alert-error mb-4" role="alert" tabIndex={-1} data-forms-error-summary="">
 					{formErrors.map( ( msg, i ) => (
 						<span key={i}>{msg}</span>
 					) )}
@@ -399,6 +411,7 @@ export function FormRenderer( {
 					currentStepData={currentStepData}
 					currentStep={currentStep}
 					totalSteps={totalSteps}
+					steps={steps}
 					progressPercentage={progressPercentage}
 					showProgressBar={form.show_progress_bar}
 					allowStepNavigation={form.allow_step_navigation}

@@ -86,6 +86,14 @@ export interface UseFormReturn {
 	currentStep: number;
 	/** Total number of steps (1 for single-step forms). */
 	totalSteps: number;
+	/** A multi-step form's steps in order; empty for single-step forms (since 1.6.0). */
+	steps: FormStep[];
+	/**
+	 * Counts the times validation failed (a step, or the submission on the
+	 * client or the server), so the renderer can move focus to the first
+	 * invalid field each time (since 1.6.0).
+	 */
+	validationFailures: number;
 	/** Progress percentage (0-100) for multi-step forms. */
 	progressPercentage: number;
 	/** Fields visible in the current step (or all fields for single-step). */
@@ -166,6 +174,10 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 	const [isSubmitted, setIsSubmitted] = useState( false );
 	const [currentStep, setCurrentStep] = useState( 0 );
 	const [loadError, setLoadError] = useState<string | null>( null );
+	const [validationFailures, setValidationFailures] = useState( 0 );
+
+	// Count a failed validation, so the renderer moves focus to what failed (since 1.6.0)
+	const recordValidationFailure = useCallback( () => setValidationFailures( ( count ) => count + 1 ), [] );
 
 	const formLoadedAt = useRef<number>( 0 );
 
@@ -413,6 +425,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 		if ( Object.keys( stepErrors ).length > 0 ) {
 			setErrors( ( prev ) => ( { ...prev, ...stepErrors } ) );
+			recordValidationFailure();
 
 			return false;
 		}
@@ -424,7 +437,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		}
 
 		return false;
-	}, [form, currentFields, currentStep, totalSteps, validateCurrentFields] );
+	}, [form, currentFields, currentStep, totalSteps, validateCurrentFields, recordValidationFailure] );
 
 	const prevStep = useCallback( () => {
 		if ( currentStep > 0 ) {
@@ -450,13 +463,14 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 			if ( Object.keys( stepErrors ).length > 0 ) {
 				setErrors( ( prev ) => ( { ...prev, ...stepErrors } ) );
+				recordValidationFailure();
 
 				return;
 			}
 
 			setCurrentStep( step );
 		},
-		[totalSteps, currentStep, currentFields, validateCurrentFields],
+		[totalSteps, currentStep, currentFields, validateCurrentFields, recordValidationFailure],
 	);
 
 	const submit = useCallback( async () => {
@@ -472,6 +486,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 
 		if ( Object.keys( validationErrors ).length > 0 ) {
 			setErrors( validationErrors );
+			recordValidationFailure();
 
 			// If multi-step, navigate to the first step with errors
 			if ( form.is_multi_step && sortedSteps.length > 0 ) {
@@ -503,6 +518,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		} catch ( err ) {
 			if ( err instanceof SubmitHookError ) {
 				setErrors( { [err.field]: [t( 'The verification check failed. Please try again.' )] } );
+				recordValidationFailure();
 			} else {
 				onError?.( err instanceof Error ? err : new Error( 'Form submission failed.' ) );
 			}
@@ -577,6 +593,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				const serverErrors = mapServerErrors( errorData.errors, allFields );
 
 				setErrors( serverErrors );
+				recordValidationFailure();
 				submitHooks.settle( { ok: false, errors: serverErrors } );
 
 				// Navigate to the first step with server errors (multi-step forms)
@@ -603,6 +620,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 				setErrors( {
 					_form: ['Too many submissions. Please try again later.'],
 				} );
+				recordValidationFailure();
 
 				return;
 			}
@@ -647,6 +665,7 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		submitHooks,
 		onSuccess,
 		onError,
+		recordValidationFailure,
 	] );
 
 	const reset = useCallback( () => {
@@ -690,6 +709,8 @@ export function useForm( options: UseFormOptions ): UseFormReturn {
 		isSubmitted,
 		currentStep,
 		totalSteps,
+		steps: sortedSteps,
+		validationFailures,
 		progressPercentage,
 		currentFields,
 		currentStepData,

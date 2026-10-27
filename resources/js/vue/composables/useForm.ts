@@ -142,6 +142,13 @@ export function useForm( options: UseFormOptions ) {
 	const isSubmitted = ref( false );
 	const currentStep = ref( 0 );
 	const loadError = ref<string | null>( null );
+
+	/**
+	 * Counts the times validation failed (a step, or the submission on the
+	 * client or the server), so the renderer can move focus to the first
+	 * invalid field each time (since 1.6.0).
+	 */
+	const validationFailures = ref( 0 );
 	const formLoadedAt = ref( 0 );
 
 	/**
@@ -348,6 +355,7 @@ export function useForm( options: UseFormOptions ) {
 
 		if ( Object.keys( stepErrors ).length > 0 ) {
 			errors.value = { ...errors.value, ...stepErrors };
+			validationFailures.value++;
 
 			return false;
 		}
@@ -384,6 +392,7 @@ export function useForm( options: UseFormOptions ) {
 
 		if ( Object.keys( stepErrors ).length > 0 ) {
 			errors.value = { ...errors.value, ...stepErrors };
+			validationFailures.value++;
 
 			return;
 		}
@@ -404,6 +413,7 @@ export function useForm( options: UseFormOptions ) {
 
 		if ( Object.keys( validationErrors ).length > 0 ) {
 			errors.value = validationErrors;
+			validationFailures.value++;
 
 			// Navigate to first step with errors (multi-step)
 			if ( form.value.is_multi_step && sortedSteps.value.length > 0 ) {
@@ -439,6 +449,7 @@ export function useForm( options: UseFormOptions ) {
 			} catch ( hookError ) {
 				if ( hookError instanceof SubmitHookError ) {
 					errors.value = { [hookError.field]: [t( 'The verification check failed. Please try again.' )] };
+					validationFailures.value++;
 
 					return;
 				}
@@ -509,6 +520,7 @@ export function useForm( options: UseFormOptions ) {
 				const serverErrors = mapServerErrors( errorData.errors, allFields.value );
 
 				errors.value = serverErrors;
+				validationFailures.value++;
 				outcome = { ok: false, errors: serverErrors };
 
 				// Navigate to first step with server errors (multi-step)
@@ -534,6 +546,7 @@ export function useForm( options: UseFormOptions ) {
 				errors.value = {
 					_form: ['Too many submissions. Please try again later.'],
 				};
+				validationFailures.value++;
 
 				return;
 			}
@@ -592,6 +605,9 @@ export function useForm( options: UseFormOptions ) {
 		isSubmitted,
 		currentStep,
 		totalSteps,
+		/** A multi-step form's steps in order; empty for single-step forms (since 1.6.0). */
+		steps: sortedSteps,
+		validationFailures,
 		progressPercentage,
 		currentFields,
 		currentStepData,
