@@ -35,13 +35,21 @@ describe( 'per-field privacy settings', function (): void {
             ->and( FieldSettings::find( $field, 'redact_after_days' ) )->toMatchArray( ['tab' => 'advanced', 'input' => 'integer', 'min' => 1, 'max' => FormField::MAX_REDACT_DAYS] );
     } );
 
-    it( 'are not offered on file and layout fields', function ( string $type ): void {
+    it( 'are offered on file fields (#157)', function (): void {
+        $field = FormField::factory()->make( ['type' => 'file'] );
+
+        expect( FieldSettings::find( $field, 'do_not_store' ) )->toMatchArray( ['tab' => 'advanced', 'input' => 'toggle'] )
+            ->and( FieldSettings::find( $field, 'mask_in_admin' ) )->toMatchArray( ['tab' => 'advanced', 'input' => 'toggle'] )
+            ->and( FieldSettings::find( $field, 'redact_after_days' ) )->toMatchArray( ['tab' => 'advanced', 'input' => 'integer'] );
+    } );
+
+    it( 'are not offered on layout fields', function ( string $type ): void {
         $field = FormField::factory()->make( ['type' => $type] );
 
         expect( FieldSettings::find( $field, 'do_not_store' ) )->toBeNull()
             ->and( FieldSettings::find( $field, 'mask_in_admin' ) )->toBeNull()
             ->and( FieldSettings::find( $field, 'redact_after_days' ) )->toBeNull();
-    } )->with( ['file', 'heading', 'html'] );
+    } )->with( ['heading', 'html'] );
 
     it( 'reads only valid redaction periods', function ( mixed $days, ?int $expected ): void {
         $field = FormField::factory()->make( ['type' => 'text', 'field_config' => ['redact_after_days' => $days]] );

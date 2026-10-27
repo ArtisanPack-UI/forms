@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ViewErrorBag;
 use Livewire\Livewire;
+use Tests\Models\User;
 
 /**
  * Guards issue #130: the slider (range) field.
@@ -51,7 +52,7 @@ describe( 'registration', function (): void {
     } );
 
     it( 'can be added from the Livewire builder palette', function (): void {
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )->call( 'addField', 'slider' );
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )->call( 'addField', 'slider' );
 
         expect( $this->form->fields()->where( 'name', 'slider' )->sole()->field_config )->toBe( ['min' => 0, 'max' => 100, 'step' => 1] );
     } );

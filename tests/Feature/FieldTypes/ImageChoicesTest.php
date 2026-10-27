@@ -16,6 +16,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ViewErrorBag;
 use Livewire\Livewire;
+use Tests\Models\User as TestUser;
 
 /**
  * Guards issue #134: image choices for radio and checkbox groups.
@@ -241,8 +242,12 @@ describe( 'uploads', function (): void {
     } );
 
     it( 'requires permission to update the form to store an image in the Livewire builder', function (): void {
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
-            ->set( 'choiceImage', UploadedFile::fake()->image( 'shirt.jpg' ) )
+        $builder = Livewire::actingAs( $this->user )->test( FormBuilder::class, ['form' => $this->form] );
+
+        // Signed out after the builder loaded
+        $this->app['auth']->forgetGuards();
+
+        $builder->set( 'choiceImage', UploadedFile::fake()->image( 'shirt.jpg' ) )
             ->call( 'storeChoiceImage' )
             ->assertForbidden();
 
@@ -270,7 +275,7 @@ describe( 'uploads', function (): void {
 
 describe( 'builder', function (): void {
     it( 'adds image URL, alt text and upload inputs to the options editor', function (): void {
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( TestUser::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $this->radio->uuid )
             ->assertSeeHtml( 'x-model="option.image"' )
             ->assertSeeHtml( 'x-model="option.image_alt"' )
@@ -281,7 +286,7 @@ describe( 'builder', function (): void {
     it( 'leaves the image inputs out while the choices are plain labels', function (): void {
         $this->radio->update( ['field_config' => ['options' => $this->shirtOptions]] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( TestUser::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $this->radio->uuid )
             ->assertDontSeeHtml( 'x-model="option.image"' );
     } );

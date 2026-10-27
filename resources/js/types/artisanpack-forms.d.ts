@@ -1433,6 +1433,13 @@ export interface UpdateSubmissionRequest {
      * validated with each field's rules (since 1.6.0).
      */
     admin_values?: Record<string, unknown>;
+    /**
+     * IDs of files to delete from the form's administrative file fields
+     * (since 1.6.0). Files are uploaded in a multipart request instead, as
+     * `admin_files[{name}]` (`admin_files[{name}][]` for a multi-file field)
+     * POSTed with `_method=PUT`.
+     */
+    remove_admin_uploads?: number[];
 }
 
 /**

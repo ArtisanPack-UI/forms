@@ -258,6 +258,8 @@ The Livewire renderer does not use the `livewire-ui-components` Editor (TinyMCE)
 ]
 ```
 
+The server only accepts a selection field's own option values (the values a choices source resolved, for a field that loads them from one). Each value of a checkbox group or multi-select must also be a string, so nested arrays are rejected. A field that offers an **Other** choice accepts any text, since that is stored as the value.
+
 ### Date and Time
 
 Dates are always stored as `YYYY-MM-DD` and times as 24-hour `HH:MM` (`HH:MM:SS` with a step under a minute), whichever input the field uses.
@@ -380,6 +382,8 @@ Each file is stored as its own `form_uploads` row. The field's submission value 
 The note under the input lists the field's limits: the number of files, the **Allowed File Types** (as `PDF, DOCX`) and the size limits, such as "Allowed file types: PDF, DOCX · Maximum file size: 5120 KB". The input's `aria-describedby` references it in all three renderers.
 
 **Storage** (Advanced tab) keeps uploads on the private forms disk (default) or, with **Media Library**, saves each file as an `artisanpack-ui/media-library` item, titled with the file's name. The upload's `form_uploads` row then points at the media item's file (`media_id`, `disk` and `path`; run the migrations), and deleting the upload, or pruning its submission, deletes the media item and its files. When the media item cannot be deleted, its original file is still removed and a warning naming the media item is logged.
+
+**Visibility** and the privacy settings (**Do not store**, **Mask in admin** and **Redact after (days)**) are in the Advanced tab, as for other inputs. An administrative file field is filled in on the submission detail, where admins upload, replace and remove its files. A "Do not store" field's files are attached to notifications and sent in webhook payloads, then deleted once those have run. A masked field's file names, previews and downloads are hidden from users who may not reveal masked values, and redaction deletes the stored files. See [File Uploads](file-uploads.md#visibility-and-privacy).
 
 Media library files follow the media library disk's visibility, which is **public** by default, so only use this storage for files that may be public, or point the media library at a private disk. Set `uploads.media_library.folder_id` (`FORMS_MEDIA_FOLDER_ID`) to file the uploads in a media folder, and `uploads.media_library.uploaded_by` (`FORMS_MEDIA_UPLOADED_BY`) to attribute guests' uploads to a user; otherwise the media library's own guest upload settings apply. When the media library is not installed, or rejects a file (for example because guest uploads are off or the file's type is not allowed there), the file is stored on the forms disk and a warning is logged.
 
@@ -555,7 +559,7 @@ A drawing is submitted as a PNG data URL (`data:image/png;base64,…`) and store
 
 Submissions show a drawn signature as an image, and the PNG is also listed under **Attachments**. HTML notifications embed the image as an inline (`cid:`) attachment, so it shows in email clients that block data URLs. Text emails and exports read "Signed (drawn)", and a typed signature reads `Signed as "Ada Lovelace" (typed)`. The **Is empty** and **Is not empty** conditional-logic operators apply.
 
-Signature fields have no privacy settings and can't be administrative, like file uploads, since the image is a stored file. In the Livewire renderer the pad is an Alpine canvas rather than `x-artisanpack-signature`, which needs the global `signature_pad` library and has no typed alternative. React and Vue use the shared `SignaturePad` class.
+Signature fields have no privacy settings and can't be administrative, since the image is a stored file. In the Livewire renderer the pad is an Alpine canvas rather than `x-artisanpack-signature`, which needs the global `signature_pad` library and has no typed alternative. React and Vue use the shared `SignaturePad` class.
 
 ### Email Confirmation
 

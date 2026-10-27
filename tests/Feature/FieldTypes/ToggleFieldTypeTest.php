@@ -15,6 +15,7 @@ use ArtisanPackUI\Forms\Services\ExportService;
 use ArtisanPackUI\Forms\Services\SubmissionService;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Livewire;
+use Tests\Models\User;
 
 /**
  * Guards issue #93: the toggle (switch) field type.
@@ -51,7 +52,7 @@ describe( 'toggle field type registration', function (): void {
     it( 'can be added from the Livewire builder palette', function (): void {
         $form = Form::factory()->create();
 
-        Livewire::test( FormBuilder::class, ['form' => $form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $form] )
             ->assertSee( 'Toggle' )
             ->call( 'addField', 'toggle' );
 

@@ -20,6 +20,7 @@ namespace ArtisanPackUI\Forms\Models;
 
 use ArtisanPackUI\Forms\Database\Factories\FormUploadFactory;
 use ArtisanPackUI\Forms\Support\MediaLibraryStorage;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -46,6 +47,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * @property string $path
  * @property string|null $mime_type
  * @property int $size
+ * @property int|null $pending_deliveries
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read FormSubmission $submission
@@ -79,6 +81,7 @@ class FormUpload extends Model
         'path',
         'mime_type',
         'size',
+        'pending_deliveries',
     ];
 
     // =========================================
@@ -107,6 +110,25 @@ class FormUpload extends Model
     public function field(): BelongsTo
     {
         return $this->belongsTo( FormField::class, 'field_id' );
+    }
+
+    // =========================================
+    // Scopes
+    // =========================================
+
+    /**
+     * Limits the query to uploads that are kept, leaving out files uploaded
+     * to "Do not store" fields (see isTransient()).
+     *
+     * @since 1.6.0
+     *
+     * @param  Builder<FormUpload>  $query  The query.
+     *
+     * @return Builder<FormUpload> The query.
+     */
+    public function scopeStored( Builder $query ): Builder
+    {
+        return $query->whereNull( 'pending_deliveries' );
     }
 
     // =========================================
@@ -206,6 +228,22 @@ class FormUpload extends Model
     public function isInMediaLibrary(): bool
     {
         return null !== $this->media_id;
+    }
+
+    /**
+     * Checks whether the file was uploaded to a "Do not store" field.
+     *
+     * Such a file is kept only until the notifications and webhooks of its
+     * submission have been sent, and is never shown in the admin (see
+     * TransientUploads).
+     *
+     * @since 1.6.0
+     *
+     * @return bool True while the upload waits for its deliveries.
+     */
+    public function isTransient(): bool
+    {
+        return null !== $this->pending_deliveries;
     }
 
     /**

@@ -13,6 +13,7 @@ use ArtisanPackUI\Forms\Models\FormStep;
 use ArtisanPackUI\Forms\Support\FieldSettings;
 use Illuminate\Http\Request;
 use Livewire\Livewire;
+use Tests\Models\User;
 
 describe( 'FieldSettings schema', function (): void {
     it( 'only lets legacy_store name a settings column', function (): void {
@@ -181,7 +182,7 @@ describe( 'Livewire builder settings from the schema', function (): void {
     it( 'renders one control per setting in the right tab', function (): void {
         $field = FormField::factory()->for( $this->form )->create( ['type' => 'rating', 'field_config' => ['max_rating' => 7]] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
             ->assertSeeHtml( 'id="field-setting-max_rating"' )
             ->assertSeeHtml( 'value="7"' )
@@ -197,7 +198,7 @@ describe( 'Livewire builder settings from the schema', function (): void {
     it( 'saves rating settings', function (): void {
         $field = FormField::factory()->for( $this->form )->create( ['type' => 'rating', 'field_config' => ['max_rating' => 5]] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
             ->call( 'updateSetting', 'max_rating', '10' )
             ->call( 'updateSetting', 'allow_half', true )
@@ -215,7 +216,7 @@ describe( 'Livewire builder settings from the schema', function (): void {
     it( 'clears a toggle when it is switched off', function (): void {
         $field = FormField::factory()->for( $this->form )->create( ['type' => 'text', 'field_config' => ['read_only' => true]] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
             ->call( 'updateSetting', 'read_only', false );
 
@@ -225,7 +226,7 @@ describe( 'Livewire builder settings from the schema', function (): void {
     it( 'rejects a max rating outside 1 to 10', function ( string $input ): void {
         $field = FormField::factory()->for( $this->form )->create( ['type' => 'rating', 'field_config' => ['max_rating' => 5]] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
             ->call( 'updateSetting', 'max_rating', $input );
 
@@ -247,7 +248,7 @@ describe( 'Livewire builder settings from the schema', function (): void {
 
         $field = FormField::factory()->for( $this->form )->create( ['type' => 'effort_score'] );
 
-        Livewire::test( FormBuilder::class, ['form' => $this->form] )
+        Livewire::actingAs( User::factory()->create() )->test( FormBuilder::class, ['form' => $this->form] )
             ->call( 'selectField', $field->uuid )
             ->assertSee( 'Low end label' )
             ->assertSeeHtml( 'placeholder="Not likely"' )

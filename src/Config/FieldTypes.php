@@ -218,8 +218,6 @@ class FieldTypes
             'supports_placeholder'        => false,
             'supports_default_value'      => false,
             'supports_dynamic_population' => false,
-            'supports_visibility'         => false,
-            'supports_privacy'            => false,
             'validation_options'          => ['max_size', 'allowed_types'],
         ],
         'date' => [

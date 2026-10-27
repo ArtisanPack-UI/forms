@@ -65,7 +65,7 @@ class FormSubmissionResource extends JsonResource
             'created_at'            => $this->created_at?->toIso8601String(),
             'updated_at'            => $this->updated_at?->toIso8601String(),
             'values'                => FormSubmissionValueResource::collection( $this->whenLoaded( 'values' ) ),
-            'uploads'               => FormUploadResource::collection( $this->whenLoaded( 'uploads' ) ),
+            'uploads'               => $this->whenLoaded( 'uploads', fn (): AnonymousResourceCollection => FormUploadResource::collection( FieldPrivacy::visibleUploads( $this->resource->uploads, $request->user() ) ) ),
             'administrative_fields' => $this->when(
                 $this->resource->relationLoaded( 'form' ) && true === $this->resource->form?->relationLoaded( 'fields' ),
                 fn (): AnonymousResourceCollection => $this->administrativeFields(),

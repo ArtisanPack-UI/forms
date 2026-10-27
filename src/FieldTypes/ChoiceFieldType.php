@@ -20,9 +20,10 @@ use Illuminate\Validation\Rule;
  * A field whose value is one of its options' values.
  *
  * Shows the chosen option's label, falling back to the stored value when the
- * field or the option has since been deleted. A field that loads its choices
- * from a source (see ChoiceSources) only accepts one of the resolved values,
- * unless it offers an "Other" choice.
+ * field or the option has since been deleted. Only one of the field's option
+ * values is accepted (the values a source resolved, for a field that loads
+ * its choices from one; see ChoiceSources), unless the field offers an
+ * "Other" choice. A multiple-choice field's values must each be a string.
  *
  * @since 1.6.0
  */
@@ -37,14 +38,18 @@ abstract class ChoiceFieldType extends AbstractFieldType
     {
         $rules = parent::rules( $field );
 
-        if ( ! $this->limitsToSourceChoices( $field ) ) {
+        if ( $field->isMultipleChoice() ) {
+            $rules['*'] = ['string'];
+        }
+
+        if ( ! $this->limitsToChoices( $field ) ) {
             return $rules;
         }
 
         $in = (string) Rule::in( $this->choiceValues( $field ) );
 
         if ( $field->isMultipleChoice() ) {
-            $rules['*'] = [$in];
+            $rules['*'][] = $in;
         } else {
             $rules[''][] = $in;
         }
@@ -93,25 +98,34 @@ abstract class ChoiceFieldType extends AbstractFieldType
     {
         $messages = parent::typeMessages( $field );
 
-        if ( $this->limitsToSourceChoices( $field ) ) {
-            $messages[ $field->isMultipleChoice() ? '*.in' : 'in' ] = __( 'Please choose one of the available options for :field.', ['field' => $field->label] );
+        $message = __( 'Please choose one of the available options for :field.', ['field' => $field->label] );
+
+        if ( $field->isMultipleChoice() ) {
+            $messages['*.string'] = $message;
+        }
+
+        if ( $this->limitsToChoices( $field ) ) {
+            $messages[ $field->isMultipleChoice() ? '*.in' : 'in' ] = $message;
         }
 
         return $messages;
     }
 
     /**
-     * Checks whether submitted values must be one of the choices a source resolved.
+     * Checks whether submitted values must be one of the field's option values.
+     *
+     * Text typed into an "Other" choice matches no option, so a field that
+     * offers one accepts any value.
      *
      * @since 1.6.0
      *
      * @param  FormField  $field  The field.
      *
-     * @return bool True when the field loads its choices from a source and has no "Other" choice.
+     * @return bool True when the field has no "Other" choice.
      */
-    protected function limitsToSourceChoices( FormField $field ): bool
+    protected function limitsToChoices( FormField $field ): bool
     {
-        return null !== $field->getChoicesSource() && ! $field->allowsOtherChoice();
+        return ! $field->allowsOtherChoice();
     }
 
     /**

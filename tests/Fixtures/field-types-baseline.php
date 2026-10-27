@@ -7,7 +7,9 @@
  *
  * Deliberate changes since: URL fields accept only `http` and `https` unless
  * they allow other schemes (#120), so their rule is `url:http,https`. Date
- * fields require `Y-m-d` dates (`date_format:Y-m-d`, #122 / #123).
+ * fields require `Y-m-d` dates (`date_format:Y-m-d`, #122 / #123). Choice
+ * fields only accept their option values (`in:`), and a multiple-choice
+ * field's values must each be a string (`{name}.*`, #153).
  */
 
 return  [
@@ -545,11 +547,13 @@ return  [
            [
             0 => 'nullable',
             1 => 'string',
+            2 => 'in:"a","b"',
           ],
           'required' => 
            [
             0 => 'required',
             1 => 'string',
+            2 => 'in:"a","b"',
           ],
         ],
         'radio' => 
@@ -558,11 +562,13 @@ return  [
            [
             0 => 'nullable',
             1 => 'string',
+            2 => 'in:"a","b"',
           ],
           'required' => 
            [
             0 => 'required',
             1 => 'string',
+            2 => 'in:"a","b"',
           ],
         ],
         'checkbox' => 
@@ -849,6 +855,7 @@ return  [
              [
               0 => 'nullable',
               1 => 'string',
+              2 => 'in:"a","b"',
             ],
           ],
           'required' => 
@@ -857,6 +864,7 @@ return  [
              [
               0 => 'required',
               1 => 'string',
+              2 => 'in:"a","b"',
             ],
           ],
         ],
@@ -868,6 +876,7 @@ return  [
              [
               0 => 'nullable',
               1 => 'string',
+              2 => 'in:"a","b"',
             ],
           ],
           'required' => 
@@ -876,6 +885,7 @@ return  [
              [
               0 => 'required',
               1 => 'string',
+              2 => 'in:"a","b"',
             ],
           ],
         ],
@@ -908,6 +918,11 @@ return  [
               1 => 'array',
               2 => 'min:1',
             ],
+            'formData.checkbox_group.*' => 
+             [
+              0 => 'string',
+              1 => 'in:"a","b"',
+            ],
           ],
           'required' => 
            [
@@ -916,6 +931,11 @@ return  [
               0 => 'required',
               1 => 'array',
               2 => 'min:1',
+            ],
+            'formData.checkbox_group.*' => 
+             [
+              0 => 'string',
+              1 => 'in:"a","b"',
             ],
           ],
         ],
@@ -928,6 +948,11 @@ return  [
               0 => 'nullable',
               1 => 'array',
             ],
+            'formData.select_multiple.*' => 
+             [
+              0 => 'string',
+              1 => 'in:"a","b"',
+            ],
           ],
           'required' => 
            [
@@ -935,6 +960,11 @@ return  [
              [
               0 => 'required',
               1 => 'array',
+            ],
+            'formData.select_multiple.*' => 
+             [
+              0 => 'string',
+              1 => 'in:"a","b"',
             ],
           ],
         ],
@@ -1126,20 +1156,24 @@ return  [
          [
           'optional' => 
            [
+            'formData.select.in' => 'Please choose one of the available options for Select.',
           ],
           'required' => 
            [
             'formData.select.required' => 'The Select field is required.',
+            'formData.select.in'       => 'Please choose one of the available options for Select.',
           ],
         ],
         'radio' => 
          [
           'optional' => 
            [
+            'formData.radio.in' => 'Please choose one of the available options for Radio.',
           ],
           'required' => 
            [
             'formData.radio.required' => 'The Radio field is required.',
+            'formData.radio.in'       => 'Please choose one of the available options for Radio.',
           ],
         ],
         'checkbox' => 
@@ -1156,20 +1190,28 @@ return  [
          [
           'optional' => 
            [
+            'formData.checkbox_group.*.string' => 'Please choose one of the available options for Checkbox_group.',
+            'formData.checkbox_group.*.in'     => 'Please choose one of the available options for Checkbox_group.',
           ],
           'required' => 
            [
             'formData.checkbox_group.required' => 'The Checkbox_group field is required.',
+            'formData.checkbox_group.*.string' => 'Please choose one of the available options for Checkbox_group.',
+            'formData.checkbox_group.*.in'     => 'Please choose one of the available options for Checkbox_group.',
           ],
         ],
         'select_multiple' => 
          [
           'optional' => 
            [
+            'formData.select_multiple.*.string' => 'Please choose one of the available options for Select_multiple.',
+            'formData.select_multiple.*.in'     => 'Please choose one of the available options for Select_multiple.',
           ],
           'required' => 
            [
             'formData.select_multiple.required' => 'The Select_multiple field is required.',
+            'formData.select_multiple.*.string' => 'Please choose one of the available options for Select_multiple.',
+            'formData.select_multiple.*.in'     => 'Please choose one of the available options for Select_multiple.',
           ],
         ],
         'file' => 
