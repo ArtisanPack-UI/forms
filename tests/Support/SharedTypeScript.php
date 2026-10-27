@@ -7,6 +7,7 @@ namespace Tests\Support;
 use Illuminate\Support\Facades\File;
 use RuntimeException;
 use Symfony\Component\Process\Process;
+use Throwable;
 
 /**
  * Runs the shared React/Vue helpers (`resources/js/shared/*.ts`) in Node, so
@@ -105,7 +106,7 @@ class SharedTypeScript
                 $process->run();
 
                 $available = $process->isSuccessful() && 'true' === $process->getOutput();
-            } catch ( \Throwable ) {
+            } catch ( Throwable ) {
                 $available = false;
             }
         }

@@ -51,6 +51,6 @@ describe( 'boolean values (RX1)', function (): void {
         $source = jsSubmissionSource( $path );
 
         expect( $source )->toContain( 'appendSubmissionValue( formDataObj, key, value )' )
-            ->and( $source )->not->toContain( "formDataObj.append( `data[\${key}]`, String( value ) )" );
+            ->and( $source )->not->toContain( 'formDataObj.append( `data[${key}]`, String( value ) )' );
     } )->with( ['react/hooks/useForm.ts', 'vue/composables/useForm.ts'] );
 } );
