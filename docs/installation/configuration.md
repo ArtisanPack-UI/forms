@@ -60,8 +60,33 @@ Configure file upload handling:
         'text/plain',
         'text/csv',
     ],
+
+    // File fields whose Storage setting is "Media Library" (since 1.6.0)
+    'media_library' => [
+        // A media folder to file the uploads in
+        'folder_id' => env('FORMS_MEDIA_FOLDER_ID'),
+
+        // The user media items are attributed to (for guest uploads)
+        'uploaded_by' => env('FORMS_MEDIA_UPLOADED_BY'),
+    ],
+
+    // Images uploaded in the builders for image choices (since 1.6.0)
+    'choice_images' => [
+        // Public disk used when artisanpack-ui/media-library is not installed
+        'disk' => env('FORMS_CHOICE_IMAGES_DISK', 'public'),
+
+        // Directory within the disk
+        'directory' => env('FORMS_CHOICE_IMAGES_DIRECTORY', 'forms/choice-images'),
+
+        // Maximum image size in KB (JPEG, PNG, GIF and WebP only)
+        'max_size' => env('FORMS_CHOICE_IMAGES_MAX_SIZE', 2048),
+    ],
 ],
 ```
+
+`media_library` applies to file fields whose **Storage** setting is **Media Library**. Those files live on the media library's disk and follow its visibility, which is public by default, and fields with **Mask in admin** or **Do not store** on never use it. See [File Uploads](Usage-File-Uploads#media-library-storage).
+
+Choice images are shown on the public form, so they are stored with `artisanpack-ui/media-library` when it is installed, or on the public `choice_images.disk` otherwise. SVG is never accepted. See [Image Choices](Usage-Form-Builder#image-choices).
 
 ### Submissions
 
@@ -118,6 +143,8 @@ Configure built-in spam protection:
     ],
 ],
 ```
+
+`captcha` configures the CAPTCHA field (since 1.6.0). `driver` is the provider a field uses unless it picks its own: `turnstile`, `hcaptcha`, `recaptcha_v2` or `recaptcha_v3`, or a driver registered through the `ap.forms.captchaDrivers` filter. A provider without both keys renders nothing and checks nothing. See [Spam Protection](Advanced-Spam-Protection#captcha).
 
 ### Notifications
 
@@ -268,7 +295,18 @@ Configure the form-uploads filesystem disk:
 | `FORMS_UPLOADS_DISK` | `form-uploads` | Storage disk for uploads |
 | `FORMS_UPLOADS_DIRECTORY` | `uploads` | Upload directory |
 | `FORMS_UPLOADS_MAX_SIZE` | `10240` | Max upload size (KB) |
+| `FORMS_MEDIA_FOLDER_ID` | `null` | Media library folder for file-field uploads |
+| `FORMS_MEDIA_UPLOADED_BY` | `null` | User ID media items are attributed to |
+| `FORMS_CHOICE_IMAGES_DISK` | `public` | Disk for image-choice uploads without the media library |
+| `FORMS_CHOICE_IMAGES_DIRECTORY` | `forms/choice-images` | Directory for image-choice uploads |
+| `FORMS_CHOICE_IMAGES_MAX_SIZE` | `2048` | Max image-choice upload size (KB) |
 | `FORMS_RETENTION_DAYS` | `null` | Days to keep submissions |
+| `FORMS_CAPTCHA_DRIVER` | `turnstile` | Default CAPTCHA provider |
+| `FORMS_TURNSTILE_SITE_KEY` / `FORMS_TURNSTILE_SECRET_KEY` | `null` | Cloudflare Turnstile keys |
+| `FORMS_HCAPTCHA_SITE_KEY` / `FORMS_HCAPTCHA_SECRET_KEY` | `null` | hCaptcha keys |
+| `FORMS_RECAPTCHA_V2_SITE_KEY` / `FORMS_RECAPTCHA_V2_SECRET_KEY` | `null` | reCAPTCHA v2 keys |
+| `FORMS_RECAPTCHA_V3_SITE_KEY` / `FORMS_RECAPTCHA_V3_SECRET_KEY` | `null` | reCAPTCHA v3 keys |
+| `FORMS_RECAPTCHA_V3_THRESHOLD` | `0.5` | reCAPTCHA v3 minimum score |
 | `FORMS_FROM_NAME` | `null` | Default notification sender name |
 | `FORMS_FROM_EMAIL` | `null` | Default notification sender email |
 | `FORMS_NOTIFICATION_QUEUE` | `default` | Queue for notifications |
@@ -281,6 +319,7 @@ Configure the form-uploads filesystem disk:
 | `FORMS_INCLUDE_IP` | `true` | Store IP in submissions |
 | `FORMS_ANONYMIZE_IP` | `false` | Anonymize stored IP |
 | `FORMS_INCLUDE_USER_AGENT` | `true` | Store user agent |
+| `FORMS_CONSENT_STORE_TEXT` | `true` | Store consent text with each consent |
 | `FORMS_INCLUDE_IP_ADDRESS` | `false` | Include IP in exports/webhooks |
 | `FORMS_SECURITY_LOGGING` | `true` | Log security events |
 | `FORMS_RESTRICT_BY_OWNER` | `false` | Enforce ownership |

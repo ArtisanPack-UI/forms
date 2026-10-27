@@ -25,6 +25,8 @@ Welcome to the documentation for the ArtisanPack UI Forms package. This package 
   - [File Uploads](Usage-File-Uploads)
   - [Multi-Step Forms](Usage-Multi-Step-Forms)
   - [Conditional Logic](Usage-Conditional-Logic)
+  - [Field Privacy & Visibility](Usage-Field-Privacy)
+  - [Dynamic Population](Usage-Dynamic-Population)
 
 - **Livewire Components**
   - [Components Overview](Components-Components)
@@ -56,6 +58,7 @@ Welcome to the documentation for the ArtisanPack UI Forms package. This package 
   - [Webhooks](Advanced-Webhooks)
   - [Spam Protection](Advanced-Spam-Protection)
   - [Customization](Advanced-Customization)
+  - [Field Type Handlers](Advanced-Field-Type-Handlers)
   - [Artisan Commands](Advanced-Artisan-Commands)
 
 - **AI Features** (v1.2.0+)
@@ -74,12 +77,14 @@ Welcome to the documentation for the ArtisanPack UI Forms package. This package 
 ## Features
 
 - **Drag-and-Drop Form Builder**: Intuitive Livewire-powered interface for creating forms
-- **20+ Field Types**: Text, email, textarea, select, checkbox, radio, file upload, date picker, and more
+- **35+ Field Types**: Text, email, choices, toggles, file uploads, dates, ratings, sliders, name and address, lists, calculations, signatures, consent, CAPTCHA, and more
 - **Multi-Step Forms**: Break long forms into manageable steps with progress indicators
 - **Conditional Logic**: Show/hide fields based on user input
 - **File Uploads**: Secure file upload handling with validation and storage management
 - **Email Notifications**: Configurable admin notifications and autoresponders
-- **Spam Protection**: Built-in honeypot and reCAPTCHA support
+- **Spam Protection**: Built-in honeypot, rate limiting, and a CAPTCHA field (Turnstile, hCaptcha, reCAPTCHA v2 and v3)
+- **Field Privacy**: Administrative fields, "Do not store", masking in the admin, and timed redaction
+- **Dynamic Population**: Start fields with values from the page, the query string or your code
 - **AI Features** (v1.2.0+): Opt-in semantic spam detection, per-form submission digests, auto-categorization, and semantic per-field validation via `artisanpack-ui/ai`
 - **Webhook Integrations**: Send form data to external services
 - **Submission Management**: View, export, and manage form submissions
@@ -91,8 +96,8 @@ Welcome to the documentation for the ArtisanPack UI Forms package. This package 
 ## Quick Example
 
 ```blade
-{{-- Display a form by slug --}}
-<livewire:forms::form-renderer slug="contact-us" />
+{{-- Display a form; $form = app(FormService::class)->getBySlug('contact-us') --}}
+<livewire:form-renderer :form="$form" />
 ```
 
 ## Support

@@ -12,6 +12,7 @@ Advanced configuration and integration options for ArtisanPack UI Forms.
 - [Webhooks](Advanced-Webhooks) - Send data to external services
 - [Spam Protection](Advanced-Spam-Protection) - Protect forms from spam
 - [Customization](Advanced-Customization) - Extend and customize the package
+- [Field Type Handlers](Advanced-Field-Type-Handlers) - Add or change field types
 - [Artisan Commands](Advanced-Artisan-Commands) - CLI commands
 
 ## See Also

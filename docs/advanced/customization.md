@@ -40,102 +40,91 @@ resources/views/vendor/forms/
 │   ├── submission-detail.blade.php
 │   ├── submissions-list.blade.php
 │   └── notification-editor.blade.php
-├── partials/
+├── components/
 │   ├── fields/
 │   │   ├── text.blade.php
 │   │   ├── email.blade.php
 │   │   ├── textarea.blade.php
-│   │   └── ...
-│   ├── progress.blade.php
-│   └── navigation.blade.php
+│   │   └── ...        (one view per field type)
+│   ├── field-layout.blade.php
+│   └── combobox.blade.php
 └── emails/
     ├── notification.blade.php
     └── notification-text.blade.php
 ```
 
+A published view shadows the package's copy, so it doesn't get the package's later fixes. Publish only the views you change, and after upgrading compare them with the package's new copies. 1.5 copies of `livewire/form-renderer.blade.php` and `components/fields/file.blade.php` don't work with 1.6; republish them with `php artisan vendor:publish --tag=forms-views --force` and apply your changes again.
+
 ### Custom Field Templates
 
-Create custom field templates:
-
-```blade
-{{-- resources/views/vendor/forms/partials/fields/text.blade.php --}}
-<div class="form-group mb-4">
-    <label for="{{ $field->name }}" class="block font-medium mb-1">
-        {{ $field->label }}
-        @if ($field->required)
-            <span class="text-red-500">*</span>
-        @endif
-    </label>
-
-    <input
-        type="text"
-        id="{{ $field->name }}"
-        wire:model="formData.{{ $field->name }}"
-        placeholder="{{ $field->placeholder }}"
-        class="w-full border rounded px-3 py-2 @error('formData.' . $field->name) border-red-500 @enderror"
-    >
-
-    @if ($field->help_text)
-        <p class="text-sm text-gray-500 mt-1">{{ $field->help_text }}</p>
-    @endif
-
-    @error('formData.' . $field->name)
-        <p class="text-sm text-red-500 mt-1">{{ $message }}</p>
-    @enderror
-</div>
-```
+Each field type is rendered by `forms::components.fields.{type}`. To change how a type looks, put a copy at `resources/views/vendor/forms/components/fields/{type}.blade.php`. Start from the package's own view, which handles label placement, descriptions, errors and the ARIA attributes. The view receives `$field`, `$value`, `$error` and `$subErrors`. To change a field's HTML without replacing the view, use the `ap.forms.fieldRender` filter.
 
 ## Custom Field Types
 
-### Register a Field Type
+Since 1.6.0 the recommended way to add a field type is a **field type handler**: a class that extends `ArtisanPackUI\Forms\FieldTypes\AbstractFieldType` and holds the type's definition, settings, validation, display, export and merge tags. See [Field Type Handlers](Advanced-Field-Type-Handlers).
 
 ```php
 // In a service provider
+use App\Forms\IbanFieldType;
 use function addFilter;
 
 public function boot(): void
 {
-    addFilter('ap.forms.fieldTypes', function ($types) {
-        $types['color-picker'] = [
-            'label' => 'Color Picker',
-            'icon' => 'palette',
-            'category' => 'advanced',
-            'view' => 'my-package::fields.color-picker',
-            'validation' => ['hex_color'],
-        ];
+    addFilter('ap.forms.fieldTypes', function (array $types): array {
+        $types['iban'] = IbanFieldType::class; // or new IbanFieldType()
 
         return $types;
     });
 }
 ```
 
+### Register an Array Definition
+
+An array definition still works. It is wrapped in `ArrayFieldType`, so it gets the default handler behaviour:
+
+```php
+addFilter('ap.forms.fieldTypes', function (array $types): array {
+    $types['hex_code'] = [
+        'label'                  => __('Hex Code'),
+        'icon'                   => 'o-swatch',
+        'category'               => 'advanced',
+        'has_options'            => false,
+        'supports_placeholder'   => true,
+        'supports_default_value' => true,
+        'validation_options'     => ['pattern'],
+        'type_validation'        => ['string', 'hex_color'], // replaces the default `string` rule
+    ];
+
+    return $types;
+});
+```
+
+`validation_options` gives the type the matching builder controls (`min`, `max`, `pattern`, `step`, `max_size`, `allowed_types`, `min_date`, `max_date`), and a `settings` list adds your own (see [Settings Schema](Advanced-Field-Type-Handlers#settings-schema)). The type also needs a palette category before it shows in the builder (see below).
+
 ### Field View
 
+The Livewire renderer renders a field with the `forms::components.fields.{type}` view, here `forms::components.fields.hex_code`. Put it in your app at `resources/views/vendor/forms/components/fields/hex_code.blade.php`, override the handler's `view()`, or supply the HTML through the `ap.forms.fieldRender` filter. The view receives `$field`, `$value`, `$error` and `$subErrors`:
+
 ```blade
-{{-- resources/views/vendor/forms/partials/fields/color-picker.blade.php --}}
-<div class="form-group">
+{{-- resources/views/vendor/forms/components/fields/hex_code.blade.php --}}
+<div>
     <label for="{{ $field->name }}">{{ $field->label }}</label>
 
-    <div class="flex items-center gap-2">
-        <input
-            type="color"
-            id="{{ $field->name }}"
-            wire:model="formData.{{ $field->name }}"
-            class="w-12 h-12 cursor-pointer"
-        >
-        <input
-            type="text"
-            wire:model="formData.{{ $field->name }}"
-            placeholder="#000000"
-            class="border rounded px-3 py-2"
-        >
-    </div>
+    <input
+        type="text"
+        id="{{ $field->name }}"
+        wire:model.blur="formData.{{ $field->name }}"
+        placeholder="#000000"
+        @if ($error) aria-invalid="true" aria-describedby="error-{{ $field->name }}" @endif
+    >
 
-    @error('formData.' . $field->name)
-        <span class="error">{{ $message }}</span>
-    @enderror
+    @if ($error)
+        <p id="error-{{ $field->name }}" class="text-error">{{ $error }}</p>
+    @endif
 </div>
 ```
+
+The React and Vue renderers need a component for the type; see [React Components](Frontend-React#custom-field-types).
 
 ### Make a Custom Field a First-Class Builder Citizen
 
@@ -208,6 +197,14 @@ place of it.
 | `forms.spam_check` | `$isSpam, $form, $data` | Custom spam detection |
 | `ap.forms.submission.should_send_notifications` | `$shouldSend, $submission` | Decide whether the notification pipeline runs for a submission; defaults to `false` for quarantined submissions (since 1.5.0) |
 | `ap.forms.settingsTabs` | `$tabs, $form` | Add admin settings tabs |
+| `ap.forms.readOnlyValue` | `$value, $field` | The value a read-only field is stored with (since 1.6.0). Use this rather than `ap.forms.submissionData`, which runs before read-only values are applied |
+| `ap.forms.fieldValue.{parameter}` | `$default, $field, $context` (plus `$subInputKey` for a composite input) | The starting value of a dynamically populated field, after the prefill and query string (since 1.6.0; see [Dynamic Population](Usage-Dynamic-Population)) |
+| `ap.forms.choiceSources` | `$sources` | Register sources a choice field can load its options from, as `key => ['label' => …, 'resolver' => callable]` (since 1.6.0) |
+| `ap.forms.predefinedChoices` | `$lists` | Add or change the builders' predefined choice lists, as `key => ['label' => …, 'choices' => […]]` (since 1.6.0) |
+| `ap.forms.countries` | `$countries` | The country list (ISO 3166-1 alpha-2 code => name) used by address fields, international phone fields and the Countries predefined list (since 1.6.0) |
+| `ap.forms.captchaDrivers` | `$drivers` | Register or replace CAPTCHA drivers, keyed by name, as a `CaptchaDriver` class name or instance (since 1.6.0; see [Spam Protection](Advanced-Spam-Protection#custom-drivers)) |
+| `ap.forms.canRevealMaskedValues` | `$allowed, $user` | Decide who may see values of fields with **Mask in admin** on. Return `true` to allow (since 1.6.0; see [Field Privacy & Visibility](Usage-Field-Privacy)) |
+| `ap.forms.addressAutocomplete` | `$html, $field` | HTML the Livewire renderer prints after an address field, for address autocomplete providers (since 1.6.0) |
 
 ### Available Actions
 

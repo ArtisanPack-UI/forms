@@ -25,14 +25,13 @@ FormField::create([
     'type' => 'file',
     'name' => 'resume',
     'label' => 'Upload Resume',
-    'required' => false,
-    'settings' => [
-        'accept' => '.pdf,.doc,.docx',
+    'is_required' => false,
+    'field_config' => [
+        'allowed_types' => ['pdf', 'doc', 'docx'],
         'max_size' => 5120, // KB (5MB)
         'multiple' => false,
-        'max_files' => 1,
     ],
-    'order' => 5,
+    'sort_order' => 5,
 ]);
 ```
 
@@ -71,14 +70,17 @@ FormField::create([
 
 ### Per-Field Settings
 
+These are stored in the field's `field_config`.
+
 | Setting | Description |
 |---------|-------------|
-| `accept` | Accepted file extensions (e.g., `.pdf,.doc`) |
-| `max_size` | Maximum size in KB |
+| `allowed_types` | Allowed file extensions, such as `['pdf', 'docx']`. Entries that are not plain extensions are ignored. |
+| `max_size` | Maximum size of each file in KB |
 | `multiple` | Allow multiple files |
 | `max_files` | Maximum number of files (if multiple) |
 | `max_total_size` | Maximum size of all files together in KB (if multiple) |
 | `min_width`, `max_width`, `min_height`, `max_height` | Pixel bounds for uploaded images; other files are not checked |
+| `storage` | `forms` (the private forms disk, default) or `media_library` (see [Media Library Storage](#media-library-storage)) |
 
 A multi-file field stores one `form_uploads` row per file and one submission value that lists them all: `upload_id` is the first upload and `value_array` holds every upload ID in order. Use `$value->getUploads()` to get them.
 
@@ -116,7 +118,7 @@ Then update the forms config:
 
 ### Media Library Storage
 
-A file field's **Storage** setting (Advanced tab, `field_config.storage`) can save its uploads with `artisanpack-ui/media-library` instead (since 1.6.0). Each file becomes a media item titled with the file's name, and its `form_uploads` row records the item in `media_id` with the item's `disk` and `path`, so downloads and URLs keep working. Deleting the upload or its submission, including through `forms:prune-submissions`, deletes the media item and its files too.
+A file field's **Storage** setting (Advanced tab, `field_config.storage`) can save its uploads with `artisanpack-ui/media-library` 1.4 or later instead (since 1.6.0). Each file becomes a media item titled with the file's name, and its `form_uploads` row records the item in `media_id` with the item's `disk` and `path`, so downloads and URLs keep working. Deleting the upload or its submission, including through `forms:prune-submissions`, deletes the media item and its files too.
 
 ```php
 'uploads' => [
@@ -132,6 +134,8 @@ The media library's disk is public by default, so files stored there can be reac
 - The file is handed to the media library under the extension found from its contents, so `invoice.php` holding a PNG is saved as `invoice-….png`. The visitor's file name is kept as the media item's title and the upload's `original_name`.
 - Types a browser could run when opened from a public disk (SVG, HTML, XHTML, XML, XSL, JavaScript and PHP) are always stored on the private forms disk.
 - Media items are attributed to `uploaded_by` when it is set, never to a visitor who happens to be logged in. Otherwise the media library's own guest upload settings apply.
+
+The setting is ignored for fields with **Mask in admin** or **Do not store** on. Those files always stay on the private forms disk, since a media item on a public disk would be reachable by URL and listed in the media library.
 
 When the media library is not installed or rejects a file, such as when guest uploads are off and `uploaded_by` is unset, the file is stored on the forms disk instead and a warning is logged.
 
@@ -206,7 +210,7 @@ Filenames are sanitized to prevent path traversal and other attacks:
 
 ## Visibility and Privacy
 
-File fields have the same **Visibility** setting and per-field privacy settings as other inputs, in the builder's Advanced tab. Because a file is stored as a file and a `form_uploads` row rather than as a submission value, each one is handled with the file in mind.
+File fields have the same **Visibility** setting and per-field privacy settings as other inputs, in the builder's Advanced tab. Because a file is stored as a file and a `form_uploads` row rather than as a submission value, each one is handled with the file in mind. See [Field Privacy & Visibility](Usage-Field-Privacy) for how these settings work on every field, including who may reveal masked values and who may change the settings.
 
 ### Administrative File Fields
 
@@ -217,11 +221,11 @@ With **Visibility** set to **Administrative**, the field is left out of the publ
 - **API** — send the files to the update endpoint as multipart `admin_files[{name}]` (`admin_files[{name}][]` for a multi-file field). PHP only parses multipart bodies on `POST`, so send a `POST` with `_method=PUT`. Each file is checked with the field's **Max File Size**, **Allowed File Types**, image and multi-file limits. To delete files, send their upload IDs in `remove_admin_uploads`; each must be a file of one of the submission's administrative file fields that you may edit.
 
 ```bash
-curl -X POST https://example.com/api/forms/contact/submissions/42 \
+curl -X POST https://example.com/api/v1/forms/contact/submissions/42 \
   -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
   -F _method=PUT -F "admin_files[contract]=@contract.pdf"
 
-curl -X PUT https://example.com/api/forms/contact/submissions/42 \
+curl -X PUT https://example.com/api/v1/forms/contact/submissions/42 \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"remove_admin_uploads": [17]}'
 ```
@@ -232,7 +236,7 @@ A required administrative file field only needs a file while the submission has 
 
 The files are stored only for as long as the submission's notifications and webhooks need them. No submission value is saved for the field.
 
-- Notifications that include the submission data attach the files.
+- Admin notifications that include the submission data attach the files. Autoresponders never do, since they go to an address the visitor typed.
 - Webhooks receive them in `submission.files`, one entry per file with its `field`, `name`, `mime_type`, `size` and base64 `content`.
 - The files never appear in the admin, the API or exports, and their download routes return 404.
 
@@ -364,3 +368,4 @@ $upload->disk; // Should match configured disk
 - [Multi-Step Forms](Multi-Step-Forms) - Create multi-step forms
 - [Notifications](Notifications) - Include uploads in notifications
 - [Submissions](Submissions) - Managing submission data
+- [Field Privacy & Visibility](Usage-Field-Privacy) - Administrative fields, masking and redaction

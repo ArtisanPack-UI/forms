@@ -34,25 +34,33 @@ By default, the admin routes use the `web` and `auth` middleware. Ensure users a
 
 Use the `FormRenderer` Livewire component to display forms:
 
-```blade
-{{-- By slug (recommended) --}}
-<livewire:forms::form-renderer slug="contact-us" />
+```php
+use ArtisanPackUI\Forms\Services\FormService;
 
-{{-- By form ID --}}
-<livewire:forms::form-renderer :form-id="1" />
+// By slug (recommended)
+$form = app(FormService::class)->getBySlug('contact-us');
 
-{{-- With custom success message --}}
-<livewire:forms::form-renderer
-    slug="contact"
-    success-message="Thanks for reaching out!"
-/>
-
-{{-- With redirect after submission --}}
-<livewire:forms::form-renderer
-    slug="contact"
-    redirect-url="/thank-you"
-/>
+// By form ID
+$form = app(FormService::class)->getById(1);
 ```
+
+```blade
+<livewire:form-renderer :form="$form" />
+
+{{-- With starting values for dynamically populated fields --}}
+<livewire:form-renderer :form="$form" :prefill="['plan' => 'pro']" />
+```
+
+The success message and redirect URL are form settings, not component props. Set them in the form's **Settings** tab, or on the model:
+
+```php
+$form->update([
+    'success_message' => 'Thanks for reaching out!',
+    'redirect_url' => '/thank-you',
+]);
+```
+
+A redirect URL makes the renderer dispatch a `redirect-to` event, which your page handles (see [Form Renderer](Usage-Form-Renderer#redirect-after-submission)).
 
 ## Creating Forms Programmatically
 
@@ -157,29 +165,48 @@ addFilter('ap.forms.validationRules', function ($rules, $form) {
 
 ## Field Types
 
-The package supports 20+ field types:
+The package has 36 built-in field types:
 
 | Type | Description |
 |------|-------------|
 | `text` | Single-line text input |
-| `email` | Email address input |
-| `textarea` | Multi-line text area |
-| `select` | Dropdown selection |
-| `checkbox` | Single checkbox |
-| `checkbox_group` | Multiple checkboxes |
+| `email` | Email address input, with optional confirmation |
+| `phone` | Phone number input |
+| `number` | Numeric input |
+| `url` | URL input |
+| `textarea` | Multi-line text area, optionally a rich text editor |
+| `hidden` | Hidden field |
+| `select` | Dropdown selection, optionally searchable |
+| `select_multiple` | Multi-select |
 | `radio` | Radio button group |
-| `file` | File upload |
+| `checkbox` | Single checkbox |
+| `toggle` | On/off switch |
+| `checkbox_group` | Multiple checkboxes |
+| `file` | File upload, single or multiple |
 | `date` | Date picker |
 | `time` | Time picker |
 | `datetime` | Date and time picker |
-| `number` | Numeric input |
-| `phone` | Phone number input |
-| `url` | URL input |
-| `password` | Password input |
-| `hidden` | Hidden field |
-| `html` | Static HTML content |
+| `date_range` | Start and end dates |
+| `rating` | Star rating |
+| `slider` | Range slider |
+| `color` | Color picker |
+| `nps` | Net Promoter Score (0–10) |
+| `matrix` | Likert scale / matrix |
+| `ranking` | Order choices by preference |
+| `name` | Name, in parts |
+| `address` | Postal address |
+| `list` | Repeatable rows |
+| `calculation` | Read-only number worked out from other fields |
+| `signature` | Drawn or typed signature |
+| `consent` | Consent checkbox that records what was agreed to |
+| `captcha` | CAPTCHA challenge |
+| `section` | Groups the fields after it |
 | `heading` | Section heading |
+| `paragraph` | Formatted text |
 | `divider` | Visual divider |
+| `html` | Static HTML content |
+
+See [Form Builder](Usage-Form-Builder#field-types) for each type's settings, and [Field Type Handlers](Advanced-Field-Type-Handlers) to add your own.
 
 ## Next Steps
 

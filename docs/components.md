@@ -22,22 +22,22 @@ Pre-built Livewire components for form management and display.
 
 ```blade
 {{-- Form management --}}
-<livewire:forms::forms-list />
-<livewire:forms::form-builder :form="$form" />
+<livewire:forms-list />
+<livewire:form-builder :form="$form" />
 
 {{-- Submission management --}}
-<livewire:forms::submissions-list :form="$form" />
-<livewire:forms::submission-detail :submission="$submission" />
+<livewire:submissions-list :form-id="$form->id" />
+<livewire:submission-detail :submission="$submission" />
 
 {{-- Notification editor --}}
-<livewire:forms::notification-editor :form="$form" />
+<livewire:notification-editor :form="$form" />
 ```
 
 ### Public Components
 
 ```blade
-{{-- Display form --}}
-<livewire:forms::form-renderer slug="contact" />
+{{-- Display form ($form is a Form model) --}}
+<livewire:form-renderer :form="$form" />
 ```
 
 For detailed component documentation, see [Components Overview](Components-Components).

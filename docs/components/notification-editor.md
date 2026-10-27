@@ -9,7 +9,7 @@ The NotificationEditor component provides an interface for configuring form emai
 ## Basic Usage
 
 ```blade
-<livewire:forms::notification-editor :form="$form" />
+<livewire:notification-editor :form="$form" />
 ```
 
 ## Properties
@@ -257,9 +257,11 @@ public function delete(int $id): void
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `notification-saved` | `{ id }` | Notification saved |
-| `notification-deleted` | `{ id }` | Notification deleted |
-| `test-sent` | `{ email }` | Test email sent |
+| `notification-added` | `{ notificationId }` | Notification added |
+| `notification-duplicated` | `{ notificationId }` | Notification duplicated (ID of the copy) |
+| `notification-deleted` | `{ notificationId }` | Notification deleted |
+| `notifications-saved` | none | Notifications saved |
+| `conditional-logic-updated` / `conditional-logic-cleared` | none | A notification's send conditions were saved or removed |
 
 ## Customizing the View
 

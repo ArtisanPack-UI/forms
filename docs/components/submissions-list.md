@@ -10,20 +10,27 @@ The SubmissionsList component displays form submissions with search, filtering, 
 
 ```blade
 {{-- All submissions for a form --}}
-<livewire:forms::submissions-list :form="$form" />
+<livewire:submissions-list :form-id="$form->id" />
 
 {{-- All submissions across all forms --}}
-<livewire:forms::submissions-list />
+<livewire:submissions-list />
 ```
 
 ## Properties
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `form` | Form\|null | null | Filter by form |
-| `perPage` | int | 15 | Items per page |
-| `sortBy` | string | 'created_at' | Sort column |
-| `sortDirection` | string | 'desc' | Sort direction |
+The component's `mount()` signature is `mount(?int $formId = null)`:
+
+| Property | Type | Default | Query string | Description |
+|----------|------|---------|--------------|-------------|
+| `formId` | int\|null | null | | Limit the list to one form. Pass it as `form-id` |
+| `search` | string | `''` | `q` | Search submissions |
+| `status` | string | `'all'` | `status` | `all` (excludes spam), `unread`, `read`, `spam` or `starred` |
+| `dateRange` | string | `'all'` | `date` | `all`, `today`, `week` or `month` |
+| `formFilter` | string | `''` | `form` | Form filter when listing all forms |
+| `sortBy` | string | `'created_at'` | `sort` | `created_at` or `submission_number` |
+| `sortDirection` | string | `'desc'` | `dir` | `asc` or `desc` |
+
+Items per page come from the `artisanpack.forms.admin.per_page` config option (default 15).
 
 ## Features
 
@@ -194,10 +201,7 @@ public function getDisplayColumnsProperty(): array
 
 ## Events Emitted
 
-| Event | Payload | Description |
-|-------|---------|-------------|
-| `submission-deleted` | `{ id }` | Submission deleted |
-| `submissions-exported` | `{ count }` | Export completed |
+The component does not dispatch Livewire events. For server-side hooks, listen for the `SubmissionUpdated` and `SubmissionDeleted` Laravel events.
 
 ## Customizing the View
 

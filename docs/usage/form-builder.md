@@ -18,7 +18,7 @@ Navigate to `/admin/forms/create` to create a new form, or `/admin/forms/{form}/
 |---------|-------------|
 | **Name** | Internal name for the form |
 | **Slug** | URL-friendly identifier (auto-generated from name) |
-| **Description** | Optional description for admin reference |
+| **Description** | Optional description, shown above the fields in the Form Renderer |
 | **Active** | Whether the form accepts submissions |
 
 ### Submission Settings
@@ -27,15 +27,17 @@ Navigate to `/admin/forms/create` to create a new form, or `/admin/forms/{form}/
 |---------|-------------|
 | **Success Message** | Message shown after successful submission |
 | **Redirect URL** | Optional URL to redirect after submission |
-| **Store Submissions** | Whether to save submissions to database |
+
+Whether submissions are saved at all is the `submissions.store_submissions` config option (see [Configuration](Installation-Configuration)).
 
 ### Display Settings
 
 | Setting | Description |
 |---------|-------------|
-| **Label Position** | Above, beside, or hidden labels |
-| **Show Required Indicator** | Show asterisk for required fields |
 | **Submit Button Text** | Text for the submit button |
+| **Label Placement** | The form's default for fields that don't set their own: **Top** (default), **Left** (beside the input from the `md` breakpoint up) or **Hidden**. Stored as `settings.label_placement`. |
+| **Description Placement** | The form's default for where a field's help text goes: above or below the input. Stored as `settings.description_placement`. |
+| **Show progress bar** / **Allow step navigation** | For multi-step forms (see [Multi-Step Forms](Usage-Multi-Step-Forms)). |
 
 ## Adding Fields
 
@@ -46,60 +48,118 @@ Navigate to `/admin/forms/create` to create a new form, or `/admin/forms/{form}/
 
 ## Field Configuration
 
-Each field has common and type-specific settings:
+The field editor has three tabs: **General**, **Validation** and **Advanced**. Each field type adds its own settings to them. The settings below are shared by every input type; layout elements (section, heading, paragraph, divider and HTML) have none of them.
 
-### Common Settings
+### General Settings
 
 | Setting | Description |
 |---------|-------------|
 | **Label** | Field label displayed to users |
-| **Name** | Field identifier (used in submissions) |
-| **Placeholder** | Placeholder text |
-| **Help Text** | Helper text below the field |
+| **Name** | Field identifier (used in submissions, merge tags and the API) |
+| **Placeholder** | Placeholder text, for types that have one |
+| **Help Text** | The field's description |
 | **Required** | Whether the field is required |
+| **Default Value** | The value the field starts with. Accepts the merge tags listed in [Dynamic Population](Usage-Dynamic-Population#default-value-merge-tags). |
+| **Width** | Full, half, third or two-thirds. Partial widths stack full width on small screens. |
 | **CSS Classes** | Custom CSS classes |
+| **Label Placement** | **Form default**, **Top**, **Left** or **Hidden** (`field_config.label_placement`). A hidden label stays available to screen readers (`sr-only`). |
+| **Description Placement** | **Form default**, above or below the input (`field_config.description_placement`). The input's `aria-describedby` points at the description wherever it is. |
 
 ### Validation Settings
 
 | Setting | Description |
 |---------|-------------|
-| **Min Length** | Minimum character length |
-| **Max Length** | Maximum character length |
-| **Pattern** | Regular expression pattern |
-| **Custom Error** | Custom validation error message |
+| **Min Length** / **Max Length** | Character limits for text-like fields (`validation_rules.min`, `validation_rules.max`). Number fields have **Min Value** / **Max Value** instead, and checkbox groups and multi-selects **Min Selections** / **Max Selections**. |
+| **Pattern (Regex)** | A regular expression the value must match (`validation_rules.pattern`), on text and phone fields. See [Pattern](#pattern). |
+| **No duplicates** | Rejects a value already submitted for this field (`field_config.no_duplicates`). On text, email, phone, number, URL and hidden fields. |
+| **Custom Error Message** | Replaces every validation message for the field except the required one (`field_config.error_message`). May be a translation key. |
+| **Required Message** | Shown when a required field is left empty (`field_config.required_message`). May be a translation key. |
+
+The custom messages apply on the server (the Livewire renderer and the submit API) and in the React and Vue client-side checks. The API returns them as `error_message` and `required_message`.
+
+**No duplicates** is checked by the `forms_no_duplicates` rule, so the custom error message applies to it too. Email addresses compare case-insensitively, and spam and quarantined submissions are ignored.
+
+#### Pattern
+
+**Pattern (Regex)** takes a PHP regular expression with delimiters, such as `/^[a-z]+$/i`, or a bare pattern such as `^[A-Z]{3}-\d{4}$`, which is wrapped in delimiters for you. A pattern matches anywhere in the value, so anchor it with `^` and `$` to check the whole value.
+
+A pattern that is not a valid regular expression is ignored, and a warning is logged, so a typo can't break the form. Check your logs after adding one.
+
+The Livewire renderer checks the pattern on the server only. The React and Vue renderers also check it in the browser, but only with the `i`, `m`, `s` and `u` flags. A pattern with any other flag, or one JavaScript can't read, is checked on the server alone.
+
+### Advanced Settings
+
+| Setting | Description |
+|---------|-------------|
+| **Read-only** | Shown but not editable (`field_config.read_only`). See [Read-only Fields](#read-only-fields). |
+| **Autocomplete** | The input's `autocomplete` token (`field_config.autocomplete`), on text, email, phone, number, URL, textarea, select and date fields. Offers every WHATWG autofill token plus `on` and `off`. Email, phone and URL fields default to `email`, `tel` and `url`, which helps people fill forms in (WCAG 2.2 SC 1.3.5). |
+| **Admin Label** | Shown instead of the label in the submissions list and detail, CSV export headers and admin notifications (`field_config.admin_label`). Autoresponders keep the public label. |
+| **Allow field to be populated dynamically** / **Parameter Name** | Start the field with a value from the page. See [Dynamic Population](Usage-Dynamic-Population). |
+| **Visibility** | **Visible** or **Administrative**. See [Field Privacy & Visibility](Usage-Field-Privacy). |
+| **Do not store**, **Mask in admin**, **Redact after (days)** | Per-field privacy. See [Field Privacy & Visibility](Usage-Field-Privacy). |
+
+The admin label is saved with each submitted value (`form_submission_values.field_admin_label`; run the migrations), so a submission keeps the label it was received under. `FormField::getAdminLabel()` returns it, falling back to the label.
+
+### Read-only Fields
+
+**Read-only** is offered on every type that takes a default value: text, email, phone, number, URL, textarea, select, radio, single checkbox, toggle, date, time, date and time, rating, slider, NPS and color fields. Text-like inputs render `readonly`; choices and ratings render `aria-readonly` and can't be changed.
+
+The server ignores whatever the client submits for a read-only field and stores its read-only value instead: the options marked **Selected by default** for a choice field, otherwise the default value. The `ap.forms.readOnlyValue` filter can supply the value:
+
+```php
+use ArtisanPackUI\Forms\Models\FormField;
+use function addFilter;
+
+addFilter( 'ap.forms.readOnlyValue', function ( mixed $value, FormField $field ): mixed {
+    return 'account_id' === $field->name ? (string) auth()->id() : $value;
+} );
+```
+
+Read-only values are applied after the `ap.forms.submissionData` filter, so set them with `ap.forms.readOnlyValue` rather than that filter. Conditional logic is evaluated against the read-only value, and a read-only field that conditional logic hides is not stored. Read-only fields are not populated from the prefill or query string. The API returns `is_read_only` and `read_only_value` on each field.
 
 ## Field Types
+
+The builder palette groups the 36 built-in types (the `type` value is in brackets):
+
+| Category | Types |
+|----------|-------|
+| **Basic Fields** | Text Input (`text`), Email (`email`), Phone Number (`phone`), Number (`number`), URL (`url`), Text Area (`textarea`), Hidden Field (`hidden`) |
+| **Choice Fields** | Dropdown Select (`select`), Radio Buttons (`radio`), Single Checkbox (`checkbox`), Toggle (`toggle`), Checkbox Group (`checkbox_group`), Multi-Select (`select_multiple`) |
+| **Advanced Fields** | File Upload (`file`), Date Picker (`date`), Time Picker (`time`), Date & Time (`datetime`), Date Range (`date_range`), Rating (`rating`), Slider (`slider`), Color (`color`), Net Promoter Score (`nps`), Likert / Matrix (`matrix`), Ranking (`ranking`), Name (`name`), Address (`address`), List (`list`), Calculation (`calculation`), Signature (`signature`), Consent (`consent`), CAPTCHA (`captcha`) |
+| **Layout Elements** | Section (`section`), Heading (`heading`), Paragraph Text (`paragraph`), Divider (`divider`), Custom HTML (`html`) |
+
+Apps can add their own types; see [Field Type Handlers](Advanced-Field-Type-Handlers).
 
 ### Text Inputs
 
 ```php
-// Text field configuration
-[
-    'type' => 'text',
-    'name' => 'full_name',
-    'label' => 'Full Name',
-    'required' => true,
-    'validation' => [
-        'min' => 2,
-        'max' => 100,
-    ],
-]
+// Text field
+FormField::create( [
+    'form_id'          => $form->id,
+    'type'             => 'text',
+    'name'             => 'full_name',
+    'label'            => 'Full Name',
+    'is_required'      => true,
+    'validation_rules' => ['min' => 2, 'max' => 100],
+] );
 
 // Email field
-[
-    'type' => 'email',
-    'name' => 'email',
-    'label' => 'Email Address',
-    'required' => true,
-]
+FormField::create( [
+    'form_id'     => $form->id,
+    'type'        => 'email',
+    'name'        => 'email',
+    'label'       => 'Email Address',
+    'is_required' => true,
+] );
 
 // Textarea
-[
-    'type' => 'textarea',
-    'name' => 'message',
-    'label' => 'Your Message',
-    'rows' => 5,
-]
+FormField::create( [
+    'form_id'      => $form->id,
+    'type'         => 'textarea',
+    'name'         => 'message',
+    'label'        => 'Your Message',
+    'field_config' => ['rows' => 5],
+] );
 ```
 
 ### Input Masks
@@ -204,7 +264,9 @@ FormField::create( [
 
 ### URL Schemes
 
-URL fields accept only `http` and `https` addresses unless **Allowed Schemes** (`validation_rules.allowed_schemes`) lists others, such as `https` alone or `https, ftp`. The rule is `url:{schemes}`, so `javascript:` and other schemes are rejected. Laravel's `url` rule needs `://` after the scheme, so schemes such as `mailto:` and `tel:` cannot be allowed.
+URL fields accept only `http` and `https` addresses unless **Allowed Schemes** (`validation_rules.allowed_schemes`) lists others, such as `https` alone or `https, ftp`. The rule is `url:{schemes}`, so other schemes are rejected. `javascript`, `data`, `vbscript`, `file` and `blob` can never be allowed: they are dropped from the list, and a list with nothing else left falls back to `http` and `https`. Laravel's `url` rule needs `://` after the scheme, so schemes such as `mailto:` and `tel:` cannot be allowed either.
+
+The submission detail only links a stored address whose scheme is safe to open; any other value is shown as text.
 
 Visitors often type `example.com`, which has no scheme. Before validation the server adds `https://` (or `http://` when only `http` is allowed), so `example.com/about` is validated and stored as `https://example.com/about`. A protocol-relative `//example.com` gets the scheme alone, and `localhost:8080` reads as a host and port. All three renderers add the scheme when the input loses focus, so visitors see the address that will be stored.
 
@@ -221,44 +283,117 @@ The Livewire renderer does not use the `livewire-ui-components` Editor (TinyMCE)
 
 ### Selection Fields
 
+Select, multi-select, radio and checkbox group fields take their choices from the options editor. Options are stored in `field_config.options` as `value` / `label` pairs:
+
 ```php
-// Select dropdown
-[
-    'type' => 'select',
-    'name' => 'country',
-    'label' => 'Country',
-    'options' => [
-        ['value' => 'us', 'label' => 'United States'],
-        ['value' => 'ca', 'label' => 'Canada'],
-        ['value' => 'uk', 'label' => 'United Kingdom'],
+FormField::create( [
+    'form_id'      => $form->id,
+    'type'         => 'radio',
+    'name'         => 'contact_method',
+    'label'        => 'Preferred Contact Method',
+    'field_config' => [
+        'options' => [
+            ['value' => 'email', 'label' => 'Email', 'default' => true],
+            ['value' => 'phone', 'label' => 'Phone'],
+        ],
+        'layout'       => 'inline',
+        'enable_other' => true,
     ],
-]
-
-// Radio buttons
-[
-    'type' => 'radio',
-    'name' => 'contact_method',
-    'label' => 'Preferred Contact Method',
-    'options' => [
-        ['value' => 'email', 'label' => 'Email'],
-        ['value' => 'phone', 'label' => 'Phone'],
-    ],
-]
-
-// Checkbox group
-[
-    'type' => 'checkbox_group',
-    'name' => 'interests',
-    'label' => 'Interests',
-    'options' => [
-        ['value' => 'news', 'label' => 'Newsletter'],
-        ['value' => 'updates', 'label' => 'Product Updates'],
-        ['value' => 'offers', 'label' => 'Special Offers'],
-    ],
-]
+] );
 ```
 
 The server only accepts a selection field's own option values (the values a choices source resolved, for a field that loads them from one). Each value of a checkbox group or multi-select must also be a string, so nested arrays are rejected. A field that offers an **Other** choice accepts any text, since that is stored as the value.
+
+#### Options Editor
+
+- **Selected by default**: a checkbox on each option (`'default' => true`). A radio or select takes one; a checkbox group or multi-select any number. Marked options take precedence over the field's default value, and are what a read-only choice field submits.
+- **Bulk Add / Predefined Choices**: paste one choice per line, as `value|label` or a label that doubles as the value, then **Replace Options** or **Add to Options**. Only the first `|` separates, blank lines are skipped and a repeated value keeps its first line (up to 1,000 choices). The editor can also insert a built-in list: Countries (ISO 3166-1 codes), U.S. States, Canadian Provinces and Territories, Months, Days of the Week, Age Ranges, and Satisfaction, Agreement and Importance scales. Values are the same in every locale and labels are translated.
+
+Add your own lists with the `ap.forms.predefinedChoices` filter. Each list is `['label' => …, 'choices' => […]]`, where choices are `['value' => …, 'label' => …]` entries, a `value => label` map or a list of strings:
+
+```php
+addFilter( 'ap.forms.predefinedChoices', function ( array $lists ): array {
+    $lists['departments'] = [
+        'label'   => __( 'Departments' ),
+        'choices' => ['sales' => __( 'Sales' ), 'support' => __( 'Support' )],
+    ];
+
+    return $lists;
+} );
+```
+
+The React and Vue builders read the lists from `GET {prefix}/{form}/fields/predefined-choices`. `ArtisanPackUI\Forms\Support\PredefinedChoices` holds the built-in lists and the bulk parser.
+
+#### Choice Settings
+
+| Setting | Key (`field_config`) | Types | Description |
+|---------|----------------------|-------|-------------|
+| **Choice Layout** | `layout` | radio, checkbox group | **Stacked** (default), **Inline**, **Two columns** or **Three columns**. Columns fill row by row, so the reading order matches the DOM, and stack on small screens. |
+| **Choice Display** | `display` | radio, checkbox group | **Labels** (default) or **Image choices**. See [Image Choices](#image-choices). |
+| **Randomize choice order** | `randomize` | radio, checkbox group, ranking | Each visitor sees the choices in a different order. The Livewire renderer keeps one order per visitor across re-renders, and an "Other" choice stays last. |
+| **Show "Select All"** | `select_all` | checkbox group | Adds a checkbox that is checked when every choice is, and mixed when only some are. |
+| **Enable "Other" choice** / **"Other" Label** | `enable_other` / `other_label` | radio, checkbox group | See [Other Choice](#other-choice). |
+| **Enable search** | `searchable` | select, multi-select | See [Searchable Select](#searchable-select). |
+| **Load Choices From** | `choices_source` | select, multi-select, radio, checkbox group | See [Dynamic Choices](#dynamic-choices). Only shown once a source is registered. |
+| **Min Selections** / **Max Selections** | `validation_rules.min` / `max` | checkbox group, multi-select | How many choices may be picked. |
+
+#### Other Choice
+
+**Enable "Other" choice** adds a last choice, labelled by **"Other" Label** (default "Other"), that reveals a text input labelled "Other, please specify". The text is required while the choice is selected, up to 255 characters. It is stored as the radio's value, or in the checkbox group's `value_array`, and shown as "Other: …".
+
+Conditional logic and notification conditions can test for the choice with the value `__other__`, which the condition builders offer. The renderers submit the typed text in place of the choice; a bare `__other__` fails the `forms_other_choice` rule. The API returns `other_choice_label` on the field.
+
+#### Searchable Select
+
+**Enable search** turns a select or multi-select into an editable combobox, for long lists. It follows the WAI-ARIA combobox pattern: `role="combobox"` with a listbox popup and `aria-activedescendant`, a polite status that announces the number of results, and arrow keys, Enter, Escape, Home and End. A multi-select shows its chosen options as removable buttons. React and Vue export the `Combobox` component.
+
+#### Dynamic Choices
+
+A choice field can load its options from code instead of the options editor. Register a source with the `ap.forms.choiceSources` filter, keyed by name, as `['label' => …, 'resolver' => callable]`. The resolver receives the field and returns its choices as `['value' => …, 'label' => …]` entries (an entry may set `'default' => true`), a `value => label` map or a list of strings:
+
+```php
+use App\Models\Location;
+use ArtisanPackUI\Forms\Models\FormField;
+use function addFilter;
+
+addFilter( 'ap.forms.choiceSources', function ( array $sources ): array {
+    $sources['locations'] = [
+        'label'    => __( 'Store locations' ),
+        'resolver' => fn ( FormField $field ): array => Location::query()->orderBy( 'name' )->pluck( 'name', 'id' )->all(),
+    ];
+
+    return $sources;
+} );
+```
+
+Then pick the source in the field's **Load Choices From** setting. The resolved choices replace the options wherever they are read (rendering, validation, display, conditional logic and the API), and the options editor shows them read-only. Submitted values must be one of them (an `in:` rule), unless the field offers an "Other" choice. Choices are resolved once per request; a resolver that throws gives no choices and logs a warning. `FormField::getChoicesSource()` returns the source key.
+
+#### Image Choices
+
+With **Choice Display** set to **Image choices**, each option in the options editor of a radio or checkbox group also takes an **Image URL** (`image`), alt text (`image_alt`) and an **Upload** button. The renderers show each choice as a card with its image above the input and label. The label stays the input's accessible name (`aria-labelledby`), and the alt text describes the image.
+
+- Uploads must be JPEG, PNG, GIF or WebP, up to `uploads.choice_images.max_size` KB (2048 by default). SVG is never accepted.
+- With `artisanpack-ui/media-library` installed, uploads are stored there, and the Livewire builder also offers the media library's picker. Otherwise they go on the public `uploads.choice_images.disk` (see [Configuration](Installation-Configuration#file-uploads)).
+- Image URLs must be `http` or `https` addresses, or a path on the site such as `/storage/…`. Anything else, such as a `javascript:` or `data:` URL, is dropped when the options are read.
+- The React and Vue builders upload through `POST {prefix}/{form}/fields/choice-images`, which needs the `update` ability on the form.
+
+`FormField::showsImageChoices()` checks the setting, and `ArtisanPackUI\Forms\Support\ChoiceImages` reads, stores and sanitizes the images.
+
+#### Single Checkbox and Toggle
+
+A **Single Checkbox** (`checkbox`) is one box, such as "Subscribe to the newsletter". A required checkbox must be checked (`accepted`). **Checked Text** and **Unchecked Text** (default "Yes" / "No") set how the answer reads in submissions, notifications and exports.
+
+A **Toggle** (`toggle`) is an on/off switch that validates like a single checkbox: `boolean`, and `accepted` when required. It renders as a checkbox with `role="switch"`.
+
+| Setting | Key (`field_config`) | Description |
+|---------|----------------------|-------------|
+| **Size** | `size` | Extra small, small, medium (default) or large. |
+| **Color** | `color` | Primary (default), secondary, accent, success, warning, error or info. |
+| **On Text** / **Off Text** | `checked_label` / `unchecked_label` | How the answer reads in submissions, notifications and exports (default "Yes" / "No"). |
+
+Both can be read-only and work with the **Is checked** / **Is unchecked** conditional-logic operators. `ToggleField` is exported from the React entry point.
+
+API clients should submit these values, and consent fields, as `1` or `0`. The server also accepts `true`, `false`, `on` and `off`.
 
 ### Date and Time
 
@@ -356,15 +491,19 @@ FormField::create( [
 ### File Upload
 
 ```php
-[
-    'type' => 'file',
-    'name' => 'resume',
-    'label' => 'Upload Resume',
-    'accept' => '.pdf,.doc,.docx',
-    'max_size' => 5120, // KB
-    'multiple' => false,
-]
+FormField::create( [
+    'form_id'      => $form->id,
+    'type'         => 'file',
+    'name'         => 'resume',
+    'label'        => 'Upload Resume',
+    'field_config' => [
+        'allowed_types' => ['pdf', 'doc', 'docx'],
+        'max_size'      => 5120, // KB
+    ],
+] );
 ```
+
+**Max File Size** (`max_size`, in KB) and **Allowed File Types** (`allowed_types`, file extensions) are in the Validation tab.
 
 **Allow multiple files** turns the field into a drop zone around a normal, keyboard-operable file input. The validation tab adds:
 
@@ -377,15 +516,15 @@ FormField::create( [
 
 In the Livewire renderer each file uploads as soon as it is added, with its own progress bar and a remove button; a polite live region announces when each upload starts and finishes. React and Vue list the files with their sizes and remove buttons, and send them with the submission (`files[{name}][]`).
 
-Each file is stored as its own `form_uploads` row. The field's submission value points at the first upload in `upload_id` and lists every upload ID, in order, in `value_array`; `FormSubmissionValue::getUploads()` returns them, and the API returns `upload_ids`. Submissions, notifications and exports list every file name. See [File Uploads](file-uploads.md).
+Each file is stored as its own `form_uploads` row. The field's submission value points at the first upload in `upload_id` and lists every upload ID, in order, in `value_array`; `FormSubmissionValue::getUploads()` returns them, and the API returns `upload_ids`. Submissions, notifications and exports list every file name. See [File Uploads](Usage-File-Uploads).
 
 The note under the input lists the field's limits: the number of files, the **Allowed File Types** (as `PDF, DOCX`) and the size limits, such as "Allowed file types: PDF, DOCX · Maximum file size: 5120 KB". The input's `aria-describedby` references it in all three renderers.
 
 **Storage** (Advanced tab) keeps uploads on the private forms disk (default) or, with **Media Library**, saves each file as an `artisanpack-ui/media-library` item, titled with the file's name. The upload's `form_uploads` row then points at the media item's file (`media_id`, `disk` and `path`; run the migrations), and deleting the upload, or pruning its submission, deletes the media item and its files. When the media item cannot be deleted, its original file is still removed and a warning naming the media item is logged.
 
-**Visibility** and the privacy settings (**Do not store**, **Mask in admin** and **Redact after (days)**) are in the Advanced tab, as for other inputs. An administrative file field is filled in on the submission detail, where admins upload, replace and remove its files. A "Do not store" field's files are attached to notifications and sent in webhook payloads, then deleted once those have run. A masked field's file names, previews and downloads are hidden from users who may not reveal masked values, and redaction deletes the stored files. See [File Uploads](file-uploads.md#visibility-and-privacy).
+**Visibility** and the privacy settings (**Do not store**, **Mask in admin** and **Redact after (days)**) are in the Advanced tab, as for other inputs. An administrative file field is filled in on the submission detail, where admins upload, replace and remove its files. A "Do not store" field's files are attached to admin notifications (never autoresponders) and sent in webhook payloads, then deleted once those have run. A masked field's file names, previews and downloads are hidden from users who may not reveal masked values, and redaction deletes the stored files. See [File Uploads](Usage-File-Uploads#visibility-and-privacy).
 
-Media library files follow the media library disk's visibility, which is **public** by default, so only use this storage for files that may be public, or point the media library at a private disk. Set `uploads.media_library.folder_id` (`FORMS_MEDIA_FOLDER_ID`) to file the uploads in a media folder, and `uploads.media_library.uploaded_by` (`FORMS_MEDIA_UPLOADED_BY`) to attribute guests' uploads to a user; otherwise the media library's own guest upload settings apply. When the media library is not installed, or rejects a file (for example because guest uploads are off or the file's type is not allowed there), the file is stored on the forms disk and a warning is logged.
+Media library files follow the media library disk's visibility, which is **public** by default, so only use this storage for files that may be public, or point the media library at a private disk. The setting is ignored for fields with **Mask in admin** or **Do not store** on: their files always stay on the private forms disk. Set `uploads.media_library.folder_id` (`FORMS_MEDIA_FOLDER_ID`) to file the uploads in a media folder, and `uploads.media_library.uploaded_by` (`FORMS_MEDIA_UPLOADED_BY`) to attribute guests' uploads to a user; otherwise the media library's own guest upload settings apply. When the media library is not installed, or rejects a file (for example because guest uploads are off or the file's type is not allowed there), the file is stored on the forms disk and a warning is logged.
 
 ### Name
 
@@ -487,7 +626,21 @@ Each row is a group named for its row ("Attendee 2"), with a labelled input per 
 
 ### Survey Fields
 
-Four advanced fields cover common survey questions. All three renderers and builders support them.
+Five advanced fields cover common survey questions. All three renderers and builders support them.
+
+#### Rating
+
+A **Rating** field (`rating`) asks for a star rating.
+
+| Setting | Key (`field_config`) | Description |
+|---------|----------------------|-------------|
+| **Max Rating** | `max_rating` | The number of stars, from 1 to 10 (default 5). |
+| **Allow half stars** | `allow_half` | Accepts half steps, such as 3.5. |
+| **Star Size** | `size` | Extra small, small, medium (default) or large. |
+
+The value is validated as `numeric|between:0,{max}` in whole steps (`multiple_of:1`), or half steps with **Allow half stars**, and a required rating must be above 0 (0 means "no rating"). Submissions and notifications show it as "4 / 5", exports have the number, and the numeric conditional-logic operators apply. A rating can be read-only.
+
+The renderers use a labelled radio group with a label per star, arrow-key navigation and a visible focus ring. An app that registered its own `rating` type through `ap.forms.fieldTypes` gets the built-in rating validation; its array definition still changes the label and other definition entries.
 
 #### Slider
 
@@ -560,6 +713,38 @@ A drawing is submitted as a PNG data URL (`data:image/png;base64,…`) and store
 Submissions show a drawn signature as an image, and the PNG is also listed under **Attachments**. HTML notifications embed the image as an inline (`cid:`) attachment, so it shows in email clients that block data URLs. Text emails and exports read "Signed (drawn)", and a typed signature reads `Signed as "Ada Lovelace" (typed)`. The **Is empty** and **Is not empty** conditional-logic operators apply.
 
 Signature fields have no privacy settings and can't be administrative, since the image is a stored file. In the Livewire renderer the pad is an Alpine canvas rather than `x-artisanpack-signature`, which needs the global `signature_pad` library and has no typed alternative. React and Vue use the shared `SignaturePad` class.
+
+### Color
+
+A **Color** field (`color`) joins the browser's color picker to a hex code input, so the value can be picked or typed. It is checked with Laravel's `hex_color` rule. A typed `FF8800` or `#F80` is stored as `#ff8800`. Submissions, notifications and the submission details show a swatch beside the hex code, and exports have the hex code. The equality and emptiness conditional-logic operators apply, and the field can be read-only.
+
+### Calculation
+
+A **Calculation** field (`calculation`) shows a read-only number worked out from other fields, such as an order total.
+
+| Setting | Key (`field_config`) | Description |
+|---------|----------------------|-------------|
+| **Formula** | `formula` | Numbers, field merge tags such as `{price}`, `+ - * /` and parentheses, such as `{quantity} * {price}`. Up to 1,000 characters. |
+| **Decimal Places** | `decimals` | The result is rounded to this many places, 0 to 10 (default 2). |
+
+The formula editor in the builders has an **Insert a field** picker that inserts a merge tag at the cursor, and names the first problem with the formula. Formulas are read by a small parser, never `eval`, so nothing else in a formula can run. Multiplication and division bind tighter than addition and subtraction.
+
+- A merge tag reads that field's value as a number. A list of numbers (such as a checkbox group whose option values are prices) reads as their sum, a checked box as 1, and anything else (blank or text) as 0.
+- A calculation can use another calculation's result. Dividing by zero, or a cycle between calculations, gives no result.
+- A field hidden by conditional logic counts as 0.
+- File, signature, CAPTCHA and layout fields can't be used, and neither can a field with **Mask in admin** on (see [Field Privacy & Visibility](Usage-Field-Privacy#who-may-change-privacy-settings)).
+
+The result updates as the visitor types in all three renderers. On submit the server works every calculation out again from the submitted values and ignores the value the client sent (`SubmissionService::applyCalculations()`). The API returns `calculation.formula` and `calculation.decimals` on the field; `ArtisanPackUI\Forms\Support\Calculation` is the parser, and `resources/js/shared/calculation.ts` mirrors it.
+
+```php
+FormField::create( [
+    'form_id'      => $form->id,
+    'type'         => 'calculation',
+    'name'         => 'total',
+    'label'        => 'Total',
+    'field_config' => ['formula' => '{quantity} * {price}', 'decimals' => 2],
+] );
+```
 
 ### Email Confirmation
 
@@ -636,23 +821,24 @@ $form = Form::create([
     'slug' => 'contact',
     'is_active' => true,
     'success_message' => 'Thank you for contacting us!',
+    'submit_button_text' => 'Send Message',
     'settings' => [
-        'label_position' => 'above',
-        'submit_button_text' => 'Send Message',
+        'label_placement' => 'top',
+        'description_placement' => 'below',
     ],
 ]);
 
 // Add fields
 $fields = [
-    ['type' => 'text', 'name' => 'name', 'label' => 'Name', 'required' => true],
-    ['type' => 'email', 'name' => 'email', 'label' => 'Email', 'required' => true],
-    ['type' => 'textarea', 'name' => 'message', 'label' => 'Message', 'required' => true],
+    ['type' => 'text', 'name' => 'name', 'label' => 'Name', 'is_required' => true],
+    ['type' => 'email', 'name' => 'email', 'label' => 'Email', 'is_required' => true],
+    ['type' => 'textarea', 'name' => 'message', 'label' => 'Message', 'is_required' => true],
 ];
 
 foreach ($fields as $index => $field) {
     FormField::create([
         'form_id' => $form->id,
-        'order' => $index + 1,
+        'sort_order' => $index + 1,
         ...$field,
     ]);
 }
@@ -680,3 +866,6 @@ $newForm = $formService->duplicate($originalForm);
 - [Form Renderer](Form-Renderer) - Display forms on your site
 - [Multi-Step Forms](Multi-Step-Forms) - Create multi-step forms
 - [Conditional Logic](Conditional-Logic) - Add conditional field visibility
+- [Field Privacy & Visibility](Usage-Field-Privacy) - Administrative fields, masking and redaction
+- [Dynamic Population](Usage-Dynamic-Population) - Start fields with values from the page
+- [Field Type Handlers](Advanced-Field-Type-Handlers) - Add your own field types

@@ -90,6 +90,8 @@ interface FormField {
 }
 ```
 
+This shows the core keys. Since 1.6.0 fields also carry optional, type-specific keys such as `is_read_only`, `autocomplete`, `sub_inputs`, `calculation`, `date_limits`, `resolved_default_value` and `settings_schema`; see the published `artisanpack-forms.d.ts` for their types and [API Resources](Api-Resources#formfieldresource) for what each holds.
+
 ### FormStep
 
 ```typescript

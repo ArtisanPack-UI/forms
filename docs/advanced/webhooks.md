@@ -215,6 +215,8 @@ Control what data is included:
 
 With these disabled, IP and user agent are excluded from webhook payloads.
 
+Webhooks receive every submitted value, including fields with **Mask in admin** on and **Do not store** values (and their files, base64-encoded in `submission.files`). Masking only applies in the admin. See [Field Privacy & Visibility](Usage-Field-Privacy#what-masking-does-not-cover).
+
 ## Queue Configuration
 
 Webhooks are queued for reliability:

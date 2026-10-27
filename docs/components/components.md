@@ -23,14 +23,14 @@ ArtisanPack UI Forms includes pre-built Livewire components for common form oper
 
 See the [AI Features](Ai-Ai) section for detailed usage of each `ai-*` component.
 
-## Component Namespacing
+## Component Names
 
-All components are namespaced under `forms::`:
+The main components are registered without a namespace prefix: `form-renderer`, `forms-list`, `form-builder`, `submissions-list`, `submission-detail` and `notification-editor`. Only the AI components use the `forms::` prefix (for example `forms::ai-spam-check`).
 
 ```blade
-<livewire:forms::form-renderer />
-<livewire:forms::forms-list />
-<livewire:forms::form-builder />
+<livewire:form-renderer :form="$form" />
+<livewire:forms-list />
+<livewire:form-builder :form="$form" />
 ```
 
 ## Component Categories
@@ -41,19 +41,19 @@ These components are used in the admin interface for form management:
 
 ```blade
 {{-- List all forms --}}
-<livewire:forms::forms-list />
+<livewire:forms-list />
 
 {{-- Build/edit a form --}}
-<livewire:forms::form-builder :form="$form" />
+<livewire:form-builder :form="$form" />
 
-{{-- List submissions for a form --}}
-<livewire:forms::submissions-list :form="$form" />
+{{-- List submissions for a form (omit form-id for all forms) --}}
+<livewire:submissions-list :form-id="$form->id" />
 
 {{-- View submission details --}}
-<livewire:forms::submission-detail :submission="$submission" />
+<livewire:submission-detail :submission="$submission" />
 
 {{-- Configure notifications --}}
-<livewire:forms::notification-editor :form="$form" />
+<livewire:notification-editor :form="$form" />
 ```
 
 ### Public Components
@@ -61,8 +61,8 @@ These components are used in the admin interface for form management:
 These components are for end-user facing pages:
 
 ```blade
-{{-- Display a form --}}
-<livewire:forms::form-renderer slug="contact" />
+{{-- Display a form ($form is a Form model) --}}
+<livewire:form-renderer :form="$form" />
 ```
 
 ## Publishing Views
@@ -77,43 +77,53 @@ Views are published to `resources/views/vendor/forms/livewire/`.
 
 ## Component Properties
 
-Most components accept properties for customization:
+Each component takes the model or ID it works on:
+
+| Component | Mount parameters |
+|-----------|------------------|
+| `form-renderer` | `form` (Form, required), `prefill` (array, optional) |
+| `forms-list` | None |
+| `form-builder` | `form` (Form, required) |
+| `submissions-list` | `form-id` (int, optional; all forms when omitted) |
+| `submission-detail` | `submission` (FormSubmission, required) |
+| `notification-editor` | `form` (Form, required) |
 
 ```blade
-<livewire:forms::form-renderer
-    slug="contact"
-    success-message="Thank you!"
-    :show-title="false"
-/>
+<livewire:form-renderer :form="$form" :prefill="['plan' => 'pro']" />
 ```
+
+Display options such as the success message, redirect URL and submit button text are form settings, not component props (see [Form Settings](Usage-Form-Builder#form-settings)).
 
 ## Events
 
 Components emit Livewire events you can listen to:
 
 ```javascript
-Livewire.on('form-submitted', (event) => {
-    console.log('Form submitted:', event.formId);
-});
+document.addEventListener('livewire:init', () => {
+    Livewire.on('form-submitted', ({ formId, submissionId }) => {
+        console.log('Form submitted:', formId, submissionId);
+    });
 
-Livewire.on('submission-deleted', (event) => {
-    console.log('Submission deleted:', event.submissionId);
+    Livewire.on('step-changed', ({ step }) => {
+        console.log('Now on step', step);
+    });
 });
 ```
 
+See [FormRenderer](Components-Form-Renderer#events-emitted) for the full list. The builder and notification editor dispatch their own events (such as `form-saved` and `notifications-saved`). The submission components do not dispatch Livewire events; for server-side hooks use the Laravel events (`FormSubmitted`, `SubmissionUpdated`, `SubmissionDeleted`).
+
 ## Styling
 
-Components use minimal default styling and can be customized via:
+Components are built with ArtisanPack UI components and daisyUI classes, and can be customized via:
 
-1. **CSS Classes** - Pass custom classes to components
+1. **Wrapper Markup** - Wrap a component in your own element and style that
 2. **Published Views** - Edit the Blade templates
-3. **CSS Variables** - Override CSS custom properties
+3. **Theme** - Components follow your daisyUI / ArtisanPack UI theme
 
 ```blade
-<livewire:forms::form-renderer
-    slug="contact"
-    css-class="my-custom-form bg-white p-6 rounded-lg"
-/>
+<div class="my-custom-form bg-white p-6 rounded-lg">
+    <livewire:form-renderer :form="$form" />
+</div>
 ```
 
 ## Component Architecture

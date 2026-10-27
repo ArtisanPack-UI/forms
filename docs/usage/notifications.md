@@ -82,6 +82,10 @@ FormNotification::create([
 | `message` | Email body (supports placeholders) |
 | `include_submission_data` | Include all field values |
 
+With `include_submission_data` on, admin notifications label each value with the field's **Admin Label** when it has one; autoresponders keep the public label. Admin notifications also attach the files of **Do not store** file fields. Autoresponders never attach them, since they go to an address the visitor typed.
+
+Notifications are outside field masking: a `{field}` placeholder or the submission data includes the values of fields with **Mask in admin** on, in full, and so do **Do not store** values. Anyone who can edit a form's notifications can send its values anywhere, so limit who has the `manageNotifications` ability on forms with sensitive fields. See [Field Privacy & Visibility](Usage-Field-Privacy#what-masking-does-not-cover).
+
 ## Placeholders
 
 Use placeholders in subject and message:

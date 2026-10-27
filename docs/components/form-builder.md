@@ -9,24 +9,22 @@ The FormBuilder component provides a drag-and-drop interface for creating and ed
 ## Basic Usage
 
 ```blade
-{{-- Create new form --}}
-<livewire:forms::form-builder />
-
-{{-- Edit existing form --}}
-<livewire:forms::form-builder :form="$form" />
+<livewire:form-builder :form="$form" />
 ```
+
+The builder edits an existing form. New forms are created at `/admin/forms/create` (or programmatically), then opened in the builder.
 
 ## Properties
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `form` | Form\|null | null | Form to edit (null for new) |
+| `form` | Form | required | Form to edit (`mount(Form $form)`) |
 
 ## Component Structure
 
 The FormBuilder interface includes:
 
-1. **Form Settings Panel** - Name, slug, description, status
+1. **Form Settings** - Name, slug, description, success message, redirect URL and status live in the **Settings** tab of the edit page, next to the builder (see [Form Settings](Usage-Form-Builder#form-settings))
 2. **Field Palette** - Draggable field types
 3. **Form Canvas** - Visual field arrangement
 4. **Field Editor** - Configure selected field
@@ -70,15 +68,23 @@ When a field is selected, the editor shows:
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `form-saved` | `{ formId }` | Form was saved |
-| `field-added` | `{ fieldType }` | Field was added |
-| `field-removed` | `{ fieldId }` | Field was removed |
+| `form-saved` | none | Form was saved (followed by `save-complete`) |
+| `field-added` | `{ uuid }` | Field was added |
+| `field-deleted` | `{ uuid }` | Field was removed |
+| `field-duplicated` | `{ uuid }` | Field was duplicated (UUID of the copy) |
+| `forms-options-updated` | `{ field, options }` | A choice field's options changed |
+| `conditional-logic-updated` / `conditional-logic-cleared` | none | A field's conditional logic was saved or removed |
+| `conditional-logic-error` | `{ errors }` | Conditional logic failed validation |
+| `step-added` / `step-deleted` | `{ stepId }` | A step was added or removed |
+| `multi-step-enabled` / `multi-step-disabled` | none | Multi-step mode was turned on or off |
 
 ### Listening to Events
 
 ```javascript
-Livewire.on('form-saved', (event) => {
-    window.location.href = `/admin/forms/${event.formId}/edit`;
+document.addEventListener('livewire:init', () => {
+    Livewire.on('form-saved', () => {
+        console.log('Form saved');
+    });
 });
 ```
 
