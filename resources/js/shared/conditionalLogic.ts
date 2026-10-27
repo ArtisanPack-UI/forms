@@ -70,10 +70,16 @@ function resolveFieldReference(
 
 /**
  * Checks if a value is empty (null, undefined, empty string, or empty array).
+ * An unchecked checkbox, toggle or consent (`false`) is empty, as on the
+ * server; a number, including `0`, is not (since 1.6.0).
  */
 function isEmpty( value: unknown ): boolean {
 	if ( value === null || value === undefined ) {
 		return true;
+	}
+
+	if ( typeof value === 'boolean' ) {
+		return !value;
 	}
 
 	if ( typeof value === 'string' ) {

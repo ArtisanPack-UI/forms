@@ -71,3 +71,42 @@ describe( 'normalized values (BE-2)', function (): void {
             ->toBe( ['details' => true, 'eu_details' => true, 'orange' => true, 'about' => true] );
     } );
 } );
+
+describe( 'is empty on booleans and numbers (FT-06)', function (): void {
+    it( 'treats an unchecked box as empty and 0 as a value', function (): void {
+        $results = SharedTypeScript::run( <<<'JS'
+            const { compareValues } = await load( 'conditionalLogic' );
+            return [false, true, 0, 5, '', null].flatMap( ( value ) => [
+                compareValues( value, 'is_empty', '' ),
+                compareValues( value, 'is_not_empty', '' ),
+            ] );
+            JS );
+
+        if ( null === $results ) {
+            $this->markTestSkipped( 'Node 22.7+ is needed to run the shared helpers.' );
+        }
+
+        expect( $results )->toBe( [
+            true, false,
+            false, true,
+            false, true,
+            false, true,
+            true, false,
+            true, false,
+        ] );
+    } );
+
+    it( 'shows a field for an unchecked toggle under an is-empty rule', function (): void {
+        $hidden = jsHiddenFields(
+            [['name' => 'opt_in', 'uuid' => 'opt-in-uuid', 'type' => 'toggle'], jsShownWhen( 'reason', 'opt_in', 'is_empty' )],
+            [['opt_in' => false], ['opt_in' => true]],
+        );
+
+        if ( null === $hidden ) {
+            $this->markTestSkipped( 'Node 22.7+ is needed to run the shared helpers.' );
+        }
+
+        expect( $hidden[0]['reason'] )->toBeFalse()
+            ->and( $hidden[1]['reason'] )->toBeTrue();
+    } );
+} );
