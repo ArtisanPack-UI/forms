@@ -557,6 +557,57 @@ class FormBuilder extends Component
         );
 
         $this->persistSelectedField( $field, ['field_config' => array_merge( $field->field_config ?? [], ['options' => $options] )] );
+
+        $this->dispatch( 'forms-options-updated', field: $field->uuid, options: array_values( $options ) );
+    }
+
+    /**
+     * Replace the selected choice field's options.
+     *
+     * Only `options` changes: the rest of `field_config` is read from the
+     * saved field, so the options editor cannot revert settings changed since
+     * it was rendered. Each option keeps its value, label, default flag and
+     * image; images are made safe (see ChoiceImages::sanitizeOptions()).
+     *
+     * @since 1.6.0
+     *
+     * @param  array<int, mixed>  $options  The options, in order.
+     *
+     * @throws AuthorizationException When the user may not update the form.
+     * @throws ValidationException When an option is not valid.
+     */
+    public function updateOptions( array $options ): void
+    {
+        $this->authorizeUpdate();
+
+        $field = $this->getSelectedFieldModel();
+
+        if ( null === $field || ! FieldTypes::hasOptions( $field->type ) ) {
+            return;
+        }
+
+        $validated = Validator::make( ['options' => array_values( $options )], [
+            'options'             => ['present', 'array'],
+            'options.*'           => ['array'],
+            'options.*.value'     => ['nullable', 'string', 'max:255'],
+            'options.*.label'     => ['nullable', 'string', 'max:255'],
+            'options.*.default'   => ['sometimes', 'boolean'],
+            'options.*.image'     => ['nullable', 'string', 'max:2048'],
+            'options.*.image_alt' => ['nullable', 'string', 'max:255'],
+        ] )->validate();
+
+        $options = array_map(
+            fn ( array $option ): array => array_merge(
+                ['value' => (string) ( $option['value'] ?? '' ), 'label' => (string) ( $option['label'] ?? '' )],
+                array_filter( $option, fn ( mixed $value, string $key ): bool => ! in_array( $key, ['value', 'label'], true ) && null !== $value, ARRAY_FILTER_USE_BOTH ),
+            ),
+            $validated['options'] ?? [],
+        );
+        $options = array_values( ChoiceImages::sanitizeOptions( $options ) );
+
+        $this->persistSelectedField( $field, ['field_config' => array_merge( $field->field_config ?? [], ['options' => $options] )] );
+
+        $this->dispatch( 'forms-options-updated', field: $field->uuid, options: $options );
     }
 
     /**
