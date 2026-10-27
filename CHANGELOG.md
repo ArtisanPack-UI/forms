@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
 ## [1.6.0] - 2026-10-27
 
 ### Added
@@ -78,6 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - React and Vue check email and URL formats even when a field has no validation rules, as the server does. ([#119](https://github.com/ArtisanPack-UI/forms/issues/119), [#120](https://github.com/ArtisanPack-UI/forms/issues/120))
 
 - CI runs on `release/**` branches and pull requests into them as well as `main`, sets up Node 22 so the TypeScript parity tests run (they now fail instead of skipping when `CI` is set), and fails on PHPCS errors. `phpcs` works again: `dealerdirect/phpcodesniffer-composer-installer` is a dev dependency, so the ArtisanPackUIStandard sniffs are registered. After each release, the docs and changelog are imported on the docs site. ([#78](https://github.com/ArtisanPack-UI/forms/issues/78))
+- PHPCS skips Blade files, which it can't parse.
 - `composer.json` declares the MIT license, matching `LICENSE`, and suggests `artisanpack-ui/media-library` (^1.4) for Media Library storage and image-choice uploads.
 - Element IDs are unique per form, so two forms (or two copies of one form) on a page no longer share IDs, labels or descriptions. The Livewire renderer prefixes field IDs with the form (`field-f12-email`; `FormField::domId()`), and the React and Vue renderers with a per-instance prefix (`field-apfr1-email`; `useForm()` returns `idPrefix`). Builder previews and the submission detail keep unprefixed IDs.
 - React and Vue validation messages, step navigation and other renderer text go through `t()`, with their keys in `translation-keys.json`. Several client messages now match the server's wording (for example "The :field field is required.").

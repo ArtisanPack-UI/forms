@@ -125,7 +125,7 @@ After installation, verify everything is working:
 
 ## Upgrading to 1.6
 
-1. Run the migrations. 1.6.0 adds `form_submission_values.field_admin_label` and `redacted_at`, and `form_uploads.pending_deliveries` and `media_id`:
+1. Run the migrations. 1.6.0 adds `form_submission_values.field_admin_label`, `redacted_at`, `is_masked` and `redact_after_days`, and `form_uploads.pending_deliveries`, `media_id` and `is_masked` (the privacy flags are backfilled from the current field settings). Submissions fail until these columns exist:
 
    ```bash
    php artisan migrate

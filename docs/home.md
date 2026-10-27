@@ -102,7 +102,7 @@ Welcome to the documentation for the ArtisanPack UI Forms package. This package 
 
 ## Support
 
-For support, please contact [support@artisanpackui.dev](Mailto:Support@Artisanpackui.Dev) or visit our [GitLab repository](https://gitlab.com/jacob-martella-web-design/artisanpack-ui/forms).
+For support, please contact [support@artisanpackui.dev](mailto:support@artisanpackui.dev) or visit our [GitHub repository](https://github.com/ArtisanPack-UI/forms).
 
 ## License
 
