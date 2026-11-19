@@ -496,7 +496,10 @@ class FieldTypes
      *
      * The single source for field widths: FormField::$width_class and the React
      * and Vue renderers (`resources/js/shared/fieldSettings.ts`) use these.
-     * Partial widths stack full-width below the `md` breakpoint.
+     * Partial widths stack full-width below the `md` breakpoint. From `md`
+     * up, each one gives back its share of the renderers' 1rem field gap
+     * (`gap-4`), so two halves, three thirds, or a two-thirds and a third
+     * fill one row instead of wrapping.
      *
      * @since 1.0.0
      *
@@ -504,9 +507,9 @@ class FieldTypes
      */
     public const WIDTH_CLASSES = [
         'full'       => 'w-full',
-        'half'       => 'w-full md:w-1/2',
-        'third'      => 'w-full md:w-1/3',
-        'two-thirds' => 'w-full md:w-2/3',
+        'half'       => 'w-full md:w-[calc((100%-1rem)/2)]',
+        'third'      => 'w-full md:w-[calc((100%-2rem)/3)]',
+        'two-thirds' => 'w-full md:w-[calc((200%-1rem)/3)]',
     ];
 
     /**

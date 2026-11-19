@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Half, Third and Two-thirds fields share a row again** ([#181](https://github.com/ArtisanPack-UI/forms/issues/181)). The React and Vue renderers lay fields out with a 1rem gap, and plain `md:w-1/2` / `md:w-1/3` / `md:w-2/3` widths left no room for it, so every partial-width field wrapped onto its own row. Each width now gives back its share of the gap (`md:w-[calc((100%-1rem)/2)]`, `md:w-[calc((100%-2rem)/3)]`, `md:w-[calc((200%-1rem)/3)]`), so two halves, three thirds, or a two-thirds and a third fill one row. `FieldTypes::WIDTH_CLASSES` and the shared JS map change together.
+
 ## [1.6.0] - 2026-10-27
 
 ### Added
