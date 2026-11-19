@@ -322,9 +322,9 @@ describe( 'Vue Form Renderer', function (): void {
 
             expect( $this->content )->toContain( "import { WIDTH_CLASSES } from '../../../shared/fieldSettings';" )
                 ->and( $shared )->toContain( "full: 'w-full'," )
-                ->and( $shared )->toContain( "half: 'w-full md:w-1/2'," )
-                ->and( $shared )->toContain( "third: 'w-full md:w-1/3'," )
-                ->and( $shared )->toContain( "'two-thirds': 'w-full md:w-2/3'," );
+                ->and( $shared )->toContain( "half: 'w-full md:w-[calc((100%-1rem)/2)]'," )
+                ->and( $shared )->toContain( "third: 'w-full md:w-[calc((100%-2rem)/3)]'," )
+                ->and( $shared )->toContain( "'two-thirds': 'w-full md:w-[calc((200%-1rem)/3)]'," );
         } );
     } );
 } );

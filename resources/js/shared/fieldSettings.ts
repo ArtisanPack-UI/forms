@@ -370,13 +370,15 @@ export function buildFieldConfigUpdate(
 
 /**
  * Width classes, mirroring `FieldTypes::WIDTH_CLASSES` (the single source on
- * the server). Partial widths stack full-width below the `md` breakpoint.
+ * the server). Partial widths stack full-width below the `md` breakpoint;
+ * from `md` up each gives back its share of the 1rem field gap (`gap-4`), so
+ * two halves, three thirds, or a two-thirds and a third share one row.
  */
 export const WIDTH_CLASSES: Readonly<Record<string, string>> = {
 	full: 'w-full',
-	half: 'w-full md:w-1/2',
-	third: 'w-full md:w-1/3',
-	'two-thirds': 'w-full md:w-2/3',
+	half: 'w-full md:w-[calc((100%-1rem)/2)]',
+	third: 'w-full md:w-[calc((100%-2rem)/3)]',
+	'two-thirds': 'w-full md:w-[calc((200%-1rem)/3)]',
 };
 
 /** Get a field's width class, falling back to full width. */

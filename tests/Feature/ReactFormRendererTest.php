@@ -415,10 +415,10 @@ describe( 'React Form Renderer', function (): void {
 
             expect( $this->content )->toContain( "import { getWidthClass, WIDTH_CLASSES } from '../../../shared/fieldSettings';" )
                 ->and( $this->content )->toContain( ': getWidthClass( field.width );' )
-                ->and( $this->content )->not->toContain( "half: 'w-full md:w-1/2'," )
-                ->and( $shared )->toContain( "half: 'w-full md:w-1/2'," )
-                ->and( $shared )->toContain( "third: 'w-full md:w-1/3'," )
-                ->and( $shared )->toContain( "'two-thirds': 'w-full md:w-2/3'," );
+                ->and( $this->content )->not->toContain( "half: 'w-full md:w-[calc((100%-1rem)/2)]'," )
+                ->and( $shared )->toContain( "half: 'w-full md:w-[calc((100%-1rem)/2)]'," )
+                ->and( $shared )->toContain( "third: 'w-full md:w-[calc((100%-2rem)/3)]'," )
+                ->and( $shared )->toContain( "'two-thirds': 'w-full md:w-[calc((200%-1rem)/3)]'," );
         } );
     } );
 } );

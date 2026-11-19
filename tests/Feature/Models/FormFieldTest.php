@@ -131,9 +131,9 @@ describe( 'FormField Model', function (): void {
 
         it( 'returns width class', function (): void {
             expect( FormField::factory()->create( ['width' => 'full'] )->width_class )->toBe( 'w-full' )
-                ->and( FormField::factory()->create( ['width' => 'half'] )->width_class )->toBe( 'w-full md:w-1/2' )
-                ->and( FormField::factory()->create( ['width' => 'third'] )->width_class )->toBe( 'w-full md:w-1/3' )
-                ->and( FormField::factory()->create( ['width' => 'two-thirds'] )->width_class )->toBe( 'w-full md:w-2/3' );
+                ->and( FormField::factory()->create( ['width' => 'half'] )->width_class )->toBe( 'w-full md:w-[calc((100%-1rem)/2)]' )
+                ->and( FormField::factory()->create( ['width' => 'third'] )->width_class )->toBe( 'w-full md:w-[calc((100%-2rem)/3)]' )
+                ->and( FormField::factory()->create( ['width' => 'two-thirds'] )->width_class )->toBe( 'w-full md:w-[calc((200%-1rem)/3)]' );
         } );
     } );
 
